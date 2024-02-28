@@ -80,9 +80,9 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'seerandatabase-2',
+        'NAME': 'seerandb',
         'USER': 'seeran',
-        'PASSWORD': 'kegpim-tagjo1-Zoqbak',
+        'PASSWORD': 'Goqsag-hyxgy7-zesfoq',
         'HOST': 'seerandatabase-2.cz4cqeskmn2k.af-south-1.rds.amazonaws.com',
         'PORT': '5432',  # Default PostgreSQL port
     }
