@@ -3,4 +3,4 @@ from django.http import HttpResponse, JsonResponse
 
 # Create your views here.
 def homepage(reguest):
-    return JsonResponse('hello')
+    return JsonResponse('hello', safe=False)
