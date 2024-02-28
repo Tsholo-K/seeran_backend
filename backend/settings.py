@@ -83,7 +83,7 @@ DATABASES = {
         'NAME': 'seerandb',
         'USER': 'seeran',
         'PASSWORD': 'Goqsag-hyxgy7-zesfoq',
-        'HOST': 'seerandatabase-2.cz4cqeskmn2k.af-south-1.rds.amazonaws.com',
+        'HOST': 'seerandb.cz4cqeskmn2k.af-south-1.rds.amazonaws.com',
         'PORT': '5432',  # Default PostgreSQL port
     }
 }
