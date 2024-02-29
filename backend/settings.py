@@ -60,6 +60,10 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
 ]
 
+CORS_ORIGIN_WHITELIST = [
+    'http://localhost:3000',  # Add your frontend origin here
+]
+
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
 ]
