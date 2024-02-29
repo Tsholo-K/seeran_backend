@@ -7,7 +7,7 @@ import json
 def login(request):
     if request.method == 'POST':
         user_data = json.loads(request.body)
-        if user_data.get('email') == 'lethabo.mochaki1076@icloud.com' & user_data.get('email') == 'lethabo.mochaki1076@icloud.com':
+        if user_data.get('email') == 'lethabo.mochaki1076@icloud.com' & user_data.get('password') == 'lethabo123':
             return JsonResponse('authenticated')
         else:
             return JsonResponse('invalid user')

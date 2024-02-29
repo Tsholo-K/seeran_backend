@@ -68,6 +68,14 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
 ]
 
+# Specify allowed methods (GET, POST, PUT, DELETE)
+CORS_ALLOW_METHODS = [
+    'GET',
+    'POST',
+    'PUT',
+    'DELETE',
+]
+
 
 ROOT_URLCONF = 'backend.urls'
 
