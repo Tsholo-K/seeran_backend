@@ -17,10 +17,7 @@ class StudentManager(BaseUserManager):
 
 class Student(AbstractBaseUser):
     email = models.EmailField(unique=True,)
-    phone_number = PhoneNumberField(region='ZA')
     password = models.CharField(max_length=128)
-    grades = models.ForeignKey(Grades, on_delete=models.PROTECT, default=None, null=True)
-    parent = models.ForeignKey('Parent', on_delete=models.PROTECT )
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
