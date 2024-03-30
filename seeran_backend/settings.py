@@ -17,6 +17,9 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
+if not DEBUG:
+    ALLOWED_HOSTS = ["*"]
+    
 ALLOWED_HOSTS = []
 
 
@@ -61,11 +64,17 @@ MIDDLEWARE = [
 
 # cors config
 
+if not DEBUG:
+    CORS_ALLOWED_ORIGINS = [
+        'http://www.seeran-grades.com',
+        # Add other allowed origins as needed
+    ]
+    
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'https://www.seeran-grades.com',
-    # Add other allowed origins as needed
-]
+        'http://localhost:3000',
+        'http://www.seeran-grades.com',
+        # Add other allowed origins as needed
+    ]
 
 CORS_ALLOW_CREDENTIALS = True
 
