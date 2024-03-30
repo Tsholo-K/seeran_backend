@@ -3,6 +3,12 @@ from rest_framework.response import Response
 from .serializers import CustomTokenObtainPairSerializer
 from rest_framework import status
 from django.contrib.auth.hashers import check_password
+from .models import CustomUser
+from django.utils import timezone
+import hashlib
+import random
+from django.core.mail import send_mail, BadHeaderError
+from django.template.loader import render_to_string
 
 
 # Login view
@@ -102,3 +108,61 @@ def user_change_password(request):
     except:
         pass
     return response
+
+# otp generation function
+def generate_otp():
+    otp = str(random.randint(100000, 999999))
+    hashed_otp = hashlib.sha256(otp.encode()).hexdigest()
+    return otp, hashed_otp
+
+# otp verification function
+def verify_otp(user_otp, stored_hashed_otp):
+    hashed_user_otp = hashlib.sha256(user_otp.encode()).hexdigest()
+    return hashed_user_otp == stored_hashed_otp
+
+
+# Request otp view
+@api_view(['POST'])
+def send_otp(request):
+    email = request.data.get('email')
+    # try to get the user
+    try:
+        user = CustomUser.objects.get(email=email)
+    except CustomUser.DoesNotExist:
+        return Response({"error": "User with this email does not exist."}, status=400)
+    otp, hashed_otp = generate_otp()
+    user.hashed_otp = hashed_otp
+    user.save()
+
+    # Render the email template with the OTP
+    html_message = render_to_string('email_template.html', {'otp': otp})
+
+    try:
+        # Send the email
+        send_mail(
+            'Your OTP',
+            '',  # We're sending HTML email, so the plain text message is empty
+            'from@example.com',  # Replace with your email
+            [email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        return Response({"message": "OTP sent."})
+    except BadHeaderError:
+        return Response({"error": "Invalid header found."}, status=400)
+    except Exception as e:
+        return Response({"error": str(e)}, status=400)
+
+
+# Verify otp view
+@api_view(['POST'])
+def verify_otp_view(request):
+    email = request.user.email
+    otp = request.data.get('otp')
+    user = CustomUser.objects.get(email=email)
+    if verify_otp(otp, user.hashed_otp):
+        user.hashed_otp = None  # Clear the OTP
+        user.save()
+        return Response({"message": "OTP verified successfully."})
+    else:
+        return Response({"error": "Incorrect OTP. Please try again."}, status=400)

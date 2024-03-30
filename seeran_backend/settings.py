@@ -1,5 +1,8 @@
 from pathlib import Path
 from datetime import timedelta
+import os
+from decouple import config
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -9,10 +12,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-1hrd@6u+u$0ouahd*z)v5ra+hu1nn&ljum=oh(r0i3noxbsg7i'
+SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = []
 
@@ -85,6 +88,33 @@ SIMPLE_JWT = {
     'TOKEN_BLACKLIST_MODEL': 'rest_framework_simplejwt.token_blacklist.BlacklistedToken',
     # Other settings (e.g., ALGORITHM, SIGNING_KEY, etc.) can be customized as well
 }
+
+# Caching config
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://localhost:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
+
+# Email sending config
+
+EMAIL_BACKEND = 'django_ses.SESBackend'
+
+AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
+EMAIL_BACKEND = 'django_smtp_ssl.SSLEmailBackend'
+EMAIL_HOST = 'email-smtp.eu-central-1.amazonaws.com'
+EMAIL_PORT = 465
+EMAIL_HOST_USER = os.environ.get('AWS_SES_SMTP_USER')
+EMAIL_HOST_PASSWORD = os.environ.get('AWS_SES_PASSWORD')
+
+
+# default settings 
 
 ROOT_URLCONF = 'seeran_backend.urls'
 
