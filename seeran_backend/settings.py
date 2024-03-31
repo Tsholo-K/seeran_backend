@@ -152,10 +152,10 @@ WSGI_APPLICATION = 'seeran_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'seeran_database_1',
-        'USER': 'postgres',
-        'PASSWORD': 'seeran-database.cz4cqeskmn2k.af-south-1.rds.amazonaws.com',
-        'HOST': '<your_database_host>',
+        'NAME': config('DB_NAME'),
+        'USER': config('DB_USER'),
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_HOST'),
         'PORT': '5432',
     }
 }
