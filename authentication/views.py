@@ -22,9 +22,18 @@ def custom_token_obtain_pair(request):
     except Exception as e:
         # Return a 401 status code for unauthorized
         return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
-
+    
+    user = getattr(request, 'user', None)
+    
+    if user.is_principal or user.is_admin:
+        role = 'admin'
+    elif user.is_parent:
+        role = 'parent'
+    else:
+        role = 'student'
+    
     # Set access token cookie with custom expiration (30 days)
-    response = Response({"message": "Login successful", "role": token["role"]})
+    response = Response({"message": "Login successful", "role": role})
     response.set_cookie('access_token', token['access'], httponly=True, max_age=30 * 24 * 60 * 60)
 
     if 'refresh' in token:
@@ -32,7 +41,6 @@ def custom_token_obtain_pair(request):
         response.set_cookie('refresh_token', token['refresh'], httponly=True, max_age=30 * 24 * 60 * 60)
 
         # Set the tokens to the user object (if available)
-        user = getattr(request, 'user', None)
         if user:
             user.access_token = token['access']
             user.refresh_token = token['refresh']
