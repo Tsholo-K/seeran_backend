@@ -1,5 +1,6 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework.exceptions import AuthenticationFailed
 from .serializers import CustomTokenObtainPairSerializer
 from rest_framework import status
 from django.contrib.auth.hashers import check_password
@@ -11,12 +12,17 @@ from django.core.mail import send_mail, BadHeaderError
 from django.template.loader import render_to_string
 
 
-# Login view
 @api_view(['POST'])
 def custom_token_obtain_pair(request):
-    serializer = CustomTokenObtainPairSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    token = serializer.validated_data
+    try:
+        serializer = CustomTokenObtainPairSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        token = serializer.validated_data
+    except AuthenticationFailed:
+        return Response({"error": "Invalid credentials"}, status=401)
+    except Exception as e:
+        # Return a 401 status code for unauthorized
+        return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
 
     # Set access token cookie with custom expiration (30 days)
     response = Response({"message": "Login successful", "role": token["role"]})
@@ -33,6 +39,7 @@ def custom_token_obtain_pair(request):
             user.refresh_token = token['refresh']
 
     return response
+
 
 # functions
 def invalidate_tokens(user):
@@ -56,7 +63,6 @@ def user_logout(request):
     response = Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
     try:
         response.delete_cookie("access_token")
-        print(request.COOKIES.get('access_token'))
         response.delete_cookie("refresh_token")
     except:
         pass
@@ -90,9 +96,7 @@ def user_change_password(request):
         # Invalidate the user's refresh token
         refresh_token = user.refresh_token
         if refresh_token:
-            # Blacklist the refresh token
-            refresh_token.blacklist()
-            # Clear the user's refresh token (optional, depending on your use case)
+            # Clear the user's refresh token
             user.refresh_token = None
             user.save()
     except Exception:
@@ -108,6 +112,7 @@ def user_change_password(request):
     except:
         pass
     return response
+
 
 # otp generation function
 def generate_otp():

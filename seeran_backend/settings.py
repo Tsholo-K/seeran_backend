@@ -66,13 +66,13 @@ MIDDLEWARE = [
 
 if not DEBUG:
     CORS_ALLOWED_ORIGINS = [
-        'http://www.seeran-grades.com',
+        'https://www.seeran-grades.com',
         # Add other allowed origins as needed
     ]
     
 CORS_ALLOWED_ORIGINS = [
         'http://localhost:3000',
-        'http://www.seeran-grades.com',
+        'https://www.seeran-grades.com',
         # Add other allowed origins as needed
     ]
 
