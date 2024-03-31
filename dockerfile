@@ -4,6 +4,8 @@ FROM python:3.12-slim
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
+ENV SECRET_KEY='django-insecure-1hrd@6u+u$0ouahd*z)v5ra+hu1nn&ljum=oh(r0i3noxbsg7i'
+ENV DEBUG=True
 
 # Set work directory
 WORKDIR /code
