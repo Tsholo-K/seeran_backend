@@ -151,8 +151,12 @@ WSGI_APPLICATION = 'seeran_backend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'seeran_database_1',
+        'USER': 'postgres',
+        'PASSWORD': 'seeran-database.cz4cqeskmn2k.af-south-1.rds.amazonaws.com',
+        'HOST': '<your_database_host>',
+        'PORT': '5432',
     }
 }
 
