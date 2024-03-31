@@ -155,7 +155,7 @@ DATABASES = {
         'NAME': config('DB_NAME'),
         'USER': config('DB_USER'),
         'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST'),
+        'HOST': 'seeran-database.cz4cqeskmn2k.af-south-1.rds.amazonaws.com',
         'PORT': '5432',
     }
 }
