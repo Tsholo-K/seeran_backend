@@ -19,7 +19,7 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 if not DEBUG:
     ALLOWED_HOSTS = ["*"]
     
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -69,10 +69,10 @@ if not DEBUG:
     ]
     
 CORS_ALLOWED_ORIGINS = [
-        'http://localhost:3000',
-        'https://www.seeran-grades.com',
-        # Add other allowed origins as needed
-    ]
+    'http://localhost:3000',
+    'https://www.seeran-grades.com',
+    # Add other allowed origins as needed
+]
 
 CORS_ALLOW_CREDENTIALS = True
 
