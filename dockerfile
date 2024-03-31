@@ -23,10 +23,14 @@ COPY . /code/
 RUN python manage.py makemigrations
 RUN python manage.py migrate
 
+# Create superuser
+RUN echo "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('founder', 'tsholo.koketso@icloud.com', 'password')" | python manage.py shell
+
 # Expose port
 EXPOSE 8000
 
 # Run the application:
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+
 
 
