@@ -9,6 +9,7 @@ import hashlib
 import random
 from django.core.mail import send_mail, BadHeaderError
 from django.template.loader import render_to_string
+from rest_framework_simplejwt.tokens import AccessToken
 
 
 @api_view(['POST'])
@@ -23,7 +24,11 @@ def custom_token_obtain_pair(request):
         # Return a 401 status code for unauthorized
         return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
     
-    user_id = token['access']['user_id']
+    # Decode the access token
+    decoded_token = AccessToken(token['access'])
+
+    # Now you can access the payload
+    user_id = decoded_token['user_id']
     user = CustomUser.objects.get(id=user_id)
     
     if user.is_principal or user.is_admin:
