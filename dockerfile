@@ -23,9 +23,6 @@ COPY . /code/
 RUN python manage.py makemigrations
 RUN python manage.py migrate
 
-# Create superuser
-RUN echo "from authorization.models import CustomUser; CustomUser.objects.create_superuser(name='founder', surname='lite', email='tsholo.koketso@icloud.com', password='password')" | python manage.py shell
-
 # Expose port
 EXPOSE 8000
 
