@@ -6,6 +6,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
 
         return token
+    
 
 class CustomTokenRefreshSerializer(TokenRefreshSerializer):
     pass

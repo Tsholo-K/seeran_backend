@@ -23,7 +23,8 @@ def custom_token_obtain_pair(request):
         # Return a 401 status code for unauthorized
         return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
     
-    user = getattr(request, 'user', None)
+    user_id = token['access']['user_id']
+    user = CustomUser.objects.get(id=user_id)
     
     if user.is_principal or user.is_admin:
         role = 'admin'
