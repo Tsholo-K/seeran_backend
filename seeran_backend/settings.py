@@ -39,7 +39,6 @@ INSTALLED_APPS = [
     'schools',
     
     # third party apps
-    'rest_framework_simplejwt.token_blacklist', 
 ]
 
 # project middleware
@@ -112,16 +111,6 @@ CACHES = {
 
 # Email sending config
 
-EMAIL_BACKEND = 'django_ses.SESBackend'
-
-AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
-EMAIL_BACKEND = 'django_smtp_ssl.SSLEmailBackend'
-EMAIL_HOST = 'email-smtp.eu-central-1.amazonaws.com'
-EMAIL_PORT = 465
-EMAIL_HOST_USER = os.environ.get('AWS_SES_SMTP_USER')
-EMAIL_HOST_PASSWORD = os.environ.get('AWS_SES_PASSWORD')
-
 
 # default settings 
 
@@ -152,9 +141,9 @@ WSGI_APPLICATION = 'seeran_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
+        'NAME': 'seeran_database_1',
+        'USER': 'postgres',
+        'PASSWORD': 'FjbishBHAIjsdI8RmHoN',
         'HOST': 'seeran-database.cz4cqeskmn2k.af-south-1.rds.amazonaws.com',
         'PORT': '5432',
     }
