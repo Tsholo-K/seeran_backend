@@ -5,7 +5,6 @@ from .serializers import CustomTokenObtainPairSerializer
 from rest_framework import status
 from django.contrib.auth.hashers import check_password
 from .models import CustomUser
-from django.utils import timezone
 import hashlib
 import random
 from django.core.mail import send_mail, BadHeaderError
