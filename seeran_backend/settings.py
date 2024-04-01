@@ -28,6 +28,8 @@ ALLOWED_HOSTS = ["*"]
 # Application definition
 # a list of all installed apps
 INSTALLED_APPS = [
+    
+    # django apps
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -40,7 +42,7 @@ INSTALLED_APPS = [
     'schools', # schools/locations/logos
     
     # third party apps
-    'storages' # allows for application to read/write to s3 bucket
+    'storages', # allows for application to read/write to s3 bucket
     'corsheaders', # handle cors 
 ]
 
@@ -48,7 +50,6 @@ INSTALLED_APPS = [
 # project middleware
 # all project middleware
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
     
     # cors headers middleware
     'corsheaders.middleware.CorsMiddleware',
@@ -56,7 +57,8 @@ MIDDLEWARE = [
     # projects middleware
     'authentication.middleware.TokenValidationMiddleware', # middleware for token authentication and renewal
     
-    # django middleware
+    # django middleware    
+    'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -71,7 +73,8 @@ MIDDLEWARE = [
 if not DEBUG:
     CORS_ALLOWED_ORIGINS = [
         'https://www.seeran-grades.com',
-        'https://server.seeran-grades.com'
+        'https://server.seeran-grades.com',
+        
         # Add other allowed origins as needed
     ]
     
@@ -79,6 +82,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'https://www.seeran-grades.com',
     'https://server.seeran-grades.com'
+    
     # Add other allowed origins as needed
 ]
 
