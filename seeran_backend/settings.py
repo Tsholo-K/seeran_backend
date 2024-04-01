@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     
     # third party apps
     'storages' # allows for application to read/write to s3 bucket
+    'corsheaders', # handle cors 
 ]
 
 
@@ -70,14 +71,14 @@ MIDDLEWARE = [
 if not DEBUG:
     CORS_ALLOWED_ORIGINS = [
         'https://www.seeran-grades.com',
-        'https://server.seeran-grades.com/api/auth/login/'
+        'https://server.seeran-grades.com'
         # Add other allowed origins as needed
     ]
     
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'https://www.seeran-grades.com',
-    'https://server.seeran-grades.com/api/auth/login/'
+    'https://server.seeran-grades.com'
     # Add other allowed origins as needed
 ]
 
