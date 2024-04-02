@@ -123,7 +123,7 @@ def signin(request):
                     'Data': 'Your OTP',
                 },
             },
-            Source='authorization.seeran-grades.com',  # Replace with your SES verified email address
+            Source='authorization@seeran-grades.com',  # Replace with your SES verified email address
         )
         # Check the response to ensure the email was successfully sent
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
@@ -166,7 +166,7 @@ def send_otp(request):
                     'Data': 'Your OTP',
                 },
             },
-            Source='authorization.seeran-grades.com',  # Replace with your SES verified email address
+            Source='authorization@seeran-grades.com',  # Replace with your SES verified email address
         )
         # Check the response to ensure the email was successfully sent
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
