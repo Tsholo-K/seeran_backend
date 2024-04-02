@@ -193,7 +193,8 @@ if not DEBUG:
 
 # static files (CSS, JavaScript, Images)
 # static files location
-STATIC_URL = 'https://%s/' % AWS_S3_CUSTOM_DOMAIN
+STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+STATIC_URL = 'https://seeran-storage.s3.amazonaws.com/'
 # STATIC_URL = '/static/'
 
 # default settings 
