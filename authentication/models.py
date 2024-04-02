@@ -1,10 +1,13 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 
 
 class CustomUserManager(BaseUserManager):
-    def create_user(self, email=None, id_number=None, name=None, surname=None, password=None, **extra_fields):
+    # user creation 
+    def create_user(self, email=None, id_number=None, name=None, surname=None, **extra_fields):
         if not email and not id_number:
             raise ValueError(_('Either email or ID number must be set'))
         
@@ -12,10 +15,28 @@ class CustomUserManager(BaseUserManager):
             email = self.normalize_email(email)
         
         user = self.model(email=email, id_number=id_number, name=name, surname=surname, **extra_fields)
+        user.save(using=self._db)
+        return user
+    
+    # user first sign-in activation
+    def activate_user(self, user_id, password):
+        try:
+            user = self.get(id=user_id)
+        except self.model.DoesNotExist:
+            return "User not found"
+
+        # Validate the password
+        try:
+            validate_password(password)
+        except ValidationError as e:
+            return str(e)
+
+        # Hash and salt the password
         user.set_password(password)
         user.save(using=self._db)
         return user
 
+    # super user 
     def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
@@ -24,6 +45,7 @@ class CustomUserManager(BaseUserManager):
             raise ValueError(_('The Email field must be set'))
         
         return self.create_user(email, password=password, **extra_fields)
+
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(_('email address'), unique=True, blank=True, null=True)

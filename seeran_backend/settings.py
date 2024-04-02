@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-1hrd@6u+u$0ouahd*z)v5ra+hu1nn&ljum=oh(r0i3noxbsg7i'
+SECRET_KEY = config('SECRET_KEY')
 
 
 # aws config
@@ -17,7 +17,7 @@ AWS_ACCESS_KEY_ID = ''
 AWS_SECRET_ACCESS_KEY = ''
 
 # activates debug mode for the application
-DEBUG = False
+DEBUG = config('DEBUG')
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -42,9 +42,13 @@ INSTALLED_APPS = [
     'schools', # schools/locations/logos
     
     # third party apps
-    'storages', # allows for application to read/write to s3 bucket
     'corsheaders', # handle cors 
 ]
+# production apps 
+if not DEBUG:
+    INSTALLED_APPS.extend([
+        'storages',# allows for the application to read/write to s3 bucket in production
+    ]) 
 
 
 # project middleware
@@ -69,15 +73,7 @@ MIDDLEWARE = [
 
 
 # cors config
-# origins/domains allowed to communicate with the application
-if not DEBUG:
-    CORS_ALLOWED_ORIGINS = [
-        'https://www.seeran-grades.com',
-        'https://server.seeran-grades.com',
-        
-        # Add other allowed origins as needed
-    ]
-    
+# development domains
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'https://www.seeran-grades.com',
@@ -85,6 +81,15 @@ CORS_ALLOWED_ORIGINS = [
     
     # Add other allowed origins as needed
 ]
+# origins/domains allowed to communicate with the application in production
+if not DEBUG:
+    CORS_ALLOWED_ORIGINS = [
+        'https://www.seeran-grades.com',
+        'https://server.seeran-grades.com',
+        
+        # Add other allowed origins as needed
+    ]
+
 
 
 # cors credentials
@@ -98,6 +103,9 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ]
 }
 
 
@@ -141,43 +149,56 @@ CACHES = {
 }
 
 
-# Database
-# connection credentials for postgres rds instance
+# Databases
+# development database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'seeran_database',
-        'USER': 'tsholo',
-        'PASSWORD': 'N4Hoj5Mjrw4BEGvfWZAB',
-        'HOST': 'seeran-database.cz4cqeskmn2k.af-south-1.rds.amazonaws.com',
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+# production database
+if not DEBUG:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': 'seeran_database',
+            'USER': 'tsholo',
+            'PASSWORD': config('DB_PASSWORD'),
+            'HOST': config('DB_HOST'),
+            'PORT': '5432',
+        }
+    }
+    
 
 
 # s3 bucket
 # s3 bucket configuration
-AWS_STORAGE_BUCKET_NAME = 'seeran-storage'
-AWS_S3_CUSTOM_DOMAIN = '%s.s3.amazonaws.com' % AWS_STORAGE_BUCKET_NAME
-AWS_S3_OBJECT_PARAMETERS = {
-    'CacheControl': 'max-age=86400',
-}
-STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+if not DEBUG:
+    AWS_STORAGE_BUCKET_NAME = 'seeran-storage'
+    AWS_S3_CUSTOM_DOMAIN = '%s.s3.amazonaws.com' % AWS_STORAGE_BUCKET_NAME
+    AWS_S3_OBJECT_PARAMETERS = {
+        'CacheControl': 'max-age=86400',
+    }
+    STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
 
 # Email sending config
-
+EMAIL_BACKEND = 'django_ses.SESBackend'
 
 # ssl config
 # configures the application to commmunicate in https
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 
 # static files (CSS, JavaScript, Images)
 # static files location
-STATIC_URL = 'https://%s/' % AWS_S3_CUSTOM_DOMAIN
+STATIC_URL = '/static/'
+if not DEBUG:
+    STATIC_URL = 'https://%s/' % AWS_S3_CUSTOM_DOMAIN
 
 
 # default settings 
@@ -213,6 +234,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': 8,
+        }
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',

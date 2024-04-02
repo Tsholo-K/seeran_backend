@@ -1,19 +1,34 @@
+# rest framework
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed
-from .serializers import CustomTokenObtainPairSerializer
 from rest_framework import status
+from rest_framework_simplejwt.tokens import AccessToken
+from .serializers import CustomTokenObtainPairSerializer
+
+# django
+from django.contrib.auth import authenticate
+from django.http import HttpResponseBadRequest
 from django.contrib.auth.hashers import check_password
-from .models import CustomUser
-import hashlib
-import random
 from django.core.mail import send_mail, BadHeaderError
 from django.template.loader import render_to_string
-from rest_framework_simplejwt.tokens import AccessToken
+from django.core.exceptions import ObjectDoesNotExist
+
+# python 
+import hashlib
+import random
+
+# models
+from .models import CustomUser
+
+# amazon email sending service
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 
 
+# login view
 @api_view(['POST'])
-def custom_token_obtain_pair(request):
+def login(request):
     try:
         serializer = CustomTokenObtainPairSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -31,6 +46,9 @@ def custom_token_obtain_pair(request):
     user_id = decoded_token['user_id']
     user = CustomUser.objects.get(id=user_id)
     
+    token['name'] = user.name
+    token['surname'] = user.surname
+    
     if user.is_principal or user.is_admin:
         role = 'admin'
     elif user.is_parent:
@@ -40,11 +58,11 @@ def custom_token_obtain_pair(request):
     
     # Set access token cookie with custom expiration (30 days)
     response = Response({"message": "Login successful", "role": role})
-    response.set_cookie('access_token', token['access'], httponly=True, max_age=30 * 24 * 60 * 60)
+    response.set_cookie('access_token', token['access'], samesite='None', secure=True, httponly=True, max_age=30 * 24 * 60 * 60)
 
     if 'refresh' in token:
         # Set refresh token cookie with the same expiration
-        response.set_cookie('refresh_token', token['refresh'], httponly=True, max_age=30 * 24 * 60 * 60)
+        response.set_cookie('refresh_token', token['refresh'], samesite='None', secure=True, httponly=True, max_age=30 * 24 * 60 * 60)
 
         # Set the tokens to the user object (if available)
         if user:
@@ -52,6 +70,146 @@ def custom_token_obtain_pair(request):
             user.refresh_token = token['refresh']
 
     return response
+
+
+# otp generation function
+def generate_otp():
+    otp = str(random.randint(100000, 999999))
+    hashed_otp = hashlib.sha256(otp.encode()).hexdigest()
+    return otp, hashed_otp
+
+
+# otp verification function
+def verify_otp(user_otp, stored_hashed_otp):
+    hashed_user_otp = hashlib.sha256(user_otp.encode()).hexdigest()
+    return hashed_user_otp == stored_hashed_otp
+
+
+# sign in view
+@api_view(['POST'])
+def signin(request):
+    name = request.data.get('name')
+    surname = request.data.get('surname')
+    email = request.data.get('email')
+
+    if not name or not surname or not email:
+        return HttpResponseBadRequest("Name, surname and email are required")
+
+    # Validate the user
+    try:
+        user = CustomUser.objects.get(name=name, surname=surname, email=email)
+    except ObjectDoesNotExist:
+        return Response({"message": "User not found"})
+
+    # Create an OTP for the user
+    otp, hashed_otp = generate_otp()
+    user.hashed_otp = hashed_otp
+    user.save()
+
+    # Send the OTP via email
+    try:
+        client = boto3.client('ses', region_name='us-west-2')  # Replace 'us-west-2' with your AWS region
+        response = client.send_email(
+            Destination={
+                'ToAddresses': [email],
+            },
+            Message={
+                'Body': {
+                    'Text': {
+                        'Data': f'Your OTP is {otp}',
+                    },
+                },
+                'Subject': {
+                    'Data': 'Your OTP',
+                },
+            },
+            Source='your-email@example.com',  # Replace with your SES verified email address
+        )
+        # Check the response to ensure the email was successfully sent
+        if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+            return Response({"message": "OTP created for user and sent via email"}, status=status.HTTP_200_OK)
+        else:
+            return Response({"message": "Failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except (BotoCoreError, ClientError) as error:
+        # Handle specific errors and return appropriate responses
+        return Response({"message": f"Email not sent: {error}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+
+# Request otp view
+@api_view(['POST'])
+def send_otp(request):
+    email = request.data.get('email')
+    # try to get the user
+    try:
+        user = CustomUser.objects.get(email=email)
+    except CustomUser.DoesNotExist:
+        return Response({"error": "User with this email does not exist."}, status=400)
+    
+    otp, hashed_otp = generate_otp()
+    user.hashed_otp = hashed_otp
+    user.save()
+
+        # Send the OTP via email
+    try:
+        client = boto3.client('ses', region_name='us-west-2')  # Replace 'us-west-2' with your AWS region
+        response = client.send_email(
+            Destination={
+                'ToAddresses': [email],
+            },
+            Message={
+                'Body': {
+                    'Text': {
+                        'Data': f'Your OTP is {otp}',
+                    },
+                },
+                'Subject': {
+                    'Data': 'Your OTP',
+                },
+            },
+            Source='your-email@example.com',  # Replace with your SES verified email address
+        )
+        # Check the response to ensure the email was successfully sent
+        if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+            return Response({"message": "OTP created for user and sent via email"}, status=status.HTTP_200_OK)
+        else:
+            return Response({"message": "Failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except (BotoCoreError, ClientError) as error:
+        # Handle specific errors and return appropriate responses
+        return Response({"message": f"Email not sent: {error}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except BadHeaderError:
+        return Response({"error": "Invalid header found."}, status=400)
+    except Exception as e:
+        return Response({"error": str(e)}, status=400)
+
+
+# Verify otp view
+@api_view(['POST'])
+def verify_otp_view(request):
+    email = request.user.email
+    otp = request.data.get('otp')
+    user = CustomUser.objects.get(email=email)
+    if verify_otp(otp, user.hashed_otp):
+        user.hashed_otp = None  # Clear the OTP
+        user.save()
+        return Response({"message": "OTP verified successfully."})
+    else:
+        return Response({"error": "Incorrect OTP. Please try again."}, status=400)
+
+# get credentials view
+@api_view(["GET"])
+def get_credentials(request):
+    # Get the value of a specific cookie
+    try:
+        # Get the value of a specific cookie
+        access_token = request.COOKIES.get('access_token')
+        decoded_token = AccessToken(access_token)
+        user = CustomUser.objects.get(pk=decoded_token['user_id'])
+
+        # Now you can use my_cookie_value in your view logic
+        # For example, you can return it in the API response
+        return Response({'name': user.name, 'surname' : user.surname}, status=status.HTTP_200_OK)
+    except:
+        return Response({'Error': 'Invalid access token'}, status=status.HTTP_406_NOT_ACCEPTABLE)
 
 
 # functions
@@ -127,60 +285,4 @@ def user_change_password(request):
     return response
 
 
-# otp generation function
-def generate_otp():
-    otp = str(random.randint(100000, 999999))
-    hashed_otp = hashlib.sha256(otp.encode()).hexdigest()
-    return otp, hashed_otp
 
-# otp verification function
-def verify_otp(user_otp, stored_hashed_otp):
-    hashed_user_otp = hashlib.sha256(user_otp.encode()).hexdigest()
-    return hashed_user_otp == stored_hashed_otp
-
-
-# Request otp view
-@api_view(['POST'])
-def send_otp(request):
-    email = request.data.get('email')
-    # try to get the user
-    try:
-        user = CustomUser.objects.get(email=email)
-    except CustomUser.DoesNotExist:
-        return Response({"error": "User with this email does not exist."}, status=400)
-    otp, hashed_otp = generate_otp()
-    user.hashed_otp = hashed_otp
-    user.save()
-
-    # Render the email template with the OTP
-    html_message = render_to_string('email_template.html', {'otp': otp})
-
-    try:
-        # Send the email
-        send_mail(
-            'Your OTP',
-            '',  # We're sending HTML email, so the plain text message is empty
-            'from@example.com',  # Replace with your email
-            [email],
-            html_message=html_message,
-            fail_silently=False,
-        )
-        return Response({"message": "OTP sent."})
-    except BadHeaderError:
-        return Response({"error": "Invalid header found."}, status=400)
-    except Exception as e:
-        return Response({"error": str(e)}, status=400)
-
-
-# Verify otp view
-@api_view(['POST'])
-def verify_otp_view(request):
-    email = request.user.email
-    otp = request.data.get('otp')
-    user = CustomUser.objects.get(email=email)
-    if verify_otp(otp, user.hashed_otp):
-        user.hashed_otp = None  # Clear the OTP
-        user.save()
-        return Response({"message": "OTP verified successfully."})
-    else:
-        return Response({"error": "Incorrect OTP. Please try again."}, status=400)
