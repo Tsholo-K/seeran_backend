@@ -74,22 +74,21 @@ MIDDLEWARE = [
 
 # cors config
 # origins/domains allowed to communicate with the application in production
-if not DEBUG:
-    CORS_ALLOWED_ORIGINS = [
-        'https://www.seeran-grades.com',
-        'https://server.seeran-grades.com',
+CORS_ALLOWED_ORIGINS = [
+    'https://www.seeran-grades.com',
+    'https://server.seeran-grades.com',
+    
+    # Add other allowed origins as needed
+]
+# else:
+#     # development domains
+#     CORS_ALLOWED_ORIGINS = [
+#         'http://localhost:3000',
+#         'https://www.seeran-grades.com',
+#         'https://server.seeran-grades.com'
         
-        # Add other allowed origins as needed
-    ]
-else:
-    # development domains
-    CORS_ALLOWED_ORIGINS = [
-        'http://localhost:3000',
-        'https://www.seeran-grades.com',
-        'https://server.seeran-grades.com'
-        
-        # Add other allowed origins as needed
-    ]
+#         # Add other allowed origins as needed
+#     ]
 
 # cors credentials
 # allows credentials (cookies, authorization headers, or TLS client certificates) to be sent in cross-origin requests.
@@ -150,25 +149,24 @@ CACHES = {
 
 # Databases
 # production database
-if not DEBUG:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql_psycopg2',
-            'NAME': 'seeran_database',
-            'USER': 'tsholo',
-            'PASSWORD': config('DB_PASSWORD'),
-            'HOST': config('DB_HOST'),
-            'PORT': '5432',
-        }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'seeran_database',
+        'USER': 'tsholo',
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_HOST'),
+        'PORT': '5432',
     }
-else:
-    # development database
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
+}
+
+# development database
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
 
 
 # s3 bucket
@@ -195,10 +193,8 @@ if not DEBUG:
 
 # static files (CSS, JavaScript, Images)
 # static files location
-if not DEBUG:
-    STATIC_URL = 'https://%s/' % AWS_S3_CUSTOM_DOMAIN
-else:
-    STATIC_URL = '/static/'
+STATIC_URL = 'https://%s/' % AWS_S3_CUSTOM_DOMAIN
+# STATIC_URL = '/static/'
 
 # default settings 
 # the rest are default django settigns
