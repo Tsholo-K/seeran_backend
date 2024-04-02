@@ -151,7 +151,7 @@ def send_otp(request):
 
         # Send the OTP via email
     try:
-        client = boto3.client('ses', region_name='us-west-2')  # Replace 'us-west-2' with your AWS region
+        client = boto3.client('ses', region_name='af-south-1')  # Replace 'us-west-2' with your AWS region
         response = client.send_email(
             Destination={
                 'ToAddresses': [email],
@@ -166,7 +166,7 @@ def send_otp(request):
                     'Data': 'Your OTP',
                 },
             },
-            Source='your-email@example.com',  # Replace with your SES verified email address
+            Source='authorization.seeran-grades.com',  # Replace with your SES verified email address
         )
         # Check the response to ensure the email was successfully sent
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
