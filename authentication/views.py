@@ -22,7 +22,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 # utility functions 
-from .utils import generate_otp, invalidate_tokens, verify_otp
+from .utils import generate_otp, invalidate_tokens, verify_otp, delete_cookie
 
 
 # views
@@ -47,10 +47,10 @@ def login(request):
         role = 'student'
     # Set access token cookie with custom expiration (30 days)
     response = Response({"message": "Login successful", "role": role}, status=status.HTTP_200_OK)
-    response.set_cookie('access_token', token['access'], samesite='None', secure=True, httponly=True, max_age=30 * 24 * 60 * 60)
+    response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=30 * 24 * 60 * 60)
     if 'refresh' in token:
         # Set refresh token cookie with the same expiration
-        response.set_cookie('refresh_token', token['refresh'], samesite='None', secure=True, httponly=True, max_age=30 * 24 * 60 * 60)
+        response.set_cookie('refresh_token', token['refresh'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=30 * 24 * 60 * 60)
     return response
 
 # sign in view
@@ -164,7 +164,7 @@ def verify_otp_view(request):
         setpasswordotp, hashed_setpasswordotp = generate_otp()
         cache.set(email+'setpasswordotp', hashed_setpasswordotp, timeout=300)  # 300 seconds = 5 mins
         response = Response({"message": "OTP verified successfully"}, status=status.HTTP_200_OK)
-        response.set_cookie('setpasswordotp', setpasswordotp, samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
+        response.set_cookie('setpasswordotp', setpasswordotp, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
         return response
     else:
         return Response({"error": "Incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
@@ -173,6 +173,10 @@ def verify_otp_view(request):
 @api_view(['POST'])
 def set_password_view(request):
     otp = request.COOKIES.get('setpasswordotp')
+    if otp:
+        # Delete the cookie
+        response = delete_cookie(request)
+        return response
     email = request.data.get('email')
     new_password = request.data.get('password')
     if new_password != request.data.get('confirmpassword'):

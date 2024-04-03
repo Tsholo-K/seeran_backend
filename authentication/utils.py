@@ -1,8 +1,7 @@
-
 # python 
 import hashlib
 import random
-
+from django.http import HttpResponse
 
 
 # functions
@@ -29,4 +28,8 @@ def invalidate_tokens(user):
         # Handle any errors appropriately
         pass    
 
-
+# delete cookie
+def delete_cookie(request):
+    response = HttpResponse()
+    response.delete_cookie('setpasswordotp')
+    return response
