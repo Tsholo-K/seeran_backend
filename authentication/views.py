@@ -7,16 +7,15 @@ from rest_framework_simplejwt.tokens import AccessToken
 from .serializers import CustomTokenObtainPairSerializer
 
 # django
-from django.contrib.auth import authenticate
 from django.http import HttpResponseBadRequest
 from django.contrib.auth.hashers import check_password
-from django.core.mail import send_mail, BadHeaderError
-from django.template.loader import render_to_string
+from django.core.mail import BadHeaderError
 from django.core.exceptions import ObjectDoesNotExist
 
 # python 
 import hashlib
 import random
+import time
 
 # models
 from .models import CustomUser
@@ -24,6 +23,40 @@ from .models import CustomUser
 # amazon email sending service
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
+
+
+# otp generation function
+def generate_otp():
+    otp = str(random.randint(100000, 999999))
+    hashed_otp = hashlib.sha256(otp.encode()).hexdigest()
+    
+    # Generate timestamp for 5 minutes from now
+    expiration_time = int(time.time()) + (5 * 60)  # 5 minutes * 60 seconds
+
+    otp_data = {
+        'hashed_otp': hashed_otp,
+        'expiration_time': expiration_time
+    }
+
+    return otp, otp_data
+
+
+# otp verification function
+def verify_otp(user_otp, stored_hashed_otp):
+    hashed_user_otp = hashlib.sha256(user_otp.encode()).hexdigest()
+    return hashed_user_otp == stored_hashed_otp
+
+
+# functions
+def invalidate_tokens(user):
+    try:
+        # Clear the user's access & refresh token
+        user.refresh_token = None
+        user.access_token = None
+        user.save()
+    except Exception:
+        # Handle any errors appropriately
+        pass    
 
 
 # login view
@@ -72,19 +105,6 @@ def login(request):
     return response
 
 
-# otp generation function
-def generate_otp():
-    otp = str(random.randint(100000, 999999))
-    hashed_otp = hashlib.sha256(otp.encode()).hexdigest()
-    return otp, hashed_otp
-
-
-# otp verification function
-def verify_otp(user_otp, stored_hashed_otp):
-    hashed_user_otp = hashlib.sha256(user_otp.encode()).hexdigest()
-    return hashed_user_otp == stored_hashed_otp
-
-
 # sign in view
 @api_view(['POST'])
 def signin(request):
@@ -100,10 +120,13 @@ def signin(request):
         user = CustomUser.objects.get(name=name, surname=surname, email=email)
     except ObjectDoesNotExist:
         return Response({"message": "User not found"})
+    
+    # if user.has_usable_password():
+    #     return Response({"error": "Account already activated"})
 
     # Create an OTP for the user
-    otp, hashed_otp = generate_otp()
-    user.hashed_otp = hashed_otp
+    otp, otp_data = generate_otp()
+    user.hashed_otp = otp_data
     user.save()
 
     # Send the OTP via email
@@ -127,7 +150,7 @@ def signin(request):
         )
         # Check the response to ensure the email was successfully sent
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
-            return Response({"message": "OTP created for user and sent via email"}, status=status.HTTP_200_OK)
+            return Response({"message": "OTP created for user and sent via email", "email" : user.email}, status=status.HTTP_200_OK)
         else:
             return Response({"message": "Failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except (BotoCoreError, ClientError) as error:
@@ -137,7 +160,7 @@ def signin(request):
 
 # Request otp view
 @api_view(['POST'])
-def send_otp(request):
+def resend_otp(request):
     email = request.data.get('email')
     # try to get the user
     try:
@@ -195,6 +218,7 @@ def verify_otp_view(request):
     else:
         return Response({"error": "Incorrect OTP. Please try again."}, status=400)
 
+
 # get credentials view
 @api_view(["GET"])
 def get_credentials(request):
@@ -212,16 +236,22 @@ def get_credentials(request):
         return Response({'Error': 'Invalid access token'}, status=status.HTTP_406_NOT_ACCEPTABLE)
 
 
-# functions
-def invalidate_tokens(user):
+# account activation check
+# checks if the account is activated by checking the password attr
+@api_view(["POST"]) 
+def account_activated(request):
+    email = request.data.get("email")
+    
+    # try to get the user
     try:
-        # Clear the user's access & refresh token
-        user.refresh_token = None
-        user.access_token = None
-        user.save()
-    except Exception:
-        # Handle any errors appropriately
-        pass    
+        user = CustomUser.objects.get(email=email)
+    except CustomUser.DoesNotExist:
+        return Response({"error": "User with the provided email does not exist."}, status=400)
+    
+    if not user.has_usable_password():
+        return Response({"error": "Account already activated"}, status=status.HTTP_403_FORBIDDEN)
+    
+    return Response({"message":"User not yet authenticated"})
 
 
 # User logout view
