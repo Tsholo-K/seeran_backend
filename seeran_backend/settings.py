@@ -63,7 +63,7 @@ MIDDLEWARE = [
     'authentication.middleware.TokenValidationMiddleware', # middleware for token authentication and renewal
     
     # django middleware
-    'ratelimit.middleware.RatelimitMiddleware',
+    'authentication.middleware.RateLimitMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -91,6 +91,7 @@ CORS_ALLOWED_ORIGINS = [
         
 #         # Add other allowed origins as needed
 #     ]
+
 
 # cors credentials
 # allows credentials (cookies, authorization headers, or TLS client certificates) to be sent in cross-origin requests.
@@ -137,7 +138,6 @@ SIMPLE_JWT = {
 
 
 # Caching config
-RATELIMIT_CACHE = 'default'
 # applications caching configuration
 CACHES = {
     "default": {
@@ -167,7 +167,6 @@ DATABASES = {
         'PORT': '5432',
     }
 }
-
 # development database
 # DATABASES = {
 #     'default': {

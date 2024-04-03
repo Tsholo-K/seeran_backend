@@ -165,15 +165,8 @@ def signin(request):
     
 
 # Request otp view
-@ratelimit(key='post:email', rate='3/30m', block=True)
 @api_view(['POST'])
 def resend_otp(request):
-    # Check if the request was ratelimited
-    was_limited = getattr(request, 'limited', False)
-    if was_limited:
-        # Return a custom response
-        return Response({"message": "You have exceeded the rate limit. Please wait before trying again."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
-    
     email = request.data.get('email')
     # try to get the user
     try:
