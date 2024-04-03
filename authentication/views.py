@@ -261,7 +261,7 @@ def account_activated(request):
     except CustomUser.DoesNotExist:
         return Response({"error": "User with the provided email does not exist."}, status=400)
     
-    if not user.has_usable_password():
+    if user.has_usable_password():
         return Response({"error": "Account already activated"}, status=status.HTTP_403_FORBIDDEN)
     
     return Response({"message":"Account not activated"}, status=status.HTTP_200_OK)
