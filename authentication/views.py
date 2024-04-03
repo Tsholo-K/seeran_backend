@@ -206,12 +206,12 @@ def resend_otp(request):
         )
         # Check the response to ensure the email was successfully sent
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
-            return Response({"message": "OTP created for user and sent via email"}, status=status.HTTP_200_OK)
+            return Response({"message": "A new OTP has been sent to your email address"}, status=status.HTTP_200_OK)
         else:
-            return Response({"message": "Failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "Failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except (BotoCoreError, ClientError) as error:
         # Handle specific errors and return appropriate responses
-        return Response({"message": f"Email not sent: {error}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": f"Email not sent: {error}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except BadHeaderError:
         return Response({"error": "Invalid header found."}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:

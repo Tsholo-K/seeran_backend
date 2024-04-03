@@ -61,7 +61,8 @@ MIDDLEWARE = [
     # projects middleware
     'authentication.middleware.TokenValidationMiddleware', # middleware for token authentication and renewal
     
-    # django middleware    
+    # django middleware
+    'ratelimit.middleware.RatelimitMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -203,6 +204,7 @@ if not DEBUG:
 STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 STATIC_URL = 'https://seeran-storage.s3.amazonaws.com/'
 # STATIC_URL = '/static/'
+
 
 # default settings 
 # the rest are default django settigns
