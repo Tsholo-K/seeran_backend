@@ -189,7 +189,7 @@ def set_password_view(request):
     if not email or not new_password or not confirm_password:
         return Response({"error": "Email, new password, and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
     if new_password != confirm_password:
-        return Response({"error": "Passwords do not match"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "Passwords do not match"})
     try:
         stored_hashed_otp = cache.get(email + 'setpasswordotp')
         if not stored_hashed_otp:
