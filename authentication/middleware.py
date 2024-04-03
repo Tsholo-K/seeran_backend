@@ -3,6 +3,7 @@ from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from django.core.cache import cache
 from rest_framework.response import Response
 import json
+from rest_framework import status
 
 
 class TokenValidationMiddleware:
@@ -65,18 +66,18 @@ class RateLimitMiddleware:
             try:
                 body_data = json.loads(body_unicode)
             except json.JSONDecodeError:
-                return Response({'error': 'Invalid JSON'}, status=400)
+                return Response({'error': 'Invalid JSON'}, status=status.HTTP_400_BAD_REQUEST)
             
             email = body_data.get('email')
 
             if email is None:
-                return Response({'error': 'Email is required'}, status=400)
+                return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
 
             cache_key = f'rate_limit:{email}'
 
             request_count = cache.get(cache_key, 0)
             if request_count >= rate_limit:
-                return Response({'error': 'Rate limit exceeded'}, status=429)
+                return Response({'error': 'Rate limit exceeded. Please try again in 1 hour.'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
             # Increment the request count and set expiry
             cache.set(cache_key, request_count + 1, timeout=3600)  # 3600 seconds = 1 hour
