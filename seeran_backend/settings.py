@@ -61,9 +61,9 @@ MIDDLEWARE = [
     
     # projects middleware
     'authentication.middleware.TokenValidationMiddleware', # middleware for token authentication and renewal
+    'authentication.middleware.RateLimitMiddleware',
     
     # django middleware
-    'authentication.middleware.RateLimitMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
