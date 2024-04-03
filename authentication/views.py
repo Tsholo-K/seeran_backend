@@ -264,7 +264,7 @@ def account_activated(request):
     if not user.has_usable_password():
         return Response({"error": "Account already activated"}, status=status.HTTP_403_FORBIDDEN)
     
-    return Response({"message":"Account not activated"}, status=status.HTTP_100_CONTINUE)
+    return Response({"message":"Account not activated"}, status=status.HTTP_200_OK)
 
 
 # User logout view
