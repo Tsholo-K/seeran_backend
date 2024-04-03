@@ -139,15 +139,15 @@ SIMPLE_JWT = {
 
 # Caching config
 # applications caching configuration
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'redis://seeran-cache-qqnsrs.serverless.afs1.cache.amazonaws.com:6379/',
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-        }
-    }
-}
+# CACHES = {
+#     'default': {
+#         'BACKEND': 'django_redis.cache.RedisCache',
+#         'LOCATION': 'redis://seeran-cache-qqnsrs.serverless.afs1.cache.amazonaws.com:6379/',
+#         'OPTIONS': {
+#             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+#         }
+#     }
+# }
 # CACHES = {
 #     'default': {
 #         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
