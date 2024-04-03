@@ -1,8 +1,8 @@
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from django.core.cache import cache
-from django.http import HttpResponseForbidden, HttpResponseBadRequest
 from rest_framework.response import Response
+import json
 
 
 class TokenValidationMiddleware:
@@ -60,7 +60,9 @@ class RateLimitMiddleware:
             # For example, using Django's cache framework
             # You can adjust the rate limit and key as needed
             rate_limit = 5  # Requests per hour
-            email = request.data.get('email')
+            body_unicode = request.body.decode('utf-8')
+            body_data = json.loads(body_unicode)
+            email = body_data.get('email')
             print(email)
             if email is None:
                 return Response({'error': 'Email is required'}, status=400)
