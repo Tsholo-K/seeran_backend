@@ -3,7 +3,10 @@ from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework.response import Response
 import json
 import redis
-import os
+from decouple import config
+
+
+r = redis.Redis(host= config('CLUSTER_HOST'), port=6379, db=0)
 
 
 class TokenValidationMiddleware:
@@ -47,10 +50,6 @@ class TokenValidationMiddleware:
 
         response = self.get_response(request)
         return response
-
-
-r = redis.Redis(
-    host=os.environ.get('CLUSTER_HOST', default="127.0.0.1"), port=6379, db=0)
 
 
 # rate limit middleware
