@@ -22,7 +22,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 # utility functions 
-from .utils import generate_otp, invalidate_tokens, verify_otp, delete_cookie
+from .utils import generate_otp, verify_otp, delete_cookie
 
 
 # views
@@ -161,6 +161,7 @@ def verify_otp_view(request):
         return Response({"error": f"Error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     if verify_otp(otp, stored_hashed_otp):
         # OTP is verified, prompt the user to set their password
+        cache.delete(email)
         setpasswordotp, hashed_setpasswordotp = generate_otp()
         cache.set(email+'setpasswordotp', hashed_setpasswordotp, timeout=300)  # 300 seconds = 5 mins
         response = Response({"message": "OTP verified successfully"}, status=status.HTTP_200_OK)
@@ -191,6 +192,7 @@ def set_password_view(request):
         return Response({"error": f"Error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     if verify_otp(otp, stored_hashed_otp):
         try:
+            cache.delete(email+'setpasswordotp')
             user = CustomUser.objects.get(email=email)
             user.password = make_password(new_password)
             user.save()
@@ -236,15 +238,14 @@ def account_activated(request):
 @api_view(['POST'])
 def user_logout(request):
     # Assuming the user is authenticated
-    invalidate_tokens(request.user)
-    # Remove access and refresh token cookies from the response
-    response = Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
+    # Remove access and refresh token cookies from the response 
     try:
+        response = Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
         response.delete_cookie("access_token")
         response.delete_cookie("refresh_token")
+        return response
     except:
         pass
-    return response
 
 # Password change view
 @api_view(['POST'])
@@ -283,6 +284,3 @@ def user_change_password(request):
     except:
         pass
     return response
-
-
-
