@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     
     # third party apps
     'corsheaders', # handle cors 
+    'django_redis', # redis caching
 ]
 # production apps 
 if not DEBUG:
@@ -136,24 +137,23 @@ SIMPLE_JWT = {
 
 
 # Caching config
+RATELIMIT_CACHE = 'default'
 # applications caching configuration
 CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://seeran-cache-qqnsrs.serverless.afs1.cache.amazonaws.com:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+        "KEY_PREFIX": "seeran_cache",  # Prefix for cache keys (optional)
     }
 }
-
 # CACHES = {
-#     "default": {
-#         "BACKEND": "django_redis.cache.RedisCache",
-#         "LOCATION": "redis://seeran-cache-qqnsrs.serverless.afs1.cache.amazonaws.com:6379/1",
-#         "OPTIONS": {
-#             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-#         },
-#         "KEY_PREFIX": "seeran_cache",  # Prefix for cache keys (optional)
+#     'default': {
+#         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
 #     }
 # }
-
 
 # Databases
 # production database
