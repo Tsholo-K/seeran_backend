@@ -2,6 +2,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from django.core.cache import cache
 from django.http import HttpResponseForbidden, HttpResponseBadRequest
+from rest_framework.response import Response
 
 
 class TokenValidationMiddleware:
@@ -55,20 +56,20 @@ class RateLimitMiddleware:
     def __call__(self, request):
         # Check if the request is for resend otp requests
         if request.path == '/api/auth/resendotp/':
-            print("run")
             # Implement rate limiting logic
             # For example, using Django's cache framework
             # You can adjust the rate limit and key as needed
             rate_limit = 5  # Requests per hour
-            email = request.POST.get('email')
+            email = request.data.get('email')
+            print(email)
             if email is None:
-                return HttpResponseBadRequest('Email is required')
+                return Response({'error': 'Email is required'}, status=400)
 
             cache_key = f'rate_limit:{email}'
 
             request_count = cache.get(cache_key, 0)
             if request_count >= rate_limit:
-                return HttpResponseForbidden('Rate limit exceeded')
+                return Response({'error': 'Rate limit exceeded'}, status=429)
 
             # Increment the request count and set expiry
             cache.set(cache_key, request_count + 1, timeout=3600)  # 3600 seconds = 1 hour
