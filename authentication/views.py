@@ -11,8 +11,6 @@ from django.http import HttpResponseBadRequest
 from django.contrib.auth.hashers import check_password
 from django.core.mail import BadHeaderError
 from django.core.exceptions import ObjectDoesNotExist
-from django_ratelimit.decorators import ratelimit
-
 
 # python 
 import hashlib
@@ -26,20 +24,18 @@ from .models import CustomUser
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
+
 # functions
 # otp generation function
 def generate_otp():
     otp = str(random.randint(100000, 999999))
     hashed_otp = hashlib.sha256(otp.encode()).hexdigest()
-    
     # Generate timestamp for 5 minutes from now
     expiration_time = int(time.time()) + (5 * 60)  # 5 minutes * 60 seconds
-
     otp_data = {
         'hashed_otp': hashed_otp,
         'expiration_time': expiration_time
     }
-
     return otp, otp_data
 
 # otp verification function
@@ -58,6 +54,7 @@ def invalidate_tokens(user):
         # Handle any errors appropriately
         pass    
 
+
 # views
 # login view
 @api_view(['POST'])
@@ -71,37 +68,29 @@ def login(request):
     except Exception as e:
         # Return a 401 status code for unauthorized
         return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
-    
     # Decode the access token
     decoded_token = AccessToken(token['access'])
-
     # Now you can access the payload
     user_id = decoded_token['user_id']
     user = CustomUser.objects.get(id=user_id)
-    
     token['name'] = user.name
     token['surname'] = user.surname
-    
     if user.is_principal or user.is_admin:
         role = 'admin'
     elif user.is_parent:
         role = 'parent'
     else:
         role = 'student'
-    
     # Set access token cookie with custom expiration (30 days)
     response = Response({"message": "Login successful", "role": role}, status=status.HTTP_200_OK)
     response.set_cookie('access_token', token['access'], samesite='None', secure=True, httponly=True, max_age=30 * 24 * 60 * 60)
-
     if 'refresh' in token:
         # Set refresh token cookie with the same expiration
         response.set_cookie('refresh_token', token['refresh'], samesite='None', secure=True, httponly=True, max_age=30 * 24 * 60 * 60)
-
         # Set the tokens to the user object (if available)
         if user:
             user.access_token = token['access']
             user.refresh_token = token['refresh']
-
     return response
 
 # sign in view
@@ -155,7 +144,6 @@ def signin(request):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
-
 # Request otp view
 @api_view(['POST'])
 def resend_otp(request):
@@ -165,12 +153,10 @@ def resend_otp(request):
         user = CustomUser.objects.get(email=email)
     except CustomUser.DoesNotExist:
         return Response({"error": "User with this email does not exist."}, status=status.HTTP_400_BAD_REQUEST)
-    
     otp, otp_data = generate_otp()
     user.hashed_otp = otp_data
     user.save()
-
-        # Send the OTP via email
+    # Send the OTP via email
     try:
         client = boto3.client('ses', region_name='af-south-1')  # Replace 'us-west-2' with your AWS region
         response = client.send_email(
@@ -202,7 +188,6 @@ def resend_otp(request):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-
 # Verify otp view
 @api_view(['POST'])
 def verify_otp_view(request):
@@ -233,31 +218,25 @@ def get_credentials(request):
     except:
         return Response({'Error': 'Invalid access token'}, status=status.HTTP_406_NOT_ACCEPTABLE)
 
-
 # account activation check
 # checks if the account is activated by checking the password attr
 @api_view(["POST"]) 
 def account_activated(request):
     email = request.data.get("email")
-    
     # try to get the user
     try:
         user = CustomUser.objects.get(email=email)
     except CustomUser.DoesNotExist:
         return Response({"error": "User with the provided email does not exist."}, status=400)
-    
     if not user.has_usable_password():
         return Response({"error": "Account already activated"}, status=status.HTTP_403_FORBIDDEN)
-    
     return Response({"message":"Account not activated"}, status=status.HTTP_200_OK)
-
 
 # User logout view
 @api_view(['POST'])
 def user_logout(request):
     # Assuming the user is authenticated
     invalidate_tokens(request.user)
-
     # Remove access and refresh token cookies from the response
     response = Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
     try:
@@ -267,29 +246,23 @@ def user_logout(request):
         pass
     return response
 
-
 # Password change view
 @api_view(['POST'])
 def user_change_password(request):
     # Assuming the user is authenticated and has changed their password
     user = request.user
-
     # Get the new password and confirm password from the request data
     new_password = request.data.get('new_password')
     confirm_password = request.data.get('confirm_password')
-
     # Check if the provided previous password matches the current password
     if not check_password(request.data.get('previous_password'), user.password):
         return Response({"error": "Previous password is incorrect"}, status=status.HTTP_400_BAD_REQUEST)
-
     # Validate that the new password and confirm password match
     if new_password != confirm_password:
         return Response({"error": "New password and confirm password do not match"}, status=status.HTTP_400_BAD_REQUEST)
-
     # Update the user's password
     user.set_password(new_password)
     user.save()
-
     # Invalidate tokens (both access and refresh tokens)
     try:
         # Invalidate the user's refresh token
@@ -301,7 +274,6 @@ def user_change_password(request):
     except Exception:
         # Handle any errors appropriately
         pass
-
     # Return an appropriate response (e.g., success message)
     # Remove access and refresh token cookies from the response
     response = Response({"message": "Password changed successfully"}, status=status.HTTP_200_OK)

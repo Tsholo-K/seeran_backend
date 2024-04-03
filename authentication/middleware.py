@@ -66,18 +66,18 @@ class RateLimitMiddleware:
             try:
                 body_data = json.loads(body_unicode)
             except json.JSONDecodeError:
-                return Response({'error': 'Invalid JSON'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'error': 'Invalid JSON'})
             
             email = body_data.get('email')
 
             if email is None:
-                return Response({'error': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'error': 'Email is required'})
 
             cache_key = f'rate_limit:{email}'
 
             request_count = cache.get(cache_key, 0)
             if request_count >= rate_limit:
-                return Response({'error': 'Rate limit exceeded. Please try again in 1 hour.'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+                return Response({'error': 'Rate limit exceeded. Please try again in 1 hour.'})
 
             # Increment the request count and set expiry
             cache.set(cache_key, request_count + 1, timeout=3600)  # 3600 seconds = 1 hour
