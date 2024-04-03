@@ -3,8 +3,6 @@ from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from django.core.cache import cache
 from rest_framework.response import Response
 import json
-import redis
-import os
 
 
 class TokenValidationMiddleware:
@@ -48,10 +46,6 @@ class TokenValidationMiddleware:
 
         response = self.get_response(request)
         return response
-
-
-r = redis.Redis(
-    host=os.environ.get('CLUSTER_HOST', default="127.0.0.1"), port=6379, db=0)
 
 
 # rate limit middleware
