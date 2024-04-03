@@ -12,6 +12,7 @@ from django.core.mail import BadHeaderError
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
+from django.contrib.auth.hashers import make_password
 
 # models
 from .models import CustomUser
@@ -150,19 +151,50 @@ def resend_otp(request):
 def verify_otp_view(request):
     email = request.data.get('email')
     otp = request.data.get('otp')
-    # if theres no email or otp supplied respond accordingly
     if not email or not otp:
         return Response({"error": "Email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
-    # try to get the email associated otp
     try:
         stored_hashed_otp = cache.get(email)
         if not stored_hashed_otp:
-            return Response({"error": "No OTP found for this email. Please generate an OTP first."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "OTP expired. Please generate a new one"}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         return Response({"error": f"Error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
     if verify_otp(otp, stored_hashed_otp):
-        return Response({"message": "OTP verified successfully."}, status=status.HTTP_200_OK)
+        # OTP is verified, prompt the user to set their password
+        setpasswordotp, hashed_setpasswordotp = generate_otp()
+        cache.set(email+'setpasswordotp', hashed_setpasswordotp, timeout=300)  # 300 seconds = 5 mins
+        response = Response({"message": "OTP verified successfully"}, status=status.HTTP_200_OK)
+        response.set_cookie('setpasswordotp', setpasswordotp, samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
+        return response
+    else:
+        return Response({"error": "Incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
+
+# set password view
+@api_view(['POST'])
+def set_password_view(request):
+    otp = request.COOKIES.get('setpasswordotp')
+    email = request.data.get('email')
+    new_password = request.data.get('password')
+    if new_password != request.data.get('confirmpassword'):
+        return Response({"error": "Passwords do not match"}, status=status.HTTP_400_BAD_REQUEST)
+    if not email or not new_password or not otp:
+        return Response({"error": "Email, new password, and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        stored_hashed_otp = cache.get(email+'setpasswordotp')
+        if not stored_hashed_otp:
+            return Response({"error": "OTP expired. Please reload the page to request a new OTP"}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({"error": f"Error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    if verify_otp(otp, stored_hashed_otp):
+        try:
+            user = CustomUser.objects.get(email=email)
+            user.password = make_password(new_password)
+            user.save()
+            return Response({"message": "Password set successfully."}, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response({"error": "User does not exist."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": f"Error setting password: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     else:
         return Response({"error": "Incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
 
