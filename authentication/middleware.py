@@ -61,9 +61,14 @@ class RateLimitMiddleware:
             # You can adjust the rate limit and key as needed
             rate_limit = 5  # Requests per hour
             body_unicode = request.body.decode('utf-8')
-            body_data = json.loads(body_unicode)
+            
+            try:
+                body_data = json.loads(body_unicode)
+            except json.JSONDecodeError:
+                return Response({'error': 'Invalid JSON'}, status=400)
+            
             email = body_data.get('email')
-            print(email)
+
             if email is None:
                 return Response({'error': 'Email is required'}, status=400)
 

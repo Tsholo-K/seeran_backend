@@ -141,20 +141,19 @@ SIMPLE_JWT = {
 # applications caching configuration
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://cachename-qqnsrs.serverless.afs1.cache.amazonaws.com:6379/0',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        },
     }
 }
+
 # CACHES = {
-#     "default": {
-#         "BACKEND": "django_redis.cache.RedisCache",
-#         "LOCATION": "redis://seeran-cache-qqnsrs.serverless.afs1.cache.amazonaws.com:6379/1",
-#         "OPTIONS": {
-#             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-#         },
-#         "KEY_PREFIX": "seeran_cache",  # Prefix for cache keys (optional)
+#     'default': {
+#         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
 #     }
 # }
-
 
 # Databases
 # production database
