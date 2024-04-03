@@ -1,12 +1,10 @@
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
+from django.core.cache import cache
 from rest_framework.response import Response
 import json
 import redis
-from decouple import config
-
-
-r = redis.Redis(host= config('CLUSTER_HOST'), port=6379, db=0)
+import os
 
 
 class TokenValidationMiddleware:
@@ -52,6 +50,10 @@ class TokenValidationMiddleware:
         return response
 
 
+r = redis.Redis(
+    host=os.environ.get('CLUSTER_HOST', default="127.0.0.1"), port=6379, db=0)
+
+
 # rate limit middleware
 class RateLimitMiddleware:
     def __init__(self, get_response):
@@ -78,12 +80,12 @@ class RateLimitMiddleware:
 
             cache_key = f'rate_limit:{email}'
 
-            request_count = int(r.get(cache_key) or 0)
+            request_count = cache.get(cache_key, 0)
             if request_count >= rate_limit:
                 return Response({'error': 'Rate limit exceeded'}, status=429)
 
             # Increment the request count and set expiry
-            r.set(cache_key, request_count + 1, ex=3600)  # 3600 seconds = 1 hour
+            cache.set(cache_key, request_count + 1, timeout=3600)  # 3600 seconds = 1 hour
 
         # Pass the request to the next middleware or view
         return self.get_response(request)
