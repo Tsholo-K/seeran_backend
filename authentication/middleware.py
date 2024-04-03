@@ -56,7 +56,7 @@ class RateLimitMiddleware:
 
     def __call__(self, request):
         # Check if the request is for resend otp requests
-        if request.path == '/api/auth/resendotp/':
+        if request.path == '/api/auth/resendotp/' or '/api/auth/signin/':
             # Implement rate limiting logic
             # For example, using Django's cache framework
             # You can adjust the rate limit and key as needed

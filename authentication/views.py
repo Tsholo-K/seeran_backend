@@ -26,7 +26,7 @@ from .models import CustomUser
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
-
+# functions
 # otp generation function
 def generate_otp():
     otp = str(random.randint(100000, 999999))
@@ -42,14 +42,12 @@ def generate_otp():
 
     return otp, otp_data
 
-
 # otp verification function
 def verify_otp(user_otp, stored_hashed_otp):
     hashed_user_otp = hashlib.sha256(user_otp.encode()).hexdigest()
     return hashed_user_otp == stored_hashed_otp
 
-
-# functions
+# invalidate user tokens function
 def invalidate_tokens(user):
     try:
         # Clear the user's access & refresh token
@@ -60,7 +58,7 @@ def invalidate_tokens(user):
         # Handle any errors appropriately
         pass    
 
-
+# views
 # login view
 @api_view(['POST'])
 def login(request):
@@ -106,31 +104,25 @@ def login(request):
 
     return response
 
-
 # sign in view
 @api_view(['POST'])
 def signin(request):
     name = request.data.get('name')
     surname = request.data.get('surname')
     email = request.data.get('email')
-
     if not name or not surname or not email:
         return HttpResponseBadRequest("Name, surname and email are required")
-
     # Validate the user
     try:
         user = CustomUser.objects.get(name=name, surname=surname, email=email)
     except ObjectDoesNotExist:
         return Response({"message": "User not found"})
-    
     # if user.has_usable_password():
     #     return Response({"error": "Account already activated"})
-
     # Create an OTP for the user
     otp, otp_data = generate_otp()
     user.hashed_otp = otp_data
     user.save()
-
     # Send the OTP via email
     try:
         client = boto3.client('ses', region_name='af-south-1')  # AWS region
