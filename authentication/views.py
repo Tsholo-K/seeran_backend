@@ -7,15 +7,11 @@ from rest_framework_simplejwt.tokens import AccessToken
 from .serializers import CustomTokenObtainPairSerializer
 
 # django
-from django.http import HttpResponseBadRequest
 from django.contrib.auth.hashers import check_password
 from django.core.mail import BadHeaderError
 from django.core.exceptions import ObjectDoesNotExist
-
-# python 
-import hashlib
-import random
-import time
+from django.core.cache import cache
+from django.core.exceptions import ObjectDoesNotExist
 
 # models
 from .models import CustomUser
@@ -24,35 +20,8 @@ from .models import CustomUser
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
-
-# functions
-# otp generation function
-def generate_otp():
-    otp = str(random.randint(100000, 999999))
-    hashed_otp = hashlib.sha256(otp.encode()).hexdigest()
-    # Generate timestamp for 5 minutes from now
-    expiration_time = int(time.time()) + (5 * 60)  # 5 minutes * 60 seconds
-    otp_data = {
-        'hashed_otp': hashed_otp,
-        'expiration_time': expiration_time
-    }
-    return otp, otp_data
-
-# otp verification function
-def verify_otp(user_otp, stored_hashed_otp):
-    hashed_user_otp = hashlib.sha256(user_otp.encode()).hexdigest()
-    return hashed_user_otp == stored_hashed_otp
-
-# invalidate user tokens function
-def invalidate_tokens(user):
-    try:
-        # Clear the user's access & refresh token
-        user.refresh_token = None
-        user.access_token = None
-        user.save()
-    except Exception:
-        # Handle any errors appropriately
-        pass    
+# utility functions 
+from .utils import generate_otp, invalidate_tokens, verify_otp
 
 
 # views
@@ -68,13 +37,7 @@ def login(request):
     except Exception as e:
         # Return a 401 status code for unauthorized
         return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
-    # Decode the access token
-    decoded_token = AccessToken(token['access'])
-    # Now you can access the payload
-    user_id = decoded_token['user_id']
-    user = CustomUser.objects.get(id=user_id)
-    token['name'] = user.name
-    token['surname'] = user.surname
+    user = CustomUser.objects.get(email=request.data.get('email'))
     if user.is_principal or user.is_admin:
         role = 'admin'
     elif user.is_parent:
@@ -87,10 +50,6 @@ def login(request):
     if 'refresh' in token:
         # Set refresh token cookie with the same expiration
         response.set_cookie('refresh_token', token['refresh'], samesite='None', secure=True, httponly=True, max_age=30 * 24 * 60 * 60)
-        # Set the tokens to the user object (if available)
-        if user:
-            user.access_token = token['access']
-            user.refresh_token = token['refresh']
     return response
 
 # sign in view
@@ -100,18 +59,17 @@ def signin(request):
     surname = request.data.get('surname')
     email = request.data.get('email')
     if not name or not surname or not email:
-        return HttpResponseBadRequest("Name, surname and email are required")
+        return Response({"error": "All feilds are required"})
     # Validate the user
     try:
         user = CustomUser.objects.get(name=name, surname=surname, email=email)
     except ObjectDoesNotExist:
-        return Response({"message": "User not found"})
+        return Response({"error": "Invalid credentials"})
     # if user.has_usable_password():
     #     return Response({"error": "Account already activated"})
     # Create an OTP for the user
-    otp, otp_data = generate_otp()
-    user.hashed_otp = otp_data
-    user.save()
+    otp, hashed_otp = generate_otp()
+    cache.set(email, hashed_otp, timeout=300)  # 300 seconds = 5 mins
     # Send the OTP via email
     try:
         client = boto3.client('ses', region_name='af-south-1')  # AWS region
@@ -135,12 +93,12 @@ def signin(request):
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
             return Response({"message": "OTP created for user and sent via email", "email" : user.email}, status=status.HTTP_200_OK)
         else:
-            return Response({"message": "Failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "Failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except (BotoCoreError, ClientError) as error:
         # Handle specific errors and return appropriate responses
-        return Response({"message": f"Email not sent: {error}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": f"Email not sent: {error}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except BadHeaderError:
-        return Response({"error": "Invalid header found."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "Invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
@@ -153,9 +111,8 @@ def resend_otp(request):
         user = CustomUser.objects.get(email=email)
     except CustomUser.DoesNotExist:
         return Response({"error": "User with this email does not exist."}, status=status.HTTP_400_BAD_REQUEST)
-    otp, otp_data = generate_otp()
-    user.hashed_otp = otp_data
-    user.save()
+    otp, hashed_otp = generate_otp()
+    cache.set(email, hashed_otp, timeout=300)  # 300 seconds = 5 mins
     # Send the OTP via email
     try:
         client = boto3.client('ses', region_name='af-south-1')  # Replace 'us-west-2' with your AWS region
@@ -191,16 +148,23 @@ def resend_otp(request):
 # Verify otp view
 @api_view(['POST'])
 def verify_otp_view(request):
-    email = request.user.email
+    email = request.data.get('email')
     otp = request.data.get('otp')
-    user = CustomUser.objects.get(email=email)
-    if verify_otp(otp, user.hashed_otp):
-        user.hashed_otp = None  # Clear the OTP
-        user.save()
-        return Response({"message": "OTP verified successfully."})
+    # if theres no email or otp supplied respond accordingly
+    if not email or not otp:
+        return Response({"error": "Email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
+    # try to get the email associated otp
+    try:
+        stored_hashed_otp = cache.get(email)
+        if not stored_hashed_otp:
+            return Response({"error": "No OTP found for this email. Please generate an OTP first."}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({"error": f"Error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    if verify_otp(otp, stored_hashed_otp):
+        return Response({"message": "OTP verified successfully."}, status=status.HTTP_200_OK)
     else:
         return Response({"error": "Incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
-
 
 # get credentials view
 @api_view(["GET"])
