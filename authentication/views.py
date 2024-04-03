@@ -47,7 +47,7 @@ def login(request):
         role = 'student'
     # Set access token cookie with custom expiration (30 days)
     response = Response({"message": "Login successful", "role": role}, status=status.HTTP_200_OK)
-    response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=30 * 24 * 60 * 60)
+    response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
     if 'refresh' in token:
         # Set refresh token cookie with the same expiration
         response.set_cookie('refresh_token', token['refresh'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=30 * 24 * 60 * 60)
@@ -196,7 +196,29 @@ def set_password_view(request):
             user = CustomUser.objects.get(email=email)
             user.password = make_password(new_password)
             user.save()
-            return Response({"message": "Password set successfully"}, status=status.HTTP_200_OK)
+            #login the user
+            try:
+                serializer = CustomTokenObtainPairSerializer(data={"email" : email, "password" : new_password})
+                serializer.is_valid(raise_exception=True)
+                token = serializer.validated_data
+            except AuthenticationFailed:
+                return Response({"error": "Invalid credentials"}, status=401)
+            except Exception as e:
+                # Return a 401 status code for unauthorized
+                return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+            if user.is_principal or user.is_admin:
+                role = 'admin'
+            elif user.is_parent:
+                role = 'parent'
+            else:
+                role = 'student'
+            # Set access token cookie with custom expiration (30 days)
+            response = Response({"message": "Login successful", "role": role}, status=status.HTTP_200_OK)
+            response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+            if 'refresh' in token:
+                # Set refresh token cookie with the same expiration
+                response.set_cookie('refresh_token', token['refresh'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=30 * 24 * 60 * 60)
+            return response
         except ObjectDoesNotExist:
             return Response({"error": "User does not exist."}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
