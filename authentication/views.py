@@ -28,34 +28,40 @@ from .utils import generate_otp, verify_otp, delete_cookie
 # views
 # login view
 @api_view(['POST'])
-def login(request):
+def login_view(request):
     try:
         serializer = CustomTokenObtainPairSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         token = serializer.validated_data
     except AuthenticationFailed:
-        return Response({"error": "Invalid credentials"}, status=401)
+        return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
     except Exception as e:
-        # Return a 401 status code for unauthorized
-        return Response({"error": str(e)}, status=status.HTTP_401_UNAUTHORIZED)
-    user = CustomUser.objects.get(email=request.data.get('email'))
-    if user.is_principal or user.is_admin:
-        role = 'admin'
-    elif user.is_parent:
-        role = 'parent'
-    else:
-        role = 'student'
-    # Set access token cookie with custom expiration (30 days)
-    response = Response({"message": "Login successful", "role": role}, status=status.HTTP_200_OK)
-    response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=30 * 24 * 60 * 60)
-    if 'refresh' in token:
-        # Set refresh token cookie with the same expiration
-        response.set_cookie('refresh_token', token['refresh'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=30 * 24 * 60 * 60)
-    return response
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    try:
+        user = CustomUser.objects.get(email=request.data.get('email'))
+        if user.is_principal or user.is_admin:
+            role = 'admin'
+        elif user.is_parent:
+            role = 'parent'
+        else:
+            role = 'student'
+        response_data = {"message": "Login successful", "role": role}
+        response = Response(response_data, status=status.HTTP_200_OK)
+        # Set access token cookie with custom expiration (30 days)
+        response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+        if 'refresh' in token:
+            # Set refresh token cookie with the same expiration
+            response.set_cookie('refresh_token', token['refresh'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=30 * 24 * 60 * 60)
+        return response
+    except CustomUser.DoesNotExist:
+        return Response({"error": "User does not exist."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": f"Error logging in: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 # sign in view
 @api_view(['POST'])
-def signin(request):
+def signin_view(request):
     name = request.data.get('name')
     surname = request.data.get('surname')
     email = request.data.get('email')
@@ -105,7 +111,7 @@ def signin(request):
     
 # Request otp view
 @api_view(['POST'])
-def resend_otp(request):
+def resend_otp_view(request):
     email = request.data.get('email')
     # try to get the user
     try:
@@ -180,32 +186,32 @@ def set_password_view(request):
         return response
     email = request.data.get('email')
     new_password = request.data.get('password')
-    if  not new_password == request.data.get('confirmpassword'):
-        return Response({"error": "Passwords do not match"}, status=status.HTTP_400_BAD_REQUEST)
-    if not email or not new_password or not otp:
+    confirm_password = request.data.get('confirmpassword')
+    if not email or not new_password or not confirm_password:
         return Response({"error": "Email, new password, and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
+    if new_password != confirm_password:
+        return Response({"error": "Passwords do not match"}, status=status.HTTP_400_BAD_REQUEST)
     try:
-        stored_hashed_otp = cache.get(email+'setpasswordotp')
+        stored_hashed_otp = cache.get(email + 'setpasswordotp')
         if not stored_hashed_otp:
             return Response({"error": "OTP expired. Please reload the page to request a new OTP"}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         return Response({"error": f"Error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    if verify_otp(otp, stored_hashed_otp):
-        try:
-            user = CustomUser.objects.get(email=email)
-            user.password = make_password(new_password)
-            user.save()
-            return Response({"message": "Password set successfully"}, status=status.HTTP_200_OK)
-        except ObjectDoesNotExist:
-            return Response({"error": "User does not exist."}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({"error": f"Error setting password: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    else:
+    if not verify_otp(otp, stored_hashed_otp):
         return Response({"error": "Incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        user = CustomUser.objects.get(email=email)
+        user.password = make_password(new_password)
+        user.save()
+        return Response({"message": "Password set successfully"}, status=status.HTTP_200_OK)
+    except ObjectDoesNotExist:
+        return Response({"error": "User does not exist."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": f"Error setting password: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # get credentials view
 @api_view(["GET"])
-def get_credentials(request):
+def get_credentials_view(request):
     # Get the value of a specific cookie
     try:
         # Get the value of a specific cookie
@@ -222,7 +228,7 @@ def get_credentials(request):
 # account activation check
 # checks if the account is activated by checking the password attr
 @api_view(["POST"]) 
-def account_activated(request):
+def account_status_view(request):
     email = request.data.get("email")
     # try to get the user
     try:
@@ -235,7 +241,7 @@ def account_activated(request):
 
 # User logout view
 @api_view(['POST'])
-def user_logout(request):
+def user_logout_view(request):
     # Assuming the user is authenticated
     # Remove access and refresh token cookies from the response 
     try:
