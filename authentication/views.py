@@ -58,7 +58,6 @@ def login_view(request):
     except Exception as e:
         return Response({"error": f"Error logging in: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
 # sign in view
 @api_view(['POST'])
 def signin_view(request):
@@ -180,6 +179,10 @@ def verify_otp_view(request):
 @api_view(['POST'])
 def set_password_view(request):
     otp = request.COOKIES.get('setpasswordotp')
+    if otp:
+        # Delete the cookie
+        response = delete_cookie(request)
+        return response
     email = request.data.get('email')
     new_password = request.data.get('password')
     confirm_password = request.data.get('confirmpassword')
