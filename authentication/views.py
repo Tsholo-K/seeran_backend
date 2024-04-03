@@ -190,7 +190,7 @@ def set_password_view(request):
             user = CustomUser.objects.get(email=email)
             user.password = make_password(new_password)
             user.save()
-            return Response({"message": "Password set successfully."}, status=status.HTTP_200_OK)
+            return Response({"message": "Password set successfully"}, status=status.HTTP_200_OK)
         except ObjectDoesNotExist:
             return Response({"error": "User does not exist."}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:

@@ -96,6 +96,8 @@ CORS_ALLOWED_ORIGINS = [
 # cors credentials
 # allows credentials (cookies, authorization headers, or TLS client certificates) to be sent in cross-origin requests.
 CORS_ALLOW_CREDENTIALS = True 
+SESSION_COOKIE_DOMAIN = '.seeran-grades.com'
+CSRF_COOKIE_DOMAIN = '.seeran-grades.com'
 
 
 # rest framework config
@@ -195,6 +197,7 @@ if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = True
 
 
 # static files (CSS, JavaScript, Images)
