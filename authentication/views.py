@@ -11,6 +11,8 @@ from django.http import HttpResponseBadRequest
 from django.contrib.auth.hashers import check_password
 from django.core.mail import BadHeaderError
 from django.core.exceptions import ObjectDoesNotExist
+from django_ratelimit.decorators import ratelimit
+
 
 # python 
 import hashlib
@@ -90,7 +92,7 @@ def login(request):
         role = 'student'
     
     # Set access token cookie with custom expiration (30 days)
-    response = Response({"message": "Login successful", "role": role})
+    response = Response({"message": "Login successful", "role": role}, status=status.HTTP_200_OK)
     response.set_cookie('access_token', token['access'], samesite='None', secure=True, httponly=True, max_age=30 * 24 * 60 * 60)
 
     if 'refresh' in token:
@@ -131,7 +133,7 @@ def signin(request):
 
     # Send the OTP via email
     try:
-        client = boto3.client('ses', region_name='af-south-1')  # Replace 'us-west-2' with your AWS region
+        client = boto3.client('ses', region_name='af-south-1')  # AWS region
         response = client.send_email(
             Destination={
                 'ToAddresses': [email],
@@ -146,7 +148,7 @@ def signin(request):
                     'Data': 'Your OTP',
                 },
             },
-            Source='authorization@seeran-grades.com',  # Replace with your SES verified email address
+            Source='authorization@seeran-grades.com',  # SES verified email address
         )
         # Check the response to ensure the email was successfully sent
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
@@ -156,20 +158,31 @@ def signin(request):
     except (BotoCoreError, ClientError) as error:
         # Handle specific errors and return appropriate responses
         return Response({"message": f"Email not sent: {error}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except BadHeaderError:
+        return Response({"error": "Invalid header found."}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
 
 # Request otp view
+@ratelimit(key='post:email', rate='3/30m', block=True)
 @api_view(['POST'])
 def resend_otp(request):
+    # Check if the request was ratelimited
+    was_limited = getattr(request, 'limited', False)
+    if was_limited:
+        # Return a custom response
+        return Response({"message": "You have exceeded the rate limit. Please wait before trying again."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+    
     email = request.data.get('email')
     # try to get the user
     try:
         user = CustomUser.objects.get(email=email)
     except CustomUser.DoesNotExist:
-        return Response({"error": "User with this email does not exist."}, status=400)
+        return Response({"error": "User with this email does not exist."}, status=status.HTTP_400_BAD_REQUEST)
     
-    otp, hashed_otp = generate_otp()
-    user.hashed_otp = hashed_otp
+    otp, otp_data = generate_otp()
+    user.hashed_otp = otp_data
     user.save()
 
         # Send the OTP via email
@@ -200,9 +213,9 @@ def resend_otp(request):
         # Handle specific errors and return appropriate responses
         return Response({"message": f"Email not sent: {error}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except BadHeaderError:
-        return Response({"error": "Invalid header found."}, status=400)
+        return Response({"error": "Invalid header found."}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        return Response({"error": str(e)}, status=400)
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # Verify otp view
@@ -216,7 +229,7 @@ def verify_otp_view(request):
         user.save()
         return Response({"message": "OTP verified successfully."})
     else:
-        return Response({"error": "Incorrect OTP. Please try again."}, status=400)
+        return Response({"error": "Incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # get credentials view
@@ -251,7 +264,7 @@ def account_activated(request):
     if not user.has_usable_password():
         return Response({"error": "Account already activated"}, status=status.HTTP_403_FORBIDDEN)
     
-    return Response({"message":"User not yet authenticated"})
+    return Response({"message":"Account not activated"}, status=status.HTTP_100_CONTINUE)
 
 
 # User logout view

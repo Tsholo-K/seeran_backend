@@ -7,5 +7,6 @@ urlpatterns = [
     path('signin/', views.signin, name='first time sign in'),
     path('otpverification/<str:email>', views.verify_otp_view, name='otp authentication'),
     path('accountactivated/', views.account_activated, name='check if account is activated'),
+    path('resendotp/', views.resend_otp, name='request new otp'),
     path('logout/', views.user_logout, name='user logout'),
 ]
