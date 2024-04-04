@@ -214,7 +214,7 @@ def verify_otp(request):
             return Response({"error": "OTP expired. Please generate a new one"}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         return Response({"error": f"error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    if verify_otp(otp, stored_hashed_otp):
+    if verify_otp(user_otp=otp, stored_hashed_otp=stored_hashed_otp):
         # OTP is verified, prompt the user to set their password
         cache.delete(email)
         setpasswordotp, hashed_setpasswordotp = generate_otp()
