@@ -182,28 +182,27 @@ def set_password_view(request):
     email = request.data.get('email')
     new_password = request.data.get('password')
     confirm_password = request.data.get('confirmpassword')
-    return Response({"email" : email, "password" : new_password, "confirm password" : confirm_password, "otp" : otp})
-    # if not email or not new_password or not confirm_password or not otp:
-    #     return Response({"error": "Email, new password and confrim password are required."}, status=status.HTTP_400_BAD_REQUEST)
-    # if new_password != confirm_password:
-    #     return Response({"error": "Passwords do not match"}, status=status.HTTP_400_BAD_REQUEST)
-    # try:
-    #     stored_hashed_otp = cache.get(email + 'setpasswordotp')
-    #     if not stored_hashed_otp:
-    #         return Response({"error": "OTP expired. Please reload the page to request a new OTP"}, status=status.HTTP_400_BAD_REQUEST)
-    # except Exception as e:
-    #     return Response({"error": f"Error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    # if not verify_otp(otp, stored_hashed_otp):
-    #     return Response({"error": "Incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
-    # try:
-    #     user = CustomUser.objects.get(email=email)
-    #     user.password = make_password(new_password)
-    #     user.save()
-    #     return Response({"message": "Password set successfully"}, status=status.HTTP_200_OK)
-    # except ObjectDoesNotExist:
-    #     return Response({"error": "User does not exist."}, status=status.HTTP_404_NOT_FOUND)
-    # except Exception as e:
-    #     return Response({"error": f"Error setting password: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    if not email or not new_password or not confirm_password or not otp:
+        return Response({"error": "Email, new password and confrim password are required."}, status=status.HTTP_400_BAD_REQUEST)
+    if new_password != confirm_password:
+        return Response({"error": "Passwords do not match"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        stored_hashed_otp = cache.get(email + 'setpasswordotp')
+        if not stored_hashed_otp:
+            return Response({"error": "OTP expired. Please reload the page to request a new OTP"}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({"error": f"Error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    if not verify_otp(otp, stored_hashed_otp):
+        return Response({"error": "Incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        user = CustomUser.objects.get(email=email)
+        user.password = make_password(new_password)
+        user.save()
+        return Response({"message": "Password set successfully"}, status=status.HTTP_200_OK)
+    except ObjectDoesNotExist:
+        return Response({"error": "User does not exist."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": f"Error setting password: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # get credentials view
 @api_view(["GET"])
