@@ -60,7 +60,6 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     
     # projects middleware
-    'authentication.middleware.TokenValidationMiddleware', # middleware for token authentication and renewal
     'authentication.middleware.RateLimitMiddleware',
     
     # django middleware
