@@ -3,11 +3,12 @@ from . import views
 
 urlpatterns = [
     path('userinfo/', views.user_info, name='get name and surname'),
-    path('login/', views.login_view, name='token obtain pair'),
-    path('signin/', views.signin_view, name='first time sign in'),
-    path('verifyotp/', views.verify_otp_view, name='otp authentication'),
-    path('setpassword/', views.set_password_view, name='set account password'),
-    path('accountstatus/', views.account_status_view, name='check if account is activated'),
-    path('resendotp/', views.resend_otp_view, name='request new otp'),
-    path('logout/', views.user_logout_view, name='user logout'),
+    path('authenticate/', views.authenticate, name='get name and surname'),
+    path('login/', views.login, name='token obtain pair'),
+    path('signin/', views.signin, name='first time sign in'),
+    path('verifyotp/', views.verify_otp, name='otp authentication'),
+    path('setpassword/', views.set_password, name='set account password'),
+    path('accountstatus/', views.account_status, name='check if account is activated'),
+    path('resendotp/', views.resend_otp, name='request new otp'),
+    path('logout/', views.logout, name='user logout'),
 ]

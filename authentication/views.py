@@ -29,7 +29,7 @@ from .utils import validate_access_token, refresh_access_token, generate_otp, ve
 # views
 # login view
 @api_view(['POST'])
-def login_view(request):
+def login(request):
     try:
         serializer = CustomTokenObtainPairSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -61,7 +61,7 @@ def login_view(request):
 
 # sign in view
 @api_view(['POST'])
-def signin_view(request):
+def signin(request):
     name = request.data.get('name')
     surname = request.data.get('surname')
     email = request.data.get('email')
@@ -108,10 +108,30 @@ def signin_view(request):
         return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-  
+
+@api_view(["GET"])
+@cache_control(max_age=300, private=True)  
+def authenticate(request):
+    access_token = request.COOKIES.get('access_token')
+    refresh_token = request.COOKIES.get('refresh_token')
+    # check if request contains required tokens
+    if not refresh_token:
+        return Response({'error': 'missing refresh token'}, status=400)
+    if not access_token:
+        new_access_token = refresh_access_token(refresh_token)
+    else:
+        new_access_token = validate_access_token(access_token)
+        if new_access_token == None:
+            new_access_token = refresh_access_token(refresh_token)
+    if new_access_token:
+        return Response({"message" : "authenticated"})
+    else:
+        # Error occurred during validation/refresh, return the error response
+        return Response({'Error': 'Invalid tokens'}, status=406)
+
 # set password view
 @api_view(['POST'])
-def set_password_view(request):
+def set_password(request):
     otp = request.COOKIES.get('setpasswordotp')
     email = request.data.get('email')
     new_password = request.data.get('password')
@@ -140,7 +160,7 @@ def set_password_view(request):
 
 # Request otp view
 @api_view(['POST'])
-def resend_otp_view(request):
+def resend_otp(request):
     email = request.data.get('email')
     # try to get the user
     try:
@@ -183,7 +203,7 @@ def resend_otp_view(request):
 
 # Verify otp view
 @api_view(['POST'])
-def verify_otp_view(request):
+def verify_otp(request):
     email = request.data.get('email')
     otp = request.data.get('otp')
     if not email or not otp:
@@ -247,7 +267,7 @@ def user_info(request):
 # account activation check
 # checks if the account is activated by checking the password attr
 @api_view(["POST"]) 
-def account_status_view(request):
+def account_status(request):
     email = request.data.get("email")
     # try to get the user
     try:
@@ -260,7 +280,7 @@ def account_status_view(request):
 
 # User logout view
 @api_view(['POST'])
-def user_logout_view(request):
+def logout(request):
     refresh_token = request.COOKIES.get('refresh_token')
     if refresh_token:
         try:
@@ -277,7 +297,7 @@ def user_logout_view(request):
 
 # Password change view
 @api_view(['POST'])
-def user_change_password(request):
+def change_password(request):
     access_token = request.COOKIES.get('access_token')
     refresh_token = request.COOKIES.get('refresh_token')
     # check if request contains required tokens
@@ -319,3 +339,4 @@ def user_change_password(request):
     else:
         # Error occurred during validation/refresh, return the error response
         return Response({'Error': 'Invalid tokens'}, status=406)
+    
