@@ -1,8 +1,35 @@
 # python 
 import hashlib
 import random
-from django.http import HttpResponse
 
+# django
+from django.core.exceptions import SuspiciousOperation
+
+# restframework
+from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
+from rest_framework import status
+from rest_framework_simplejwt.exceptions import TokenError
+
+
+def validate_and_refresh_tokens(access_token, refresh_token):
+    try:
+        AccessToken(access_token).verify()
+        # Access token is valid
+        return access_token, None
+    except TokenError:
+        # Access token is invalid, try refreshing
+        if refresh_token:
+            try:
+                refresh = RefreshToken(refresh_token)
+                new_access_token = str(refresh.access_token)
+                return new_access_token, None
+            except TokenError:
+                # Refresh token is invalid or expired
+                return None, Response({"error": "Invalid or expired refresh token"}, status=401)
+        else:
+            # No refresh token provided
+            return None, Response({"error": "Access token is invalid and no refresh token provided"}, status=401)
 
 # functions
 # otp generation function

@@ -1,9 +1,9 @@
 # rest framework
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework import status
-from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
+from rest_framework_simplejwt.tokens import AccessToken
 from .serializers import CustomTokenObtainPairSerializer
 
 # django
@@ -22,7 +22,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 # utility functions 
-from .utils import generate_otp, verify_otp
+from .utils import validate_and_refresh_tokens, generate_otp, verify_otp
 
 
 # views
@@ -207,18 +207,24 @@ def verify_otp_view(request):
 # get credentials view
 @api_view(["GET"])
 def get_credentials_view(request):
-    # Get the value of a specific cookie
-    try:
-        # Get the value of a specific cookie
-        access_token = request.COOKIES.get('access_token')
-        decoded_token = AccessToken(access_token)
-        user = CustomUser.objects.get(pk=decoded_token['user_id'])
-
-        # Now you can use my_cookie_value in your view logic
-        # For example, you can return it in the API response
-        return Response({'name': user.name, 'surname' : user.surname}, status=status.HTTP_200_OK)
-    except:
-        return Response({'Error': 'Invalid access token'}, status=status.HTTP_406_NOT_ACCEPTABLE)
+    access_token = request.COOKIES.get('access_token')
+    refresh_token = request.COOKIES.get('refresh_token')
+    new_access_token, error_response = validate_and_refresh_tokens(access_token, refresh_token)
+    if new_access_token:
+        # Either access token is valid or it has been successfully refreshed
+        # Set the new access token in the response cookie
+        try:
+            # Get the value of a specific cookie
+            decoded_token = AccessToken(new_access_token)
+            user = CustomUser.objects.get(pk=decoded_token['user_id'])
+            response = Response({'name': user.name, 'surname' : user.surname}, status=200)
+            response.set_cookie('access_token', new_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+            return response
+        except:
+            return Response({'Error': 'Invalid access token'}, status=406)
+    else:
+        # Error occurred during validation/refresh, return the error response
+        return error_response
 
 # account activation check
 # checks if the account is activated by checking the password attr

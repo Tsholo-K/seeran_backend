@@ -24,17 +24,17 @@ class TokenValidationMiddleware:
                 if not refresh_token or cache.get(refresh_token):
                     # No refresh token or refresh token blacklisted
                     # Delete both access and refresh token cookies
-                    response = Response({ "error" : "invalid refresh tkoen"}, status=status.HTTP_401_UNAUTHORIZED)
+                    response = Response({ "error" : "invalid refresh token"}, status=status.HTTP_401_UNAUTHORIZED)
                     response.delete_cookie('access_token', domain='.seeran-grades.com')
                     response.delete_cookie('refresh_token', domain='.seeran-grades.com')
                     return response
                 try:
                     # Attempt to refresh the token using the refresh token
                     refresh = RefreshToken(refresh_token)
-                    access_token = str(refresh.access_token)
+                    refreshed_access_token = str(refresh.access_token)
                     # Set the new access token in the cookie
                     response = self.get_response(request)
-                    response.set_cookie('access_token', access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+                    response.set_cookie('access_token', refreshed_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
                     return response
                 except TokenError:
                     # Refresh token is invalid or expired
