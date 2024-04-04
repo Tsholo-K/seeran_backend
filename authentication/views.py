@@ -124,10 +124,10 @@ def authenticate(request):
         if new_access_token == None:
             new_access_token = refresh_access_token(refresh_token)
     if new_access_token:
-        return Response({"message" : "authenticated"})
+        return Response({"message" : "authenticated"}, status=200)
     else:
         # Error occurred during validation/refresh, return the error response
-        return Response({'Error': 'Invalid tokens'}, status=406)
+        return Response({'Error': 'invalid tokens'}, status=406)
 
 # set password view
 @api_view(['POST'])
