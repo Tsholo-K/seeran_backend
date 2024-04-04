@@ -40,6 +40,16 @@ def validate_access_token(access_token):
         # Access token is invalid, try refreshing
         return None
 
+# validate refresh token
+def validate_refresh_token(refresh_token):
+    try:
+        RefreshToken(refresh_token).verify()
+        # Refresh token is valid
+        return refresh_token
+    except TokenError:
+        # Refresh token is invalid
+        return None
+
 # refresh token
 def refresh_access_token(refresh_token):
     try:

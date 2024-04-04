@@ -23,7 +23,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 # utility functions 
-from .utils import validate_access_token, refresh_access_token, generate_otp, verify_user_otp
+from .utils import validate_access_token, validate_refresh_token, refresh_access_token, generate_otp, verify_user_otp
 
 
 # views
@@ -110,13 +110,14 @@ def signin(request):
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(["GET"])
-@cache_control(max_age=300, private=True)  
 def authenticate(request):
     access_token = request.COOKIES.get('access_token')
     refresh_token = request.COOKIES.get('refresh_token')
     # check if request contains required tokens
     if not refresh_token:
         return Response({'error': 'missing refresh token'}, status=400)
+    if cache.get(refresh_token) or validate_refresh_token(refresh_token=refresh_token) == None:
+        return Response({'error': 'invalid refresh token'}, status=400)
     if not access_token:
         new_access_token = refresh_access_token(refresh_token)
     else:
