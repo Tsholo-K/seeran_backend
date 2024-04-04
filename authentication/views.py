@@ -208,7 +208,7 @@ def verify_otp_view(request):
 @api_view(['POST'])
 def user_info(request):
     # Replace the following line with your logic to get user's name and surname
-    user_info = {"name": "John", "surname": "Doe"}
+    user_info = request.data.get('hello')
     return Response(user_info)
 # @api_view(["GET"])
 # def get_credentials_view(request):
