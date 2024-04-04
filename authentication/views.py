@@ -238,14 +238,13 @@ def account_status_view(request):
 
 # User logout view
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
 def user_logout_view(request):
     refresh_token = request.COOKIES.get('refresh_token')
     if refresh_token:
         try:
             # Add the refresh token to the blacklist
             cache.set(refresh_token, 'blacklisted',timeout=86400)
-            response = Response({"message": "Logout successful"})
+            response = Response({"message": "logout successful"})
             # Clear the refresh token cookie
             response.delete_cookie('refresh_token')
             return response
