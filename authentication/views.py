@@ -3,8 +3,9 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework import status
-from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from .serializers import CustomTokenObtainPairSerializer
+from rest_framework_simplejwt.views import jwt_required
 
 # django
 from django.contrib.auth.hashers import check_password
@@ -51,7 +52,7 @@ def login_view(request):
         response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
         if 'refresh' in token:
             # Set refresh token cookie with the same expiration
-            response.set_cookie('refresh_token', token['refresh'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=30 * 24 * 60 * 60)
+            response.set_cookie('refresh_token', token['refresh'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=86400)
         return response
     except CustomUser.DoesNotExist:
         return Response({"error": "user does not exist."}, status=status.HTTP_404_NOT_FOUND)
@@ -206,6 +207,7 @@ def verify_otp_view(request):
 
 # get credentials view
 @api_view(["GET"])
+@jwt_required
 def get_credentials_view(request):
     # Get the value of a specific cookie
     try:
@@ -236,19 +238,25 @@ def account_status_view(request):
 
 # User logout view
 @api_view(['POST'])
+@jwt_required
 def user_logout_view(request):
-    # Assuming the user is authenticated
-    # Remove access and refresh token cookies from the response 
-    try:
-        response = Response({"message": "logout successful"}, status=status.HTTP_200_OK)
-        response.delete_cookie("access_token")
-        response.delete_cookie("refresh_token")
-        return response
-    except:
-        pass
+    refresh_token = request.COOKIES.get('refresh_token')
+    if refresh_token:
+        try:
+            # Add the refresh token to the blacklist
+            cache.set(refresh_token, 'blacklisted',timeout=86400)
+            response = Response({"message": "Logout successful"})
+            # Clear the refresh token cookie
+            response.delete_cookie('refresh_token')
+            return response
+        except Exception as e:
+            return Response({"error": "Failed to logout"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    else:
+        return Response({"error": "No refresh token provided"}, status=status.HTTP_400_BAD_REQUEST)
 
 # Password change view
 @api_view(['POST'])
+@jwt_required
 def user_change_password(request):
     # Assuming the user is authenticated and has changed their password
     user = request.user

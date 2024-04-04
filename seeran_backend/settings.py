@@ -100,18 +100,6 @@ SESSION_COOKIE_DOMAIN = '.seeran-grades.com'
 CSRF_COOKIE_DOMAIN = '.seeran-grades.com'
 
 
-# rest framework config
-# default authentication method
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-    'DEFAULT_RENDERER_CLASSES': [
-        'rest_framework.renderers.JSONRenderer',
-    ]
-}
-
-
 # applications default user model
 # our custom user model 
 AUTH_USER_MODEL = 'authentication.CustomUser'
@@ -126,11 +114,23 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 
+# rest framework config
+# default authentication method
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ]
+}
+
+
 # simplejwt config
 # simplejwt token settings
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),  # Short-lived access token (adjust as needed)
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),    # Longer-lived refresh token (adjust as needed)
+    'REFRESH_TOKEN_LIFETIME': timedelta(hours=24),    # Longer-lived refresh token (adjust as needed)
     'ROTATE_REFRESH_TOKENS': False,                  # Set to True if you want to rotate refresh tokens
     
     'TOKEN_BLACKLIST_ENABLED': True,
@@ -155,6 +155,7 @@ CACHES = {
 #         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
 #     }
 # }
+
 
 # Databases
 # production database
