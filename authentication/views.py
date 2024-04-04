@@ -146,7 +146,7 @@ def set_password(request):
             return Response({"error": "OTP expired, please reload the page to request a new OTP"}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         return Response({"error": f"error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    if not verify_otp(otp, stored_hashed_otp):
+    if not verify_user_otp(otp, stored_hashed_otp):
         return Response({"error": "incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
     try:
         user = CustomUser.objects.get(email=email)
