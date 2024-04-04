@@ -72,8 +72,8 @@ def signin(request):
         user = CustomUser.objects.get(name=name, surname=surname, email=email)
     except ObjectDoesNotExist:
         return Response({"error": "invalid credentials"})
-    if user.has_usable_password():
-        return Response({"error": "account already activated"})
+    if user.password != '' and user.has_usable_password():
+        return Response({"error": "account already activated"}, status=403)
     # Create an OTP for the user
     otp, hashed_otp = generate_otp()
     cache.set(email, hashed_otp, timeout=300)  # 300 seconds = 5 mins
@@ -275,8 +275,8 @@ def account_status(request):
     except CustomUser.DoesNotExist:
         return Response({"error": "user with the provided email does not exist."}, status=400)
     if user.password != '' and user.has_usable_password():
-        return Response({"error": "account already activated"}, status=status.HTTP_403_FORBIDDEN)
-    return Response({"message":"account not activated"}, status=status.HTTP_200_OK)
+        return Response({"error": "account already activated"}, status=403)
+    return Response({"message":"account not activated"}, status=200)
 
 # User logout view
 @api_view(['POST'])
