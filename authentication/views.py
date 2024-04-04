@@ -209,6 +209,10 @@ def verify_otp_view(request):
 def get_credentials_view(request):
     access_token = request.COOKIES.get('access_token')
     refresh_token = request.COOKIES.get('refresh_token')
+
+    if not access_token or not refresh_token:
+        return Response({'Error': 'Access or refresh tokens are missing'}, status=400)
+
     new_access_token, error_response = validate_and_refresh_tokens(access_token, refresh_token)
     if new_access_token:
         # Either access token is valid or it has been successfully refreshed
@@ -220,6 +224,8 @@ def get_credentials_view(request):
             response = Response({'name': user.name, 'surname' : user.surname}, status=200)
             response.set_cookie('access_token', new_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
             return response
+        except ObjectDoesNotExist:
+            return Response({'Error': 'User not found'}, status=404)
         except:
             return Response({'Error': 'Invalid access token'}, status=406)
     else:
