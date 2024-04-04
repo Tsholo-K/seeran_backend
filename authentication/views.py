@@ -211,9 +211,9 @@ def get_credentials_view(request):
     refresh_token = request.COOKIES.get('refresh_token')
     # check if request contains required tokens
     if not access_token or not refresh_token:
-        return Response({'Error': 'Access or refresh tokens are missing'}, status=400)
+        return Response({'Error': 'Access or refresh tokens are missing'})
     new_access_token = validate_and_refresh_tokens(access_token, refresh_token)
-    return Response({"message" : "test"}, status=200)
+    return Response({"message" : "test"})
     # if new_access_token:
     #     # Either access token is valid or it has been successfully refreshed
     #     # Set the new access token in the response cookie
