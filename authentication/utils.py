@@ -18,7 +18,7 @@ def verify_otp(user_otp, stored_hashed_otp):
     return hashed_user_otp == stored_hashed_otp
 
 # delete cookie
-def delete_cookie(request):
+def delete_cookie(request, cookie):
     response = HttpResponse()
-    response.delete_cookie('setpasswordotp')
+    response.delete_cookie(cookie)
     return response

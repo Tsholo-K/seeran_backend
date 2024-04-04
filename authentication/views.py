@@ -178,15 +178,15 @@ def verify_otp_view(request):
 # set password view
 @api_view(['POST'])
 def set_password_view(request):
-    # otp = request.COOKIES.get('setpasswordotp')
-    # if otp:
-    #     # Delete the cookie
-    #     response = delete_cookie(request)
-    #     return response
+    otp = request.COOKIES.get('setpasswordotp')
+    if otp:
+        # Delete the cookie
+        response = delete_cookie(request, setpasswordotp)
+        return response
     # email = request.data.get('email')
     # new_password = request.data.get('password')
     # confirm_password = request.data.get('confirmpassword')
-    return Response({"email" : "email", "password" : "new_password", "confirm password" : "confirm_password"})
+    return Response({"email" : "email", "password" : "new_password", "confirm password" : "confirm_password", "otp" : otp})
     # if not email or not new_password or not confirm_password or not otp:
     #     return Response({"error": "Email, new password and confrim password are required."}, status=status.HTTP_400_BAD_REQUEST)
     # if new_password != confirm_password:
