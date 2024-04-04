@@ -207,7 +207,7 @@ def verify_otp_view(request):
 
 # get credentials view
 @api_view(["GET"])
-@cache_control(max_age=86400)
+@cache_control(max_age=86400, private=True)
 def user_info(request):
     access_token = request.COOKIES.get('access_token')
     refresh_token = request.COOKIES.get('refresh_token')
