@@ -13,6 +13,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.hashers import make_password
+from django.views.decorators.cache import cache_control
 
 # models
 from .models import CustomUser
@@ -206,6 +207,7 @@ def verify_otp_view(request):
 
 # get credentials view
 @api_view(["GET"])
+@cache_control(max_age=86400)
 def user_info(request):
     access_token = request.COOKIES.get('access_token')
     refresh_token = request.COOKIES.get('refresh_token')
