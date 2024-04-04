@@ -16,20 +16,20 @@ def validate_and_refresh_tokens(access_token, refresh_token):
     try:
         AccessToken(access_token).verify()
         # Access token is valid
-        return access_token, None
+        return access_token
     except TokenError:
         # Access token is invalid, try refreshing
         if refresh_token:
             try:
                 refresh = RefreshToken(refresh_token)
                 new_access_token = str(refresh.access_token)
-                return new_access_token, None
+                return new_access_token
             except TokenError:
                 # Refresh token is invalid or expired
-                return None, Response({"error": "Invalid or expired refresh token"}, status=401)
+                return None
         else:
             # No refresh token provided
-            return None, Response({"error": "Access token is invalid and no refresh token provided"}, status=401)
+            return None
 
 # functions
 # otp generation function

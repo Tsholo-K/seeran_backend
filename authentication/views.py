@@ -209,11 +209,10 @@ def verify_otp_view(request):
 def get_credentials_view(request):
     access_token = request.COOKIES.get('access_token')
     refresh_token = request.COOKIES.get('refresh_token')
-
+    # check if request contains required tokens
     if not access_token or not refresh_token:
         return Response({'Error': 'Access or refresh tokens are missing'}, status=400)
-
-    new_access_token, error_response = validate_and_refresh_tokens(access_token, refresh_token)
+    new_access_token = validate_and_refresh_tokens(access_token, refresh_token)
     if new_access_token:
         # Either access token is valid or it has been successfully refreshed
         # Set the new access token in the response cookie
@@ -230,7 +229,7 @@ def get_credentials_view(request):
             return Response({'Error': 'Invalid access token'}, status=406)
     else:
         # Error occurred during validation/refresh, return the error response
-        return error_response
+        return Response({'Error': 'Invalid tokens'}, status=406)
 
 # account activation check
 # checks if the account is activated by checking the password attr
