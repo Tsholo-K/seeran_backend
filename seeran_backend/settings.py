@@ -60,7 +60,6 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     
     # projects middleware
-    'authentication.middleware.RateLimitMiddleware',
     
     # django middleware
     'django.middleware.security.SecurityMiddleware',

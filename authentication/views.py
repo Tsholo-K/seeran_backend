@@ -205,38 +205,31 @@ def verify_otp_view(request):
         return Response({"error": "incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
 
 # get credentials view
-@api_view(['POST'])
+@api_view(["GET"])
 def user_info(request):
-    # Replace the following line with your logic to get user's name and surname
-    user_info = request.data.get('hello')
-    return Response(user_info)
-# @api_view(["GET"])
-# def get_credentials_view(request):
-#     return Response({"message" : "test"})
-    # access_token = request.COOKIES.get('access_token')
-    # refresh_token = request.COOKIES.get('refresh_token')
-    # # check if request contains required tokens
-    # if not access_token or not refresh_token:
-    #     return Response({'Error': 'Access or refresh tokens are missing'})
-    # new_access_token = validate_and_refresh_tokens(access_token, refresh_token)
-    
-    # if new_access_token:
-    #     # Either access token is valid or it has been successfully refreshed
-    #     # Set the new access token in the response cookie
-    #     try:
-    #         # Get the value of a specific cookie
-    #         decoded_token = AccessToken(new_access_token)
-    #         user = CustomUser.objects.get(pk=decoded_token['user_id'])
-    #         response = Response({'name': user.name, 'surname' : user.surname}, status=200)
-    #         response.set_cookie('access_token', new_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
-    #         return response
-    #     except ObjectDoesNotExist:
-    #         return Response({'Error': 'User not found'}, status=404)
-    #     except:
-    #         return Response({'Error': 'Invalid access token'}, status=406)
-    # else:
-    #     # Error occurred during validation/refresh, return the error response
-    #     return Response({'Error': 'Invalid tokens'}, status=406)
+    access_token = request.COOKIES.get('access_token')
+    refresh_token = request.COOKIES.get('refresh_token')
+    # check if request contains required tokens
+    if not access_token or not refresh_token:
+        return Response({'Error': 'Access or refresh tokens are missing'}, status=400)
+    new_access_token = validate_and_refresh_tokens(access_token, refresh_token)
+    if new_access_token:
+        # Either access token is valid or it has been successfully refreshed
+        # Set the new access token in the response cookie
+        try:
+            # Get the value of a specific cookie
+            decoded_token = AccessToken(new_access_token)
+            user = CustomUser.objects.get(pk=decoded_token['user_id'])
+            response = Response({'name': user.name, 'surname' : user.surname}, status=200)
+            response.set_cookie('access_token', new_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+            return response
+        except ObjectDoesNotExist:
+            return Response({'Error': 'User not found'}, status=404)
+        except:
+            return Response({'Error': 'Invalid access token'}, status=406)
+    else:
+        # Error occurred during validation/refresh, return the error response
+        return Response({'Error': 'Invalid tokens'}, status=406)
 
 # account activation check
 # checks if the account is activated by checking the password attr
