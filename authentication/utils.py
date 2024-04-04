@@ -13,7 +13,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 
 
 # validate token
-def validate_token(access_token):
+def validate_access_token(access_token):
     try:
         AccessToken(access_token).verify()
         # Access token is valid
@@ -23,7 +23,7 @@ def validate_token(access_token):
         return None
 
 # refresh token
-def refresh_token(refresh_token):
+def refresh_access_token(refresh_token):
     try:
         refresh = RefreshToken(refresh_token)
         new_access_token = str(refresh.access_token)

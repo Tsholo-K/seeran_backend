@@ -22,7 +22,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 # utility functions 
-from .utils import validate_token, refresh_token, generate_otp, verify_otp
+from .utils import validate_access_token, refresh_access_token, generate_otp, verify_otp
 
 
 # views
@@ -213,11 +213,11 @@ def user_info(request):
     if not refresh_token:
         return Response({'error': 'missing refresh token'}, status=400)
     if not access_token:
-        new_access_token = refresh_token(refresh_token)
+        new_access_token = refresh_access_token(refresh_token)
     else:
-        new_access_token = validate_token(access_token)
+        new_access_token = validate_access_token(access_token)
         if new_access_token == None:
-            new_access_token = refresh_token(refresh_token)
+            new_access_token = refresh_access_token(refresh_token)
     if new_access_token:
         # Either access token is valid or it has been successfully refreshed
         # Set the new access token in the response cookie
