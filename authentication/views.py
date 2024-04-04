@@ -257,7 +257,7 @@ def user_logout_view(request):
     if refresh_token:
         try:
             # Add the refresh token to the blacklist
-            cache.set(refresh_token, 'blacklisted',timeout=86400)
+            cache.set(refresh_token, 'blacklisted', timeout=86400)
             response = Response({"message": "logout successful"})
             # Clear the refresh token cookie
             response.delete_cookie('refresh_token')
@@ -270,37 +270,44 @@ def user_logout_view(request):
 # Password change view
 @api_view(['POST'])
 def user_change_password(request):
-    # Assuming the user is authenticated and has changed their password
-    user = request.user
-    # Get the new password and confirm password from the request data
-    new_password = request.data.get('new_password')
-    confirm_password = request.data.get('confirm_password')
-    # Check if the provided previous password matches the current password
-    if not check_password(request.data.get('previous_password'), user.password):
-        return Response({"error": "previous password is incorrect"}, status=status.HTTP_400_BAD_REQUEST)
-    # Validate that the new password and confirm password match
-    if new_password != confirm_password:
-        return Response({"error": "new password and confirm password do not match"}, status=status.HTTP_400_BAD_REQUEST)
-    # Update the user's password
-    user.set_password(new_password)
-    user.save()
-    # Invalidate tokens (both access and refresh tokens)
-    try:
-        # Invalidate the user's refresh token
-        refresh_token = user.refresh_token
-        if refresh_token:
-            # Clear the user's refresh token
-            user.refresh_token = None
-            user.save()
-    except Exception:
-        # Handle any errors appropriately
-        pass
-    # Return an appropriate response (e.g., success message)
-    # Remove access and refresh token cookies from the response
-    response = Response({"message": "password changed successfully"}, status=status.HTTP_200_OK)
-    try:
-        response.delete_cookie("access_token")
-        response.delete_cookie("refresh_token")
-    except:
-        pass
-    return response
+    access_token = request.COOKIES.get('access_token')
+    refresh_token = request.COOKIES.get('refresh_token')
+    # check if request contains required tokens
+    if not refresh_token:
+        return Response({'error': 'missing refresh token'}, status=400)
+    if not access_token:
+        new_access_token = refresh_access_token(refresh_token)
+    else:
+        new_access_token = validate_access_token(access_token)
+        if new_access_token == None:
+            new_access_token = refresh_access_token(refresh_token)
+    if new_access_token:
+        # Assuming the user is authenticated and has changed their password
+        decoded_token = AccessToken(new_access_token)
+        user = CustomUser.objects.get(pk=decoded_token['user_id'])
+        # Get the new password and confirm password from the request data
+        new_password = request.data.get('new_password')
+        confirm_password = request.data.get('confirm_password')
+        # Check if the provided previous password matches the current password
+        if not check_password(request.data.get('current_password'), user.password):
+            return Response({"error": "current password is incorrect"}, status=status.HTTP_400_BAD_REQUEST)
+        # Validate that the new password and confirm password match
+        if new_password != confirm_password:
+            return Response({"error": "new password and confirm password do not match"}, status=status.HTTP_400_BAD_REQUEST)
+        # Update the user's password
+        user.set_password(new_password)
+        user.save()
+        # blacklist refresh token
+        cache.set(refresh_token, 'blacklisted', timeout=86400)
+        # Return an appropriate response (e.g., success message)
+        response = Response({"message": "password changed successfully"}, status=200)
+        try:
+            # Remove access and refresh token cookies from the response
+            response.delete_cookie("access_token")
+            response.delete_cookie("refresh_token")
+        except:
+            pass
+        return response
+    else:
+        # Error occurred during validation/refresh, return the error response
+        return Response({'Error': 'Invalid tokens'}, status=406)
