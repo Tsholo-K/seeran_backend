@@ -205,7 +205,7 @@ def verify_otp_view(request):
         return Response({"error": "incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
 
 # get credentials view
-@api_view(['GET'])
+@api_view(['POST'])
 def user_info(request):
     # Replace the following line with your logic to get user's name and surname
     user_info = {"name": "John", "surname": "Doe"}
