@@ -289,12 +289,13 @@ def logout(request):
             cache.set(refresh_token, 'blacklisted', timeout=86400)
             response = Response({"message": "logout successful"})
             # Clear the refresh token cookie
-            response.delete_cookie('refresh_token')
+            response.delete_cookie('access_token', domain='.seeran-grades.com')
+            response.delete_cookie('refresh_token', domain='.seeran-grades.com')
             return response
         except Exception as e:
-            return Response({"error": "Failed to logout"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": e}, status=500)
     else:
-        return Response({"error": "No refresh token provided"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "No refresh token provided"}, status=400)
 
 # Password change view
 @api_view(['POST'])
@@ -304,6 +305,8 @@ def change_password(request):
     # check if request contains required tokens
     if not refresh_token:
         return Response({'error': 'missing refresh token'}, status=400)
+    if cache.get(refresh_token) or validate_refresh_token(refresh_token=refresh_token) == None:
+        return Response({'error': 'invalid refresh token'}, status=400)
     if not access_token:
         new_access_token = refresh_access_token(refresh_token)
     else:
