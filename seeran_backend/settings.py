@@ -127,6 +127,8 @@ REST_FRAMEWORK = {
 
 
 # simplejwt config
+# Define JWT_AUTH_COOKIE setting
+JWT_AUTH_COOKIE = 'access_token'
 # simplejwt token settings
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),  # Short-lived access token (adjust as needed)
