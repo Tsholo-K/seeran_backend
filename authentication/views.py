@@ -115,9 +115,9 @@ def authenticate(request):
     refresh_token = request.COOKIES.get('refresh_token')
     # check if request contains required tokens
     if not refresh_token:
-        return Response({'error': 'missing refresh token'}, status=400)
+        return Response({'error': 'missing refresh token'})
     if cache.get(refresh_token) or validate_refresh_token(refresh_token=refresh_token) == None:
-        return Response({'error': 'invalid refresh token'}, status=400)
+        return Response({'error': 'invalid refresh token'})
     if not access_token:
         new_access_token = refresh_access_token(refresh_token)
     else:
@@ -125,10 +125,10 @@ def authenticate(request):
         if new_access_token == None:
             new_access_token = refresh_access_token(refresh_token)
     if new_access_token:
-        return Response({"message" : "authenticated"}, status=200)
+        return Response({"message" : "authenticated"})
     else:
         # Error occurred during validation/refresh, return the error response
-        return Response({'Error': 'invalid tokens'}, status=406)
+        return Response({'error': 'invalid tokens'})
 
 # set password view
 @api_view(['POST'])
@@ -274,10 +274,10 @@ def account_status(request):
     try:
         user = CustomUser.objects.get(email=email)
     except CustomUser.DoesNotExist:
-        return Response({"error": "user with the provided email does not exist."}, status=400)
+        return Response({"error": "user with the provided email does not exist."})
     if user.password != '' and user.has_usable_password():
-        return Response({"error": "account already activated"}, status=403)
-    return Response({"message":"account not activated"}, status=200)
+        return Response({"error": "account already activated"})
+    return Response({"message":"account not activated"})
 
 # User logout view
 @api_view(['POST'])
@@ -293,9 +293,9 @@ def logout(request):
             response.delete_cookie('refresh_token', domain='.seeran-grades.com')
             return response
         except Exception as e:
-            return Response({"error": e}, status=500)
+            return Response({"error": e})
     else:
-        return Response({"error": "No refresh token provided"}, status=400)
+        return Response({"error": "No refresh token provided"})
 
 # Password change view
 @api_view(['POST'])
