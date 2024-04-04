@@ -1,11 +1,11 @@
 # rest framework
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from .serializers import CustomTokenObtainPairSerializer
-from rest_framework_simplejwt.views import jwt_required
 
 # django
 from django.contrib.auth.hashers import check_password
@@ -207,7 +207,7 @@ def verify_otp_view(request):
 
 # get credentials view
 @api_view(["GET"])
-@jwt_required
+@permission_classes([IsAuthenticated])
 def get_credentials_view(request):
     # Get the value of a specific cookie
     try:
@@ -238,7 +238,7 @@ def account_status_view(request):
 
 # User logout view
 @api_view(['POST'])
-@jwt_required
+@permission_classes([IsAuthenticated])
 def user_logout_view(request):
     refresh_token = request.COOKIES.get('refresh_token')
     if refresh_token:
@@ -256,7 +256,7 @@ def user_logout_view(request):
 
 # Password change view
 @api_view(['POST'])
-@jwt_required
+@permission_classes([IsAuthenticated])
 def user_change_password(request):
     # Assuming the user is authenticated and has changed their password
     user = request.user
