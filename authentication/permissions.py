@@ -1,24 +1,30 @@
-from rest_framework import permissions
-from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework_simplejwt.exceptions import InvalidToken
-from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.permissions import BasePermission
+from rest_framework_simplejwt.tokens import AccessToken
+from django.contrib.auth.models import User
 
-class ValidateAccessToken(permissions.BasePermission):
+class CustomCookieTokenPermission(BasePermission):
+    """
+    Custom permission class to validate JWT token from a cookie.
+    """
+
     def has_permission(self, request, view):
-        # Extract the access token from the request cookie
+        # Get the access token from the cookie
         access_token = request.COOKIES.get('access_token')
-        
+
         if access_token:
             try:
-                # Validate the access token using JWTAuthentication
-                authentication = JWTAuthentication()
-                user, token = authentication.authenticate_credentials(access_token)
-                
-                # Authentication succeeded, return True
-                return True
-            except InvalidToken:
-                # Token is invalid, raise AuthenticationFailed with an appropriate error message
-                raise AuthenticationFailed('Invalid access token')
+                # Decode the access token
+                token = AccessToken(access_token)
+                # Get the user ID from the token payload
+                user_id = token.payload.get('user_id')
+                # Look up the user
+                user = User.objects.get(id=user_id)
+                # If the user exists, grant permission
+                return user is not None
+            except Exception:
+                # Invalid token or user not found
+                return False
         else:
-            # No access token provided, return False
+            # No access token provided
             return False
+

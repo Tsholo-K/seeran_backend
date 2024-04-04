@@ -2,7 +2,7 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed
-from .permissions import ValidateAccessToken
+from .permissions import CustomCookieTokenPermission
 from rest_framework import status
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from .serializers import CustomTokenObtainPairSerializer
@@ -207,7 +207,7 @@ def verify_otp_view(request):
 
 # get credentials view
 @api_view(["GET"])
-@permission_classes([ValidateAccessToken])
+@permission_classes([CustomCookieTokenPermission])
 def get_credentials_view(request):
     # Get the value of a specific cookie
     try:
@@ -238,7 +238,7 @@ def account_status_view(request):
 
 # User logout view
 @api_view(['POST'])
-@permission_classes([ValidateAccessToken])
+@permission_classes([CustomCookieTokenPermission])
 def user_logout_view(request):
     refresh_token = request.COOKIES.get('refresh_token')
     if refresh_token:
@@ -256,7 +256,7 @@ def user_logout_view(request):
 
 # Password change view
 @api_view(['POST'])
-@permission_classes([ValidateAccessToken])
+@permission_classes([CustomCookieTokenPermission])
 def user_change_password(request):
     # Assuming the user is authenticated and has changed their password
     user = request.user
