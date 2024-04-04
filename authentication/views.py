@@ -22,7 +22,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 # utility functions 
-from .utils import generate_otp, verify_otp, delete_cookie
+from .utils import generate_otp, verify_otp
 
 
 # views
@@ -34,7 +34,7 @@ def login_view(request):
         serializer.is_valid(raise_exception=True)
         token = serializer.validated_data
     except AuthenticationFailed:
-        return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({"error": "invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     try:
@@ -45,7 +45,7 @@ def login_view(request):
             role = 'parent'
         else:
             role = 'student'
-        response_data = {"message": "Login successful", "role": role}
+        response_data = {"message": "login successful", "role": role}
         response = Response(response_data, status=status.HTTP_200_OK)
         # Set access token cookie with custom expiration (30 days)
         response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
@@ -54,9 +54,9 @@ def login_view(request):
             response.set_cookie('refresh_token', token['refresh'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=30 * 24 * 60 * 60)
         return response
     except CustomUser.DoesNotExist:
-        return Response({"error": "User does not exist."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error": "user does not exist."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
-        return Response({"error": f"Error logging in: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": f"error logging you in: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # sign in view
 @api_view(['POST'])
@@ -65,14 +65,14 @@ def signin_view(request):
     surname = request.data.get('surname')
     email = request.data.get('email')
     if not name or not surname or not email:
-        return Response({"error": "All feilds are required"})
+        return Response({"error": "all feilds are required"})
     # Validate the user
     try:
         user = CustomUser.objects.get(name=name, surname=surname, email=email)
     except ObjectDoesNotExist:
-        return Response({"error": "Invalid credentials"})
-    # if user.has_usable_password():
-    #     return Response({"error": "Account already activated"})
+        return Response({"error": "invalid credentials"})
+    if user.has_usable_password():
+        return Response({"error": "account already activated"})
     # Create an OTP for the user
     otp, hashed_otp = generate_otp()
     cache.set(email, hashed_otp, timeout=300)  # 300 seconds = 5 mins
@@ -99,15 +99,44 @@ def signin_view(request):
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
             return Response({"message": "OTP created for user and sent via email", "email" : user.email}, status=status.HTTP_200_OK)
         else:
-            return Response({"error": "Failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except (BotoCoreError, ClientError) as error:
         # Handle specific errors and return appropriate responses
-        return Response({"error": f"Email not sent: {error}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": f"email not sent: {error}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except BadHeaderError:
-        return Response({"error": "Invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    
+  
+# set password view
+@api_view(['POST'])
+def set_password_view(request):
+    otp = request.COOKIES.get('setpasswordotp')
+    email = request.data.get('email')
+    new_password = request.data.get('password')
+    confirm_password = request.data.get('confirmpassword')
+    if not email or not new_password or not confirm_password or not otp:
+        return Response({"error": "email, new password and confrim password are required."}, status=status.HTTP_400_BAD_REQUEST)
+    if new_password != confirm_password:
+        return Response({"error": "passwords do not match"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        stored_hashed_otp = cache.get(email + 'setpasswordotp')
+        if not stored_hashed_otp:
+            return Response({"error": "OTP expired, please reload the page to request a new OTP"}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({"error": f"error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    if not verify_otp(otp, stored_hashed_otp):
+        return Response({"error": "incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        user = CustomUser.objects.get(email=email)
+        user.password = make_password(new_password)
+        user.save()
+        return Response({"message": "password set successfully"}, status=status.HTTP_200_OK)
+    except ObjectDoesNotExist:
+        return Response({"error": "user does not exist."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({"error": f"error setting password: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 # Request otp view
 @api_view(['POST'])
 def resend_otp_view(request):
@@ -116,7 +145,7 @@ def resend_otp_view(request):
     try:
         user = CustomUser.objects.get(email=email)
     except CustomUser.DoesNotExist:
-        return Response({"error": "User with this email does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "user with this email does not exist."}, status=status.HTTP_400_BAD_REQUEST)
     otp, hashed_otp = generate_otp()
     cache.set(email, hashed_otp, timeout=300)  # 300 seconds = 5 mins
     # Send the OTP via email
@@ -140,14 +169,14 @@ def resend_otp_view(request):
         )
         # Check the response to ensure the email was successfully sent
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
-            return Response({"message": "A new OTP has been sent to your email address"}, status=status.HTTP_200_OK)
+            return Response({"message": "a new OTP has been sent to your email address"}, status=status.HTTP_200_OK)
         else:
-            return Response({"error": "Failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except (BotoCoreError, ClientError) as error:
         # Handle specific errors and return appropriate responses
-        return Response({"error": f"Email not sent: {error}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": f"email not sent: {error}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except BadHeaderError:
-        return Response({"error": "Invalid header found."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "invalid header found."}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -157,13 +186,13 @@ def verify_otp_view(request):
     email = request.data.get('email')
     otp = request.data.get('otp')
     if not email or not otp:
-        return Response({"error": "Email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
     try:
         stored_hashed_otp = cache.get(email)
         if not stored_hashed_otp:
             return Response({"error": "OTP expired. Please generate a new one"}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        return Response({"error": f"Error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": f"error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     if verify_otp(otp, stored_hashed_otp):
         # OTP is verified, prompt the user to set their password
         cache.delete(email)
@@ -173,36 +202,7 @@ def verify_otp_view(request):
         response.set_cookie('setpasswordotp', setpasswordotp, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
         return response
     else:
-        return Response({"error": "Incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
-
-# set password view
-@api_view(['POST'])
-def set_password_view(request):
-    otp = request.COOKIES.get('setpasswordotp')
-    email = request.data.get('email')
-    new_password = request.data.get('password')
-    confirm_password = request.data.get('confirmpassword')
-    if not email or not new_password or not confirm_password or not otp:
-        return Response({"error": "Email, new password and confrim password are required."}, status=status.HTTP_400_BAD_REQUEST)
-    if new_password != confirm_password:
-        return Response({"error": "Passwords do not match"}, status=status.HTTP_400_BAD_REQUEST)
-    try:
-        stored_hashed_otp = cache.get(email + 'setpasswordotp')
-        if not stored_hashed_otp:
-            return Response({"error": "OTP expired. Please reload the page to request a new OTP"}, status=status.HTTP_400_BAD_REQUEST)
-    except Exception as e:
-        return Response({"error": f"Error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    if not verify_otp(otp, stored_hashed_otp):
-        return Response({"error": "Incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
-    try:
-        user = CustomUser.objects.get(email=email)
-        user.password = make_password(new_password)
-        user.save()
-        return Response({"message": "Password set successfully"}, status=status.HTTP_200_OK)
-    except ObjectDoesNotExist:
-        return Response({"error": "User does not exist."}, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        return Response({"error": f"Error setting password: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": "incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
 
 # get credentials view
 @api_view(["GET"])
@@ -229,10 +229,10 @@ def account_status_view(request):
     try:
         user = CustomUser.objects.get(email=email)
     except CustomUser.DoesNotExist:
-        return Response({"error": "User with the provided email does not exist."}, status=400)
-    if not user.has_usable_password():
-        return Response({"error": "Account already activated"}, status=status.HTTP_403_FORBIDDEN)
-    return Response({"message":"Account not activated"}, status=status.HTTP_200_OK)
+        return Response({"error": "user with the provided email does not exist."}, status=400)
+    if user.has_usable_password():
+        return Response({"error": "account already activated"}, status=status.HTTP_403_FORBIDDEN)
+    return Response({"message":"account not activated"}, status=status.HTTP_200_OK)
 
 # User logout view
 @api_view(['POST'])
@@ -240,7 +240,7 @@ def user_logout_view(request):
     # Assuming the user is authenticated
     # Remove access and refresh token cookies from the response 
     try:
-        response = Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
+        response = Response({"message": "logout successful"}, status=status.HTTP_200_OK)
         response.delete_cookie("access_token")
         response.delete_cookie("refresh_token")
         return response
@@ -257,10 +257,10 @@ def user_change_password(request):
     confirm_password = request.data.get('confirm_password')
     # Check if the provided previous password matches the current password
     if not check_password(request.data.get('previous_password'), user.password):
-        return Response({"error": "Previous password is incorrect"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "previous password is incorrect"}, status=status.HTTP_400_BAD_REQUEST)
     # Validate that the new password and confirm password match
     if new_password != confirm_password:
-        return Response({"error": "New password and confirm password do not match"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "new password and confirm password do not match"}, status=status.HTTP_400_BAD_REQUEST)
     # Update the user's password
     user.set_password(new_password)
     user.save()
@@ -277,7 +277,7 @@ def user_change_password(request):
         pass
     # Return an appropriate response (e.g., success message)
     # Remove access and refresh token cookies from the response
-    response = Response({"message": "Password changed successfully"}, status=status.HTTP_200_OK)
+    response = Response({"message": "password changed successfully"}, status=status.HTTP_200_OK)
     try:
         response.delete_cookie("access_token")
         response.delete_cookie("refresh_token")

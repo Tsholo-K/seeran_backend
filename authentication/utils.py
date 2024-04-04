@@ -16,9 +16,3 @@ def generate_otp():
 def verify_otp(user_otp, stored_hashed_otp):
     hashed_user_otp = hashlib.sha256(user_otp.encode()).hexdigest()
     return hashed_user_otp == stored_hashed_otp
-
-# delete cookie
-def delete_cookie(request, cookie):
-    response = HttpResponse()
-    response.delete_cookie(cookie)
-    return response
