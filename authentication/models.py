@@ -4,6 +4,8 @@ from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
+from .utils import generate_account_id
+
 
 class CustomUserManager(BaseUserManager):
     # user creation 
@@ -62,6 +64,8 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_parent = models.BooleanField(_('parent status'), default=False)
     is_admin = models.BooleanField(_('admin status'), default=False)
     is_principal = models.BooleanField(_('principal status'), default=False)
+    
+    account_id = models.CharField(max_length=13, unique=True, default=generate_account_id)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['name', 'surname']

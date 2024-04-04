@@ -233,7 +233,7 @@ def user_info(request):
                 role = 'parent'
             else:
                 role = 'student'
-            response = Response({ "email" : user.email, 'name': user.name, 'surname' : user.surname, "role" : role},status=200)
+            response = Response({ "email" : user.email, 'name': user.name, 'surname' : user.surname, "role" : role, "account_id" : user.account_id},status=200)
             response.set_cookie('access_token', new_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
             return response
         except ObjectDoesNotExist:
