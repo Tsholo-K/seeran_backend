@@ -59,7 +59,7 @@ def generate_otp():
     return otp, hashed_otp
 
 # otp verification function
-def verify_otp(user_otp, stored_hashed_otp):
+def verify_user_otp(user_otp, stored_hashed_otp):
     hashed_user_otp = hashlib.sha256(user_otp.encode()).hexdigest()
     return hashed_user_otp == stored_hashed_otp
 
