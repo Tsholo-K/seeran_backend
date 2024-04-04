@@ -205,9 +205,14 @@ def verify_otp_view(request):
         return Response({"error": "incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
 
 # get credentials view
-@api_view(["GET"])
-def get_credentials_view(request):
-    return Response({"message" : "test"})
+@api_view(['GET'])
+def user_info(request):
+    # Replace the following line with your logic to get user's name and surname
+    user_info = {"name": "John", "surname": "Doe"}
+    return Response(user_info)
+# @api_view(["GET"])
+# def get_credentials_view(request):
+#     return Response({"message" : "test"})
     # access_token = request.COOKIES.get('access_token')
     # refresh_token = request.COOKIES.get('refresh_token')
     # # check if request contains required tokens
