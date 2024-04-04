@@ -2,7 +2,7 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('credentials/', views.user_info, name='get name and surname'),
+    path('userinfo/', views.user_info, name='get name and surname'),
     path('login/', views.login_view, name='token obtain pair'),
     path('signin/', views.signin_view, name='first time sign in'),
     path('verifyotp/', views.verify_otp_view, name='otp authentication'),
