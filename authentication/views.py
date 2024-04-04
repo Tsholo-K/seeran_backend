@@ -216,7 +216,7 @@ def user_info(request):
         new_access_token = refresh_token(refresh_token)
     else:
         new_access_token = validate_token(access_token)
-        if not new_access_token:
+        if new_access_token == None:
             new_access_token = refresh_token(refresh_token)
     if new_access_token:
         # Either access token is valid or it has been successfully refreshed
