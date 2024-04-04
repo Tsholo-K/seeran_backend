@@ -181,7 +181,7 @@ def set_password_view(request):
     otp = request.COOKIES.get('setpasswordotp')
     if otp:
         # Delete the cookie
-        response = delete_cookie(request, setpasswordotp)
+        response = delete_cookie(request=request, cookie='setpasswordotp')
         return response
     # email = request.data.get('email')
     # new_password = request.data.get('password')
