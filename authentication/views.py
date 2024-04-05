@@ -471,7 +471,6 @@ def user_names(request):
         # Error occurred during validation/refresh, return the error response
         return Response({'Error': 'Invalid tokens'}, status=406)
 
-
 # account activation check
 # checks if the account is activated by checking the password attr
 @api_view(["POST"]) 
