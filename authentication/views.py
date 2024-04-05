@@ -423,6 +423,41 @@ def user_email(request):
         # Error occurred during validation/refresh, return the error response
         return Response({'Error': 'Invalid tokens'}, status=406)
 
+# get credentials view
+@api_view(["GET"])
+@cache_control(max_age=15, private=True)
+def user_names(request):
+    access_token = request.COOKIES.get('access_token')
+    refresh_token = request.COOKIES.get('refresh_token')
+    # check if request contains required tokens
+    if not refresh_token:
+        return Response({'error': 'missing refresh token'}, status=400)
+    if not access_token:
+        new_access_token = refresh_access_token(refresh_token)
+    else:
+        new_access_token = validate_access_token(access_token)
+        if new_access_token == None:
+            new_access_token = refresh_access_token(refresh_token)
+    if new_access_token:
+        # Either access token is valid or it has been successfully refreshed
+        # Set the new access token in the response cookie
+        try:
+            # Get the value of a specific cookie
+            decoded_token = AccessToken(new_access_token)
+            try:
+                user = CustomUser.objects.get(pk=decoded_token['user_id'])
+            except ObjectDoesNotExist:
+                return Response({"error": "invalid credentials/tokens"})
+            response = Response({ "name" : user.name, "surname" : user.surname},status=200)
+            response.set_cookie('access_token', new_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+            return response
+        except:
+            return Response({'Error': 'Invalid access token'}, status=406)
+    else:
+        # Error occurred during validation/refresh, return the error response
+        return Response({'Error': 'Invalid tokens'}, status=406)
+
+
 # account activation check
 # checks if the account is activated by checking the password attr
 @api_view(["POST"]) 
