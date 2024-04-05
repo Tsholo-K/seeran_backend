@@ -23,7 +23,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 # utility functions 
-from .utils import validate_access_token, validate_refresh_token, refresh_access_token, generate_otp, verify_user_otp
+from .utils import validate_access_token, validate_refresh_token, refresh_access_token, generate_otp, verify_user_otp, validate_email
 
 
 # views
@@ -109,6 +109,129 @@ def signin(request):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+# validate email before email change view
+@api_view(['POST'])
+def validate_email(request):
+    access_token = request.COOKIES.get('access_token')
+    refresh_token = request.COOKIES.get('refresh_token')
+    # check if request contains required tokens
+    if not refresh_token:
+        return Response({'error': 'missing refresh token'}, status=400)
+    if not access_token:
+        new_access_token = refresh_access_token(refresh_token)
+    else:
+        new_access_token = validate_access_token(access_token)
+        if new_access_token == None:
+            new_access_token = refresh_access_token(refresh_token)
+    if new_access_token:
+        decoded_token = AccessToken(new_access_token)
+        try:
+            user = CustomUser.objects.get(pk=decoded_token['user_id'])
+        except ObjectDoesNotExist:
+            return Response({"error": "invalid credentials/tokens"})
+        sent_email = request.data.get('email')   
+        if not sent_email:
+            return Response({"error": "email address is required required"})
+        # Validate the email
+        if sent_email != user.email:
+            return Response({"error" : "invalid email for account"})
+        # Create an OTP for the user
+        otp, hashed_otp = generate_otp()
+        cache.set(sent_email, hashed_otp, timeout=300)  # 300 seconds = 5 mins
+        # Send the OTP via email
+        try:
+            client = boto3.client('ses', region_name='af-south-1')  # AWS region
+            response = client.send_email(
+                Destination={
+                    'ToAddresses': [sent_email],
+                },
+                Message={
+                    'Body': {
+                        'Text': {
+                            'Data': f'Your OTP is {otp}',
+                        },
+                    },
+                    'Subject': {
+                        'Data': 'Your OTP',
+                    },
+                },
+                Source='authorization@seeran-grades.com',  # SES verified email address
+            )
+            # Check the response to ensure the email was successfully sent
+            if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+                return Response({"message": "email varified, OTP created for user and sent via email"}, status=status.HTTP_200_OK)
+            else:
+                return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except (BotoCoreError, ClientError) as error:
+            # Handle specific errors and return appropriate responses
+            return Response({"error": f"email not sent: {error}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except BadHeaderError:
+            return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    else:
+        # Error occurred during validation/refresh, return the error response
+        return Response({'Error': 'Invalid tokens'}, status=406)
+
+# change email view
+@api_view(['POST'])
+def change_email(request):
+    access_token = request.COOKIES.get('access_token')
+    refresh_token = request.COOKIES.get('refresh_token')
+    # check if request contains required tokens
+    if not refresh_token:
+        return Response({'error': 'missing refresh token'}, status=400)
+    if not access_token:
+        new_access_token = refresh_access_token(refresh_token)
+    else:
+        new_access_token = validate_access_token(access_token)
+        if new_access_token == None:
+            new_access_token = refresh_access_token(refresh_token)
+    if new_access_token:
+        # decode token and get user
+        decoded_token = AccessToken(new_access_token)
+        try:
+            user = CustomUser.objects.get(pk=decoded_token['user_id'])
+        except ObjectDoesNotExist:
+            return Response({"error": "invalid credentials/tokens"})
+        otp = request.COOKIES.get('authorization_otp')
+        new_email = request.data.get('new_email')
+        confirm_email = request.data.get('confirm_email')
+        # make sure all required fields are provided
+        if not new_email or not confirm_email or not otp:
+            return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
+        # check if emails match 
+        if new_email != confirm_email:
+            return Response({"error": "emails do not match"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            hashed_authorization_otp = cache.get(user.email + 'authorization_otp')
+            if not hashed_authorization_otp:
+                return Response({"error": "OTP expired, please reload the page to request a new OTP"}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": f"error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        if not verify_user_otp(otp, hashed_authorization_otp):
+            return Response({"error": "incorrect OTP, action forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            if not validate_email(new_email):
+                return Response({'error': 'Invalid email format'}, status=400)
+            user.email = new_email
+            user.save()
+            try:
+                # Add the refresh token to the blacklist
+                cache.set(refresh_token, 'blacklisted', timeout=86400)
+                response = Response({"message": "email set successfully"})
+                # Clear the refresh token cookie
+                response.delete_cookie('access_token', domain='.seeran-grades.com')
+                response.delete_cookie('refresh_token', domain='.seeran-grades.com')
+                return response
+            except Exception as e:
+                return Response({"error": e})
+        except Exception as e:
+            return Response({"error": f"error setting email: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    else:
+        # Error occurred during validation/refresh, return the error response
+        return Response({'Error': 'Invalid tokens'}, status=406)
+
 @api_view(["GET"])
 def authenticate(request):
     access_token = request.COOKIES.get('access_token')
@@ -133,7 +256,7 @@ def authenticate(request):
 # set password view
 @api_view(['POST'])
 def set_password(request):
-    otp = request.COOKIES.get('setpasswordotp')
+    otp = request.COOKIES.get('authorization_otp')
     email = request.data.get('email')
     new_password = request.data.get('password')
     confirm_password = request.data.get('confirmpassword')
@@ -142,13 +265,13 @@ def set_password(request):
     if new_password != confirm_password:
         return Response({"error": "passwords do not match"}, status=status.HTTP_400_BAD_REQUEST)
     try:
-        stored_hashed_otp = cache.get(email + 'setpasswordotp')
-        if not stored_hashed_otp:
+        hashed_authorization_otp = cache.get(email + 'authorization_otp')
+        if not hashed_authorization_otp:
             return Response({"error": "OTP expired, please reload the page to request a new OTP"}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         return Response({"error": f"error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    if not verify_user_otp(otp, stored_hashed_otp):
-        return Response({"error": "incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
+    if not verify_user_otp(otp, hashed_authorization_otp):
+        return Response({"error": "incorrect OTP, action forbiden"}, status=status.HTTP_400_BAD_REQUEST)
     try:
         user = CustomUser.objects.get(email=email)
         user.password = make_password(new_password)
@@ -218,17 +341,17 @@ def verify_otp(request):
     if verify_user_otp(user_otp=otp, stored_hashed_otp=stored_hashed_otp):
         # OTP is verified, prompt the user to set their password
         cache.delete(email)
-        setpasswordotp, hashed_setpasswordotp = generate_otp()
-        cache.set(email+'setpasswordotp', hashed_setpasswordotp, timeout=300)  # 300 seconds = 5 mins
+        authorization_otp, hashed_authorization_otp = generate_otp()
+        cache.set(email+'authorization_otp', hashed_authorization_otp, timeout=300)  # 300 seconds = 5 mins
         response = Response({"message": "OTP verified successfully"}, status=status.HTTP_200_OK)
-        response.set_cookie('setpasswordotp', setpasswordotp, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
+        response.set_cookie('authorization_otp', authorization_otp, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
         return response
     else:
         return Response({"error": "incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
 
 # get credentials view
 @api_view(["GET"])
-@cache_control(max_age=86400, private=True)
+@cache_control(max_age=15, private=True)
 def user_info(request):
     access_token = request.COOKIES.get('access_token')
     refresh_token = request.COOKIES.get('refresh_token')
@@ -247,7 +370,10 @@ def user_info(request):
         try:
             # Get the value of a specific cookie
             decoded_token = AccessToken(new_access_token)
-            user = CustomUser.objects.get(pk=decoded_token['user_id'])
+            try:
+                user = CustomUser.objects.get(pk=decoded_token['user_id'])
+            except ObjectDoesNotExist:
+                return Response({"error": "invalid credentials/tokens"})
             if user.is_principal or user.is_admin:
                 role = 'admin'
             elif user.is_parent:

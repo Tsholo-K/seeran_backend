@@ -3,7 +3,7 @@ import hashlib
 import random
 import json
 import time
-
+import re
 
 # django
 from django.core.cache import cache
@@ -98,4 +98,7 @@ def rate_limit(request):
     # Increment the request count and set expiry
     cache.set(cache_key, request_count + 1, timeout=3600)  # 3600 seconds = 1 hour
 
-
+def validate_email(email):
+    # Regular expression pattern for basic email format validation
+    pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
+    return re.match(pattern, email)
