@@ -23,7 +23,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 # utility functions 
-from .utils import validate_access_token, validate_refresh_token, refresh_access_token, generate_otp, verify_user_otp, validate_email
+from .utils import validate_access_token, validate_refresh_token, refresh_access_token, generate_otp, verify_user_otp, validate_user_email
 
 
 # views
@@ -212,7 +212,7 @@ def change_email(request):
         if not verify_user_otp(otp, hashed_authorization_otp):
             return Response({"error": "incorrect OTP, action forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            if not validate_email(new_email):
+            if not validate_user_email(new_email):
                 return Response({'error': 'Invalid email format'}, status=400)
             user.email = new_email
             user.save()
@@ -388,7 +388,6 @@ def user_info(request):
     else:
         # Error occurred during validation/refresh, return the error response
         return Response({'Error': 'Invalid tokens'}, status=406)
-
 
 # get credentials view
 @api_view(["GET"])
