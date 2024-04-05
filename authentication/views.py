@@ -240,9 +240,9 @@ def authenticate(request):
     refresh_token = request.COOKIES.get('refresh_token')
     # check if request contains required tokens
     if not refresh_token:
-        return Response({'error': 'missing refresh token'})
+        return Response({'error': 'missing refresh token'}, status=status.HTTP_401_UNAUTHORIZED)
     if cache.get(refresh_token) or validate_refresh_token(refresh_token=refresh_token) == None:
-        return Response({'error': 'invalid refresh token'})
+        return Response({'error': 'invalid refresh token'}, status=status.HTTP_401_UNAUTHORIZED)
     if not access_token:
         new_access_token = refresh_access_token(refresh_token)
     else:
@@ -250,10 +250,10 @@ def authenticate(request):
         if new_access_token == None:
             new_access_token = refresh_access_token(refresh_token)
     if new_access_token:
-        return Response({"message" : "authenticated"})
+        return Response({"message" : "authenticated"}, status=status.HTTP_200_OK)
     else:
         # Error occurred during validation/refresh, return the error response
-        return Response({'error': 'invalid tokens'})
+        return Response({'error': 'invalid tokens'}, status=status.HTTP_401_UNAUTHORIZED)
 
 # set password view
 @api_view(['POST'])
