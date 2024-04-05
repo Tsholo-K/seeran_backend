@@ -203,6 +203,8 @@ def change_email(request):
         # check if emails match 
         if new_email != confirm_email:
             return Response({"error": "emails do not match"}, status=status.HTTP_400_BAD_REQUEST)
+        if new_email == user.email:
+            return Response({"error": "cannot set current email as new email"}, status=status.HTTP_400_BAD_REQUEST)
         try:
             hashed_authorization_otp = cache.get(user.email + 'authorization_otp')
             if not hashed_authorization_otp:
@@ -219,7 +221,7 @@ def change_email(request):
             try:
                 # Add the refresh token to the blacklist
                 cache.set(refresh_token, 'blacklisted', timeout=86400)
-                response = Response({"message": "email set successfully"})
+                response = Response({"message": "email changed successfully"})
                 # Clear the refresh token cookie
                 response.delete_cookie('access_token', domain='.seeran-grades.com')
                 response.delete_cookie('refresh_token', domain='.seeran-grades.com')
