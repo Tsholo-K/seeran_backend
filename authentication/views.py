@@ -250,7 +250,19 @@ def authenticate(request):
         if new_access_token == None:
             new_access_token = refresh_access_token(refresh_token)
     if new_access_token:
-        return Response({"message" : "authenticated"}, status=status.HTTP_200_OK)
+        # Get the value of a specific cookie
+        decoded_token = AccessToken(new_access_token)
+        try:
+            user = CustomUser.objects.get(pk=decoded_token['user_id'])
+        except ObjectDoesNotExist:
+            return Response({"error": "invalid credentials/tokens"})
+        if user.is_principal or user.is_admin:
+            role = 'admin'
+        elif user.is_parent:
+            role = 'parent'
+        else:
+            role = 'student'
+        return Response({"message" : "authenticated", "role" : role}, status=status.HTTP_200_OK)
     else:
         # Error occurred during validation/refresh, return the error response
         return Response({'error': 'invalid tokens'}, status=status.HTTP_401_UNAUTHORIZED)
