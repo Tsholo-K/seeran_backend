@@ -23,7 +23,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 # utility functions 
-from .utils import validate_access_token, validate_refresh_token, refresh_access_token, generate_otp, verify_user_otp, validate_user_email
+from .utils import validate_access_token, generate_access_token, validate_refresh_token, refresh_access_token, generate_otp, verify_user_otp, validate_user_email
 
 
 # views
@@ -257,18 +257,11 @@ def otp_verification(request):
             user = CustomUser.objects.get(email=email)
         except ObjectDoesNotExist:
             return Response({"error": "invalid credentials/tokens"})
-        try:
-            serializer = CustomTokenObtainPairSerializer(data={"password" : user.password, "email" : user.email})
-            serializer.is_valid(raise_exception=True)
-            token = serializer.validated_data
-        except AuthenticationFailed:
-            return Response({"error": "invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        access_token = generate_access_token(user)
         authorization_otp, hashed_authorization_otp = generate_otp()
         cache.set(user.email+'authorization_otp', hashed_authorization_otp, timeout=300)  # 300 seconds = 5 mins
         response = Response({"message": "OTP verified successfully"}, status=status.HTTP_200_OK)
-        response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+        response.set_cookie('access_token', access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
         response.set_cookie('authorization_otp', authorization_otp, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
         cache.delete(email)
         return response

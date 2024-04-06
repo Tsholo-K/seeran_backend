@@ -102,3 +102,13 @@ def validate_user_email(email):
     # Regular expression pattern for basic email format validation
     pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
     return re.match(pattern, email)
+
+
+def generate_access_token(user):
+    # Create a refresh token
+    refresh = RefreshToken.for_user(user)
+
+    # Optionally, access the access token and its payload
+    access_token = refresh.access_token
+
+    return access_token
