@@ -240,7 +240,7 @@ def validate_email(request):
 
 # validate email before password change view
 @api_view(['POST'])
-def reset_otp_verification(request):
+def otp_verification(request):
     email = request.data.get('email')
     otp = request.data.get('otp')
     if not email or not otp:
@@ -285,7 +285,7 @@ def reset_password(request):
     new_access_token = validate_access_token(access_token)
     if new_access_token == None: 
         # Error occurred during validation/refresh, return the error response
-        return Response({'error': 'invalid tokens'}, status=406)
+        return Response({'error': 'invalid token'}, status=406)
     # Assuming the user is authenticated and has changed their password
     decoded_token = AccessToken(new_access_token)
     try:

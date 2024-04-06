@@ -22,7 +22,7 @@ urlpatterns = [
     path('setpassword/', views.set_password, name='set account password( account activation )'),
     
     # password reset
-    path('resetauthentication/', views.reset_otp_verification, name='validate user before password reset'),
+    path('otpverification/', views.otp_verification, name='validate user before password reset'),
     path('resetpassword/', views.reset_password, name='reset users password'),
     
     # verification
