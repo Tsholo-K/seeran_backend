@@ -159,7 +159,7 @@ def validate_password(request):
             )
             # Check the response to ensure the email was successfully sent
             if response['ResponseMetadata']['HTTPStatusCode'] == 200:
-                return Response({"message": "password varified, OTP created for user and sent via email", "users_email" : user.email}, status=status.HTTP_200_OK)
+                return Response({"message": "password varified, OTP created and sent to your email", "users_email" : user.email}, status=status.HTTP_200_OK)
             else:
                 return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except (BotoCoreError, ClientError) as error:
@@ -195,7 +195,7 @@ def validate_email(request):
             return Response({"error": "invalid credentials/tokens"})
         sent_email = request.data.get('email')   
         if not sent_email:
-            return Response({"error": "email address is required required"})
+            return Response({"error": "email address is required"})
         # Validate the email
         if sent_email != user.email:
             return Response({"error" : "invalid email for account"})
@@ -223,7 +223,7 @@ def validate_email(request):
             )
             # Check the response to ensure the email was successfully sent
             if response['ResponseMetadata']['HTTPStatusCode'] == 200:
-                return Response({"message": "email varified, OTP created for user and sent via email"}, status=status.HTTP_200_OK)
+                return Response({"message": "email varified, OTP created and sent to your email"}, status=status.HTTP_200_OK)
             else:
                 return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except (BotoCoreError, ClientError) as error:
@@ -237,6 +237,109 @@ def validate_email(request):
         # Error occurred during validation/refresh, return the error response
         return Response({'Error': 'Invalid tokens'}, status=406)
 
+# validate email before email change view
+@api_view(['POST'])
+def reset_password(request):
+    sent_email = request.data.get('email')
+    try:
+        user = CustomUser.objects.get(email=sent_email)
+    except ObjectDoesNotExist:
+        return Response({"error": "no account linked to this email"})   
+    if not sent_email:
+        return Response({"error": "email address is required"})
+    # Create an OTP for the user
+    otp, hashed_otp = generate_otp()
+    cache.set(sent_email, hashed_otp, timeout=300)  # 300 seconds = 5 mins
+    # Send the OTP via email
+    try:
+        client = boto3.client('ses', region_name='af-south-1')  # AWS region
+        response = client.send_email(
+            Destination={
+                'ToAddresses': [sent_email],
+            },
+            Message={
+                'Body': {
+                    'Text': {
+                        'Data': f'Your OTP is {otp}',
+                    },
+                },
+                'Subject': {
+                    'Data': 'Your OTP',
+                },
+            },
+            Source='authorization@seeran-grades.com',  # SES verified email address
+        )
+        # Check the response to ensure the email was successfully sent
+        if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+            return Response({"message": "email varified, OTP created and sent to your email"}, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except (BotoCoreError, ClientError) as error:
+        # Handle specific errors and return appropriate responses
+        return Response({"error": f"email not sent: {error}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except BadHeaderError:
+        return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+# Password change view
+@api_view(['POST'])
+def change_password(request):
+    access_token = request.COOKIES.get('access_token')
+    refresh_token = request.COOKIES.get('refresh_token')
+    # check if request contains required tokens
+    if not refresh_token:
+        return Response({'error': 'missing refresh token'}, status=400)
+    if cache.get(refresh_token) or validate_refresh_token(refresh_token=refresh_token) == None:
+        return Response({'error': 'invalid refresh token'}, status=400)
+    if not access_token:
+        new_access_token = refresh_access_token(refresh_token)
+    else:
+        new_access_token = validate_access_token(access_token)
+        if new_access_token == None:
+            new_access_token = refresh_access_token(refresh_token)
+    if new_access_token:
+        # Assuming the user is authenticated and has changed their password
+        decoded_token = AccessToken(new_access_token)
+        try:
+            user = CustomUser.objects.get(pk=decoded_token['user_id'])
+        except ObjectDoesNotExist:
+            return Response({"error": "invalid credentials/tokens"})
+        otp = request.COOKIES.get('authorization_otp')
+        # Get the new password and confirm password from the request data
+        new_password = request.data.get('new_password')
+        confirm_password = request.data.get('confirm_password')
+        if not new_password or not confirm_password or not otp:
+            return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            hashed_authorization_otp = cache.get(user.email + 'authorization_otp')
+            if not hashed_authorization_otp:
+                return Response({"error": "OTP expired, please reload the page to request a new OTP"}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": f"error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        if not verify_user_otp(otp, hashed_authorization_otp):
+            return Response({"error": "incorrect OTP, action forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
+        # Validate that the new password and confirm password match
+        if new_password != confirm_password:
+            return Response({"error": "new password and confirm password do not match"}, status=status.HTTP_400_BAD_REQUEST)
+        # Update the user's password
+        user.set_password(new_password)
+        user.save()
+        try:
+            # blacklist refresh token
+            cache.set(refresh_token, 'blacklisted', timeout=86400)
+            # Return an appropriate response (e.g., success message)
+            response = Response({"message": "password changed successfully"}, status=200)
+            # Remove access and refresh token cookies from the response
+            response.delete_cookie('access_token', domain='.seeran-grades.com')
+            response.delete_cookie('refresh_token', domain='.seeran-grades.com')
+            return response
+        except:
+            pass
+    else:
+        # Error occurred during validation/refresh, return the error response
+        return Response({'error': 'invalid tokens'}, status=406)
+    
 # change email view
 @api_view(['POST'])
 def change_email(request):
@@ -566,62 +669,3 @@ def logout(request):
             return Response({"error": e})
     else:
         return Response({"error": "No refresh token provided"})
-
-# Password change view
-@api_view(['POST'])
-def change_password(request):
-    access_token = request.COOKIES.get('access_token')
-    refresh_token = request.COOKIES.get('refresh_token')
-    # check if request contains required tokens
-    if not refresh_token:
-        return Response({'error': 'missing refresh token'}, status=400)
-    if cache.get(refresh_token) or validate_refresh_token(refresh_token=refresh_token) == None:
-        return Response({'error': 'invalid refresh token'}, status=400)
-    if not access_token:
-        new_access_token = refresh_access_token(refresh_token)
-    else:
-        new_access_token = validate_access_token(access_token)
-        if new_access_token == None:
-            new_access_token = refresh_access_token(refresh_token)
-    if new_access_token:
-        # Assuming the user is authenticated and has changed their password
-        decoded_token = AccessToken(new_access_token)
-        try:
-            user = CustomUser.objects.get(pk=decoded_token['user_id'])
-        except ObjectDoesNotExist:
-            return Response({"error": "invalid credentials/tokens"})
-        otp = request.COOKIES.get('authorization_otp')
-        # Get the new password and confirm password from the request data
-        new_password = request.data.get('new_password')
-        confirm_password = request.data.get('confirm_password')
-        if not new_password or not confirm_password or not otp:
-            return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            hashed_authorization_otp = cache.get(user.email + 'authorization_otp')
-            if not hashed_authorization_otp:
-                return Response({"error": "OTP expired, please reload the page to request a new OTP"}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({"error": f"error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        if not verify_user_otp(otp, hashed_authorization_otp):
-            return Response({"error": "incorrect OTP, action forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
-        # Validate that the new password and confirm password match
-        if new_password != confirm_password:
-            return Response({"error": "new password and confirm password do not match"}, status=status.HTTP_400_BAD_REQUEST)
-        # Update the user's password
-        user.set_password(new_password)
-        user.save()
-        try:
-            # blacklist refresh token
-            cache.set(refresh_token, 'blacklisted', timeout=86400)
-            # Return an appropriate response (e.g., success message)
-            response = Response({"message": "password changed successfully"}, status=200)
-            # Remove access and refresh token cookies from the response
-            response.delete_cookie('access_token', domain='.seeran-grades.com')
-            response.delete_cookie('refresh_token', domain='.seeran-grades.com')
-            return response
-        except:
-            pass
-    else:
-        # Error occurred during validation/refresh, return the error response
-        return Response({'error': 'invalid tokens'}, status=406)
-    
