@@ -648,7 +648,7 @@ def resend_otp(request):
         client = boto3.client('ses', region_name='af-south-1')  # AWS region
 
         # Read the email template from a file
-        with open('templates/authentication/emailotptemplate.html', 'r') as file:
+        with open('./templates/authentication/emailotptemplate.html', 'r') as file:
             email_body = file.read()
 
         # Replace the {{otp}} placeholder with the actual OTP
