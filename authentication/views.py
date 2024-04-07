@@ -646,14 +646,11 @@ def resend_otp(request):
     # Send the OTP via email
     try:
         client = boto3.client('ses', region_name='af-south-1')  # AWS region
-
         # Read the email template from a file
         with open('authentication/templates/authentication/emailotptemplate.html', 'r') as file:
             email_body = file.read()
-
         # Replace the {{otp}} placeholder with the actual OTP
         email_body = email_body.replace('{{otp}}', otp)
-
         response = client.send_email(
             Destination={
                 'ToAddresses': [email],
