@@ -133,25 +133,21 @@ def mfa_change(request):
         sent_email = request.data.get('email')
         toggle = request.data.get('toggle')
         if not sent_email or not toggle:
-            return Response({"error": "supplied credentials invalid"})
+            return Response({"error": "supplied credentials are invalid"})
         if not validate_user_email(sent_email):
             return Response({"error": " invalid email address"})
         # Validate the email
         if sent_email != user.email:
             return Response({"error" : "invalid email address for account"})
         # Validate toggle value
-        if toggle not in (True, False):
-            return Response({'error': 'Invalid value for toggle. It must be either "true" or "false"'}, status=status.HTTP_400_BAD_REQUEST)
-        # Once email is verified, set multifactor_authentication to True
         user.multifactor_authentication = toggle
         user.save()
-        if toggle == True:
-            response = Response({'message': 'Multifactor authentication enabled successfully'}, status=status.HTTP_200_OK)
-            response.set_cookie('access_token', new_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
-            return response
-        response = Response({'message': 'Multifactor authentication disabled successfully'}, status=status.HTTP_200_OK)
+        response = Response({'message': 'Multifactor authentication {} successfully'.format('enabled' if toggle else 'disabled')}, status=status.HTTP_200_OK)
         response.set_cookie('access_token', new_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
         return response
+    else:
+        # Error occurred during validation/refresh, return the error response
+        return Response({'Error': 'Invalid tokens'}, status=406)
 
 # validate password before password change view
 @api_view(['POST'])
