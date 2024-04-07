@@ -197,12 +197,13 @@ def validate_email(request):
         sent_email = request.data.get('email')   
         if not sent_email:
             return Response({"error": "email address is required"})
+        if not validate_user_email(sent_email):
+            return Response({"error": " invalid email address"})
         # Validate the email
         if sent_email != user.email:
             return Response({"error" : "invalid email for account"})
         # Create an OTP for the user
         otp, hashed_otp = generate_otp()
-        cache.set(sent_email, hashed_otp, timeout=300)  # 300 seconds = 5 mins
         # Send the OTP via email
         try:
             client = boto3.client('ses', region_name='af-south-1')  # AWS region
@@ -224,6 +225,8 @@ def validate_email(request):
             )
             # Check the response to ensure the email was successfully sent
             if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+                # cache hashed otp and return reponse
+                cache.set(sent_email, hashed_otp, timeout=300)  # 300 seconds = 5 mins
                 return Response({"message": "email varified, OTP created and sent to your email"}, status=status.HTTP_200_OK)
             else:
                 return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
