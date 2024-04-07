@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            body {
+                padding-top: 150px;
+                background-color: rgb(243, 244, 246);
+                font-family: Arial, sans-serif;
+                max-width: 1250px;
+                margin: 0 auto;
+            }
+            .container {
+                width: 90%;
+                margin: auto;
+                padding: 20px;
+                border-radius: 5px;
+            }
+            .otp {
+                font-size: 20px;
+                font-weight: bold;
+            }
+            #clipboard {
+                cursor: pointer;
+            }
+            
+        </style>
+    </head>
+    <body>
+        <img src="logo.svg" alt="seeran grades logo" style="margin-left: 40px">
+        <div class="container">   
+            <h2 style="text-align:center; font-size:70px; margin-bottom:120px">One Time Password</h2>
+            <p style="text-align:center; margin-bottom:140px">Thank you for using our service. As part of our security measures, we have generated a One-Time Password (OTP) for your account.</p>
+            <div style="background-color:white; position:relative; border-radius:20px; height:110px; margin-bottom:140px">
+                <p class="otp" style="margin-bottom:100px; text-align:center; width:100%; font-size:70px; padding-top:18px">{{otp}}</p>
+            </div>
+            <p style="text-align:center">Remember, this OTP is only valid for 5 minutes.</p>
+            <p style="padding:70px 0"></p>
+        </div>
+    </body>
+</html>
+
