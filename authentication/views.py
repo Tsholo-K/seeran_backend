@@ -23,7 +23,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 # utility functions 
-from .utils import validate_access_token, generate_access_token, validate_refresh_token, refresh_access_token, generate_otp, verify_user_otp, validate_user_email
+from .utils import validate_access_token, generate_access_token, generate_token, validate_refresh_token, refresh_access_token, generate_otp, verify_user_otp, validate_user_email
 
 
 # views
@@ -42,6 +42,46 @@ def login(request):
         user = CustomUser.objects.get(email=request.data.get('email'))
     except ObjectDoesNotExist:
         return Response({"error": "invalid credentials/tokens"})
+    #  mfa enabled
+    if user.multifactor_authentication:
+        otp, hashed_otp = generate_otp()
+        # Send the OTP via email
+        try:
+            client = boto3.client('ses', region_name='af-south-1')  # Replace 'us-west-2' with your AWS region
+            response = client.send_email(
+                Destination={
+                    'ToAddresses': [user.email],
+                },
+                Message={
+                    'Body': {
+                        'Text': {
+                            'Data': f'Your OTP is {otp}',
+                        },
+                    },
+                    'Subject': {
+                        'Data': 'Your OTP',
+                    },
+                },
+                Source='authorization@seeran-grades.com',  # Replace with your SES verified email address
+            )
+            # Check the response to ensure the email was successfully sent
+            if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+                cache.set(user.email, hashed_otp, timeout=300)  # 300 seconds = 5 mins
+                authorization_otp, hashed_authorization_otp = generate_otp()
+                cache.set(user.email+'authorization_otp', hashed_authorization_otp, timeout=300)  # 300 seconds = 5 mins
+                response = Response({"message": "a new OTP has been sent to your email address"}, status=status.HTTP_200_OK)
+                response.set_cookie('authorization_otp', authorization_otp, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
+                return response
+            else:
+                return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except (BotoCoreError, ClientError) as error:
+            # Handle specific errors and return appropriate responses
+            return Response({"error": f"email not sent: {error}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except BadHeaderError:
+            return Response({"error": "invalid header found."}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    # mfa disabled
     try:    
         if user.is_principal or user.is_admin:
             role = 'admin'
@@ -49,8 +89,7 @@ def login(request):
             role = 'parent'
         else:
             role = 'student'
-        response_data = {"message": "login successful", "role": role}
-        response = Response(response_data, status=status.HTTP_200_OK)
+        response = Response({"message": "login successful", "role": role}, status=status.HTTP_200_OK)
         # Set access token cookie with custom expiration (5 mins)
         response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
         if 'refresh' in token:
@@ -60,6 +99,56 @@ def login(request):
     except Exception as e:
         return Response({"error": f"error logging you in: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+# multi-factor login view
+@api_view(['POST'])
+def multi_factor_authentication(request):
+    email = request.data.get('email')
+    otp = request.data.get('otp')
+    authorization_cookie_otp = request.COOKIES.get('authorization_otp')
+    if not email or not otp or not authorization_cookie_otp:
+        return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        user = CustomUser.objects.get(email=email)
+    except ObjectDoesNotExist:
+        return Response({"error": "invalid credentials"})
+    try:
+        stored_hashed_otp = cache.get(user.email)
+        if not stored_hashed_otp:
+            return Response({"error": "OTP expired. Please generate a new one"}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({"error": f"error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    if verify_user_otp(user_otp=otp, stored_hashed_otp=stored_hashed_otp):
+        # OTP is verified, prompt the user to set their password
+        try:
+            hashed_authorization_otp = cache.get(user.email + 'authorization_otp')
+            if not hashed_authorization_otp:
+                return Response({"error": "OTP expired, please reload the page to request a new OTP"}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"error": f"error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        if not verify_user_otp(authorization_cookie_otp, hashed_authorization_otp):
+            return Response({"error": "incorrect authorization OTP, action forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
+        cache.delete(user.email)
+        cache.delete(user.email + 'authorization_otp')
+        token = generate_token(user)
+        try:    
+            if user.is_principal or user.is_admin:
+                role = 'admin'
+            elif user.is_parent:
+                role = 'parent'
+            else:
+                role = 'student'
+            response = Response({"message": "login successful, welcome back.", "role": role}, status=status.HTTP_200_OK)
+            # Set access token cookie with custom expiration (5 mins)
+            response.set_cookie('access_token', token.access, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+            if 'refresh' in token:
+                # Set refresh token cookie
+                response.set_cookie('refresh_token', token.refresh, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=86400)
+            return response
+        except Exception as e:
+            return Response({"error": f"error logging you in: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    else:
+        return Response({"error": "incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
+    
 # sign in view
 @api_view(['POST'])
 def signin(request):

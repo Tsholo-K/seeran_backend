@@ -26,6 +26,7 @@ urlpatterns = [
     path('resetpassword/', views.reset_password, name='reset users password'),
     
     # multi-factor authentication
+    path('mfalogin/', views.multi_factor_authentication, name='change users multi-factor authentication prefferance'),
     path('mfachange/', views.mfa_change, name='change users multi-factor authentication prefferance'),
     path('mfastatus/', views.mfa_status, name='checks the multi-factor authentication status'),
     

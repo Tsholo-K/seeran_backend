@@ -112,3 +112,9 @@ def generate_access_token(user):
     access_token = refresh.access_token
 
     return access_token
+
+def generate_token(user):
+    # Create a refresh token
+    return  RefreshToken.for_user(user)
+
+    
