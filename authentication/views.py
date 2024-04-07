@@ -720,7 +720,6 @@ def user_names(request):
 
 # checks the accounts multi-factor authentication status
 @api_view(["GET"])
-@cache_control(max_age=15, private=True)
 def mfa_status(request):
     access_token = request.COOKIES.get('access_token')
     refresh_token = request.COOKIES.get('refresh_token')
