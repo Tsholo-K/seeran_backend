@@ -115,7 +115,7 @@ def generate_token(user):
     refresh = RefreshToken.for_user(user)
     # Optionally, access the access token and its payload
     access_token = refresh.access_token
-    refresh_token = refresh.refresh_token
+    refresh_token = str(refresh)  # Get the string representation of the refresh token
     # Create a refresh token
     return  {"access_token" : access_token , "refresh_token" : refresh_token }
 
