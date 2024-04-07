@@ -192,7 +192,7 @@ def signin(request):
             return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except (BotoCoreError, ClientError) as error:
         # Handle specific errors and return appropriate responses
-        return Response({"error": f"email not sent: {error}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": f"couldn't send email to the specified email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except BadHeaderError:
         return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
