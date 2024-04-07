@@ -140,7 +140,7 @@ def mfa_change(request):
         if sent_email != user.email:
             return Response({"error" : "invalid email address for account"})
         # Validate toggle value
-        if toggle not in ('true', 'false'):
+        if toggle not in (True, False):
             return Response({'error': 'Invalid value for toggle. It must be either "true" or "false"'}, status=status.HTTP_400_BAD_REQUEST)
         # Once email is verified, set multifactor_authentication to True
         user.multifactor_authentication = toggle
