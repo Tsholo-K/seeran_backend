@@ -110,6 +110,49 @@ def signin(request):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+# activate multifactor authentication
+@api_view(['POST'])
+def mfa_change(request):
+    access_token = request.COOKIES.get('access_token')
+    refresh_token = request.COOKIES.get('refresh_token')
+    # check if request contains required tokens
+    if not refresh_token:
+        return Response({'error': 'missing refresh token'}, status=400)
+    if not access_token:
+        new_access_token = refresh_access_token(refresh_token)
+    else:
+        new_access_token = validate_access_token(access_token)
+        if new_access_token == None:
+            new_access_token = refresh_access_token(refresh_token)
+    if new_access_token:
+        decoded_token = AccessToken(new_access_token)
+        try:
+            user = CustomUser.objects.get(pk=decoded_token['user_id'])
+        except ObjectDoesNotExist:
+            return Response({"error": "invalid credentials"})
+        sent_email = request.data.get('email')
+        toggle = request.data.get('toggle')
+        if not sent_email or not toggle:
+            return Response({"error": "supplied credentials invalid"})
+        if not validate_user_email(sent_email):
+            return Response({"error": " invalid email address"})
+        # Validate the email
+        if sent_email != user.email:
+            return Response({"error" : "invalid email address for account"})
+        # Validate toggle value
+        if toggle.lower() not in ('true', 'false'):
+            return Response({'error': 'Invalid value for toggle. It must be either "true" or "false"'}, status=status.HTTP_400_BAD_REQUEST)
+        # Once email is verified, set multifactor_authentication to True
+        user.multifactor_authentication = toggle.lower() == 'true'
+        user.save()
+        if toggle == 'true':
+            response = Response({'message': 'Multifactor authentication enabled successfully'}, status=status.HTTP_200_OK)
+            response.set_cookie('access_token', new_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+            return response
+        response = Response({'message': 'Multifactor authentication disabled successfully'}, status=status.HTTP_200_OK)
+        response.set_cookie('access_token', new_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+        return response
+
 # validate password before password change view
 @api_view(['POST'])
 def validate_password(request):
@@ -129,13 +172,14 @@ def validate_password(request):
         try:
             user = CustomUser.objects.get(pk=decoded_token['user_id'])
         except ObjectDoesNotExist:
-            return Response({"error": "invalid credentials/tokens"})
-        sent_password = request.data.get('password')   
+            return Response({"error": "invalid credentials"})
+        sent_password = request.data.get('password')
+        # make sure an password was sent
         if not sent_password:
             return Response({"error": "password is required"})
         # Validate the password
         if not check_password(sent_password, user.password):
-            return Response({"error": "current password is incorrect"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "invalid password, please try again"}, status=status.HTTP_400_BAD_REQUEST)
         # Create an OTP for the user
         otp, hashed_otp = generate_otp()
         # Send the OTP via email
@@ -160,7 +204,9 @@ def validate_password(request):
             # Check the response to ensure the email was successfully sent
             if response['ResponseMetadata']['HTTPStatusCode'] == 200:
                 cache.set(user.email, hashed_otp, timeout=300)  # 300 seconds = 5 mins
-                return Response({"message": "password varified, OTP created and sent to your email", "users_email" : user.email}, status=status.HTTP_200_OK)
+                response = Response({"message": "password verified, OTP created and sent to your email", "users_email" : user.email}, status=status.HTTP_200_OK)
+                response.set_cookie('access_token', new_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+                return response
             else:
                 return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except (BotoCoreError, ClientError) as error:
@@ -201,7 +247,7 @@ def validate_email(request):
             return Response({"error": " invalid email address"})
         # Validate the email
         if sent_email != user.email:
-            return Response({"error" : "invalid email for account"})
+            return Response({"error" : "invalid email address for account"})
         # Create an OTP for the user
         otp, hashed_otp = generate_otp()
         # Send the OTP via email
@@ -227,7 +273,9 @@ def validate_email(request):
             if response['ResponseMetadata']['HTTPStatusCode'] == 200:
                 # cache hashed otp and return reponse
                 cache.set(sent_email, hashed_otp, timeout=300)  # 300 seconds = 5 mins
-                return Response({"message": "email varified, OTP created and sent to your email"}, status=status.HTTP_200_OK)
+                response = Response({"message": "email verified, OTP created and sent to your email"}, status=status.HTTP_200_OK)
+                response.set_cookie('access_token', new_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+                return response
             else:
                 return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except (BotoCoreError, ClientError) as error:
@@ -271,7 +319,7 @@ def otp_verification(request):
     else:
         return Response({"error": "incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
 
-# Password change view
+# Password reset view
 @api_view(['POST'])
 def reset_password(request):
     access_token = request.COOKIES.get('access_token')
@@ -463,7 +511,9 @@ def authenticate(request):
             role = 'parent'
         else:
             role = 'student'
-        return Response({"message" : "authenticated", "role" : role}, status=status.HTTP_200_OK)
+        response = Response({"message" : "authenticated", "role" : role}, status=status.HTTP_200_OK)
+        response.set_cookie('access_token', new_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+        return response
     else:
         # Error occurred during validation/refresh, return the error response
         return Response({'error': 'invalid tokens'}, status=status.HTTP_401_UNAUTHORIZED)
@@ -584,24 +634,21 @@ def user_info(request):
     if new_access_token:
         # Either access token is valid or it has been successfully refreshed
         # Set the new access token in the response cookie
+        # Get the value of a specific cookie
+        decoded_token = AccessToken(new_access_token)
         try:
-            # Get the value of a specific cookie
-            decoded_token = AccessToken(new_access_token)
-            try:
-                user = CustomUser.objects.get(pk=decoded_token['user_id'])
-            except ObjectDoesNotExist:
-                return Response({"error": "invalid credentials/tokens"})
-            if user.is_principal or user.is_admin:
-                role = 'admin'
-            elif user.is_parent:
-                role = 'parent'
-            else:
-                role = 'student'
-            response = Response({ "email" : user.email, 'name': user.name, 'surname' : user.surname, "role" : role, "account_id" : user.account_id},status=200)
-            response.set_cookie('access_token', new_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
-            return response
-        except:
-            return Response({'Error': 'Invalid access token'}, status=406)
+            user = CustomUser.objects.get(pk=decoded_token['user_id'])
+        except ObjectDoesNotExist:
+            return Response({"error": "invalid credentials/tokens"})
+        if user.is_principal or user.is_admin:
+            role = 'admin'
+        elif user.is_parent:
+            role = 'parent'
+        else:
+            role = 'student'
+        response = Response({ "email" : user.email, 'name': user.name, 'surname' : user.surname, "role" : role, "account_id" : user.account_id},status=200)
+        response.set_cookie('access_token', new_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+        return response
     else:
         # Error occurred during validation/refresh, return the error response
         return Response({'Error': 'Invalid tokens'}, status=406)
@@ -624,18 +671,15 @@ def user_email(request):
     if new_access_token:
         # Either access token is valid or it has been successfully refreshed
         # Set the new access token in the response cookie
+        # Get the value of a specific cookie
+        decoded_token = AccessToken(new_access_token)
         try:
-            # Get the value of a specific cookie
-            decoded_token = AccessToken(new_access_token)
-            try:
-                user = CustomUser.objects.get(pk=decoded_token['user_id'])
-            except ObjectDoesNotExist:
-                return Response({"error": "invalid credentials/tokens"})
-            response = Response({ "email" : user.email},status=200)
-            response.set_cookie('access_token', new_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
-            return response
-        except:
-            return Response({'Error': 'Invalid access token'}, status=406)
+            user = CustomUser.objects.get(pk=decoded_token['user_id'])
+        except ObjectDoesNotExist:
+            return Response({"error": "invalid credentials/tokens"})
+        response = Response({ "email" : user.email},status=200)
+        response.set_cookie('access_token', new_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+        return response
     else:
         # Error occurred during validation/refresh, return the error response
         return Response({'Error': 'Invalid tokens'}, status=406)
@@ -670,6 +714,37 @@ def user_names(request):
             return response
         except:
             return Response({'Error': 'Invalid access token'}, status=406)
+    else:
+        # Error occurred during validation/refresh, return the error response
+        return Response({'Error': 'Invalid tokens'}, status=406)
+
+# checks the accounts multi-factor authentication status
+@api_view(["GET"])
+@cache_control(max_age=15, private=True)
+def mfa_status(request):
+    access_token = request.COOKIES.get('access_token')
+    refresh_token = request.COOKIES.get('refresh_token')
+    # check if request contains required tokens
+    if not refresh_token:
+        return Response({'error': 'missing refresh token'}, status=400)
+    if not access_token:
+        new_access_token = refresh_access_token(refresh_token)
+    else:
+        new_access_token = validate_access_token(access_token)
+        if new_access_token == None:
+            new_access_token = refresh_access_token(refresh_token)
+    if new_access_token:
+        # Either access token is valid or it has been successfully refreshed
+        # Set the new access token in the response cookie
+        # Get the value of a specific cookie
+        decoded_token = AccessToken(new_access_token)
+        try:
+            user = CustomUser.objects.get(pk=decoded_token['user_id'])
+        except ObjectDoesNotExist:
+            return Response({"error": "invalid credentials/tokens"})
+        response = Response({"email" : user.email, "mfa_status" : user.multifactor_authentication},status=200)
+        response.set_cookie('access_token', new_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+        return response
     else:
         # Error occurred during validation/refresh, return the error response
         return Response({'Error': 'Invalid tokens'}, status=406)

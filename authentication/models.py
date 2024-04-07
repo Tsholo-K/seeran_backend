@@ -54,9 +54,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     id_number = models.CharField(_('ID number'), max_length=20, unique=True, blank=True, null=True)
     name = models.CharField(_('name'), max_length=150)
     surname = models.CharField(_('surname'), max_length=150)
-    is_active = models.BooleanField(_('active'), default=True)
-    is_staff = models.BooleanField(_('staff status'), default=False)
-    is_superuser = models.BooleanField(_('superuser status'), default=False)
+    account_id = models.CharField(max_length=13, unique=True, default=generate_account_id)
     
     # Role fields
     is_student = models.BooleanField(_('student status'), default=False)
@@ -65,7 +63,13 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_admin = models.BooleanField(_('admin status'), default=False)
     is_principal = models.BooleanField(_('principal status'), default=False)
     
-    account_id = models.CharField(max_length=13, unique=True, default=generate_account_id)
+    # permissions needed by django do not change( unless you have a valid reason to )
+    is_active = models.BooleanField(_('active'), default=True)
+    is_staff = models.BooleanField(_('staff status'), default=False)
+    is_superuser = models.BooleanField(_('superuser status'), default=False)
+
+    # multi-factor authentication
+    multifactor_authentication = models.BooleanField(default=False) 
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['name', 'surname']

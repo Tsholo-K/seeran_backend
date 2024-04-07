@@ -25,6 +25,10 @@ urlpatterns = [
     path('otpverification/', views.otp_verification, name='validate user before password reset'),
     path('resetpassword/', views.reset_password, name='reset users password'),
     
+    # multi-factor authentication
+    path('mfachange/', views.mfa_change, name='change users multi-factor authentication prefferance'),
+    path('mfastatus/', views.mfa_status, name='checks the multi-factor authentication status'),
+    
     # verification
     path('verifyotp/', views.verify_otp, name='otp authentication'),
     
