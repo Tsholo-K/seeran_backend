@@ -140,9 +140,8 @@ def multi_factor_authentication(request):
             response = Response({"message": "login successful, welcome back.", "role": role}, status=status.HTTP_200_OK)
             # Set access token cookie with custom expiration (5 mins)
             response.set_cookie('access_token', token['access_token'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
-            if 'refresh' in token:
-                # Set refresh token cookie
-                response.set_cookie('refresh_token', token['refresh_token'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=86400)
+            # Set refresh token cookie
+            response.set_cookie('refresh_token', token['refresh_token'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=86400)
             return response
         except Exception as e:
             return Response({"error": f"error logging you in: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
