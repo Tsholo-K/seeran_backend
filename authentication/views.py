@@ -737,7 +737,7 @@ def mfa_status(request):
             user = CustomUser.objects.get(pk=decoded_token['user_id'])
         except ObjectDoesNotExist:
             return Response({"error": "invalid credentials/tokens"})
-        response = Response({"email" : user.email, "mfa_status" : user.multifactor_authentication},status=200)
+        response = Response({"mfa_status" : user.multifactor_authentication},status=200)
         response.set_cookie('access_token', new_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
         return response
     else:
