@@ -67,7 +67,7 @@ def login(request):
                         'Data': 'One Time Passcode',
                     },
                 },
-                Source='authorization@seeran-grades.com',  # SES verified email address
+                Source='seeran grades <authorization@seeran-grades.com>',  # SES verified email address
             )
             # Check the response to ensure the email was successfully sent
             if response['ResponseMetadata']['HTTPStatusCode'] == 200:
@@ -675,7 +675,7 @@ def resend_otp(request):
                     'Data': 'One Time Passcode',
                 },
             },
-            Source='authorization@seeran-grades.com',  # SES verified email address
+            Source='seeran grades <authorization@seeran-grades.com>',  # SES verified email address
         )
         # Check the response to ensure the email was successfully sent
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
