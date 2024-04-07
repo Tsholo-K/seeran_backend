@@ -132,7 +132,7 @@ def mfa_change(request):
             return Response({"error": "invalid credentials"})
         sent_email = request.data.get('email')
         toggle = request.data.get('toggle')
-        if not sent_email or not toggle:
+        if not sent_email or toggle == None:
             return Response({"error": "supplied credentials are invalid"})
         if not validate_user_email(sent_email):
             return Response({"error": " invalid email address"})
