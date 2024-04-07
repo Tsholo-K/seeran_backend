@@ -145,7 +145,7 @@ def mfa_change(request):
         # Once email is verified, set multifactor_authentication to True
         user.multifactor_authentication = toggle
         user.save()
-        if toggle == 'true':
+        if toggle == True:
             response = Response({'message': 'Multifactor authentication enabled successfully'}, status=status.HTTP_200_OK)
             response.set_cookie('access_token', new_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
             return response
