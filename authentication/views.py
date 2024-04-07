@@ -47,22 +47,27 @@ def login(request):
         otp, hashed_otp = generate_otp()
         # Send the OTP via email
         try:
-            client = boto3.client('ses', region_name='af-south-1')  # Replace 'us-west-2' with your AWS region
+            client = boto3.client('ses', region_name='af-south-1')  # AWS region
+            # Read the email template from a file
+            with open('authentication/templates/authentication/emailotptemplate.html', 'r') as file:
+                email_body = file.read()
+            # Replace the {{otp}} placeholder with the actual OTP
+            email_body = email_body.replace('{{otp}}', otp)
             response = client.send_email(
                 Destination={
                     'ToAddresses': [user.email],
                 },
                 Message={
                     'Body': {
-                        'Text': {
-                            'Data': f'Your OTP is {otp}',
+                        'Html': {
+                            'Data': email_body,
                         },
                     },
                     'Subject': {
-                        'Data': 'Your OTP',
+                        'Data': 'One Time Passcode',
                     },
                 },
-                Source='authorization@seeran-grades.com',  # Replace with your SES verified email address
+                Source='authorization@seeran-grades.com',  # SES verified email address
             )
             # Check the response to ensure the email was successfully sent
             if response['ResponseMetadata']['HTTPStatusCode'] == 200:
@@ -168,18 +173,23 @@ def signin(request):
     # Send the OTP via email
     try:
         client = boto3.client('ses', region_name='af-south-1')  # AWS region
+        # Read the email template from a file
+        with open('authentication/templates/authentication/emailotptemplate.html', 'r') as file:
+            email_body = file.read()
+        # Replace the {{otp}} placeholder with the actual OTP
+        email_body = email_body.replace('{{otp}}', otp)
         response = client.send_email(
             Destination={
                 'ToAddresses': [email],
             },
             Message={
                 'Body': {
-                    'Text': {
-                        'Data': f'Your OTP is {otp}',
+                    'Html': {
+                        'Data': email_body,
                     },
                 },
                 'Subject': {
-                    'Data': 'Your OTP',
+                    'Data': 'One Time Passcode',
                 },
             },
             Source='authorization@seeran-grades.com',  # SES verified email address
@@ -187,7 +197,7 @@ def signin(request):
         # Check the response to ensure the email was successfully sent
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
             cache.set(user.email, hashed_otp, timeout=300)  # 300 seconds = 5 mins
-            return Response({"message": "OTP created for user and sent via email", "email" : user.email}, status=status.HTTP_200_OK)
+            return Response({"message": "OTP created and sent to your email", "email" : user.email}, status=status.HTTP_200_OK)
         else:
             return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except (BotoCoreError, ClientError) as error:
@@ -662,7 +672,7 @@ def resend_otp(request):
                     },
                 },
                 'Subject': {
-                    'Data': 'Your OTP',
+                    'Data': 'One Time Passcode',
                 },
             },
             Source='authorization@seeran-grades.com',  # SES verified email address
@@ -670,7 +680,7 @@ def resend_otp(request):
         # Check the response to ensure the email was successfully sent
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
             cache.set(user.email, hashed_otp, timeout=300)  # 300 seconds = 5 mins
-            return Response({"message": "OTP created for user and sent via email", "email" : user.email}, status=status.HTTP_200_OK)
+            return Response({"message": "OTP created and sent to your email", "email" : user.email}, status=status.HTTP_200_OK)
         else:
             return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except (BotoCoreError, ClientError) as error:
