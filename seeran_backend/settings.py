@@ -144,7 +144,7 @@ SIMPLE_JWT = {
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'rediss://seeran-cache-qqnsrs.serverless.afs1.cache.amazonaws.com:6379/',
+        'LOCATION': 'rediss://seeran-redis-database.qqnsrs.clustercfg.afs1.cache.amazonaws.com:6379/',
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         }
