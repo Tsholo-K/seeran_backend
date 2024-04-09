@@ -3,6 +3,9 @@ from . import views
 
 urlpatterns = [
     
+    # aws sns endpoint
+    path('sns/notifications/', views.sns_endpoint, name="sns notifications endpoint"),
+    
     # user info
     path('userinfo/', views.user_info, name='returns user info'),
     path('useremail/', views.user_email, name='returns user email'),

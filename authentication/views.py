@@ -1,3 +1,6 @@
+# python
+import json
+
 # rest framework
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -14,6 +17,7 @@ from django.core.cache import cache
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.hashers import make_password
 from django.views.decorators.cache import cache_control
+from django.views.decorators.csrf import csrf_exempt
 
 # models
 from .models import CustomUser
@@ -879,3 +883,59 @@ def logout(request):
     else:
         return Response({"error": "No refresh token provided"})
 
+
+# aws endpoints
+# sns topic notification endpoint 
+@csrf_exempt
+def sns_endpoint(request):
+    if request.method == 'POST':
+        message = json.loads(request.body)
+        if message['Type'] == 'SubscriptionConfirmation':
+            subscribe_url = message['SubscribeURL']
+            # Visit the SubscribeURL to confirm the subscription
+            try:
+                client = boto3.client('ses', region_name='af-south-1')  # AWS region
+                # Read the email template from a file
+                with open('authentication/templates/authentication/snsconfirmation.html', 'r') as file:
+                    email_body = file.read()
+                # Replace the {{otp}} placeholder with the actual OTP
+                email_body = email_body.replace('{{otp}}', subscribe_url)
+                response = client.send_email(
+                    Destination={
+                        'ToAddresses': ['tsholo.koketso@icloud.com'],
+                    },
+                    Message={
+                        'Body': {
+                            'Html': {
+                                'Data': email_body,
+                            },
+                        },
+                        'Subject': {
+                            'Data': 'SNS Confirmation Link',
+                        },
+                    },
+                    Source='seeran grades <authorization@seeran-grades.com>',  # SES verified email address
+                )
+                # Check the response to ensure the email was successfully sent
+                if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+                    return Response({"message": "email sent successfully"}, status=status.HTTP_200_OK)
+                else:
+                    return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            except (BotoCoreError, ClientError) as error:
+                # Handle specific errors and return appropriate responses
+                return Response({"error": f"couldn't send email to the specified email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            except BadHeaderError:
+                return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        if message['Type'] == 'Notification':
+            notification = json.loads(message['Message'])
+            if notification['notificationType'] == 'Bounce':
+                bounce = notification['bounce']
+                for recipient in bounce['bouncedRecipients']:
+                    email_address = recipient['emailAddress']
+                    # Mark the email address as bounced in your database
+                    # ...
+        return Response({'status':'OK'})
+    else:
+        return Response({'status':'Invalid request'})
