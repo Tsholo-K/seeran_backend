@@ -120,7 +120,7 @@ def login(request):
             role = 'parent'
         else:
             role = 'student'
-        response = Response({"message": "login successful", "role": role, "alert" : "email in blacklist"}, status=status.HTTP_200_OK)
+        response = Response({"message": "login successful", "role": role,}, status=status.HTTP_200_OK)
         # Set access token cookie with custom expiration (5 mins)
         response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
         if 'refresh' in token:
