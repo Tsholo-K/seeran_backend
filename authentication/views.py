@@ -20,7 +20,7 @@ from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import csrf_exempt
 
 # models
-from .models import CustomUser
+from .models import CustomUser, BouncedComplaintEmail
 
 # amazon email sending service
 import boto3
@@ -48,6 +48,28 @@ def login(request):
         return Response({"error": "invalid credentials/tokens"})
     #  mfa enabled
     if user.multifactor_authentication:
+        # if the users email has recently been banned, disable multi-factor authentication because it requires we send an otp to them via email
+        # then log them in without multi-factor authentication 
+        if user.email_banned:
+            user.multifactor_authentication = False
+            user.save()
+            try:    
+                if user.is_principal or user.is_admin:
+                    role = 'admin'
+                elif user.is_parent:
+                    role = 'parent'
+                else:
+                    role = 'student'
+                # the alert key is used on the front side to alert the user of their email being banned and what they can do to appeal 
+                response = Response({"message": "login successful", "role": role, "alert" : "email in blacklist"}, status=status.HTTP_200_OK)
+                # Set access token cookie with custom expiration (5 mins)
+                response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+                if 'refresh' in token:
+                    # Set refresh token cookie
+                    response.set_cookie('refresh_token', token['refresh'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=86400)
+                return response
+            except Exception as e:
+                return Response({"error": f"there was an error logging you in"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         otp, hashed_otp = generate_otp()
         # Send the OTP via email
         try:
@@ -82,7 +104,7 @@ def login(request):
                 response.set_cookie('authorization_otp', authorization_otp, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
                 return response
             else:
-                return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({"error": "failed to send OTP to your specified email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except (BotoCoreError, ClientError) as error:
             # Handle specific errors and return appropriate responses
             return Response({"error": f"email not sent: {error}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -98,7 +120,7 @@ def login(request):
             role = 'parent'
         else:
             role = 'student'
-        response = Response({"message": "login successful", "role": role}, status=status.HTTP_200_OK)
+        response = Response({"message": "login successful", "role": role, "alert" : "email in blacklist"}, status=status.HTTP_200_OK)
         # Set access token cookie with custom expiration (5 mins)
         response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
         if 'refresh' in token:
@@ -106,7 +128,7 @@ def login(request):
             response.set_cookie('refresh_token', token['refresh'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=86400)
         return response
     except Exception as e:
-        return Response({"error": f"error logging you in: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": f"there was an error logging you in"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # multi-factor login view
 @api_view(['POST'])
@@ -170,6 +192,8 @@ def signin(request):
         user = CustomUser.objects.get(name=name, surname=surname, email=email)
     except ObjectDoesNotExist:
         return Response({"error": "invalid credentials"})
+    if user.email_banned:
+        return Response({ "error" : "your email has been banned"})
     if user.password != '' and user.has_usable_password():
         return Response({"error": "account already activated"}, status=403)
     # Create an OTP for the user
@@ -232,6 +256,8 @@ def mfa_change(request):
             user = CustomUser.objects.get(pk=decoded_token['user_id'])
         except ObjectDoesNotExist:
             return Response({"error": "invalid credentials"})
+        if user.email_banned:
+            return Response({ "error" : "your email has been banned"})
         sent_email = request.data.get('email')
         toggle = request.data.get('toggle')
         if not sent_email or toggle == None:
@@ -271,6 +297,8 @@ def validate_password(request):
             user = CustomUser.objects.get(pk=decoded_token['user_id'])
         except ObjectDoesNotExist:
             return Response({"error": "invalid credentials"})
+        if user.email_banned:
+            return Response({ "error" : "your email address has been banned"})
         sent_password = request.data.get('password')
         # make sure an password was sent
         if not sent_password:
@@ -338,6 +366,8 @@ def validate_email(request):
             user = CustomUser.objects.get(pk=decoded_token['user_id'])
         except ObjectDoesNotExist:
             return Response({"error": "invalid credentials/tokens"})
+        if user.email_banned:
+            return Response({ "error" : "your email address has been banned"})
         sent_email = request.data.get('email')   
         if not sent_email:
             return Response({"error": "email address is required"})
@@ -656,6 +686,8 @@ def resend_otp(request):
         user = CustomUser.objects.get(email=email)
     except CustomUser.DoesNotExist:
         return Response({"error": "user with this email does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+    if user.email_banned:
+        return Response({ "error" : "your email address has been banned"})
     otp, hashed_otp = generate_otp()
     # Send the OTP via email
     try:
@@ -865,7 +897,7 @@ def account_status(request):
         return Response({"error": "account already activated"})
     return Response({"message":"account not activated"})
 
-# User logout view
+# user logout view
 @api_view(['POST'])
 def logout(request):
     refresh_token = request.COOKIES.get('refresh_token')
@@ -883,6 +915,21 @@ def logout(request):
     else:
         return Response({"error": "No refresh token provided"})
 
+# user email events unsubscribe
+@csrf_exempt
+@api_view(['POST'])
+def unsubscribe(request):
+    if request.method == 'POST':
+        email_address = request.data.get('email')
+        try:
+            user = CustomUser.objects.get(email=email_address)
+            user.event_emails = False
+            user.save()
+            return Response({'status': 'Unsubscribed successfully'})
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'Email address not found'}, status=400)
+    else:
+        return Response({'error': 'Invalid request'}, status=400)
 
 # aws endpoints
 # sns topic notification endpoint 
@@ -891,52 +938,49 @@ def logout(request):
 def sns_endpoint(request):
     if request.method == 'POST':
         message = json.loads(request.body)
-        if message['Type'] == 'SubscriptionConfirmation':
-            subscribe_url = message['SubscribeURL']
-            # Visit the SubscribeURL to confirm the subscription
-            try:
-                client = boto3.client('ses', region_name='af-south-1')  # AWS region
-                # Read the email template from a file
-                with open('authentication/templates/authentication/snsconfirmation.html', 'r') as file:
-                    email_body = file.read()
-                # Replace the {{otp}} placeholder with the actual OTP
-                email_body = email_body.replace('{{otp}}', subscribe_url)
-                response = client.send_email(
-                    Destination={
-                        'ToAddresses': ['tsholo.koketso@icloud.com'],
-                    },
-                    Message={
-                        'Body': {
-                            'Html': {
-                                'Data': email_body,
-                            },
-                        },
-                        'Subject': {
-                            'Data': 'SNS Confirmation Link',
-                        },
-                    },
-                    Source='seeran grades <authorization@seeran-grades.com>',  # SES verified email address
-                )
-                # Check the response to ensure the email was successfully sent
-                if response['ResponseMetadata']['HTTPStatusCode'] == 200:
-                    return Response({"message": "email sent successfully"}, status=status.HTTP_200_OK)
-                else:
-                    return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            except (BotoCoreError, ClientError) as error:
-                # Handle specific errors and return appropriate responses
-                return Response({"error": f"couldn't send email to the specified email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            except BadHeaderError:
-                return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
-            except Exception as e:
-                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         if message['Type'] == 'Notification':
             notification = json.loads(message['Message'])
             if notification['notificationType'] == 'Bounce':
                 bounce = notification['bounce']
                 for recipient in bounce['bouncedRecipients']:
                     email_address = recipient['emailAddress']
-                    # Mark the email address as bounced in your database
-                    # ...
+                    # Check if the bounce is permanent
+                    if bounce['bounceType'] == 'Permanent':
+                        # Add the email to your bounce table
+                        BouncedComplaintEmail.objects.get_or_create(email=email_address, reason="email bounced permanently")
+                        # Look up the user and tag them
+                        try:
+                            user = CustomUser.objects.get(email=email_address)
+                            user.email_banned = True
+                            user.email_ban_amount = 3
+                            user.save()
+                        except CustomUser.DoesNotExist:
+                            pass
+                    else:
+                        # Add the email to your bounce table
+                        BouncedComplaintEmail.objects.get_or_create(email=email_address, reason="email soft bounced, there might be an issues with the your email address or mail server. these issues can include a full mailbox or a temporarily unavailable server") # the user can appeal to get thier email unbanned 
+                        try:
+                            user = CustomUser.objects.get(email=email_address)
+                            user.email_banned = True
+                            user.email_ban_amount = user.email_ban_amount + 1
+                            user.save()
+                        except CustomUser.DoesNotExist:
+                            pass
+            elif notification['notificationType'] == 'Complaint':
+                complaint = notification['complaint']
+                for recipient in complaint['complainedRecipients']:
+                    email_address = recipient['emailAddress']
+                    # Handle complaints here
+                    BouncedComplaintEmail.objects.get_or_create(email=email_address, reason='you marked one of our emails as spam. we respect our customers, so we will refrain from sending you any emails here on out') # the user can appeal to get thier email unbanned 
+                    try:
+                        user = CustomUser.objects.get(email=email_address)
+                        user.email_banned = True
+                        user.email_ban_amount = user.email_ban_amount + 1
+                        user.save()
+                    except CustomUser.DoesNotExist:
+                        pass
+            elif notification['notificationType'] == 'Delivery':
+                pass
         return Response({'status':'OK'})
     else:
         return Response({'status':'Invalid request'})

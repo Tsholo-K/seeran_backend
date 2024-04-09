@@ -67,9 +67,14 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(_('active'), default=True)
     is_staff = models.BooleanField(_('staff status'), default=False)
     is_superuser = models.BooleanField(_('superuser status'), default=False)
+    
+    # email communication preferance
+    event_emails = models.BooleanField(default=False)
 
     # multi-factor authentication
-    multifactor_authentication = models.BooleanField(default=False) 
+    multifactor_authentication = models.BooleanField(default=False)
+    email_banned = models.BooleanField(default=False)
+    email_ban_amount = models.SmallIntegerField(default=0)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['name', 'surname']
@@ -82,3 +87,8 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email if self.email else self.id_number
+
+
+class BouncedComplaintEmail(models.Model):
+    email = models.EmailField(unique=True)
+    reason = models.TextField()
