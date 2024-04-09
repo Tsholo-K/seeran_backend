@@ -887,6 +887,7 @@ def logout(request):
 # aws endpoints
 # sns topic notification endpoint 
 @csrf_exempt
+@api_view(['POST'])
 def sns_endpoint(request):
     if request.method == 'POST':
         message = json.loads(request.body)
