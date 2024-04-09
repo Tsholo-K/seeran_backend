@@ -17,7 +17,7 @@ class School(models.Model):
     academic_calendar = models.TextField(blank=True, null=True)
     # Add more fields as needed
     
-    school_id = models.CharField(max_length=13, unique=True, default=generate_account_id)
+    school_id = models.CharField(max_length=15, unique=True, default=generate_account_id('SC')) # school account
 
     def __str__(self):
         return self.name

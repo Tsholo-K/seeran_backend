@@ -15,18 +15,18 @@ from rest_framework_simplejwt.exceptions import TokenError
 
 
 # account id generator
-def generate_account_id():
+def generate_account_id(prefix=''):
     # Generate a timestamp
     timestamp = int(time.time())
 
     # Generate a random number of length 5
     random_part = random.randint(10000, 99999)
 
-    # Concatenate timestamp and random number and convert to string
-    account_id = str(timestamp) + str(random_part)
+    # Concatenate prefix, timestamp, and random number and convert to string
+    account_id = prefix + str(timestamp) + str(random_part)
 
-    # Ensure it's exactly 13 digits long
-    account_id = account_id[:13].ljust(13, '0')
+    # Ensure it's exactly 15 digits long (2 for prefix and 13 for the rest)
+    account_id = account_id[:15].ljust(15, '0')
 
     return account_id
 
