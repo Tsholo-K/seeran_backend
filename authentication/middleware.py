@@ -17,7 +17,7 @@ class TokenMiddleware:
         # List of URLs to exclude
         excluded_urls = ['/api/auth/login/', '/api/auth/sigin/', '/api/auth/mfalogin/', '/api/auth/verifyotp/', '/api/auth/resetpassword/', '/api/auth/setpassword', 'api/auth/resendotp/', '/api/auth/otpverification/', 'api/auth/accountstatus/', 'api/auth/sns/notifications']
 
-        # Check if the current URL is in the list of excluded URLs
+         # Check if the current URL is in the list of excluded URLs
         if request.path not in excluded_urls:
             access_token = request.COOKIES.get('access_token')
             refresh_token = request.COOKIES.get('refresh_token')
@@ -39,6 +39,7 @@ class TokenMiddleware:
                     return JsonResponse({"error": "invalid credentials/tokens"})
             else:
                 return JsonResponse({'Error': 'Invalid tokens'}, status=406)
+
         response = self.get_response(request)
         # Set the new access token in the response cookie
         if new_access_token:
