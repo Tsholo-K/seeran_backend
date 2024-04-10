@@ -32,6 +32,8 @@ from botocore.exceptions import BotoCoreError, ClientError
 # utility functions 
 from .utils import validate_access_token, generate_access_token, generate_token, generate_otp, verify_user_otp, validate_user_email
 
+# custom decorators
+from .decorators import token_required
 
 # views
 # login view
@@ -241,6 +243,7 @@ def signin(request):
 
 # activate multifactor authentication
 @api_view(['POST'])
+@token_required
 def mfa_change(request):
     if request.user.email_banned:
         return Response({ "error" : "your email has been banned"})
@@ -260,6 +263,7 @@ def mfa_change(request):
 
 # activate multifactor authentication
 @api_view(['POST'])
+@token_required
 def event_emails_subscription(request):
     if request.user.email_banned:
         return Response({ "error" : "your email has been banned"})
@@ -279,6 +283,7 @@ def event_emails_subscription(request):
 
 # validate password before password change view
 @api_view(['POST'])
+@token_required
 def validate_password(request):
     if request.user.email_banned:
         return Response({ "error" : "your email address has been banned"})
@@ -331,6 +336,7 @@ def validate_password(request):
 
 # validate email before email change view
 @api_view(['POST'])
+@token_required
 def validate_email(request):
     if request.user.email_banned:
         return Response({ "error" : "your email address has been banned"})
@@ -461,6 +467,7 @@ def reset_password(request):
 
 # Password change view
 @api_view(['POST'])
+@token_required
 def change_password(request):
     otp = request.COOKIES.get('authorization_otp')
     # Get the new password and confirm password from the request data
@@ -497,6 +504,7 @@ def change_password(request):
  
 # change email view
 @api_view(['POST'])
+@token_required
 def change_email(request):
     otp = request.COOKIES.get('authorization_otp')
     new_email = request.data.get('new_email')
@@ -537,6 +545,7 @@ def change_email(request):
         return Response({"error": f"error setting email: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(["GET"])
+@token_required
 def authenticate(request):
     if request.user.is_principal or request.user.is_admin:
         role = 'admin'
@@ -654,6 +663,7 @@ def verify_otp(request):
 # get credentials view
 @api_view(["GET"])
 @cache_control(max_age=15, private=True)
+@token_required
 def user_info(request):
     if request.user.is_principal or request.user.is_admin:
         role = 'admin'
@@ -666,17 +676,20 @@ def user_info(request):
 # get credentials view
 @api_view(["GET"])
 @cache_control(max_age=15, private=True)
+@token_required
 def user_email(request):
     return Response({ "email" : request.user.email},status=200)
 
 # get credentials view
 @api_view(["GET"])
 @cache_control(max_age=15, private=True)
+@token_required
 def user_names(request):
     return Response({ "name" : request.user.name, "surname" : request.user.surname},status=200)
 
 # checks the accounts multi-factor authentication status
 @api_view(["GET"])
+@token_required
 def mfa_status(request):
     return Response({"mfa_status" : request.user.multifactor_authentication},status=200)
 
@@ -729,6 +742,7 @@ def unsubscribe(request):
         return Response({'error': 'Invalid request'}, status=400)
 
 @api_view(['PATCH'])
+@token_required
 def update_profile_picture(request):
     serializer = ProfilePictureSerializer(request.user, data=request.data, partial=True)  # set partial=True to update a data partially
     if serializer.is_valid():
