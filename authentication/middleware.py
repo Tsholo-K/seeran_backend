@@ -15,7 +15,7 @@ class TokenMiddleware:
 
     def __call__(self, request):
         # List of URLs to exclude
-        excluded_urls = ['/api/auth/login/', '/api/auth/sigin/', '/api/auth/mfalogin/', '/api/auth/verifyotp/', '/api/auth/resetpassword/', '/api/auth/setpassword', 'api/auth/resendotp/', '/api/auth/otpverification/', 'api/auth/accountstatus/', 'api/auth/', 'apiauth/sns/notifications']
+        excluded_urls = ['/api/auth/login/', '/api/auth/sigin/', '/api/auth/mfalogin/', '/api/auth/verifyotp/', '/api/auth/resetpassword/', '/api/auth/setpassword', 'api/auth/resendotp/', '/api/auth/otpverification/', 'api/auth/accountstatus/', 'api/auth/sns/notifications']
 
         # Check if the current URL is in the list of excluded URLs
         if request.path not in excluded_urls:
