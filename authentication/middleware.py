@@ -1,9 +1,11 @@
 from django.http import JsonResponse
-from .models import CustomUser
 from rest_framework_simplejwt.tokens import AccessToken
 
 # django
 from django.core.exceptions import ObjectDoesNotExist
+
+# models 
+from .models import CustomUser
 
 # utility functions 
 from .utils import validate_access_token, refresh_access_token
