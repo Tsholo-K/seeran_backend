@@ -119,4 +119,10 @@ def generate_token(user):
     # Create a refresh token
     return  {"access_token" : access_token , "refresh_token" : refresh_token }
 
-    
+def get_upload_path(instance, filename):
+    if instance.is_parent:
+        return 'parents_profile_pictures/{}'.format(filename)
+    elif instance.is_student:
+        return 'students_profile_pictures/{}'.format(filename)
+    else:
+        return 'admins_profile_pictures/{}'.format(filename)

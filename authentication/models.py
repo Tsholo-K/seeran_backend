@@ -4,7 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
-from .utils import generate_account_id
+from .utils import generate_account_id, get_upload_path
 
 
 class CustomUserManager(BaseUserManager):
@@ -55,6 +55,9 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     name = models.CharField(_('name'), max_length=150)
     surname = models.CharField(_('surname'), max_length=150)
     account_id = models.CharField(max_length=15, unique=True, default=generate_account_id('CU')) # custom user account
+    
+    # profile picutres
+    profile_picture = models.ImageField(upload_to=get_upload_path, blank=True, null=True)
     
     # Role fields
     is_student = models.BooleanField(_('student status'), default=False)

@@ -12,6 +12,9 @@ urlpatterns = [
     path('usernames/', views.user_names, name='returns user name and surname'),
     path('accountstatus/', views.account_status, name='checks if account is activated'),
     
+    # profile picture change 
+    path("updateprofilepicture/", views.update_profile_picture, name="update user profile picture"),
+    
     # authentication
     path('authenticate/', views.authenticate, name='get name and surname'),
     
@@ -38,6 +41,9 @@ urlpatterns = [
     
     # otp
     path('resendotp/', views.resend_otp, name='request new otp'),
+    
+    # event emails subscription
+    path('eventemailssubscription/', views, name="event emails subscription"),
     
     # login
     path('login/', views.login, name='token obtain pair'),
