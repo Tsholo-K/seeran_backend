@@ -43,7 +43,7 @@ urlpatterns = [
     path('resendotp/', views.resend_otp, name='request new otp'),
     
     # event emails subscription
-    path('eventemailssubscription/', views, name="event emails subscription"),
+    path('eventemailssubscription/', views.event_emails_subscription, name="event emails subscription"),
     
     # login
     path('login/', views.login, name='token obtain pair'),
