@@ -58,17 +58,16 @@ MIDDLEWARE = [
     
     # cors headers middleware
     'corsheaders.middleware.CorsMiddleware',
-
+    
+    # project middleware
+    'authentication.middleware.TokenMiddleware',
+    
     # django middleware
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    
-    # project middleware
-    'authentication.middleware.TokenMiddleware',
-    
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
