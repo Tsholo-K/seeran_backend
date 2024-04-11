@@ -22,6 +22,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import boto3
 from django.conf import settings
+from botocore.exceptions import BotoCoreError, NoCredentialsError
 
 # models
 from .models import CustomUser, BouncedComplaintEmail
@@ -771,7 +772,7 @@ def update_profile_picture(request):
         if not profile_picture.content_type.startswith('image/'):
             return Response({'error': 'Invalid file type'}, status=400)
 
-        # Validate the file size (max 25MB)
+        # Validate the file size (max 5MB)
         if profile_picture.size > 25 * 1024 * 1024:
             return Response({'error': 'File size exceeds the limit (5MB)'}, status=400)
 
@@ -783,22 +784,28 @@ def update_profile_picture(request):
             client_s3 = boto3.client(
                 's3',
                 aws_access_key_id = settings.AWS_ACCESS_KEY_ID,
-                aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY
+                aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY,
+                region_name = 'af-south-1'  # specify the correct region
             )
 
             # Upload the file to S3
             client_s3.upload_fileobj(profile_picture, settings.AWS_STORAGE_BUCKET_NAME, upload_path)
 
             # Assign the S3 URL to the user's profile picture
-            file_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/{upload_path}"
+            file_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.af-south-1.amazonaws.com/{upload_path}"
             request.user.profile_picture = file_url
             request.user.save()
 
             return Response({'profile_picture_url': file_url}, status=200)
+        except BotoCoreError as e:
+            return Response({'error': f'An error occurred with AWS: {str(e)}'}, status=500)
+        except NoCredentialsError:
+            return Response({'error': 'AWS credentials not found'}, status=500)
         except Exception as e:
-            return Response({'error': str(e)}, status=500)
+            return Response({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
     else:
         return Response({'error': 'No file was uploaded'}, status=400)
+
 
 
 # aws endpoints
