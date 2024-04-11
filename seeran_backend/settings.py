@@ -92,6 +92,16 @@ CORS_ALLOWED_ORIGINS = [
 #         # Add other allowed origins as needed
 #     ]
 
+# allowed methods
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
 
 # cors credentials
 # allows credentials (cookies, authorization headers, or TLS client certificates) to be sent in cross-origin requests.
