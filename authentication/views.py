@@ -2,12 +2,13 @@
 import json
 
 # rest framework
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, parser_classes
 from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework import status
 from rest_framework_simplejwt.tokens import AccessToken
 from .serializers import CustomTokenObtainPairSerializer
+from rest_framework.parsers import MultiPartParser
 
 # django
 from django.contrib.auth.hashers import check_password
@@ -677,6 +678,18 @@ def user_info(request):
 @api_view(["GET"])
 @cache_control(max_age=15, private=True)
 @token_required
+def user_image(request):
+    if request.user.profile_picture and hasattr(request.user.profile_picture, 'url'):
+        profile_picture_url = request.user.profile_picture.url
+    else:
+        profile_picture_url = None
+    return Response({ "image_url" : profile_picture_url },status=200)
+
+
+# get credentials view
+@api_view(["GET"])
+@cache_control(max_age=15, private=True)
+@token_required
 def user_email(request):
     return Response({ "email" : request.user.email},status=200)
 
@@ -742,6 +755,7 @@ def unsubscribe(request):
         return Response({'error': 'Invalid request'}, status=400)
 
 @api_view(['PATCH'])
+@parser_classes([MultiPartParser])
 @token_required
 def update_profile_picture(request):
     serializer = ProfilePictureSerializer(request.user, data=request.data, partial=True)  # set partial=True to update a data partially
