@@ -10,6 +10,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
 
+# uplaod image max-size 
+DATA_UPLOAD_MAX_MEMORY_SIZE = 26214400  # 25 MB
 
 # aws config
 # access keys 
