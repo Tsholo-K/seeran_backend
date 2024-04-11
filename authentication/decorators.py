@@ -35,8 +35,8 @@ def token_required(view_func):
 
         # Set the new access token in the response cookie
         if new_access_token:
-            response.set_cookie('access_token', new_access_token, domain='.your-domain.com', samesite='None', secure=True, httponly=True, max_age=300)
-
+            response.set_cookie('access_token', new_access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+        
         return response
     return _wrapped_view_func
 
