@@ -782,8 +782,8 @@ def update_profile_picture(request):
             # Create a boto3 client
             client_s3 = boto3.client(
                 's3',
-                aws_access_key_id = settings.AWS_s3_ACCESS_KEY_ID,
-                aws_secret_access_key = settings.AWS_s3_SECRET_ACCESS_KEY
+                aws_access_key_id = settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY
             )
 
             # Upload the file to S3
@@ -799,6 +799,7 @@ def update_profile_picture(request):
             return Response({'error': str(e)}, status=500)
     else:
         return Response({'error': 'No file was uploaded'}, status=400)
+
 
 # aws endpoints
 # sns topic notification endpoint 
