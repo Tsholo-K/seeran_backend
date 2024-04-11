@@ -685,7 +685,11 @@ def user_image(request):
         profile_picture_url = request.user.profile_picture.url
     else:
         profile_picture_url = None
-    return Response({ "image_url" : profile_picture_url },status=200)
+    if profile_picture_url == None:
+        return Response({ "image_url" : None },status=200)
+    base_url = 'https://dusht8nqddyxj.cloudfront.net'
+    full_url = base_url + profile_picture_url
+    return Response({ "image_url" : full_url },status=200)
 
 
 # get credentials view
