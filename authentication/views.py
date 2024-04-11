@@ -19,6 +19,8 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.hashers import make_password
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import csrf_exempt
+from django.core.files.storage import default_storage
+from django.core.files.uploadedfile import InMemoryUploadedFile
 
 # models
 from .models import CustomUser, BouncedComplaintEmail
@@ -31,7 +33,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 # utility functions 
-from .utils import validate_access_token, generate_access_token, generate_token, generate_otp, verify_user_otp, validate_user_email
+from .utils import validate_access_token, get_upload_path, generate_access_token, generate_token, generate_otp, verify_user_otp, validate_user_email
 
 # custom decorators
 from .decorators import token_required
@@ -758,11 +760,33 @@ def unsubscribe(request):
 @parser_classes([MultiPartParser])
 @token_required
 def update_profile_picture(request):
-    serializer = ProfilePictureSerializer(request.user, data=request.data, partial=True)  # set partial=True to update a data partially
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data)
-    return Response(serializer.errors, status=400)
+    profile_picture = request.FILES.get('profile_picture')
+    if profile_picture:
+        # Validate the file type
+        if not isinstance(profile_picture, InMemoryUploadedFile):
+            return Response({'error': 'Invalid file type'}, status=400)
+
+        # Validate the file size (max 25MB)
+        if profile_picture.size > 25 * 1024 * 1024:
+            return Response({'error': 'File size exceeds the limit (5MB)'}, status=400)
+
+        # Generate the upload path
+        upload_path = get_upload_path(request.user, profile_picture.name)
+
+        try:
+            # Save the file using Django's default storage backend
+            file_name = default_storage.save(upload_path, profile_picture)
+            file_url = default_storage.url(file_name)
+
+            # Update the user's profile picture
+            request.user.profile_picture = file_name
+            request.user.save()
+
+            return Response({'profile_picture_url': file_url}, status=200)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+    else:
+        return Response({'error': 'No file was uploaded'}, status=400)
 
 # aws endpoints
 # sns topic notification endpoint 
