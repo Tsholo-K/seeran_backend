@@ -763,10 +763,10 @@ def update_profile_picture(request):
     profile_picture = request.FILES.get('profile_picture')
     if profile_picture:
         # Validate the file type
-        if not isinstance(profile_picture, InMemoryUploadedFile):
+        if not profile_picture.content_type.startswith('image/'):
             return Response({'error': 'Invalid file type'}, status=400)
 
-        # Validate the file size (max 25MB)
+        # Validate the file size (max 5MB)
         if profile_picture.size > 25 * 1024 * 1024:
             return Response({'error': 'File size exceeds the limit (5MB)'}, status=400)
 
@@ -776,13 +776,16 @@ def update_profile_picture(request):
         try:
             # Save the file using Django's default storage backend
             file_name = default_storage.save(upload_path, profile_picture)
-            file_url = default_storage.url(file_name)
 
-            # Update the user's profile picture
-            request.user.profile_picture = file_name
-            request.user.save()
+            # Check if the file was uploaded before assigning it to the user
+            if default_storage.exists(file_name):
+                request.user.profile_picture = file_name
+                request.user.save()
 
-            return Response({'profile_picture_url': file_url}, status=200)
+                file_url = default_storage.url(file_name)
+                return Response({'profile_picture_url': file_url}, status=200)
+            else:
+                return Response({'error': 'File was not uploaded'}, status=500)
         except Exception as e:
             return Response({'error': str(e)}, status=500)
     else:
