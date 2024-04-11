@@ -51,12 +51,8 @@ INSTALLED_APPS = [
     # third party apps
     'corsheaders', # handle cors 
     'django_redis', # redis caching
+    'storages',# allows for the application to read/write to s3 bucket in production
 ]
-# production apps 
-if not DEBUG:
-    INSTALLED_APPS.extend([
-        'storages',# allows for the application to read/write to s3 bucket in production
-    ]) 
 
 
 # project middleware
@@ -89,15 +85,7 @@ CORS_ALLOWED_ORIGINS = [
     
     # Add other allowed origins as needed
 ]
-# else:
-#     # development domains
-#     CORS_ALLOWED_ORIGINS = [
-#         'http://localhost:3000',
-#         'https://www.seeran-grades.com',
-#         'https://server.seeran-grades.com'
-        
-#         # Add other allowed origins as needed
-#     ]
+
 
 # allowed methods
 CORS_ALLOW_METHODS = [
@@ -169,11 +157,6 @@ CACHES = {
         }
     }
 }
-# CACHES = {
-#     'default': {
-#         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-#     }
-# }
 
 
 # Databases
@@ -188,24 +171,16 @@ DATABASES = {
         'PORT': '5432',
     }
 }
-# development database
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
 
 
 # s3 bucket
 # s3 bucket configuration
-if not DEBUG:
-    AWS_STORAGE_BUCKET_NAME = 'seeran-storage'
-    AWS_S3_REGION_NAME = 'af-south-1'
-    AWS_S3_FILE_OVERWRITE = False
-    AWS_DEFAULT_ACL = None
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    AWS_S3_CUSTOM_DOMAIN = 'https://dusht8nqddyxj.cloudfront.net'
+AWS_STORAGE_BUCKET_NAME = 'seeran-storage'
+AWS_S3_REGION_NAME = 'af-south-1'
+AWS_S3_FILE_OVERWRITE = False
+AWS_DEFAULT_ACL = None
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+AWS_S3_CUSTOM_DOMAIN = 'https://dusht8nqddyxj.cloudfront.net'
 
 
 # Email sending config
