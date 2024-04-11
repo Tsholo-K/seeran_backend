@@ -21,7 +21,7 @@ AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
 # aws s3 config
 # access keys 
 AWS_s3_ACCESS_KEY_ID = config('AWS_s3_ACCESS_KEY_ID')
-AWS_s3__SECRET_ACCESS_KEY = config('AWS_s3__SECRET_ACCESS_KEY')
+AWS_s3_SECRET_ACCESS_KEY = config('AWS_s3_SECRET_ACCESS_KEY')
 
 # activates debug mode for the application
 DEBUG = config('DEBUG')
