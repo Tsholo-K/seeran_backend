@@ -19,8 +19,9 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.hashers import make_password
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import csrf_exempt
-from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import InMemoryUploadedFile
+import boto3
+from django.conf import settings
 
 # models
 from .models import CustomUser, BouncedComplaintEmail
@@ -770,7 +771,7 @@ def update_profile_picture(request):
         if not profile_picture.content_type.startswith('image/'):
             return Response({'error': 'Invalid file type'}, status=400)
 
-        # Validate the file size (max 5MB)
+        # Validate the file size (max 25MB)
         if profile_picture.size > 25 * 1024 * 1024:
             return Response({'error': 'File size exceeds the limit (5MB)'}, status=400)
 
@@ -778,18 +779,22 @@ def update_profile_picture(request):
         upload_path = get_upload_path(request.user, profile_picture.name)
 
         try:
-            # Save the file using Django's default storage backend
-            file_name = default_storage.save(upload_path, profile_picture)
+            # Create a boto3 client
+            client_s3 = boto3.client(
+                's3',
+                aws_access_key_id = settings.AWS_s3_ACCESS_KEY_ID,
+                aws_secret_access_key = settings.AWS_s3__SECRET_ACCESS_KEY
+            )
 
-            # Check if the file was uploaded before assigning it to the user
-            if default_storage.exists(file_name):
-                request.user.profile_picture = file_name
-                request.user.save()
+            # Upload the file to S3
+            client_s3.upload_fileobj(profile_picture, settings.AWS_STORAGE_BUCKET_NAME, upload_path)
 
-                file_url = default_storage.url(file_name)
-                return Response({'profile_picture_url': file_url}, status=200)
-            else:
-                return Response({'error': 'File was not uploaded'}, status=500)
+            # Assign the S3 URL to the user's profile picture
+            file_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/{upload_path}"
+            request.user.profile_picture = file_url
+            request.user.save()
+
+            return Response({'profile_picture_url': file_url}, status=200)
         except Exception as e:
             return Response({'error': str(e)}, status=500)
     else:
