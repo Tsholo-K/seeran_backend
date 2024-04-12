@@ -31,7 +31,6 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from .models import CustomUser, BouncedComplaintEmail
 
 # serializers
-from .serializers import UploadFileSerializer
 
 # amazon email sending service
 import boto3
