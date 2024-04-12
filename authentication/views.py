@@ -831,9 +831,9 @@ def update_profile_picture(request):
     # Generate a pre-signed URL
     signed_url = s3_client.generate_presigned_url(
         'get_object',
-        Params={'Bucket': 'seeran-storage', 'Key': file_url},
+        Params={'Bucket': 'seeran-storage', 'Key': file_obj.name},
         ExpiresIn=3600  # The URL will be valid for 1 hour
     )
 
-    return Response({'file_url': file_url}, status=200)
+    return Response({'file_url': file_url, "signed_url" : signed_url, "key" : file_obj.name}, status=200)
 
