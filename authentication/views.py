@@ -835,8 +835,5 @@ def update_profile_picture(request):
         ExpiresIn=3600  # The URL will be valid for 1 hour
     )
 
-    # Construct the virtual-hosted style URL
-    signed_url = response.replace("https://s3.af-south-1.amazonaws.com/seeran-storage", "https://seeran-storage.s3.af-south-1.amazonaws.com")
-
-    return Response({'file_url': file_url, "signed_url" : signed_url, "key" : file_obj.name}, status=200)
+    return Response({'file_url': file_url, "signed_url" : response, "key" : file_obj.name}, status=200)
 
