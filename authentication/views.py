@@ -791,7 +791,7 @@ def update_profile_picture(request):
 
         # Validate the file size (max 5MB)
         if profile_picture.size > 25 * 1024 * 1024:
-            return Response({'error': 'File size exceeds the limit (5MB)'}, status=400)
+            return Response({'error': 'File size exceeds the limit (25MB)'}, status=400)
 
         # Generate the upload path
         upload_path = get_upload_path(request.user, profile_picture.name)
@@ -802,7 +802,7 @@ def update_profile_picture(request):
                 's3',
                 aws_access_key_id = settings.AWS_ACCESS_KEY_ID,
                 aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY,
-                region_name = 'af-south-1'  # specify the correct region
+                region_name = settings.AWS_S3_REGION_NAME # specify the correct region
             )
 
             # Upload the file to S3
