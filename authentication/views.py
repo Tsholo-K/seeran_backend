@@ -1,6 +1,7 @@
 # python
 import json
 import datetime
+import os
 
 # rest framework
 from rest_framework.decorators import api_view, parser_classes
@@ -43,7 +44,8 @@ from .decorators import token_required
 
 
 def rsa_signer(message):
-    with open('../private_key.pem', 'r') as key_file:
+    key_path = os.path.join(settings.BASE_DIR, 'seeran_backend',  'private_key.pem')
+    with open(key_path, 'r') as key_file:
         private_key = rsa.PrivateKey.load_pkcs1(key_file.read())
     return rsa.sign(message, private_key, 'SHA-1')
 
