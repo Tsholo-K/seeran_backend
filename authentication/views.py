@@ -44,7 +44,7 @@ from .decorators import token_required
 
 
 def rsa_signer(message):
-    key_path = os.path.join(settings.BASE_DIR, 'seeran_backend',  'private_key.pem')
+    key_path = os.path.join(settings.BASE_DIR, 'private_key.pem')
     with open(key_path, 'r') as key_file:
         private_key = rsa.PrivateKey.load_pkcs1(key_file.read())
     return rsa.sign(message, private_key, 'SHA-1')
