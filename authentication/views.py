@@ -826,7 +826,7 @@ def update_profile_picture(request):
     file_url = storage.url(file_name)
     
     # Create a boto3 client with the correct region and endpoint_url
-    s3_client = boto3.client('s3', region_name='af-south-1', endpoint_url='https://s3.af-south-1.amazonaws.com')
+    s3_client = boto3.client('s3', region_name='af-south-1', endpoint_url='https://seeran-storage.s3.af-south-1.amazonaws.com')
     
     # Generate a pre-signed URL
     signed_url = s3_client.generate_presigned_url(
