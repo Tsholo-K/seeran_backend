@@ -1,12 +1,6 @@
 from pathlib import Path
 from datetime import timedelta
 from decouple import config
-import boto3
-import os
-
-
-# s3 client
-s3 = boto3.client('s3')
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
