@@ -691,7 +691,7 @@ def user_image(request):
     if profile_picture_url == None:
         return Response({ "image_url" : None },status=200)
 
-    return Response({ "image_url" : "https://seeran-storage.s3.af-south-1.amazonaws.com/admins_profile_pictures/IMG_1118.png" },status=200)
+    return Response({ "image_url" : profile_picture_url },status=200)
 
 # get credentials view
 @api_view(["GET"])
