@@ -687,12 +687,29 @@ def user_image(request):
         profile_picture_url = request.user.profile_picture.url
     else:
         profile_picture_url = None
+
     if profile_picture_url == None:
         return Response({ "image_url" : None },status=200)
-    base_url = 'https://dusht8nqddyxj.cloudfront.net'
-    full_url = base_url + profile_picture_url
-    return Response({ "image_url" : full_url },status=200)
 
+    # Create a boto3 client
+    client_s3 = boto3.client(
+        's3',
+        aws_access_key_id = settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY,
+        region_name = 'af-south-1'  # specify the correct region
+    )
+
+    # Generate a pre-signed URL for the S3 object
+    presigned_url = client_s3.generate_presigned_url(
+        'get_object',
+        Params={
+            'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+            'Key': profile_picture_url  # specify the correct key
+        },
+        ExpiresIn=3600  # URL expires in 1 hour
+    )
+
+    return Response({ "image_url" : presigned_url },status=200)
 
 # get credentials view
 @api_view(["GET"])
@@ -805,8 +822,6 @@ def update_profile_picture(request):
             return Response({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
     else:
         return Response({'error': 'No file was uploaded'}, status=400)
-
-
 
 # aws endpoints
 # sns topic notification endpoint 
