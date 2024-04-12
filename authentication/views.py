@@ -25,7 +25,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, NoCredentialsError
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import InMemoryUploadedFile
-
+from storages.backends.s3boto3 import S3Boto3Storage
 
 # models
 from .models import CustomUser, BouncedComplaintEmail
@@ -821,7 +821,14 @@ def update_profile_picture(request):
     
     # Save the file if it passed validation
     file_name = default_storage.save(file_obj.name, file_obj)
-    file_url = default_storage.url(file_name)
+    # Generate a pre-signed URL for the uploaded file
+    storage = S3Boto3Storage()
+    file_url = storage.url(file_name)
+    signed_url = storage.bucket.generate_presigned_url(
+        'get_object',
+        Params={'Bucket': 'seeran-storage', 'Key': file_name},
+        ExpiresIn=3600  # The URL will be valid for 1 hour
+    )
 
-    return Response({'file_url': file_url}, status=200)
+    return Response({'file_url': signed_url}, status=200)
 
