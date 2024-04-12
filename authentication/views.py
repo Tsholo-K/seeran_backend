@@ -18,13 +18,14 @@ from django.contrib.auth.hashers import check_password
 from django.core.mail import BadHeaderError
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
-from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.hashers import make_password
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import csrf_exempt
 import boto3
-from django.conf import settings
 from botocore.exceptions import BotoCoreError, NoCredentialsError
+from django.core.files.storage import default_storage
+from django.core.files.uploadedfile import InMemoryUploadedFile
+
 
 # models
 from .models import CustomUser, BouncedComplaintEmail
@@ -809,9 +810,19 @@ def sns_endpoint(request):
 @parser_classes([MultiPartParser, FormParser])
 @token_required
 def update_profile_picture(request):
-    serializer = UploadFileSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=200)
-    else:
-        return Response(serializer.errors, status=400)
+    file_obj = request.FILES.get('file')
+    
+    # Validate that a file was provided
+    if not file_obj or not isinstance(file_obj, InMemoryUploadedFile):
+        return Response({'error': 'No file was submitted.'}, status=400)
+    
+    # Validate that the file is an image
+    if not file_obj.content_type.startswith('image/'):
+        return Response({'error': 'The file is not an image.'}, status=400)
+    
+    # Save the file if it passed validation
+    file_name = default_storage.save(file_obj.name, file_obj)
+    file_url = default_storage.url(file_name)
+
+    return Response({'file_url': file_url}, status=200)
+

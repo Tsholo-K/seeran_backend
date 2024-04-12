@@ -12,8 +12,3 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class CustomTokenRefreshSerializer(TokenRefreshSerializer):
     pass
-
-
-class UploadFileSerializer(serializers.Serializer):
-    file = serializers.FileField()
-
