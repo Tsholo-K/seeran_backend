@@ -809,7 +809,7 @@ def sns_endpoint(request):
 @parser_classes([MultiPartParser, FormParser])
 @token_required
 def update_profile_picture(request):
-    file_obj = request.FILES.get('file')
+    file_obj = request.FILES.get('profile_picture')
     
     # Validate that a file was provided
     if not file_obj or not isinstance(file_obj, InMemoryUploadedFile):
