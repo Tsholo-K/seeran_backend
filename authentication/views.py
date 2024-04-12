@@ -808,12 +808,10 @@ def update_profile_picture(request):
             # Upload the file to S3
             client_s3.upload_fileobj(profile_picture, settings.AWS_STORAGE_BUCKET_NAME, upload_path)
 
-            # Assign the S3 URL to the user's profile picture
-            file_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.af-south-1.amazonaws.com/{upload_path}"
-            request.user.profile_picture = file_url
+            request.user.profile_picture = upload_path
             request.user.save()
 
-            return Response({'profile_picture_url': file_url}, status=200)
+            return Response({'profile_picture_url': upload_path}, status=200)
         except BotoCoreError as e:
             return Response({'error': f'An error occurred with AWS: {str(e)}'}, status=500)
         except NoCredentialsError:
