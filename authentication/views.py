@@ -805,7 +805,7 @@ def sns_endpoint(request):
     
 # user profile pictures upload 
 # views.py
-@api_view(['PUT'])
+@api_view(['PATCH'])
 @parser_classes([MultiPartParser, FormParser])
 @token_required
 def update_profile_picture(request):
