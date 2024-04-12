@@ -10,7 +10,8 @@ from rest_framework.exceptions import AuthenticationFailed
 from rest_framework import status
 from rest_framework_simplejwt.tokens import AccessToken
 from .serializers import CustomTokenObtainPairSerializer
-from rest_framework.parsers import MultiPartParser
+from rest_framework.parsers import MultiPartParser, FormParser
+
 
 # django
 from django.contrib.auth.hashers import check_password
@@ -29,12 +30,11 @@ from botocore.exceptions import BotoCoreError, NoCredentialsError
 from .models import CustomUser, BouncedComplaintEmail
 
 # serializers
+from .serializers import UploadFileSerializer
 
 # amazon email sending service
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
-from botocore.signers import CloudFrontSigner
-import rsa
 
 # utility functions 
 from .utils import validate_access_token, get_upload_path, generate_access_token, generate_token, generate_otp, verify_user_otp, validate_user_email
@@ -42,14 +42,6 @@ from .utils import validate_access_token, get_upload_path, generate_access_token
 # custom decorators
 from .decorators import token_required
 
-
-def rsa_signer(message):
-    key_path = os.path.join(settings.BASE_DIR, 'private_key.pem')
-    with open(key_path, 'r') as key_file:
-        private_key = rsa.PrivateKey.load_pkcs1(key_file.read())
-    return rsa.sign(message, private_key, 'SHA-1')
-
-cloudfront_signer = CloudFrontSigner('K1E45RUK43W3WT', rsa_signer)
 
 # views
 # login view
@@ -693,21 +685,6 @@ def user_info(request):
 @api_view(["GET"])
 @cache_control(max_age=15, private=True)
 @token_required
-def user_image(request):
-    if request.user.profile_picture and hasattr(request.user.profile_picture, 'url'):
-        profile_picture_url = request.user.profile_picture.url
-    else:
-        profile_picture_url = None
-
-    if profile_picture_url == None:
-        return Response({ "image_url" : None },status=200)
-
-    return Response({ "image_url" : profile_picture_url },status=200)
-
-# get credentials view
-@api_view(["GET"])
-@cache_control(max_age=15, private=True)
-@token_required
 def user_email(request):
     return Response({ "email" : request.user.email},status=200)
 
@@ -772,56 +749,6 @@ def unsubscribe(request):
     else:
         return Response({'error': 'Invalid request'}, status=400)
 
-@api_view(['PATCH'])
-@parser_classes([MultiPartParser])
-@token_required
-def update_profile_picture(request):
-    profile_picture = request.FILES.get('profile_picture')
-    if profile_picture:
-        # Validate the file type
-        if not profile_picture.content_type.startswith('image/'):
-            return Response({'error': 'Invalid file type'}, status=400)
-
-        # Validate the file size (max 5MB)
-        if profile_picture.size > 25 * 1024 * 1024:
-            return Response({'error': 'File size exceeds the limit (25MB)'}, status=400)
-
-        # Generate the upload path
-        upload_path = get_upload_path(request.user, profile_picture.name)
-
-        try:
-            # Create a boto3 client
-            # Create a boto3 client
-            client_s3 = boto3.client(
-                's3',
-                aws_access_key_id = settings.AWS_ACCESS_KEY_ID,
-                aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY,
-                region_name = settings.AWS_S3_REGION_NAME # specify the correct region
-            )
-
-            # Upload the file to S3
-            client_s3.upload_fileobj(profile_picture, settings.AWS_STORAGE_BUCKET_NAME, upload_path)
-
-            # Generate a signed URL for the uploaded image
-            url = cloudfront_signer.generate_presigned_url(
-                'https://%s/%s' % (settings.AWS_S3_CUSTOM_DOMAIN, upload_path),
-                date_less_than=datetime.datetime.now() + datetime.timedelta(hours=1)
-            )
-
-            request.user.profile_picture = url
-            request.user.save()
-
-            return Response({'profile_picture_url': url}, status=200)
-        except BotoCoreError as e:
-            return Response({'error': f'An error occurred with AWS: {str(e)}'}, status=500)
-        except NoCredentialsError:
-            return Response({'error': 'AWS credentials not found'}, status=500)
-        except Exception as e:
-            return Response({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
-    else:
-        return Response({'error': 'No file was uploaded'}, status=400)
-
-
 # aws endpoints
 # sns topic notification endpoint 
 @csrf_exempt
@@ -875,3 +802,16 @@ def sns_endpoint(request):
         return Response({'status':'OK'})
     else:
         return Response({'status':'Invalid request'})
+    
+# user profile pictures upload 
+# views.py
+@api_view(['PUT'])
+@parser_classes([MultiPartParser, FormParser])
+@token_required
+def update_profile_picture(request):
+    serializer = UploadFileSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=200)
+    else:
+        return Response(serializer.errors, status=400)
