@@ -691,25 +691,7 @@ def user_image(request):
     if profile_picture_url == None:
         return Response({ "image_url" : None },status=200)
 
-    # Create a boto3 client
-    client_s3 = boto3.client(
-        's3',
-        aws_access_key_id = settings.AWS_ACCESS_KEY_ID,
-        aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY,
-        region_name = 'af-south-1'  # specify the correct region
-    )
-
-    # Generate a pre-signed URL for the S3 object
-    presigned_url = client_s3.generate_presigned_url(
-        'get_object',
-        Params={
-            'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
-            'Key': profile_picture_url  # specify the correct key
-        },
-        ExpiresIn=3600  # URL expires in 1 hour
-    )
-
-    return Response({ "image_url" : presigned_url },status=200)
+    return Response({ "image_url" : profile_picture_url },status=200)
 
 # get credentials view
 @api_view(["GET"])
