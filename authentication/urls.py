@@ -8,7 +8,7 @@ urlpatterns = [
     
     # user info
     path('userinfo/', views.user_info, name='returns user info'),
-    path('userprofilepicture/', views.user_image, name='returns user profile image'),
+    #path('userprofilepicture/', views.user_image, name='returns user profile image'),
     path('useremail/', views.user_email, name='returns user email'),
     path('usernames/', views.user_names, name='returns user name and surname'),
     path('accountstatus/', views.account_status, name='checks if account is activated'),
