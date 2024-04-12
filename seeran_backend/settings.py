@@ -13,15 +13,6 @@ SECRET_KEY = config('SECRET_KEY')
 # uplaod image max-size 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 26214400  # 25 MB
 
-# aws config
-# access keys 
-AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
-
-# aws s3 config
-# access keys 
-AWS_s3_ACCESS_KEY_ID = config('AWS_s3_ACCESS_KEY_ID')
-AWS_s3_SECRET_ACCESS_KEY = config('AWS_s3_SECRET_ACCESS_KEY')
 
 # activates debug mode for the application
 DEBUG = config('DEBUG')
@@ -176,9 +167,7 @@ DATABASES = {
 # s3 bucket
 # s3 bucket configuration
 AWS_STORAGE_BUCKET_NAME = 'seeran-storage'
-AWS_S3_REGION_NAME = 'af-south-1'
-AWS_S3_FILE_OVERWRITE = False
-AWS_DEFAULT_ACL = None
+AWS_S3_CUSTOM_DOMAIN = '%s.s3.amazonaws.com' % AWS_STORAGE_BUCKET_NAME
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
 
@@ -192,13 +181,6 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_SSL_REDIRECT = True
-
-
-# static files (CSS, JavaScript, Images)
-# static files location
-STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-STATIC_URL = 'https://seeran-storage.s3.amazonaws.com/'
-# STATIC_URL = '/static/'
 
 
 # default settings 
