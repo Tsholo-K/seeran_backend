@@ -824,7 +824,12 @@ def update_profile_picture(request):
     # Generate a pre-signed URL for the uploaded file
     storage = S3Boto3Storage()
     file_url = storage.url(file_name)
-    signed_url = storage.bucket.generate_presigned_url(
+    
+    # Create a boto3 client
+    s3_client = boto3.client('s3')
+    
+    # Generate a pre-signed URL
+    signed_url = s3_client.generate_presigned_url(
         'get_object',
         Params={'Bucket': 'seeran-storage', 'Key': file_name},
         ExpiresIn=3600  # The URL will be valid for 1 hour
