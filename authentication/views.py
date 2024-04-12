@@ -22,6 +22,7 @@ from django.contrib.auth.hashers import make_password
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import csrf_exempt
 import boto3
+from django.conf import settings
 from botocore.exceptions import BotoCoreError, NoCredentialsError
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import InMemoryUploadedFile
@@ -825,9 +826,12 @@ def update_profile_picture(request):
     storage = S3Boto3Storage()
     file_url = storage.url(file_name)
     
-    # Create a boto3 client with the correct region
-    s3_client = boto3.client('s3', region_name='af-south-1', endpoint_url='https://s3.af-south-1.amazonaws.com')  # Replace 'af-south-1' with your actual bucket region
-
+    # Create an S3 client
+    s3_client = boto3.client('s3', aws_access_key_id=settings.AWS_ACCESS_KEY_ID, 
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY, 
+        region_name=settings.AWS_S3_REGION_NAME
+    )
+    
     # Generate a pre-signed URL
     response = s3_client.generate_presigned_url(
         'get_object',
@@ -838,5 +842,5 @@ def update_profile_picture(request):
     # Adjust the pre-signed URL to have the correct bucket name format
     signed_url = response.replace('https://s3.af-south-1.amazonaws.com/seeran-storage/', f'https://seeran-storage.s3.af-south-1.amazonaws.com/')
 
-    return Response({'file_url': file_url, "signed_url" : signed_url, "key" : file_obj.name}, status=200)
+    return Response({'file_url': file_url, "signed_url" : signed_url, "key" : file_obj.name, "unaltered_presigned_url" : response}, status=200)
 
