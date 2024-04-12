@@ -835,5 +835,5 @@ def update_profile_picture(request):
         ExpiresIn=3600  # The URL will be valid for 1 hour
     )
 
-    return Response({'file_url': signed_url}, status=200)
+    return Response({'file_url': file_url}, status=200)
 
