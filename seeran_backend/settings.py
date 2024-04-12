@@ -177,8 +177,6 @@ DATABASES = {
 # s3 bucket configuration
 AWS_STORAGE_BUCKET_NAME = 'seeran-storage'
 AWS_S3_REGION_NAME = 'af-south-1'
-AWS_S3_FILE_OVERWRITE = False
-AWS_DEFAULT_ACL = None
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
 
