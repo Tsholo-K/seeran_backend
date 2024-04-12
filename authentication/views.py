@@ -789,10 +789,16 @@ def update_profile_picture(request):
 
         try:
             # Create a boto3 client
-            s3 = boto3.client('s3')
+            # Create a boto3 client
+            client_s3 = boto3.client(
+                's3',
+                aws_access_key_id = settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY,
+                region_name = settings.AWS_S3_REGION_NAME # specify the correct region
+            )
 
             # Upload the file to S3
-            s3.upload_fileobj(profile_picture, settings.AWS_STORAGE_BUCKET_NAME, upload_path)
+            client_s3.upload_fileobj(profile_picture, settings.AWS_STORAGE_BUCKET_NAME, upload_path)
 
             # Generate a signed URL for the uploaded image
             url = cloudfront_signer.generate_presigned_url(
