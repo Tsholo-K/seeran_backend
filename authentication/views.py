@@ -834,6 +834,9 @@ def update_profile_picture(request):
         Params={'Bucket': 'seeran-storage', 'Key': file_name},
         ExpiresIn=3600  # The URL will be valid for 1 hour
     )
+    
+    # Adjust the pre-signed URL to have the correct bucket name format
+    signed_url = response.replace('https://s3.af-south-1.amazonaws.com/seeran-storage/', f'https://seeran-storage.s3.af-south-1.amazonaws.com/')
 
-    return Response({'file_url': file_url, "signed_url" : response, "key" : file_obj.name}, status=200)
+    return Response({'file_url': file_url, "signed_url" : signed_url, "key" : file_obj.name}, status=200)
 
