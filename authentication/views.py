@@ -49,7 +49,7 @@ def rsa_signer(message):
         private_key = rsa.PrivateKey.load_pkcs1(key_file.read())
     return rsa.sign(message, private_key, 'SHA-1')
 
-cloudfront_signer = CloudFrontSigner('YOUR_CLOUDFRONT_KEY_ID', rsa_signer)
+cloudfront_signer = CloudFrontSigner('K1E45RUK43W3WT', rsa_signer)
 
 # views
 # login view
