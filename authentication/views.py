@@ -1,5 +1,6 @@
 # python
 import json
+import datetime
 
 # rest framework
 from rest_framework.decorators import api_view, parser_classes
@@ -19,7 +20,6 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.hashers import make_password
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import csrf_exempt
-from django.core.files.uploadedfile import InMemoryUploadedFile
 import boto3
 from django.conf import settings
 from botocore.exceptions import BotoCoreError, NoCredentialsError
@@ -28,17 +28,26 @@ from botocore.exceptions import BotoCoreError, NoCredentialsError
 from .models import CustomUser, BouncedComplaintEmail
 
 # serializers
-from .serializers import ProfilePictureSerializer
 
 # amazon email sending service
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
+from botocore.signers import CloudFrontSigner
+import rsa
 
 # utility functions 
 from .utils import validate_access_token, get_upload_path, generate_access_token, generate_token, generate_otp, verify_user_otp, validate_user_email
 
 # custom decorators
 from .decorators import token_required
+
+
+def rsa_signer(message):
+    with open('../private_key.pem', 'r') as key_file:
+        private_key = rsa.PrivateKey.load_pkcs1(key_file.read())
+    return rsa.sign(message, private_key, 'SHA-1')
+
+cloudfront_signer = CloudFrontSigner('YOUR_CLOUDFRONT_KEY_ID', rsa_signer)
 
 # views
 # login view
@@ -780,20 +789,21 @@ def update_profile_picture(request):
 
         try:
             # Create a boto3 client
-            client_s3 = boto3.client(
-                's3',
-                aws_access_key_id = settings.AWS_ACCESS_KEY_ID,
-                aws_secret_access_key = settings.AWS_SECRET_ACCESS_KEY,
-                region_name = settings.AWS_S3_REGION_NAME # specify the correct region
-            )
+            s3 = boto3.client('s3')
 
             # Upload the file to S3
-            client_s3.upload_fileobj(profile_picture, settings.AWS_STORAGE_BUCKET_NAME, upload_path)
+            s3.upload_fileobj(profile_picture, settings.AWS_STORAGE_BUCKET_NAME, upload_path)
 
-            request.user.profile_picture = upload_path
+            # Generate a signed URL for the uploaded image
+            url = cloudfront_signer.generate_presigned_url(
+                'https://%s/%s' % (settings.AWS_S3_CUSTOM_DOMAIN, upload_path),
+                date_less_than=datetime.datetime.now() + datetime.timedelta(hours=1)
+            )
+
+            request.user.profile_picture = url
             request.user.save()
 
-            return Response({'profile_picture_url': upload_path}, status=200)
+            return Response({'profile_picture_url': url}, status=200)
         except BotoCoreError as e:
             return Response({'error': f'An error occurred with AWS: {str(e)}'}, status=500)
         except NoCredentialsError:
@@ -802,6 +812,7 @@ def update_profile_picture(request):
             return Response({'error': f'An unexpected error occurred: {str(e)}'}, status=500)
     else:
         return Response({'error': 'No file was uploaded'}, status=400)
+
 
 # aws endpoints
 # sns topic notification endpoint 

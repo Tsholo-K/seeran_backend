@@ -1,6 +1,12 @@
 from pathlib import Path
 from datetime import timedelta
 from decouple import config
+import boto3
+import os
+
+
+# s3 client
+s3 = boto3.client('s3')
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -162,6 +168,12 @@ DATABASES = {
         'PORT': '5432',
     }
 }
+
+
+# cloud front 
+AWS_CLOUDFRONT_KEY_ID = 'YOUR_CLOUDFRONT_KEY_ID'
+with open(os.path.join(BASE_DIR, 'private_key.pem')) as aws_cert:
+    AWS_CLOUDFRONT_KEY = aws_cert.read().encode('ascii')
 
 
 # s3 bucket
