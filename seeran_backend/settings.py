@@ -191,7 +191,7 @@ STORAGES = {
     "default": {
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
         "OPTIONS": {
-            "bucket_name": 'seeran-storage',
+            "bucket_name": config('AWS_STORAGE_BUCKET_NAME'),
             "object_parameters": {
                 'CacheControl': 'max-age=86400',
             },
