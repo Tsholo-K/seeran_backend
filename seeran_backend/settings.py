@@ -7,11 +7,10 @@ from cryptography.hazmat.backends import default_backend
 from botocore.signers import CloudFrontSigner
 
 
-def load_private_key_path(file_name='private_key.pem'):
-    file_path = os.path.join(BASE_DIR, file_name)
-    return file_path
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
 
-PRIVATE_KEY_PATH = load_private_key_path()
+PRIVATE_KEY_PATH = os.path.join(BASE_DIR, 'private_key.pem')
 
 # Load private key
 with open(PRIVATE_KEY_PATH, 'rb') as f:
@@ -19,10 +18,6 @@ with open(PRIVATE_KEY_PATH, 'rb') as f:
 
 # Initialize CloudFrontSigner with key ID and private key
 cloudfront_signer = CloudFrontSigner(config('CLOUDFRONT_KEY_ID'), private_key_data)
-
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
@@ -208,7 +203,7 @@ STORAGES = {
             'file_overwrite': False,
             'custom_domain': config('CUSTOM_DOMAIN'),
             'cloudfront_key_id': config('CLOUDFRONT_KEY_ID'),
-            'cloudfront_key': load_private_key_path(),
+            'cloudfront_key': os.path.join(BASE_DIR, 'private_key.pem'),
             'cloudfront_signer': cloudfront_signer,
         },
     },
