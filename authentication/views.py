@@ -815,7 +815,7 @@ def update_profile_picture(request):
         user.profile_picture.save(profile_picture.name, profile_picture)  # save the new profile picture
         user.save()
         # Generate a presigned URL for the uploaded profile picture
-        s3_client = boto3.client('s3')
+        s3_client = boto3.client('s3', region_name='af-south-1')
         presigned_url = s3_client.generate_presigned_url(
             'get_object',
             Params={
