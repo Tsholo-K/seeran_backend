@@ -685,6 +685,8 @@ def user_info(request):
 @cache_control(max_age=15, private=True)
 @token_required
 def user_image(request):
+    if request.user.profile_picture == "":
+        return Response({ "image_url" : None },status=200)
     # Generate a presigned URL for the uploaded profile picture
     s3_client = boto3.client('s3', region_name='af-south-1')
     presigned_url = s3_client.generate_presigned_url(
@@ -695,7 +697,7 @@ def user_image(request):
         },
         ExpiresIn=3600,
     )
-    return Response({ "image_url" : presigned_url},status=200)
+    return Response({ "image_url" : presigned_url },status=200)
 
 
 # get credentials view
