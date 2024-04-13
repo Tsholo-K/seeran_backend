@@ -7,8 +7,8 @@ from cryptography.hazmat.backends import default_backend
 from botocore.signers import CloudFrontSigner
 
 
-def load_private_key_path():
-    file_path = os.path.join(BASE_DIR, 'private_key.pem')
+def load_private_key_path(file_name='private_key.pem'):
+    file_path = os.path.join(BASE_DIR, file_name)
     return file_path
 
 PRIVATE_KEY_PATH = load_private_key_path()
