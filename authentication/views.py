@@ -25,6 +25,8 @@ from django.views.decorators.csrf import csrf_exempt
 import boto3
 from botocore.exceptions import BotoCoreError, NoCredentialsError
 from django.core.files.storage import default_storage
+from django.conf import settings
+from django.core.files.storage import get_storage_class
 
 # models
 from .models import CustomUser, BouncedComplaintEmail
@@ -680,24 +682,37 @@ def user_info(request):
         role = 'student'
     return Response({ "email" : request.user.email, 'name': request.user.name, 'surname' : request.user.surname, "role" : role, "account_id" : request.user.account_id},status=200)
 
-# get credentials view
+# # get credentials view
+# @api_view(["GET"])
+# @cache_control(max_age=0, private=True)
+# @token_required
+# def user_image(request):
+#     if request.user.profile_picture == "":
+#         return Response({ "image_url" : None },status=200)
+#     # Generate a presigned URL for the uploaded profile picture
+#     s3_client = boto3.client('s3', region_name='af-south-1', endpoint_url='https://s3.af-south-1.amazonaws.com')
+#     presigned_url = s3_client.generate_presigned_url(
+#         'get_object',
+#         Params={
+#             'Bucket': config('AWS_STORAGE_BUCKET_NAME'),
+#             'Key': request.user.profile_picture.name,
+#         },
+#         ExpiresIn=3600,
+#     )
+#     return Response({ "image_url" : presigned_url },status=200)
 @api_view(["GET"])
 @cache_control(max_age=0, private=True)
 @token_required
 def user_image(request):
     if request.user.profile_picture == "":
         return Response({ "image_url" : None },status=200)
-    # Generate a presigned URL for the uploaded profile picture
-    s3_client = boto3.client('s3', region_name='af-south-1', endpoint_url='https://s3.af-south-1.amazonaws.com')
-    presigned_url = s3_client.generate_presigned_url(
-        'get_object',
-        Params={
-            'Bucket': config('AWS_STORAGE_BUCKET_NAME'),
-            'Key': request.user.profile_picture.name,
-        },
-        ExpiresIn=3600,
-    )
-    return Response({ "image_url" : presigned_url },status=200)
+    
+    # Generate a signed CloudFront URL for the uploaded profile picture
+    storage_class = get_storage_class(settings.STORAGES['default']['BACKEND'])
+    storage = storage_class()
+    signed_url = storage.url(request.user.profile_picture.name)
+    
+    return Response({ "image_url" : signed_url },status=200)
 
 # get credentials view
 @api_view(["GET"])
