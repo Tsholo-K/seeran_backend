@@ -206,7 +206,7 @@ STORAGES = {
             'custom_domain': config('CUSTOM_DOMAIN'),
             'cloudfront_key_id': config('CLOUDFRONT_KEY_ID'),
             'cloudfront_key': load_private_key('private_key.pem'),
-            'cloudfront_signer': CloudFrontSigner(),
+            'cloudfront_signer': CloudFrontSigner(config('CLOUDFRONT_KEY_ID'), load_private_key('private_key.pem')),
         },
     },
 }
