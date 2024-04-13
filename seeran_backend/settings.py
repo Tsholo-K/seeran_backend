@@ -10,9 +10,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
 
-AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
-
 
 # uplaod image max-size 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 26214400  # 25 MB
@@ -141,7 +138,7 @@ SIMPLE_JWT = {
 }
 
 
-# Caching config
+# redis caching config
 # applications caching configuration
 CACHES = {
     'default': {
@@ -154,8 +151,8 @@ CACHES = {
 }
 
 
-# Databases
-# production database
+# postfres database
+# application database
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
@@ -170,9 +167,18 @@ DATABASES = {
 
 # s3 bucket
 # s3 bucket configuration
-AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
-AWS_S3_CUSTOM_DOMAIN = '%s.s3.amazonaws.com' % AWS_STORAGE_BUCKET_NAME
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        "OPTIONS": {
+            "bucket_name": config('AWS_STORAGE_BUCKET_NAME'),
+            "object_parameters": {
+                'CacheControl': 'max-age=86400',
+            },
+            'file_overwrite': False
+        },
+    },
+}
 
 
 # Email sending config
