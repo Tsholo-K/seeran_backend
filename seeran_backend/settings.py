@@ -4,6 +4,7 @@ from datetime import timedelta
 from decouple import config
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
+from botocore.signers import CloudFrontSigner
 
 
 def load_private_key(file_name):
@@ -205,7 +206,7 @@ STORAGES = {
             'custom_domain': config('CUSTOM_DOMAIN'),
             'cloudfront_key_id': config('CLOUDFRONT_KEY_ID'),
             'cloudfront_key': load_private_key('private_key.pem'),
-            'cloudfront_signer': 'botocore.signers.CloudFrontSigner',
+            'cloudfront_signer': CloudFrontSigner(),
         },
     },
 }
