@@ -684,6 +684,24 @@ def user_info(request):
 @api_view(["GET"])
 @cache_control(max_age=15, private=True)
 @token_required
+def user_image(request):
+    # Generate a presigned URL for the uploaded profile picture
+    s3_client = boto3.client('s3', region_name='af-south-1')
+    presigned_url = s3_client.generate_presigned_url(
+        'get_object',
+        Params={
+            'Bucket': config('AWS_STORAGE_BUCKET_NAME'),
+            'Key': request.user.profile_picture.name,
+        },
+        ExpiresIn=3600,
+    )
+    return Response({ "image_url" : presigned_url},status=200)
+
+
+# get credentials view
+@api_view(["GET"])
+@cache_control(max_age=15, private=True)
+@token_required
 def user_email(request):
     return Response({ "email" : request.user.email},status=200)
 
