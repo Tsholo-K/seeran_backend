@@ -204,7 +204,7 @@ STORAGES = {
             'file_overwrite': False,
             'custom_domain': config('CUSTOM_DOMAIN'),
             'cloudfront_key_id': config('CLOUDFRONT_KEY_ID'),
-            'cloudfront_key': load_private_key('/private_key.pem'),
+            'cloudfront_key': load_private_key('private_key.pem'),
             'cloudfront_signer': 'botocore.signers.CloudFrontSigner',
         },
     },
