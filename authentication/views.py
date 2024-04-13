@@ -22,11 +22,17 @@ from django.core.cache import cache
 from django.contrib.auth.hashers import make_password
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import csrf_exempt
+
+# boto
 import boto3
-from botocore.exceptions import BotoCoreError, NoCredentialsError
-from django.core.files.storage import default_storage
-from django.conf import settings
-from django.core.files.storage import get_storage_class
+from botocore.exceptions import BotoCoreError
+from botocore.signers import CloudFrontSigner
+
+# cryptography
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import padding
 
 # models
 from .models import CustomUser, BouncedComplaintEmail
@@ -38,11 +44,28 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 # utility functions 
-from .utils import validate_access_token, get_upload_path, generate_access_token, generate_token, generate_otp, verify_user_otp, validate_user_email
+from .utils import validate_access_token, generate_access_token, generate_token, generate_otp, verify_user_otp, validate_user_email
 
 # custom decorators
 from .decorators import token_required
 
+# root url 
+from pathlib import Path
+
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# url signer 
+def rsa_signer(message):
+    with open(os.path.join(BASE_DIR, 'private_key.pem'), 'rb') as key_file:
+        private_key = serialization.load_pem_private_key(
+            key_file.read(),
+            password=None,
+            backend=default_backend()
+        )
+    return private_key.sign(message, padding.PKCS1v15(), hashes.SHA1())
+key_id = 'APKAWXZ4CYJZ4SFCF4OH'
+cloudfront_signer = CloudFrontSigner(key_id, rsa_signer)
 
 # views
 # login view
@@ -690,16 +713,24 @@ def user_image(request):
     if request.user.profile_picture == "":
         return Response({ "image_url" : None },status=200)
     # Generate a presigned URL for the uploaded profile picture
-    s3_client = boto3.client('s3', region_name='af-south-1', endpoint_url='https://s3.af-south-1.amazonaws.com')
-    presigned_url = s3_client.generate_presigned_url(
-        'get_object',
-        Params={
-            'Bucket': config('AWS_STORAGE_BUCKET_NAME'),
-            'Key': request.user.profile_picture.name,
-        },
-        ExpiresIn=3600,
+    # s3_client = boto3.client('s3', region_name='af-south-1', endpoint_url='https://s3.af-south-1.amazonaws.com')
+    # presigned_url = s3_client.generate_presigned_url(
+    #     'get_object',
+    #     Params={
+    #         'Bucket': config('AWS_STORAGE_BUCKET_NAME'),
+    #         'Key': request.user.profile_picture.name,
+    #     },
+    #     ExpiresIn=3600,
+    # )
+    # Create a signed url that will be valid until the specific expiry date
+    # provided using a canned policy.
+    signed_url = cloudfront_signer.generate_presigned_url(
+        request.user.profile_picture.url, 
+        date_less_than=datetime.datetime(2025, 1, 1)
     )
-    return Response({ "image_url" : presigned_url },status=200)
+
+
+    return Response({ "image_url" : signed_url },status=200)
 
 # get credentials view
 @api_view(["GET"])
