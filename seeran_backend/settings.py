@@ -1,30 +1,11 @@
 from pathlib import Path
-import os
 from datetime import timedelta
 from decouple import config
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.backends import default_backend
-from botocore.signers import CloudFrontSigner
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-PRIVATE_KEY_PATH = os.path.join(BASE_DIR, 'private_key.pem')
-
-# Load private key
-with open(PRIVATE_KEY_PATH, 'rb') as f:
-    private_key_data = f.read()
-
-# Load private key into an RSAKey object
-private_key = serialization.load_pem_private_key(
-    private_key_data,
-    password=None,  # Assuming the private key is not password-protected
-    backend=default_backend()
-)
-
-# Initialize CloudFrontSigner with key ID and private key
-cloudfront_signer = CloudFrontSigner(config('CLOUDFRONT_KEY_ID'), private_key)
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
@@ -198,28 +179,9 @@ DATABASES = {
 #         },
 #     },
 # }
-# s3 bucket configuration
-STORAGES = {
-    "default": {
-        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-        "OPTIONS": {
-            "bucket_name": config('AWS_STORAGE_BUCKET_NAME'),
-            "object_parameters": {
-                'CacheControl': 'max-age=86400',
-            },
-            'file_overwrite': False,
-            'custom_domain': config('CUSTOM_DOMAIN'),
-            'cloudfront_key_id': config('CLOUDFRONT_KEY_ID'),
-            'cloudfront_key': os.path.join(BASE_DIR, 'private_key.pem'),
-            'cloudfront_signer': cloudfront_signer,
-        },
-    },
-}
-
 
 # Email sending config
 EMAIL_BACKEND = 'django_ses.SESBackend'
-
 
 # ssl config
 # configures the application to commmunicate in https
