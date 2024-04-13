@@ -669,7 +669,7 @@ def verify_otp(request):
 
 # get credentials view
 @api_view(["GET"])
-@cache_control(max_age=15, private=True)
+@cache_control(max_age=0, private=True)
 @token_required
 def user_info(request):
     if request.user.is_principal or request.user.is_admin:
@@ -682,7 +682,7 @@ def user_info(request):
 
 # get credentials view
 @api_view(["GET"])
-@cache_control(max_age=15, private=True)
+@cache_control(max_age=0, private=True)
 @token_required
 def user_image(request):
     if request.user.profile_picture == "":
@@ -701,14 +701,14 @@ def user_image(request):
 
 # get credentials view
 @api_view(["GET"])
-@cache_control(max_age=15, private=True)
+@cache_control(max_age=0, private=True)
 @token_required
 def user_email(request):
     return Response({ "email" : request.user.email},status=200)
 
 # get credentials view
 @api_view(["GET"])
-@cache_control(max_age=15, private=True)
+@cache_control(max_age=0, private=True)
 @token_required
 def user_names(request):
     return Response({ "name" : request.user.name, "surname" : request.user.surname},status=200)
@@ -833,17 +833,7 @@ def update_profile_picture(request):
         user.profile_picture.delete()  # delete the old profile picture if it exists
         user.profile_picture.save(profile_picture.name, profile_picture)  # save the new profile picture
         user.save()
-        # Generate a presigned URL for the uploaded profile picture
-        s3_client = boto3.client('s3', region_name='af-south-1', endpoint_url='https://s3.af-south-1.amazonaws.com')
-        presigned_url = s3_client.generate_presigned_url(
-            'get_object',
-            Params={
-                'Bucket': config('AWS_STORAGE_BUCKET_NAME'),
-                'Key': user.profile_picture.name,
-            },
-            ExpiresIn=3600,
-        )
-        return Response({"message" : "Profile picture updated successfully.", "presigned_url" : presigned_url })
+        return Response({"message" : "picture updated successfully.",})
     else:
         return Response({"error" : "No file was uploaded."}, status=400)
 
