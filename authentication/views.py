@@ -708,11 +708,9 @@ def user_image(request):
         return Response({ "image_url" : None },status=200)
     
     # Generate a signed CloudFront URL for the uploaded profile picture
-    storage_class = get_storage_class(settings.STORAGES['default']['BACKEND'])
-    storage = storage_class()
-    signed_url = storage.url(request.user.profile_picture.name)
+    cloudfront_url = default_storage.url(request.user.profile_picture.name)
     
-    return Response({ "image_url" : signed_url },status=200)
+    return Response({ "cloudfront_url" : cloudfront_url },status=200)
 
 # get credentials view
 @api_view(["GET"])
