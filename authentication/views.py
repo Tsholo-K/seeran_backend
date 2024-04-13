@@ -64,7 +64,7 @@ def rsa_signer(message):
             backend=default_backend()
         )
     return private_key.sign(message, padding.PKCS1v15(), hashes.SHA1())
-key_id = 'APKAWXZ4CYJZ4SFCF4OH'
+key_id = 'K1E45RUK43W3WT'
 cloudfront_signer = CloudFrontSigner(key_id, rsa_signer)
 
 # views
