@@ -669,7 +669,7 @@ def verify_otp(request):
 
 # get credentials view
 @api_view(["GET"])
-@cache_control(max_age=300, private=True)
+@cache_control(max_age=15, private=True)
 @token_required
 def user_info(request):
     if request.user.is_principal or request.user.is_admin:
@@ -682,7 +682,7 @@ def user_info(request):
 
 # get credentials view
 @api_view(["GET"])
-@cache_control(max_age=300, private=True)
+@cache_control(max_age=15, private=True)
 @token_required
 def user_image(request):
     if request.user.profile_picture == "":
@@ -701,14 +701,14 @@ def user_image(request):
 
 # get credentials view
 @api_view(["GET"])
-@cache_control(max_age=300, private=True)
+@cache_control(max_age=15, private=True)
 @token_required
 def user_email(request):
     return Response({ "email" : request.user.email},status=200)
 
 # get credentials view
 @api_view(["GET"])
-@cache_control(max_age=300, private=True)
+@cache_control(max_age=15, private=True)
 @token_required
 def user_names(request):
     return Response({ "name" : request.user.name, "surname" : request.user.surname},status=200)
