@@ -1,5 +1,6 @@
 # python
 import json
+from decouple import config
 import datetime
 import os
 
@@ -813,7 +814,17 @@ def update_profile_picture(request):
         user.profile_picture.delete()  # delete the old profile picture if it exists
         user.profile_picture.save(profile_picture.name, profile_picture)  # save the new profile picture
         user.save()
-        return Response({"message" : "Profile picture updated successfully."})
+        # Generate a presigned URL for the uploaded profile picture
+        s3_client = boto3.client('s3')
+        presigned_url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': config('AWS_STORAGE_BUCKET_NAME'),
+                'Key': user.profile_picture.name,
+            },
+            ExpiresIn=3600,
+        )
+        return Response({"message" : "Profile picture updated successfully.", "presigned_url" : presigned_url})
     else:
         return Response({"error" : "No file was uploaded."}, status=400)
         messages.error(request, )
