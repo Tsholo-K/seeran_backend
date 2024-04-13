@@ -1,15 +1,9 @@
 from pathlib import Path
-import os
 from datetime import timedelta
 from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-
-def load_private_key(file_name):
-    with open(os.path.join(BASE_DIR, file_name)) as aws_cert:
-        return aws_cert.read().encode('ascii')
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -185,8 +179,10 @@ STORAGES = {
     },
 }
 
+
 # Email sending config
 EMAIL_BACKEND = 'django_ses.SESBackend'
+
 
 # ssl config
 # configures the application to commmunicate in https

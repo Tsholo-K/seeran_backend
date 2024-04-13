@@ -729,8 +729,7 @@ def user_image(request):
         date_less_than=datetime.datetime(2025, 1, 1)
     )
 
-
-    return Response({ "image_url" : signed_url },status=200)
+    return Response({ "image_url" : signed_url, "url" : request.user.profile_picture.url },status=200)
 
 # get credentials view
 @api_view(["GET"])
