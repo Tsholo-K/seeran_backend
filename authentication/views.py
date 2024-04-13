@@ -699,7 +699,6 @@ def user_image(request):
     )
     return Response({ "image_url" : presigned_url },status=200)
 
-
 # get credentials view
 @api_view(["GET"])
 @cache_control(max_age=15, private=True)
@@ -835,16 +834,16 @@ def update_profile_picture(request):
         user.profile_picture.save(profile_picture.name, profile_picture)  # save the new profile picture
         user.save()
         # Generate a presigned URL for the uploaded profile picture
-        # s3_client = boto3.client('s3', region_name='af-south-1')
-        # presigned_url = s3_client.generate_presigned_url(
-        #     'get_object',
-        #     Params={
-        #         'Bucket': config('AWS_STORAGE_BUCKET_NAME'),
-        #         'Key': user.profile_picture.name,
-        #     },
-        #     ExpiresIn=3600,
-        # )
-        return Response({"message" : "Profile picture updated successfully.", "image_name" : user.profile_picture.name, "image_url" : user.profile_picture.url })
+        s3_client = boto3.client('s3', region_name='af-south-1', endpoint_url='https://s3.af-south-1.amazonaws.com')
+        presigned_url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': config('AWS_STORAGE_BUCKET_NAME'),
+                'Key': user.profile_picture.name,
+            },
+            ExpiresIn=3600,
+        )
+        return Response({"message" : "Profile picture updated successfully.", "presigned_url" : presigned_url })
     else:
         return Response({"error" : "No file was uploaded."}, status=400)
 
