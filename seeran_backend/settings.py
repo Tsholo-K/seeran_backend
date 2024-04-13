@@ -174,19 +174,6 @@ DATABASES = {
 
 # s3 bucket
 # s3 bucket configuration
-# STORAGES = {
-#     "default": {
-#         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-#         "OPTIONS": {
-#             "bucket_name": config('AWS_STORAGE_BUCKET_NAME'),
-#             "object_parameters": {
-#                 'CacheControl': 'max-age=86400',
-#             },
-#             'file_overwrite': False
-#         },
-#     },
-# }
-# s3 bucket configuration
 STORAGES = {
     "default": {
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
@@ -195,10 +182,7 @@ STORAGES = {
             "object_parameters": {
                 'CacheControl': 'max-age=86400',
             },
-            'file_overwrite': False,
-            'custom_domain': config('CUSTOM_DOMAIN'),
-            'cloudfront_key_id': config('CLOUDFRONT_KEY_ID'),
-            'cloudfront_key': load_private_key('private_key.pem'),
+            'file_overwrite': False
         },
     },
 }
