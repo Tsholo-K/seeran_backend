@@ -837,37 +837,3 @@ def update_profile_picture(request):
     else:
         return Response({"error" : "No file was uploaded."}, status=400)
 
-    # file_obj = request.FILES.get('profile_picture')
-    
-    # # Validate that a file was provided
-    # if not file_obj or not isinstance(file_obj, InMemoryUploadedFile):
-    #     return Response({'error': 'No file was submitted.'}, status=400)
-    
-    # # Validate that the file is an image
-    # if not file_obj.content_type.startswith('image/'):
-    #     return Response({'error': 'The file is not an image.'}, status=400)
-    
-    # # Save the file if it passed validation
-    # client = boto3.client('s3')
-    # try:
-    #     client.upload_fileobj(file_obj, settings.AWS_STORAGE_BUCKET_NAME, file_obj.name)
-    #     return Response('File uploaded successfully')
-    # except Exception as e:
-    #     return Response('An error occurred: ' + str(e))
-    
-    # # Generate a pre-signed URL for the uploaded file
-    # storage = S3Boto3Storage()
-    # file_url = storage.url(file_name)
-    
-    # # Create an S3 client
-    # s3_client = boto3.client('s3')
-    
-    # # Generate a pre-signed URL
-    # response = s3_client.generate_presigned_url(
-    #     'get_object',
-    #     Params={'Bucket': 'seeran-storage', 'Key': file_name},
-    #     ExpiresIn=3600  # The URL will be valid for 1 hour
-    # )
-    
-    #return Response({'file_url': file_url, "signed_url" : "", "key" : file_obj.name, "unaltered_presigned_url" : response}, status=200)
-
