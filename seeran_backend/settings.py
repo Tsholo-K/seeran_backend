@@ -16,8 +16,15 @@ PRIVATE_KEY_PATH = os.path.join(BASE_DIR, 'private_key.pem')
 with open(PRIVATE_KEY_PATH, 'rb') as f:
     private_key_data = f.read()
 
+# Load private key into an RSAKey object
+private_key = serialization.load_pem_private_key(
+    private_key_data,
+    password=None,  # Assuming the private key is not password-protected
+    backend=default_backend()
+)
+
 # Initialize CloudFrontSigner with key ID and private key
-cloudfront_signer = CloudFrontSigner(config('CLOUDFRONT_KEY_ID'), private_key_data)
+cloudfront_signer = CloudFrontSigner(config('CLOUDFRONT_KEY_ID'), private_key)
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
