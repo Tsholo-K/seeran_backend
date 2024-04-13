@@ -724,8 +724,11 @@ def user_image(request):
     # )
     # Create a signed url that will be valid until the specific expiry date
     # provided using a canned policy.
+    # Replace the S3 domain with your CloudFront domain
+    s3_url = request.user.profile_picture.url
+    cloudfront_url = s3_url.replace('https://seeran-storage.s3.amazonaws.com', 'http://your-cloudfront-domain')
     signed_url = cloudfront_signer.generate_presigned_url(
-        request.user.profile_picture.url, 
+        cloudfront_url, 
         date_less_than=datetime.datetime(2025, 1, 1)
     )
 
