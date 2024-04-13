@@ -11,8 +11,10 @@ def load_private_key_path():
     file_path = os.path.join(BASE_DIR, 'private_key.pem')
     return file_path
 
+PRIVATE_KEY_PATH = load_private_key_path()
+
 # Load private key
-with open(load_private_key_path, 'rb') as f:
+with open(PRIVATE_KEY_PATH, 'rb') as f:
     private_key_data = f.read()
 
 # Initialize CloudFrontSigner with key ID and private key
