@@ -55,7 +55,7 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# url signer 
+# cloudfront url signer 
 def rsa_signer(message):
     with open(os.path.join(BASE_DIR, 'private_key.pem'), 'rb') as key_file:
         private_key = serialization.load_pem_private_key(
@@ -712,27 +712,13 @@ def user_info(request):
 def user_image(request):
     if request.user.profile_picture == "":
         return Response({ "image_url" : None },status=200)
-    # Generate a presigned URL for the uploaded profile picture
-    # s3_client = boto3.client('s3', region_name='af-south-1', endpoint_url='https://s3.af-south-1.amazonaws.com')
-    # presigned_url = s3_client.generate_presigned_url(
-    #     'get_object',
-    #     Params={
-    #         'Bucket': config('AWS_STORAGE_BUCKET_NAME'),
-    #         'Key': request.user.profile_picture.name,
-    #     },
-    #     ExpiresIn=3600,
-    # )
-    # Create a signed url that will be valid until the specific expiry date
-    # provided using a canned policy.
-    # Replace the S3 domain with your CloudFront domain
     s3_url = request.user.profile_picture.url
     cloudfront_url = s3_url.replace('https://seeran-storage.s3.amazonaws.com', 'https://d376l49ehaoi1m.cloudfront.net')
     signed_url = cloudfront_signer.generate_presigned_url(
         cloudfront_url, 
         date_less_than=datetime.datetime(2025, 1, 1)
     )
-
-    return Response({ "image_url" : signed_url, "url" : request.user.profile_picture.url },status=200)
+    return Response({ "image_url" : signed_url},status=200)
 
 # get credentials view
 @api_view(["GET"])
