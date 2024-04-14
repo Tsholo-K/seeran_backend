@@ -703,7 +703,7 @@ def verify_otp(request):
 @api_view(["GET"])
 @cache_control(max_age=3600, private=True)
 @token_required
-def user_info(request):
+def user_info(request, invalidator):
     if request.user.is_principal or request.user.is_admin:
         role = 'admin'
     elif request.user.is_parent:
@@ -716,7 +716,7 @@ def user_info(request):
 @api_view(["GET"])
 @cache_control(max_age=3600, private=True)
 @token_required
-def user_image(request):
+def user_image(request, invalidator):
     if request.user.profile_picture == "":
         return Response({ "image_url" : None },status=200)
     s3_url = request.user.profile_picture.url
@@ -731,14 +731,14 @@ def user_image(request):
 @api_view(["GET"])
 @cache_control(max_age=3600, private=True)
 @token_required
-def user_email(request):
+def user_email(request, invalidator):
     return Response({ "email" : request.user.email},status=200)
 
 # get credentials view
 @api_view(["GET"])
 @cache_control(max_age=3600, private=True)
 @token_required
-def user_names(request):
+def user_names(request, invalidator):
     return Response({ "name" : request.user.name, "surname" : request.user.surname},status=200)
 
 # checks the accounts multi-factor authentication status
