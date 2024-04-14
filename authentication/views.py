@@ -586,13 +586,16 @@ def change_email(request):
 @api_view(["GET"])
 @token_required
 def authenticate(request):
-    if request.user.is_principal or request.user.is_admin:
-        role = 'admin'
-    elif request.user.is_parent:
-        role = 'parent'
+    if request.user:
+        if request.user.is_principal or request.user.is_admin:
+            role = 'admin'
+        elif request.user.is_parent:
+            role = 'parent'
+        else:
+            role = 'student'
+        return Response({"message" : "authenticated", "role" : role}, status=status.HTTP_200_OK)
     else:
-        role = 'student'
-    return Response({"message" : "authenticated", "role" : role}, status=status.HTTP_200_OK)
+        return Response({"error" : "unauthenticated",}, status=status.HTTP_200_OK)
 
 # set password view
 @api_view(['POST'])
