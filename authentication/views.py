@@ -97,8 +97,12 @@ def login(request):
                     role = 'parent'
                 else:
                     role = 'student'
-                # the alert key is used on the front side to alert the user of their email being banned and what they can do to appeal 
-                response = Response({"message": "login successful", "role": role, "alert" : "email in blacklist"}, status=status.HTTP_200_OK)
+                # Getting the current date and time
+                dt = datetime.now()
+                # Getting the timestamp
+                ts = round(datetime.timestamp(dt))
+                # the alert key is used on the frontend to alert the user of their email being banned and what they can do to appeal(if they can)
+                response = Response({"message": "login successful", "role": role, "alert" : "email in blacklist", "invalidator" : ts}, status=status.HTTP_200_OK)
                 # Set access token cookie with custom expiration (5 mins)
                 response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
                 if 'refresh' in token:
@@ -150,14 +154,18 @@ def login(request):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     # mfa disabled
-    try:    
+    try: 
         if user.is_principal or user.is_admin:
             role = 'admin'
         elif user.is_parent:
             role = 'parent'
         else:
             role = 'student'
-        response = Response({"message": "login successful", "role": role,}, status=status.HTTP_200_OK)
+        # Getting the current date and time
+        dt = datetime.now()
+        # Getting the timestamp
+        ts = round(datetime.timestamp(dt))
+        response = Response({"message": "login successful", "role": role, "invalidator" : ts}, status=status.HTTP_200_OK)
         # Set access token cookie with custom expiration (5 mins)
         response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
         if 'refresh' in token:
@@ -205,7 +213,11 @@ def multi_factor_authentication(request):
                 role = 'parent'
             else:
                 role = 'student'
-            response = Response({"message": "login successful, welcome back.", "role": role}, status=status.HTTP_200_OK)
+            # Getting the current date and time
+            dt = datetime.now()
+            # Getting the timestamp
+            ts = round(datetime.timestamp(dt))
+            response = Response({"message": "login successful, welcome back.", "role": role, "invalidator" : ts}, status=status.HTTP_200_OK)
             # Set access token cookie with custom expiration (5 mins)
             response.set_cookie('access_token', token['access_token'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
             # Set refresh token cookie
@@ -694,7 +706,7 @@ def verify_otp(request):
 
 # get credentials view
 @api_view(["GET"])
-@cache_control(max_age=0, private=True)
+@cache_control(max_age=3600, private=True)
 @token_required
 def user_info(request):
     if request.user.is_principal or request.user.is_admin:
@@ -707,7 +719,7 @@ def user_info(request):
 
 # get user image view
 @api_view(["GET"])
-@cache_control(max_age=0, private=True)
+@cache_control(max_age=3600, private=True)
 @token_required
 def user_image(request):
     if request.user.profile_picture == "":
@@ -722,14 +734,14 @@ def user_image(request):
 
 # get credentials view
 @api_view(["GET"])
-@cache_control(max_age=0, private=True)
+@cache_control(max_age=3600, private=True)
 @token_required
 def user_email(request):
     return Response({ "email" : request.user.email},status=200)
 
 # get credentials view
 @api_view(["GET"])
-@cache_control(max_age=0, private=True)
+@cache_control(max_age=3600, private=True)
 @token_required
 def user_names(request):
     return Response({ "name" : request.user.name, "surname" : request.user.surname},status=200)
