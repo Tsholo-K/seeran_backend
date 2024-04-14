@@ -702,9 +702,9 @@ def verify_otp(request):
     else:
         return Response({"error": "incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
 
-# get credentials view
+# get users credentials
 @api_view(["GET"])
-@cache_control(max_age=3600, private=True)
+@cache_control(max_age=86400, private=True)
 @token_required
 def user_info(request, invalidator):
     if request.user.is_principal or request.user.is_admin:
@@ -715,7 +715,7 @@ def user_info(request, invalidator):
         role = 'student'
     return Response({ "email" : request.user.email, 'name': request.user.name, 'surname' : request.user.surname, "role" : role, "account_id" : request.user.account_id},status=200)
 
-# get user image view
+# get users image
 @api_view(["GET"])
 @cache_control(max_age=3600, private=True)
 @token_required
@@ -724,22 +724,24 @@ def user_image(request, invalidator):
         return Response({ "image_url" : None },status=200)
     s3_url = request.user.profile_picture.url
     cloudfront_url = s3_url.replace('https://seeran-storage.s3.amazonaws.com', 'https://d376l49ehaoi1m.cloudfront.net')
+    # Calculate expiration time (current time + 1 hour)
+    expiration_time = datetime.datetime.now() + datetime.timedelta(hours=1)
     signed_url = cloudfront_signer.generate_presigned_url(
         cloudfront_url, 
-        date_less_than=datetime.datetime(2025, 1, 1)
+        date_less_than=expiration_time
     )
     return Response({ "image_url" : signed_url},status=200)
 
-# get credentials view
+# get users email 
 @api_view(["GET"])
-@cache_control(max_age=3600, private=True)
+@cache_control(max_age=86400, private=True)
 @token_required
 def user_email(request, invalidator):
     return Response({ "email" : request.user.email},status=200)
 
-# get credentials view
+# get users name and surname
 @api_view(["GET"])
-@cache_control(max_age=3600, private=True)
+@cache_control(max_age=86400, private=True)
 @token_required
 def user_names(request, invalidator):
     return Response({ "name" : request.user.name, "surname" : request.user.surname},status=200)
