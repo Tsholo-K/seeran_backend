@@ -3,6 +3,7 @@ import json
 from decouple import config
 import datetime
 import os
+import random
 
 # rest framework
 from rest_framework.decorators import api_view, parser_classes
@@ -97,12 +98,10 @@ def login(request):
                     role = 'parent'
                 else:
                     role = 'student'
-                # Getting the current date and time
-                now = datetime.now()
-                # Convert datetime object to a UNIX timestamp
-                ts = int(now.timestamp())
+                # Generate a random 6-digit number
+                random_number = random.randint(100000, 999999)
                 # the alert key is used on the frontend to alert the user of their email being banned and what they can do to appeal(if they can)
-                response = Response({"message": "login successful", "role": role, "alert" : "email in blacklist", "invalidator" : ts}, status=status.HTTP_200_OK)
+                response = Response({"message": "login successful", "role": role, "alert" : "email in blacklist", "invalidator" : random_number}, status=status.HTTP_200_OK)
                 # Set access token cookie with custom expiration (5 mins)
                 response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
                 if 'refresh' in token:
@@ -161,11 +160,9 @@ def login(request):
             role = 'parent'
         else:
             role = 'student'
-        # Getting the current date and time
-        now = datetime.now()
-        # Convert datetime object to a UNIX timestamp
-        ts = int(now.timestamp())
-        response = Response({"message": "login successful", "role": role, "invalidator" : ts}, status=status.HTTP_200_OK)
+        # Generate a random 6-digit number
+        random_number = random.randint(100000, 999999)
+        response = Response({"message": "login successful", "role": role, "invalidator" : random_number}, status=status.HTTP_200_OK)
         # Set access token cookie with custom expiration (5 mins)
         response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
         if 'refresh' in token:
@@ -213,11 +210,9 @@ def multi_factor_authentication(request):
                 role = 'parent'
             else:
                 role = 'student'
-            # Getting the current date and time
-            now = datetime.now()
-            # Convert datetime object to a UNIX timestamp
-            ts = int(now.timestamp())
-            response = Response({"message": "login successful, welcome back.", "role": role, "invalidator" : ts}, status=status.HTTP_200_OK)
+            # Generate a random 6-digit number
+            random_number = random.randint(100000, 999999)
+            response = Response({"message": "login successful, welcome back.", "role": role, "invalidator" : random_number}, status=status.HTTP_200_OK)
             # Set access token cookie with custom expiration (5 mins)
             response.set_cookie('access_token', token['access_token'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
             # Set refresh token cookie
