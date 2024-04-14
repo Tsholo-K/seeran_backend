@@ -98,9 +98,9 @@ def login(request):
                 else:
                     role = 'student'
                 # Getting the current date and time
-                dt = datetime.now()
-                # Getting the timestamp
-                ts = round(datetime.timestamp(dt))
+                now = datetime.now()
+                # Convert datetime object to a UNIX timestamp
+                ts = int(now.timestamp())
                 # the alert key is used on the frontend to alert the user of their email being banned and what they can do to appeal(if they can)
                 response = Response({"message": "login successful", "role": role, "alert" : "email in blacklist", "invalidator" : ts}, status=status.HTTP_200_OK)
                 # Set access token cookie with custom expiration (5 mins)
@@ -161,7 +161,11 @@ def login(request):
             role = 'parent'
         else:
             role = 'student'
-        response = Response({"message": "login successful", "role": role,}, status=status.HTTP_200_OK)
+        # Getting the current date and time
+        now = datetime.now()
+        # Convert datetime object to a UNIX timestamp
+        ts = int(now.timestamp())
+        response = Response({"message": "login successful", "role": role, "invalidator" : ts}, status=status.HTTP_200_OK)
         # Set access token cookie with custom expiration (5 mins)
         response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
         if 'refresh' in token:
@@ -210,9 +214,9 @@ def multi_factor_authentication(request):
             else:
                 role = 'student'
             # Getting the current date and time
-            dt = datetime.now()
-            # Getting the timestamp
-            ts = round(datetime.timestamp(dt))
+            now = datetime.now()
+            # Convert datetime object to a UNIX timestamp
+            ts = int(now.timestamp())
             response = Response({"message": "login successful, welcome back.", "role": role, "invalidator" : ts}, status=status.HTTP_200_OK)
             # Set access token cookie with custom expiration (5 mins)
             response.set_cookie('access_token', token['access_token'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
