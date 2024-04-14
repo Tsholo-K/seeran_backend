@@ -14,7 +14,7 @@ def token_required(view_func):
         refresh_token = request.COOKIES.get('refresh_token')
 
         if not refresh_token:
-            return JsonResponse({'error': 'missing refresh token'}, status=400)
+            return JsonResponse({'error': 'missing refresh token'})
         if not access_token:
             new_access_token = refresh_access_token(refresh_token)
         else:
@@ -27,9 +27,9 @@ def token_required(view_func):
             try:
                 request.user = CustomUser.objects.get(pk=decoded_token['user_id'])
             except ObjectDoesNotExist:
-                return JsonResponse({"error": "invalid credentials/tokens"})
+                return JsonResponse({"error": "invalid credentials"})
         else:
-            return JsonResponse({'Error': 'Invalid tokens'}, status=406)
+            return JsonResponse({'error': 'Invalid tokens'})
 
         response = view_func(request, *args, **kwargs)
 
