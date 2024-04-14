@@ -7,10 +7,10 @@ urlpatterns = [
     path('sns/notifications', views.sns_endpoint, name="sns notifications endpoint"),
     
     # user info
-    path('userinfo/<invalidator:int>/', views.user_info, name='returns user info'),
-    path('userprofilepicture/<invalidator:int>/', views.user_image, name='returns user profile image'),
-    path('useremail/<invalidator:int>/', views.user_email, name='returns user email'),
-    path('usernames/<invalidator:int>/', views.user_names, name='returns user name and surname'),
+    path('userinfo/<int:invalidator>/', views.user_info, name='returns user info'),
+    path('userprofilepicture/<int:invalidator>/', views.user_image, name='returns user profile image'),
+    path('useremail/<int:invalidator>/', views.user_email, name='returns user email'),
+    path('usernames/<int:invalidator>/', views.user_names, name='returns user name and surname'),
     path('accountstatus/', views.account_status, name='checks if account is activated'),
     
     # profile picture change 
