@@ -83,7 +83,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         # Add more roles as needed
     ]
     # Role field
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="STUDENT")
     
     # children field
     children = models.ManyToManyField('self', null=True, blank=True, related_name='parents')
