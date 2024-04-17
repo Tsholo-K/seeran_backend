@@ -120,9 +120,13 @@ def generate_token(user):
     return  {"access_token" : access_token , "refresh_token" : refresh_token }
 
 def get_upload_path(instance, filename):
-    if instance.is_parent:
+    if instance.role == "PARENT":
         return 'parents_profile_pictures/{}'.format(filename)
-    elif instance.is_student:
+    if instance.role == "STUDENT":
         return 'students_profile_pictures/{}'.format(filename)
-    else:
+    if instance.role == "TEACHER":
+        return 'teachers_profile_pictures/{}'.format(filename)
+    if instance.role == "ADMIN":
         return 'admins_profile_pictures/{}'.format(filename)
+    if instance.role == "FOUNDER":
+        return 'founders_profile_pictures/{}'.format(filename)
