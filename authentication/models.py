@@ -86,7 +86,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     
     # children field
-    children = models.ManyToManyField('self', blank=True, related_name='parents')
+    children = models.ManyToManyField('self', null=True, blank=True, related_name='parents')
     
     # permissions needed by django do not change( unless you have a valid reason to )
     is_active = models.BooleanField(_('active'), default=True)
