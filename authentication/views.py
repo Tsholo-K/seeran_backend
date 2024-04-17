@@ -377,13 +377,7 @@ def set_password(request):
 @token_required
 def authenticate(request):
     if request.user:
-        if request.user.is_principal or request.user.is_admin:
-            role = 'admin'
-        elif request.user.is_parent:
-            role = 'parent'
-        else:
-            role = 'student'
-        return Response({"message" : "authenticated", "role" : role}, status=status.HTTP_200_OK)
+        return Response({"message" : "authenticated", "role" : request.user.role}, status=status.HTTP_200_OK)
     else:
         return Response({"error" : "unauthenticated",}, status=status.HTTP_200_OK)
 
