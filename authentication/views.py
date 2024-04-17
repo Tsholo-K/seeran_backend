@@ -825,13 +825,7 @@ def resend_otp(request):
 @cache_control(max_age=86400, private=True)
 @token_required
 def user_info(request, invalidator):
-    if request.user.is_principal or request.user.is_admin:
-        role = 'admin'
-    elif request.user.is_parent:
-        role = 'parent'
-    else:
-        role = 'student'
-    return Response({ "email" : request.user.email, 'name': request.user.name, 'surname' : request.user.surname, "role" : role, "account_id" : request.user.account_id},status=200)
+    return Response({ "email" : request.user.email, 'name': request.user.name, 'surname' : request.user.surname, "role" : request.user.role, "account_id" : request.user.account_id},status=200)
 
 
 # get users image
