@@ -16,7 +16,7 @@ class School(models.Model):
     
     
     name = models.CharField(_('school name'), max_length=100)
-    email = models.EmailField(_('school email address'), max_length=255, blank=True, null=True)
+    email = models.EmailField(_('school email address'), max_length=255)
     contact_number = models.CharField(_('school contact number'), max_length=15)
 
     # school type choices
@@ -26,13 +26,13 @@ class School(models.Model):
         ('TERTIARY', 'Tertiary'),
         # Add more types as needed
     ]
-    school_type = models.CharField(_('school type'), max_length=50, choices=SCHOOL_TYPE_CHOICES)  # e.g., Primary, Secondary, High School, etc.
+    school_type = models.CharField(_('school type'), max_length=50, choices=SCHOOL_TYPE_CHOICES, default="PRIMARY")  # e.g., Primary, Secondary, High School, etc.
     
     # province choices
     PROVINCE_CHOICES = [
         ('GAUTENG', 'Gauteng'),
     ]
-    province = models.CharField(_('province'), max_length=100, choices=PROVINCE_CHOICES)  # School District or Region
+    province = models.CharField(_('province'), max_length=100, choices=PROVINCE_CHOICES, default="GAUTENG")  # School District or Region
 
     # school district choices
     SCHOOL_DISTRICT_CHOICES = [
@@ -54,7 +54,7 @@ class School(models.Model):
         ('SEDIBENG WEST', 'Sedibeng West'),
         # Add more districts as needed
     ]
-    school_district = models.CharField(_('school district'), max_length=100, choices=SCHOOL_DISTRICT_CHOICES)  # School District or Region
+    school_district = models.CharField(_('school district'), max_length=100, choices=SCHOOL_DISTRICT_CHOICES, default="")  # School District or Region
 
     # school account id 
     school_id = models.CharField(max_length=15, unique=True, default=generate_account_id('SC')) # school account
