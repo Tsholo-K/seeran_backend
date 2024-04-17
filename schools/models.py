@@ -63,16 +63,6 @@ class School(models.Model):
     REQUIRED_FIELDS = ['name', 'email', 'location', 'contact_number', 'school_type', 'school_district']
 
 
-    ### set by me ###
-    
-    
-    # custom user model
-    CustomUser = apps.get_model('authentication', 'CustomUser')
-
-    # school principal
-    principal = models.OneToOneField(CustomUser, on_delete=models.SET_NULL, related_name='school_principal', blank=True, null=True)
-
-
     #### fields set by school ####
     
     
