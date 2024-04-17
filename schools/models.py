@@ -1,11 +1,14 @@
+# django imports
+from django.apps import apps
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # models
-from authentication.models import CustomUser
+CustomUser = apps.get_model('authentication', 'CustomUser')
 
 # utility functions
 from authentication.utils import generate_account_id
+
 
 class School(models.Model):
     

@@ -1,13 +1,17 @@
+# django imports
+from django.apps import apps
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
+# utility functions
 from .utils import generate_account_id, get_upload_path
 
 # models 
-from schools.models import School
+School = apps.get_model('schools', 'School')
+
 
 
 class CustomUserManager(BaseUserManager):
