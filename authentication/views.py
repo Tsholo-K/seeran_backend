@@ -903,7 +903,11 @@ def update_profile_picture(request):
         user.profile_picture.delete()  # delete the old profile picture if it exists
         user.profile_picture.save(profile_picture.name, profile_picture)  # save the new profile picture
         user.save()
-        return Response({"message" : "picture updated successfully.",})
+        # Generate a random 6-digit number
+        # this will invalidate the cache on the frontend
+        random_number = random.randint(100000, 999999)
+        response = Response({"message": "picture updated successfully.", "invalidator" : random_number}, status=status.HTTP_200_OK)
+        return response
     else:
         return Response({"error" : "No file was uploaded."}, status=400)
 
