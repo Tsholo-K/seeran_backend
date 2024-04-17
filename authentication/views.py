@@ -352,10 +352,23 @@ def set_password(request):
         user = CustomUser.objects.get(email=email)
         user.password = make_password(new_password)
         user.save()
-        return Response({"message": "password set successfully"}, status=status.HTTP_200_OK)
+        # then generate an access and refresh token for the user 
+        token = generate_token(user)
+        # Generate a random 6-digit number
+        # this will be the cache invalidator on the frontend
+        random_number = random.randint(100000, 999999)
+        response = Response({"message": "account activated successfully", "role": user.role, "invalidator" : random_number}, status=status.HTTP_200_OK)
+        # set access token cookie with custom expiration (5 mins)
+        response.set_cookie('access_token', token['access_token'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+        # set refresh token cookie with custom expiration (86400 seconds = 24 hours)
+        response.set_cookie('refresh_token', token['refresh_token'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=86400)
+        # return response
+        return response
     except ObjectDoesNotExist:
+        # if theres no user with the provided email return an error
         return Response({"error": "user does not exist."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
+        # if any exceptions rise during return the response return it as the response
         return Response({"error": f"error setting password: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
