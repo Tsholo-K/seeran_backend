@@ -5,8 +5,8 @@ User = get_user_model()
 
 class EmailOrIdNumberModelBackend(ModelBackend):
     def authenticate(self, request, username=None, password=None, **kwargs):
-        # Try to find the user by email or ID number
-        user = User.objects.filter(email=username).first() or User.objects.filter(id_number=username, is_student=True).first()
+        # Try to find the user by email
+        user = User.objects.filter(email=username).first()
 
         # If no user is found, return None
         if not user:
