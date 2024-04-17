@@ -4,7 +4,6 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # models
-CustomUser = apps.get_model('authentication', 'CustomUser')
 
 # utility functions
 from authentication.utils import generate_account_id
@@ -67,6 +66,9 @@ class School(models.Model):
     ### set by me ###
     
     
+    # custom user model
+    CustomUser = apps.get_model('authentication', 'CustomUser')
+
     # school principal
     principal = models.OneToOneField(CustomUser, on_delete=models.SET_NULL, related_name='school_principal', blank=True, null=True)
 
