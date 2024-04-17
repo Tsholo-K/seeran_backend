@@ -156,7 +156,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'seeran_database',
-        'USER': 'postgres',
+        'USER': 'tsholo',
         'PASSWORD': config('DB_PASSWORD'),
         'HOST': config('DB_HOST'),
         'PORT': '5432',
