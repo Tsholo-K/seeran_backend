@@ -23,7 +23,7 @@ class SchoolsSerializer(serializers.ModelSerializer):
             'name',
             'learners',
             'parents',
-            'number_of_classrooms',
+            'number_of_classes',
         ]
         
     def get_learners(self, obj):
@@ -32,5 +32,5 @@ class SchoolsSerializer(serializers.ModelSerializer):
     def get_parents(self, obj):
         return CustomUser.objects.filter(school=obj, role='PARENT').count()
     
-    def get_number_of_classrooms(self, obj):
-        return 5
+    def get_number_of_classes(self, obj):
+        return [].count()
