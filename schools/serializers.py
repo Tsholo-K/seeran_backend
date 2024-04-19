@@ -21,6 +21,7 @@ class SchoolsSerializer(serializers.ModelSerializer):
     class Meta:
         model = School
         fields = [
+            "school_id",
             'name',
             'learners',
             'parents',
