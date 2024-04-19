@@ -15,6 +15,7 @@ class SchoolsSerializer(serializers.ModelSerializer):
     
     learners = serializers.SerializerMethodField()
     parents = serializers.SerializerMethodField()
+    number_of_classrooms = serializers.SerializerMethodField()
     
     class Meta:
         model = School
@@ -30,3 +31,6 @@ class SchoolsSerializer(serializers.ModelSerializer):
 
     def get_parents(self, obj):
         return CustomUser.objects.filter(school=obj, role='PARENT').count()
+    
+    def get_number_of_classrooms(self, obj):
+        return 0

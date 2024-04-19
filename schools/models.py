@@ -68,7 +68,6 @@ class School(models.Model):
     
     # important particulars
     grading_system = models.TextField(blank=True, null=True)  # Grading System Details
-    number_of_classrooms = models.IntegerField(blank=True, null=True)  # Number of Classrooms
     library_details = models.TextField(blank=True, null=True)  # Library Details
     laboratory_details = models.TextField(blank=True, null=True)  # Laboratory Details
     sports_facilities = models.TextField(blank=True, null=True)  # Sports Facilities Details
