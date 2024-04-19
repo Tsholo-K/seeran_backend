@@ -1,3 +1,6 @@
+# python 
+import random
+
 # django
 from django.views.decorators.cache import cache_control
 
@@ -23,7 +26,10 @@ def create_school(request):
     serializer = SchoolSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save()
-        return Response({"message" : serializer.data}, status=201)
+        # Generate a random 6-digit number
+        # this will invalidate the cache on the frontend
+        random_number = random.randint(100000, 999999)
+        return Response({ "message" : serializer.data, "invalidator" : random_number }, status=201)
     return Response({"error" : serializer.errors})
 
 
@@ -34,4 +40,5 @@ def create_school(request):
 def schools(request):
     schools = School.objects.all()
     serializer = SchoolsSerializer(schools, many=True)
-    return Response(serializer.data)
+    response = Response({"schools" : serializer.data}, status=200)
+    return response
