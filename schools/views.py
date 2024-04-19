@@ -37,7 +37,7 @@ def create_school(request):
 @cache_control(max_age=86400, private=True)
 @token_required
 @founder_only
-def schools(request):
+def schools(request, invalidator):
     schools = School.objects.all()
     serializer = SchoolsSerializer(schools, many=True)
     response = Response({"schools" : serializer.data}, status=200)
