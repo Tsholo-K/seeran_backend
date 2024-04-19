@@ -33,4 +33,4 @@ class SchoolsSerializer(serializers.ModelSerializer):
         return CustomUser.objects.filter(school=obj, role='PARENT').count()
     
     def get_number_of_classes(self, obj):
-        return [''].count()
+        return ['']
