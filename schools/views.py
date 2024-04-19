@@ -49,3 +49,19 @@ def schools(request, invalidator):
         return Response({"schools" : serializer.data}, status=200)
     except Exception as e:
         return Response({"error" : str(e)}, status=500)
+
+
+@api_view(['GET'])
+@cache_control(max_age=120, private=True)
+@token_required
+@founder_only
+def school(request, school_id):
+    try:
+        schools = School.objects.filter(school_id=school_id).annotate(
+            learners=Count('users', filter=models.Q(users__role='STUDENT')),
+            parents=Count('users', filter=models.Q(users__role='PARENT'))
+        )
+        serializer = SchoolSerializer(schools, many=True)
+        return Response({"school" : serializer.data}, status=200)
+    except Exception as e:
+        return Response({"error" : str(e)}, status=500)

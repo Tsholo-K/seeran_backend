@@ -73,6 +73,7 @@ class School(models.Model):
     sports_facilities = models.TextField(blank=True, null=True)  # Sports Facilities Details
     operating_hours = models.CharField(max_length=100, blank=True, null=True)
     location = models.CharField(_('school location'), max_length=100, blank=True, null=True)
+    balance = models.BigIntegerField(_('school balance'), max_length=10, blank=True, null=True)
 
     # others
     website = models.URLField(max_length=200, blank=True, null=True)
