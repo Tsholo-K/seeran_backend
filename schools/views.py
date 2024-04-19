@@ -20,4 +20,4 @@ def create_school(request):
     if serializer.is_valid():
         #serializer.save()
         return Response({"message" : serializer.data}, status=201)
-    return Response({"error" : serializer.errors}, status=400)
+    return Response({"error" : serializer.errors})
