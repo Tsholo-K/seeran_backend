@@ -5,5 +5,5 @@ urlpatterns = [
     
     # school account creation
     path('create-school/', views.create_school, name="create school account"),
-    path('schools/', views.schools, name="get all school accounts"),
+    path('schools/<int:invalidator>/', views.schools, name="get all school accounts"),
 ]
