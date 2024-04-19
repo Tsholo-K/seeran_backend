@@ -1,3 +1,6 @@
+# django
+from django.views.decorators.cache import cache_control
+
 # rest framework
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -25,6 +28,7 @@ def create_school(request):
 
 
 @api_view(['GET'])
+@cache_control(max_age=86400, private=True)
 @token_required
 @founder_only
 def schools(request):
