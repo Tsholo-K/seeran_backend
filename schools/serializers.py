@@ -15,7 +15,7 @@ class SchoolsSerializer(serializers.ModelSerializer):
     
     learners = serializers.SerializerMethodField()
     parents = serializers.SerializerMethodField()
-    number_of_classrooms = serializers.SerializerMethodField()
+    number_of_classes = serializers.SerializerMethodField()
     
     class Meta:
         model = School
