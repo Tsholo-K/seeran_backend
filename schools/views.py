@@ -3,6 +3,8 @@ import random
 
 # django
 from django.views.decorators.cache import cache_control
+from django.db.models import Count
+from django.db import models
 
 # rest framework
 from rest_framework.decorators import api_view
@@ -34,11 +36,16 @@ def create_school(request):
 
 
 @api_view(['GET'])
-@cache_control(max_age=86400, private=True)
+@cache_control(max_age=120, private=True)
 @token_required
 @founder_only
 def schools(request, invalidator):
-    schools = School.objects.all()
-    serializer = SchoolsSerializer(schools, many=True)
-    response = Response({"schools" : serializer.data}, status=200)
-    return response
+    try:
+        schools = School.objects.all().annotate(
+            learners=Count('users', filter=models.Q(users__role='STUDENT')),
+            parents=Count('users', filter=models.Q(users__role='PARENT'))
+        )
+        serializer = SchoolsSerializer(schools, many=True)
+        return Response({"schools" : serializer.data}, status=200)
+    except Exception as e:
+        return Response({"error" : str(e)}, status=500)

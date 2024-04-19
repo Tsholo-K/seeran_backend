@@ -14,8 +14,8 @@ class SchoolSerializer(serializers.ModelSerializer):
 class SchoolsSerializer(serializers.ModelSerializer):
     
     name = serializers.SerializerMethodField()
-    learners = serializers.SerializerMethodField()
-    parents = serializers.SerializerMethodField()
+    learners = serializers.IntegerField()
+    parents = serializers.IntegerField()
     number_of_classes = serializers.SerializerMethodField()
     
     class Meta:
@@ -29,12 +29,6 @@ class SchoolsSerializer(serializers.ModelSerializer):
         
     def get_name(self, obj):
         return obj.name.title()
-        
-    def get_learners(self, obj):
-        return CustomUser.objects.filter(school=obj, role='STUDENT').count()
-
-    def get_parents(self, obj):
-        return CustomUser.objects.filter(school=obj, role='PARENT').count()
     
     def get_number_of_classes(self, obj):
         return ['']
