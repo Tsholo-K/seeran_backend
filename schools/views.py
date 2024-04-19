@@ -52,7 +52,7 @@ def schools(request, invalidator):
 
 
 @api_view(['GET'])
-@cache_control(max_age=0, private=True)
+@cache_control(max_age=120, private=True)
 @token_required
 @founder_only
 def school(request, school_id):
