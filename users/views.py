@@ -32,6 +32,7 @@ def create_principal(request, school_id):
     # Add the school instance to the request data
     data = request.data.copy()
     data['school'] = school.id
+    data['role'] = "PRINCIPAL"
 
     serializer = PrincipalSerializer(data=data)
     if serializer.is_valid():
