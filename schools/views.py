@@ -57,11 +57,11 @@ def schools(request, invalidator):
 @founder_only
 def school(request, school_id):
     try:
-        schools = School.objects.filter(school_id=school_id).annotate(
+        school = School.objects.filter(school_id=school_id).annotate(
             learners=Count('users', filter=models.Q(users__role='STUDENT')),
             parents=Count('users', filter=models.Q(users__role='PARENT'))
         )
-        serializer = SchoolSerializer(schools, many=True)
+        serializer = SchoolSerializer(school)
         return Response({"school" : serializer.data}, status=200)
     except Exception as e:
         return Response({"error" : str(e)}, status=500)
