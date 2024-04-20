@@ -61,7 +61,7 @@ def school(request, school_id):
             learners=Count('users', filter=models.Q(users__role='STUDENT')),
             parents=Count('users', filter=models.Q(users__role='PARENT'))
         )
-        serializer = SchoolSerializer(school)
+        serializer = SchoolSerializer(school, many=True)
         return Response({"school" : serializer.data}, status=200)
     except Exception as e:
         return Response({"error" : str(e)}, status=500)
