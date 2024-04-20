@@ -5,6 +5,9 @@ import random
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+# django
+from django.views.decorators.cache import cache_control
+
 # custom decorators
 from authentication.decorators import token_required
 from schools.decorators import founder_only
@@ -18,6 +21,7 @@ from .serializers import PrincipalCreationSerializer
 
 
 @api_view(['POST'])
+@cache_control(max_age=120, private=True)
 @token_required
 @founder_only
 def create_principal(request, school_id):
