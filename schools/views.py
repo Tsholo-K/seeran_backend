@@ -43,7 +43,8 @@ def schools(request, invalidator):
     try:
         schools = School.objects.all().annotate(
             learners=Count('users', filter=models.Q(users__role='STUDENT')),
-            parents=Count('users', filter=models.Q(users__role='PARENT'))
+            parents=Count('users', filter=models.Q(users__role='PARENT')),
+            teachers=Count('users', filter=models.Q(users__role='TEACHER'))
         )
         serializer = SchoolsSerializer(schools, many=True)
         return Response({"schools" : serializer.data}, status=200)
