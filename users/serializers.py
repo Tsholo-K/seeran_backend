@@ -39,4 +39,4 @@ class PrincipalSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = [ 'name', 'surname', 'email' ]
+        fields = [ 'name', 'surname', 'email', 'role' ]
