@@ -17,7 +17,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 # account id generator
 def generate_account_id(prefix=''):
     # Generate a UUID
-    unique_part = uuid.uuid4().hex
+    unique_part = uuid.uuid4().int
 
     # Concatenate prefix and UUID and convert to string
     account_id = prefix + unique_part
