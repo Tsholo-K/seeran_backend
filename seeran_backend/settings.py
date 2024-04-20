@@ -158,7 +158,7 @@ CACHES = {
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'seerandatabase',
+        'NAME': 'seeran_database',
         'USER': 'tsholo',
         'PASSWORD': config('DB_PASSWORD'),
         'HOST': config('DB_HOST'),
