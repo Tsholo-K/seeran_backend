@@ -75,8 +75,6 @@ class SchoolSerializer(serializers.ModelSerializer):
                 date_less_than=expiration_time
             )
             return {
-                'name': principal.name,
-                'surname': principal.surname,
                 'user_image': signed_url,
                 # add any other fields you want to include
             }
