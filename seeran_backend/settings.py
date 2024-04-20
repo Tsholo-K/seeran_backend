@@ -101,7 +101,7 @@ CSRF_COOKIE_DOMAIN = '.seeran-grades.com'
 
 # applications default user model
 # our custom user model 
-AUTH_USER_MODEL = 'authentication.CustomUser'
+AUTH_USER_MODEL = 'users.CustomUser'
 
 
 # user authenticator
