@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     # project apps 
     'authentication', # users/security/authentication
     'schools', # schools/locations/logos
+    'users',
     
     # third party apps
     'corsheaders', # handle cors 
