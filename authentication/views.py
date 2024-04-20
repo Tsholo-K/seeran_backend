@@ -1,6 +1,5 @@
 # python
 import json
-from decouple import config
 import datetime
 import os
 import random
@@ -13,7 +12,6 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import AccessToken
 from .serializers import CustomTokenObtainPairSerializer
 from rest_framework.parsers import MultiPartParser, FormParser
-
 
 # django
 from django.contrib.auth.hashers import check_password
@@ -36,7 +34,8 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
 # models
-from .models import CustomUser, BouncedComplaintEmail
+from .models import BouncedComplaintEmail
+from users.models import CustomUser
 
 # serializers
 

@@ -1,5 +1,10 @@
+# django
 from django.http import JsonResponse
-from .models import CustomUser
+
+# models
+from users.models import CustomUser
+
+# restframework
 from rest_framework_simplejwt.tokens import AccessToken
 
 # django
@@ -7,6 +12,7 @@ from django.core.exceptions import ObjectDoesNotExist
 
 # utility functions 
 from .utils import validate_access_token, refresh_access_token
+
 
 def token_required(view_func):
     def _wrapped_view_func(request, *args, **kwargs):

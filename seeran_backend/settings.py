@@ -1,3 +1,5 @@
+import os
+
 from pathlib import Path
 from datetime import timedelta
 from decouple import config
@@ -162,6 +164,13 @@ DATABASES = {
         'PORT': '5432',
     }
 }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+#     }
+# }
+
 
 
 # s3 bucket

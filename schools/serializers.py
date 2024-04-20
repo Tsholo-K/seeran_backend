@@ -7,7 +7,7 @@ from rest_framework import serializers
 
 # models
 from .models import School
-from authentication.models import CustomUser
+from users.models import CustomUser
 
 # cryptography
 from cryptography.hazmat.backends import default_backend
