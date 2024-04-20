@@ -7,6 +7,6 @@ from . import views
 urlpatterns = [
     
     # school account creation
-    path('create-principal/', views.create_principal, name="create school account"),
+    path('create-principal/<str:school_id>', views.create_principal, name="create school account"),
 
 ]
