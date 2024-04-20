@@ -58,7 +58,10 @@ class SchoolSerializer(serializers.ModelSerializer):
         return ['']
     
     def get_principal(self, obj):
-        principal = CustomUser.objects.filter(school=obj, role='PRINCIPAL').first()
+        try:
+            principal = CustomUser.objects.get(school=obj, role='PRINCIPAL')
+        except CustomUser.DoesNotExist:
+            return None
         if principal:
             if not principal.profile_picture:
                 s3_url = 'https://seeran-storage.s3.amazonaws.com/defaults/default-user-icon.svg'
