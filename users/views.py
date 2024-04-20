@@ -26,13 +26,16 @@ def create_principal(request, school_id):
         school = School.objects.get(school_id=school_id)
     except School.DoesNotExist:
         return Response({"error" : "School not found"})
+    # Check if the school already has a principal
+    if CustomUser.objects.filter(school=school, role="PRINCIPAL").exists():
+        return Response({"error" : "This school already has a principal account linked to it"}, status=400)
     # Add the school instance to the request data
     data = request.data.copy()
     data['school'] = school.id
 
     serializer = PrincipalSerializer(data=data)
     if serializer.is_valid():
-        # serializer.save()
+        serializer.save()
         # Generate a random 6-digit number
         # this will invalidate the cache on the frontend
         random_number = random.randint(100000, 999999)
