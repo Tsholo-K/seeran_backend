@@ -38,6 +38,12 @@ key_id = 'K1E45RUK43W3WT'
 cloudfront_signer = CloudFrontSigner(key_id, rsa_signer)
 
 
+class SchoolCreationSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = School
+        fields = ['name', 'email', 'contact_number', 'school_type', 'province', 'school_district' ]
+
 
 class SchoolSerializer(serializers.ModelSerializer):
         

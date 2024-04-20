@@ -14,7 +14,7 @@ from rest_framework.response import Response
 from .models import School
 
 # serializers
-from .serializers import SchoolSerializer, SchoolsSerializer
+from .serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSerializer
 
 # custom decorators
 from authentication.decorators import token_required
@@ -25,7 +25,7 @@ from .decorators import founder_only
 @token_required
 @founder_only
 def create_school(request):
-    serializer = SchoolSerializer(data=request.data)
+    serializer = SchoolCreationSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save()
         # Generate a random 6-digit number
