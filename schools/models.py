@@ -22,6 +22,7 @@ class School(models.Model):
     SCHOOL_TYPE_CHOICES = [
         ('PRIMARY', 'Primary'),
         ('SECONDARY', 'Secondary'),
+        ('HYBRID', 'Hybrid'),
         ('TERTIARY', 'Tertiary'),
         # Add more types as needed
     ]
