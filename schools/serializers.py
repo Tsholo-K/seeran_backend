@@ -42,8 +42,8 @@ cloudfront_signer = CloudFrontSigner(key_id, rsa_signer)
 class SchoolSerializer(serializers.ModelSerializer):
         
     name = serializers.SerializerMethodField()
-    learners = serializers.IntegerField()
-    parents = serializers.IntegerField()
+    learners = serializers.SerializerMethodField()
+    parents = serializers.SerializerMethodField()
     number_of_classes = serializers.SerializerMethodField()
     principal = serializers.SerializerMethodField()
 
@@ -80,6 +80,12 @@ class SchoolSerializer(serializers.ModelSerializer):
             }
         else:
             return None
+    
+    def get_learners(self, obj):
+        return CustomUser.objects.filter(school=obj, role='STUDENT').count()
+
+    def get_parents(self, obj):
+        return CustomUser.objects.filter(school=obj, role='PARENT').count()
     
     
 
