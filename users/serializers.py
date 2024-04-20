@@ -35,8 +35,8 @@ key_id = 'K1E45RUK43W3WT'
 cloudfront_signer = CloudFrontSigner(key_id, rsa_signer)
 
 
-class PrincipalSerializer(serializers.ModelSerializer):
+class PrincipalCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = [ 'name', 'surname', 'email', 'role' ]
+        fields = [ 'name', 'surname', 'email', 'school', 'role' ]

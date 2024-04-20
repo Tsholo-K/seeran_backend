@@ -14,7 +14,7 @@ from users.models import CustomUser
 from schools.models import School
 
 # serilializer
-from .serializers import PrincipalSerializer
+from .serializers import PrincipalCreationSerializer
 
 
 @api_view(['POST'])
@@ -34,7 +34,7 @@ def create_principal(request, school_id):
     data['school'] = school.id
     data['role'] = "PRINCIPAL"
 
-    serializer = PrincipalSerializer(data=data)
+    serializer = PrincipalCreationSerializer(data=data)
     if serializer.is_valid():
         serializer.save()
         # Generate a random 6-digit number
