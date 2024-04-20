@@ -20,7 +20,7 @@ def generate_account_id(prefix=''):
     unique_part = uuid.uuid4().int
 
     # Concatenate prefix and UUID and convert to string
-    account_id = prefix + unique_part
+    account_id = prefix + str(unique_part)
 
     # Ensure it's exactly 15 digits long (2 for prefix and 13 for the rest)
     account_id = account_id[:15].ljust(15, '0')
