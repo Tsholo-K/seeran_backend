@@ -99,12 +99,15 @@ class SchoolsSerializer(serializers.ModelSerializer):
     
     learners = serializers.IntegerField()
     parents = serializers.IntegerField()
+    name = serializers.SerializerMethodField()
     number_of_classes = serializers.SerializerMethodField()
     
     class Meta:
         model = School
         fields = [ "school_id", 'name', 'learners', 'parents', 'number_of_classes', ]
+        
+    def get_name(self, obj):
+        return obj.name.title()
 
-    
     def get_number_of_classes(self, obj):
         return ['']
