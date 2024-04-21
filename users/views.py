@@ -28,7 +28,7 @@ from .serializers import MyProfileSerializer, MySecurityInfoSerializer, MyIDSeri
 
 # get users id info
 @api_view(["GET"])
-@cache_control(max_age=300, private=True)
+@cache_control(max_age=3600, private=True)
 @token_required
 def my_id(request, invalidator):
     serializer = MyIDSerializer(instance=request.user)
@@ -36,7 +36,7 @@ def my_id(request, invalidator):
 
 # get users profile info
 @api_view(["GET"])
-@cache_control(max_age=300, private=True)
+@cache_control(max_age=3600, private=True)
 @token_required
 def my_profile(request, invalidator):
     serializer = MyProfileSerializer(instance=request.user)
@@ -44,7 +44,7 @@ def my_profile(request, invalidator):
 
 # get users profile info
 @api_view(["GET"])
-@cache_control(max_age=300, private=True)
+@cache_control(max_age=3600, private=True)
 @token_required
 def my_details(request, invalidator):
     serializer = MyDetailsSerializer(instance=request.user)
