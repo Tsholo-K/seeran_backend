@@ -398,7 +398,10 @@ def mfa_change(request):
     # Validate toggle value
     request.user.multifactor_authentication = toggle
     request.user.save()
-    return Response({'message': 'Multifactor authentication {} successfully'.format('enabled' if toggle else 'disabled')}, status=status.HTTP_200_OK)
+    # Generate a random 6-digit number
+    # this will invalidate the cache on the frontend
+    random_number = random.randint(100000, 999999)
+    return Response({'message': 'Multifactor authentication {} successfully'.format('enabled' if toggle else 'disabled'), 'invalidator' : random_number}, status=status.HTTP_200_OK)
 
 
 # subscribe to activity emails 

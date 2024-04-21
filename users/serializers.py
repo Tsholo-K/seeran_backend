@@ -94,6 +94,14 @@ class MyIDSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = [ 'name', 'surname', 'email', 'role', 'account_id' ]
         
+        
+# user profile information
+class MySecurityInfoSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = CustomUser
+        fields = [ 'email', 'multifactor_authentication', 'event_emails' ]
+
 
 
 #### principal serilizers ###

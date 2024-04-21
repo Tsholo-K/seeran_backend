@@ -1,7 +1,5 @@
 # python 
 import random
-import datetime
-import os
 
 # rest framework
 from rest_framework.decorators import api_view, parser_classes
@@ -21,36 +19,7 @@ from schools.models import School
 from balances.models import Balance
 
 # serilializer
-from .serializers import MyProfileSerializer, MyIDSerializer, MyDetailsSerializer, PrincipalCreationSerializer, PrincipalProfileSerializer
-
-# cryptography
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import padding
-
-# boto
-from botocore.signers import CloudFrontSigner
-
-# root url 
-from pathlib import Path
-
-
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-# cloudfront url signer 
-def rsa_signer(message):
-    with open(os.path.join(BASE_DIR, 'private_key.pem'), 'rb') as key_file:
-        private_key = serialization.load_pem_private_key(
-            key_file.read(),
-            password=None,
-            backend=default_backend()
-        )
-    return private_key.sign(message, padding.PKCS1v15(), hashes.SHA1())
-key_id = 'K1E45RUK43W3WT'
-cloudfront_signer = CloudFrontSigner(key_id, rsa_signer)
-
+from .serializers import MyProfileSerializer, MySecurityInfoSerializer, MyIDSerializer, MyDetailsSerializer, PrincipalCreationSerializer, PrincipalProfileSerializer
 
 
 
@@ -59,7 +28,7 @@ cloudfront_signer = CloudFrontSigner(key_id, rsa_signer)
 
 # get users id info
 @api_view(["GET"])
-@cache_control(max_age=86400, private=True)
+@cache_control(max_age=300, private=True)
 @token_required
 def my_id(request, invalidator):
     serializer = MyIDSerializer(instance=request.user)
@@ -67,7 +36,7 @@ def my_id(request, invalidator):
 
 # get users profile info
 @api_view(["GET"])
-@cache_control(max_age=86400, private=True)
+@cache_control(max_age=300, private=True)
 @token_required
 def my_profile(request, invalidator):
     serializer = MyProfileSerializer(instance=request.user)
@@ -75,51 +44,28 @@ def my_profile(request, invalidator):
 
 # get users profile info
 @api_view(["GET"])
-@cache_control(max_age=86400, private=True)
+@cache_control(max_age=300, private=True)
 @token_required
 def my_details(request, invalidator):
     serializer = MyDetailsSerializer(instance=request.user)
     return Response({ "user" : serializer.data },status=200)
 
-# get users image
+# get users profile info
 @api_view(["GET"])
-@cache_control(max_age=3600, private=True)
+@cache_control(max_age=300, private=True)
 @token_required
-def my_image(request, invalidator):
-    if request.user.profile_picture == "":
-        return Response({ "image_url" : None },status=200)
-    s3_url = request.user.profile_picture.url
-    cloudfront_url = s3_url.replace('https://seeran-storage.s3.amazonaws.com', 'https://d376l49ehaoi1m.cloudfront.net')
-    # Calculate expiration time (current time + 1 hour)
-    expiration_time = datetime.datetime.now() + datetime.timedelta(hours=1)
-    signed_url = cloudfront_signer.generate_presigned_url(
-        cloudfront_url, 
-        date_less_than=expiration_time
-    )
-    return Response({ "image_url" : signed_url},status=200)
-
-
-# get users email 
-@api_view(["GET"])
-@cache_control(max_age=86400, private=True)
-@token_required
-def my_email(request, invalidator):
-    return Response({ "email" : request.user.email},status=200)
-
-
-# get users name and surname
-@api_view(["GET"])
-@cache_control(max_age=86400, private=True)
-@token_required
-def my_names(request, invalidator):
-    return Response({ "name" : request.user.name, "surname" : request.user.surname},status=200)
+def my_security_info(request, invalidator):
+    serializer = MySecurityInfoSerializer(instance=request.user)
+    return Response({ "user" : serializer.data },status=200)
 
 
 
+
+### principal information views ##
 
 
 @api_view(['POST'])
-@cache_control(max_age=120, private=True)
+@cache_control(max_age=300, private=True)
 @token_required
 @founder_only
 def create_principal(request, school_id):
@@ -149,7 +95,7 @@ def create_principal(request, school_id):
 
 
 @api_view(['GET'])
-@cache_control(max_age=120, private=True)
+@cache_control(max_age=300, private=True)
 @token_required
 @founder_only
 def principal_profile(request, user_id, invalidator):
