@@ -52,7 +52,7 @@ def my_details(request, invalidator):
 
 # get users profile info
 @api_view(["GET"])
-@cache_control(max_age=300, private=True)
+@cache_control(max_age=0, private=True)
 @token_required
 def my_security_info(request, invalidator):
     serializer = MySecurityInfoSerializer(instance=request.user)
