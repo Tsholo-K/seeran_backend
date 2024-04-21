@@ -22,6 +22,7 @@ from users.models import CustomUser
 
 # serializers
 from .serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSerializer
+from balances.serializers import BalanceSerializer
 
 # custom decorators
 from authentication.decorators import token_required
@@ -73,6 +74,7 @@ def school(request, school_id, invalidator):
             principal = CustomUser.objects.get(school=school, role='PRINCIPAL')
         except CustomUser.DoesNotExist:
             return Response({"school" : serializer.data}, status=200)
-        return Response({"school" : serializer.data, "balance" : Balance.objects.get(user=principal) }, status=200)
+        balance_serializer = BalanceSerializer(instance=Balance.objects.get(user=principal))
+        return Response({"school" : serializer.data, "balance" :  balance_serializer.data}, status=200)
     except Exception as e:
         return Response({"error" : str(e)}, status=500)
