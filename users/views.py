@@ -62,30 +62,24 @@ cloudfront_signer = CloudFrontSigner(key_id, rsa_signer)
 @cache_control(max_age=86400, private=True)
 @token_required
 def my_id(request, invalidator):
-    serializer = MyIDSerializer(data=request.user)
-    if serializer.is_valid():
-        return Response({ "user" : serializer.data },status=200)
-    return Response({"error" : serializer.errors})
+    serializer = MyIDSerializer(instance=request.user)
+    return Response({ "user" : serializer.data },status=200)
 
 # get users profile info
 @api_view(["GET"])
 @cache_control(max_age=86400, private=True)
 @token_required
 def my_profile(request, invalidator):
-    serializer = MyProfileSerializer(data=request.user)
-    if serializer.is_valid():
-        return Response({ "user" : serializer.data },status=200)
-    return Response({"error" : serializer.errors})
+    serializer = MyProfileSerializer(instance=request.user)
+    return Response({ "user" : serializer.data },status=200)
 
 # get users profile info
 @api_view(["GET"])
 @cache_control(max_age=86400, private=True)
 @token_required
 def my_details(request, invalidator):
-    serializer = MyDetailsSerializer(data=request.user)
-    if serializer.is_valid():
-        return Response({ "user" : serializer.data },status=200)
-    return Response({"error" : serializer.errors})
+    serializer = MyDetailsSerializer(instance=request.user)
+    return Response({ "user" : serializer.data },status=200)
 
 # get users image
 @api_view(["GET"])
