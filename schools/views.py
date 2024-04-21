@@ -5,10 +5,21 @@ import random
 from django.views.decorators.cache import cache_control
 from django.db.models import Count
 from django.db import models
+from django.core.mail import BadHeaderError
+from django.core.cache import cache
+
+# boto
+import boto3
+from botocore.exceptions import BotoCoreError
 
 # rest framework
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework import status
+
+# amazon email sending service
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 
 # models
 from .models import School
@@ -20,7 +31,10 @@ from .serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSeri
 
 # custom decorators
 from authentication.decorators import token_required
-from .decorators import founder_only
+from ..users.decorators import founder_only
+
+# utility functions
+from authentication.utils import generate_otp
 
 
 @api_view(['POST'])

@@ -16,7 +16,6 @@ from django.core.mail import BadHeaderError
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
 from django.contrib.auth.hashers import make_password
-from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import csrf_exempt
 
 # boto
