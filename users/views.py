@@ -63,8 +63,9 @@ cloudfront_signer = CloudFrontSigner(key_id, rsa_signer)
 @token_required
 def my_id(request, invalidator):
     serializer = MyIDSerializer(data=request.user)
-    return Response({ "user" : serializer.data },status=200)
-
+    if serializer.is_valid():
+        return Response({ "user" : serializer.data },status=200)
+    return Response({"error" : serializer.errors})
 
 # get users profile info
 @api_view(["GET"])
@@ -72,8 +73,9 @@ def my_id(request, invalidator):
 @token_required
 def my_profile(request, invalidator):
     serializer = MyProfileSerializer(data=request.user)
-    return Response({ "user" : serializer.data },status=200)
-
+    if serializer.is_valid():
+        return Response({ "user" : serializer.data },status=200)
+    return Response({"error" : serializer.errors})
 
 # get users profile info
 @api_view(["GET"])
@@ -81,8 +83,9 @@ def my_profile(request, invalidator):
 @token_required
 def my_details(request, invalidator):
     serializer = MyDetailsSerializer(data=request.user)
-    return Response({ "user" : serializer.data },status=200)
-
+    if serializer.is_valid():
+        return Response({ "user" : serializer.data },status=200)
+    return Response({"error" : serializer.errors})
 
 # get users image
 @api_view(["GET"])
