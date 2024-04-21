@@ -10,8 +10,6 @@ from .models import Balance
 
 # user profile information
 class BalanceSerializer(serializers.ModelSerializer):
-    
-    image = serializers.SerializerMethodField()
 
     class Meta:
         model = Balance
