@@ -12,6 +12,8 @@ from rest_framework.response import Response
 
 # models
 from .models import School
+from balances.models import Balance
+from users.models import CustomUser
 
 # serializers
 from .serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSerializer
@@ -56,10 +58,14 @@ def schools(request, invalidator):
 @cache_control(max_age=3600, private=True)
 @token_required
 @founder_only
-def school(request, school_id):
+def school(request, school_id, invalidator):
     try:
         school = School.objects.get(school_id=school_id)
         serializer = SchoolSerializer(school)
-        return Response({"school" : serializer.data}, status=200)
+        try:
+            principal = CustomUser.objects.get(school=school, role='PRINCIPAL')
+        except CustomUser.DoesNotExist:
+            return Response({"school" : serializer.data}, status=200)
+        return Response({"school" : serializer.data, "balance" : Balance.objects.get(user=principal) }, status=200)
     except Exception as e:
         return Response({"error" : str(e)}, status=500)

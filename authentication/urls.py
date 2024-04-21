@@ -3,19 +3,9 @@ from . import views
 
 urlpatterns = [
     
-    # aws sns endpoint
-    path('sns/notifications', views.sns_endpoint, name="sns notifications endpoint"),
-    
     # user info
-    path('user-info/<int:invalidator>/', views.user_info, name='returns user info'),
-    path('user-profile-picture/<int:invalidator>/', views.user_image, name='returns user profile image'),
-    path('user-email/<int:invalidator>/', views.user_email, name='returns user email'),
-    path('user-names/<int:invalidator>/', views.user_names, name='returns user name and surname'),
     path('account-status/', views.account_status, name='checks if account is activated'),
-    
-    # profile picture change 
-    path("update-profile-picture/", views.update_profile_picture, name="update user profile picture"),
-    
+
     # authentication
     path('authenticate/', views.authenticate, name='get name and surname'),
     
@@ -55,4 +45,7 @@ urlpatterns = [
     # logout
     path('log-out/', views.logout, name='user logout'),
     
+    # aws sns endpoint
+    path('sns/notifications', views.sns_endpoint, name="sns notifications endpoint"),
+
 ]

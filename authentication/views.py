@@ -1,17 +1,14 @@
 # python
 import json
-import datetime
-import os
 import random
 
 # rest framework
-from rest_framework.decorators import api_view, parser_classes
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework import status
 from rest_framework_simplejwt.tokens import AccessToken
 from .serializers import CustomTokenObtainPairSerializer
-from rest_framework.parsers import MultiPartParser, FormParser
 
 # django
 from django.contrib.auth.hashers import check_password
@@ -25,13 +22,6 @@ from django.views.decorators.csrf import csrf_exempt
 # boto
 import boto3
 from botocore.exceptions import BotoCoreError
-from botocore.signers import CloudFrontSigner
-
-# cryptography
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import padding
 
 # models
 from .models import BouncedComplaintEmail
@@ -48,24 +38,6 @@ from .utils import validate_access_token, generate_access_token, generate_token,
 
 # custom decorators
 from .decorators import token_required
-
-# root url 
-from pathlib import Path
-
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-# cloudfront url signer 
-def rsa_signer(message):
-    with open(os.path.join(BASE_DIR, 'private_key.pem'), 'rb') as key_file:
-        private_key = serialization.load_pem_private_key(
-            key_file.read(),
-            password=None,
-            backend=default_backend()
-        )
-    return private_key.sign(message, padding.PKCS1v15(), hashes.SHA1())
-key_id = 'K1E45RUK43W3WT'
-cloudfront_signer = CloudFrontSigner(key_id, rsa_signer)
 
 
 
@@ -810,52 +782,6 @@ def resend_otp(request):
 
 
 
-### user infomation views ###
-
-
-# get users credentials
-@api_view(["GET"])
-@cache_control(max_age=86400, private=True)
-@token_required
-def user_info(request, invalidator):
-    return Response({ "email" : request.user.email, 'name': request.user.name, 'surname' : request.user.surname, "role" : request.user.role, "account_id" : request.user.account_id},status=200)
-
-
-# get users image
-@api_view(["GET"])
-@cache_control(max_age=3600, private=True)
-@token_required
-def user_image(request, invalidator):
-    if request.user.profile_picture == "":
-        return Response({ "image_url" : None },status=200)
-    s3_url = request.user.profile_picture.url
-    cloudfront_url = s3_url.replace('https://seeran-storage.s3.amazonaws.com', 'https://d376l49ehaoi1m.cloudfront.net')
-    # Calculate expiration time (current time + 1 hour)
-    expiration_time = datetime.datetime.now() + datetime.timedelta(hours=1)
-    signed_url = cloudfront_signer.generate_presigned_url(
-        cloudfront_url, 
-        date_less_than=expiration_time
-    )
-    return Response({ "image_url" : signed_url},status=200)
-
-
-# get users email 
-@api_view(["GET"])
-@cache_control(max_age=86400, private=True)
-@token_required
-def user_email(request, invalidator):
-    return Response({ "email" : request.user.email},status=200)
-
-
-# get users name and surname
-@api_view(["GET"])
-@cache_control(max_age=86400, private=True)
-@token_required
-def user_names(request, invalidator):
-    return Response({ "name" : request.user.name, "surname" : request.user.surname},status=200)
-
-
-
 ### account status check views ###
 
 
@@ -879,30 +805,6 @@ def account_status(request):
     if user.password != '' and user.has_usable_password():
         return Response({"error": "account already activated"})
     return Response({"message":"account not activated"})
-
-
-
-### user upload views ###
-
-
-# user profile pictures upload 
-@api_view(['PATCH'])
-@parser_classes([MultiPartParser, FormParser])
-@token_required
-def update_profile_picture(request):
-    profile_picture = request.FILES.get('profile_picture', None)
-    if profile_picture:
-        user = CustomUser.objects.get(email=request.user.email)  # get the current user
-        user.profile_picture.delete()  # delete the old profile picture if it exists
-        user.profile_picture.save(profile_picture.name, profile_picture)  # save the new profile picture
-        user.save()
-        # Generate a random 6-digit number
-        # this will invalidate the cache on the frontend
-        random_number = random.randint(100000, 999999)
-        response = Response({"message": "picture updated successfully.", "invalidator" : random_number}, status=status.HTTP_200_OK)
-        return response
-    else:
-        return Response({"error" : "No file was uploaded."}, status=400)
 
 
 

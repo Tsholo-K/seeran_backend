@@ -67,7 +67,7 @@ class SchoolSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = School
-        fields = ['name', 'school_type', 'principal', 'balance' ]
+        fields = ['name', 'school_type', 'principal']
 
     def get_name(self, obj):
         return obj.name.title()
