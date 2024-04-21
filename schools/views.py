@@ -61,7 +61,7 @@ def schools(request, invalidator):
 def school(request, school_id, invalidator):
     try:
         school = School.objects.get(school_id=school_id)
-        serializer = SchoolSerializer(school)
+        serializer = SchoolSerializer(instance=school)
         try:
             principal = CustomUser.objects.get(school=school, role='PRINCIPAL')
         except CustomUser.DoesNotExist:

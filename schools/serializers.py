@@ -8,6 +8,7 @@ from rest_framework import serializers
 # models
 from .models import School
 from users.models import CustomUser
+from balances.models import Balance
 
 # cryptography
 from cryptography.hazmat.backends import default_backend
@@ -64,10 +65,11 @@ class SchoolSerializer(serializers.ModelSerializer):
         
     name = serializers.SerializerMethodField()
     principal = serializers.SerializerMethodField()
+    balance = serializers.SerializerMethodField()
 
     class Meta:
         model = School
-        fields = ['name', 'school_type', 'principal']
+        fields = ['name', 'school_type', 'principal', 'balance']
 
     def get_name(self, obj):
         return obj.name.title()
@@ -94,6 +96,21 @@ class SchoolSerializer(serializers.ModelSerializer):
                 "surname" : principal.surname,
                 "id" : principal.account_id,
                 'user_image': signed_url,
+                # add any other fields you want to include
+            }
+        else:
+            return None
+    
+    def get_balance(self, obj):
+        try:
+            principal = CustomUser.objects.get(school=obj, role='PRINCIPAL')
+        except CustomUser.DoesNotExist:
+            return None
+        if principal:
+            balance = Balance.objects.get(user=principal)
+            return {
+                "amount" : balance.amount,
+                "last_updated" : balance.last_updated,
                 # add any other fields you want to include
             }
         else:
