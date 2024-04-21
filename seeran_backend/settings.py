@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'authentication', # users/security/authentication
     'schools', # schools/locations/logos
     'users',
+    'balances',
     
     # third party apps
     'corsheaders', # handle cors 
