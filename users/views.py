@@ -21,7 +21,10 @@ from schools.models import School
 from balances.models import Balance
 
 # serilializer
-from .serializers import MyProfileSerializer, MySecurityInfoSerializer, MyIDSerializer, MyDetailsSerializer, PrincipalCreationSerializer, PrincipalProfileSerializer
+from .serializers import (MyProfileSerializer, MySecurityInfoSerializer, MyIDSerializer,
+    MyDetailsSerializer, PrincipalCreationSerializer, PrincipalProfileSerializer, 
+    PrincipalIDSerializer
+)
 
 # boto
 import boto3
@@ -139,11 +142,42 @@ def create_principal(request, school_id):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)    
     return Response({"error" : serializer.errors}, status=400)
 
+
 @api_view(['GET'])
 @cache_control(max_age=3600, private=True)
 @token_required
 @founder_only
 def principal_profile(request, user_id, invalidator):
+    try:
+        # Get the school instance
+        principal = CustomUser.objects.get(account_id=user_id)
+    except CustomUser.DoesNotExist:
+        return Response({"error" : "user not found"})
+    # Add the school instance to the request data
+    serializer = PrincipalProfileSerializer(instance=principal)
+    return Response({ "principal" : serializer.data }, status=201)
+
+
+@api_view(['GET'])
+@cache_control(max_age=3600, private=True)
+@token_required
+@founder_only
+def principal_id(request, user_id, invalidator):
+    try:
+        # Get the school instance
+        principal = CustomUser.objects.get(account_id=user_id)
+    except CustomUser.DoesNotExist:
+        return Response({"error" : "user not found"})
+    # Add the school instance to the request data
+    serializer = PrincipalIDSerializer(instance=principal)
+    return Response({ "principal" : serializer.data }, status=201)
+
+
+@api_view(['GET'])
+@cache_control(max_age=3600, private=True)
+@token_required
+@founder_only
+def principal_info(request, user_id, invalidator):
     try:
         # Get the school instance
         principal = CustomUser.objects.get(account_id=user_id)

@@ -15,7 +15,10 @@ urlpatterns = [
     # profile picture change 
     path("update-profile-picture/", views.update_profile_picture, name="update user profile picture"),
     
-    # principal account creation
+    # principal account urls
     path('create-principal/<str:school_id>', views.create_principal, name="create school account"),
     path('principal-profile/<str:user_id>/<int:invalidator>/', views.principal_profile, name="return principal profile information"),
+    path('principal-id/<str:user_id>/<int:invalidator>/', views.principal_id, name="return principal profile information"),
+    path('principal-info/<str:user_id>/<int:invalidator>/', views.principal_info, name="return principal profile information"),
+    
 ]

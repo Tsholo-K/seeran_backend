@@ -137,3 +137,12 @@ class PrincipalProfileSerializer(serializers.ModelSerializer):
             date_less_than=expiration_time
         )
         return signed_url
+
+
+# principal profile
+class PrincipalIDSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = CustomUser
+        fields = [ 'name', 'surname', 'email', 'role', 'account_id' ]
+        
