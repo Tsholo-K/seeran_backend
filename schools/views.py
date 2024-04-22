@@ -70,11 +70,6 @@ def school(request, school_id, invalidator):
     try:
         school = School.objects.get(school_id=school_id)
         serializer = SchoolSerializer(instance=school)
-        try:
-            principal = CustomUser.objects.get(school=school, role='PRINCIPAL')
-        except CustomUser.DoesNotExist:
-            return Response({"school" : serializer.data}, status=200)
-        balance_serializer = BalanceSerializer(instance=Balance.objects.get(user=principal))
-        return Response({"school" : serializer.data, "balance" :  balance_serializer.data}, status=200)
+        return Response({"school" : serializer.data}, status=200)
     except Exception as e:
         return Response({"error" : str(e)}, status=500)
