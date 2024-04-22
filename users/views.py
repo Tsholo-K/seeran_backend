@@ -24,7 +24,6 @@ from balances.models import Balance
 # serilializer
 from .serializers import (MyProfileSerializer, MySecurityInfoSerializer, MyIDSerializer,
     MyDetailsSerializer, PrincipalCreationSerializer, PrincipalProfileSerializer, 
-    PrincipalIDSerializer
 )
 
 # boto
@@ -38,6 +37,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 # custom decorators
 from authentication.decorators import token_required
 from .decorators import founder_only
+
 
 
 ### users infomation views ###
@@ -179,20 +179,6 @@ def principal_profile(request, user_id, invalidator):
     serializer = PrincipalProfileSerializer(instance=principal)
     return Response({ "principal" : serializer.data }, status=201)
 
-# get principal id infromation
-@api_view(['GET'])
-@cache_control(max_age=300, private=True)
-@token_required
-@founder_only
-def principal_id(request, user_id, invalidator):
-    try:
-        # Get the school instance
-        principal = CustomUser.objects.get(account_id=user_id)
-    except CustomUser.DoesNotExist:
-        return Response({"error" : "user not found"})
-    # Add the school instance to the request data
-    serializer = PrincipalIDSerializer(instance=principal)
-    return Response({ "principal" : serializer.data }, status=201)
 
 # get principal information
 @api_view(['GET'])
