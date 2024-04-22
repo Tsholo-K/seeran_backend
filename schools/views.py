@@ -81,13 +81,8 @@ def school(request, school_id, invalidator):
 @founder_only
 def school_info(request, school_id, invalidator):
     try:
-        schools = School.objects.all().annotate(
-            students=Count('users', filter=models.Q(users__role='STUDENT')),
-            parents=Count('users', filter=models.Q(users__role='PARENT')),
-            teachers=Count('users', filter=models.Q(users__role='TEACHER')),
-            admins=Count('users', filter=models.Q(users__role='ADMIN'))
-        )
-        serializer = SchoolInfoSerializer(schools, many=True)
-        return Response({"schools" : serializer.data}, status=200)
+        school = School.objects.get(school_id=school_id)
+        serializer = SchoolInfoSerializer(instance=school)
+        return Response({"school" : serializer.data}, status=200)
     except Exception as e:
         return Response({"error" : str(e)}, status=500)

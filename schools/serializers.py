@@ -120,10 +120,11 @@ class SchoolSerializer(serializers.ModelSerializer):
 class SchoolInfoSerializer(serializers.ModelSerializer):
         
     name = serializers.SerializerMethodField()
-    students = serializers.IntegerField()
-    parents = serializers.IntegerField()
-    teachers = serializers.IntegerField()
-    admins = serializers.IntegerField()
+    
+    students = serializers.SerializerMethodField()
+    parents = serializers.SerializerMethodField()
+    teachers = serializers.SerializerMethodField()
+    admins = serializers.SerializerMethodField()
 
     class Meta:
         model = School
@@ -132,4 +133,15 @@ class SchoolInfoSerializer(serializers.ModelSerializer):
     def get_name(self, obj):
         return obj.name.title()
 
+    def get_students(self, obj):
+        return CustomUser.objects.filter(role='STUDENT', school=obj).count()
+
+    def get_parents(self, obj):
+        return CustomUser.objects.filter(role='PARENT', school=obj).count()
+
+    def get_teachers(self, obj):
+        return CustomUser.objects.filter(role='TEACHER', school=obj).count()
+
+    def get_admins(self, obj):
+        return CustomUser.objects.filter(role='ADMIN', school=obj).count()
     
