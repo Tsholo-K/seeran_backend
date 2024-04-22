@@ -98,10 +98,6 @@ def create_principal(request, school_id):
     data['role'] = "PRINCIPAL"
     serializer = PrincipalCreationSerializer(data=data)
     if serializer.is_valid():
-        created_user = serializer.save()
-        # Create a new Balance instance for the user
-        Balance.objects.create(user=created_user)
-        user = CustomUser.objects.get(account_id=created_user.account_id)
         try:
             client = boto3.client('ses', region_name='af-south-1')  # AWS region
             # Read the email template from a file
@@ -111,7 +107,7 @@ def create_principal(request, school_id):
             # email_body = email_body.replace('{{name}}', (user.name.title() + user.surname.title()))
             response = client.send_email(
                 Destination={
-                    'ToAddresses': [user.email],
+                    'ToAddresses': [data['email']],
                 },
                 Message={
                     'Body': {
@@ -127,6 +123,9 @@ def create_principal(request, school_id):
             )
             # Check the response to ensure the email was successfully sent
             if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+                created_user = serializer.save()
+                # Create a new Balance instance for the user
+                Balance.objects.create(user=created_user)
                 # Generate a random 6-digit number
                 # this will invalidate the cache on the frontend
                 random_number = random.randint(100000, 999999)
