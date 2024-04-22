@@ -95,7 +95,7 @@ class SchoolSerializer(serializers.ModelSerializer):
                 "name" : principal.name,
                 "surname" : principal.surname,
                 "id" : principal.account_id,
-                'user_image': signed_url,
+                'image': signed_url,
                 # add any other fields you want to include
             }
         else:
