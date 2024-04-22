@@ -49,13 +49,13 @@ class SchoolCreationSerializer(serializers.ModelSerializer):
 class SchoolsSerializer(serializers.ModelSerializer):
     
     name = serializers.SerializerMethodField()
-    learners = serializers.IntegerField()
+    students = serializers.IntegerField()
     parents = serializers.IntegerField()
     teachers = serializers.IntegerField()
     
     class Meta:
         model = School
-        fields = [ "school_id", 'name', 'learners', 'parents', 'teachers', ]
+        fields = [ "school_id", 'name', 'students', 'parents', 'teachers', ]
         
     def get_name(self, obj):
         return obj.name.title()
@@ -117,50 +117,19 @@ class SchoolSerializer(serializers.ModelSerializer):
             return None
     
 
-class SchoolIDSerializer(serializers.ModelSerializer):
+class SchoolInfoSerializer(serializers.ModelSerializer):
         
     name = serializers.SerializerMethodField()
-    learners = serializers.SerializerMethodField()
-    parents = serializers.SerializerMethodField()
-    number_of_classes = serializers.SerializerMethodField()
-    principal = serializers.SerializerMethodField()
+    students = serializers.IntegerField()
+    parents = serializers.IntegerField()
+    teachers = serializers.IntegerField()
+    admins = serializers.IntegerField()
 
     class Meta:
         model = School
-        fields = ['name', 'email', 'contact_number', 'school_type', 'province', 'school_district', 'balance', 'learners', 'parents', 'number_of_classes', 'principal', ]
+        fields = ['name', 'email', 'contact_number', 'school_type', 'province', 'school_district', 'school_id', 'students', 'parents', 'teachers', 'admins', ]
 
     def get_name(self, obj):
         return obj.name.title()
-    
-    def get_number_of_classes(self, obj):
-        return ['']
-    
-    def get_principal(self, obj):
-        try:
-            principal = CustomUser.objects.get(school=obj, role='PRINCIPAL')
-        except CustomUser.DoesNotExist:
-            return None
-        if principal:
-            if not principal.profile_picture:
-                s3_url = 'https://seeran-storage.s3.amazonaws.com/defaults/default-user-icon.svg'
-            else:
-                s3_url = principal.profile_picture.url
-            cloudfront_url = s3_url.replace('https://seeran-storage.s3.amazonaws.com', 'https://d376l49ehaoi1m.cloudfront.net')
-            # Calculate expiration time (current time + 1 hour)
-            expiration_time = datetime.datetime.now() + datetime.timedelta(hours=1)
-            signed_url = cloudfront_signer.generate_presigned_url(
-                cloudfront_url, 
-                date_less_than=expiration_time
-            )
-            return {
-                'user_image': signed_url,
-                # add any other fields you want to include
-            }
-        else:
-            return None
-    
-    def get_learners(self, obj):
-        return CustomUser.objects.filter(school=obj, role='STUDENT').count()
 
-    def get_parents(self, obj):
-        return CustomUser.objects.filter(school=obj, role='PARENT').count()
+    

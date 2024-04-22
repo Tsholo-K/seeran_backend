@@ -21,7 +21,7 @@ from balances.models import Balance
 from users.models import CustomUser
 
 # serializers
-from .serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSerializer
+from .serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSerializer, SchoolInfoSerializer
 from balances.serializers import BalanceSerializer
 
 # custom decorators
@@ -52,7 +52,7 @@ def create_school(request):
 def schools(request, invalidator):
     try:
         schools = School.objects.all().annotate(
-            learners=Count('users', filter=models.Q(users__role='STUDENT')),
+            students=Count('users', filter=models.Q(users__role='STUDENT')),
             parents=Count('users', filter=models.Q(users__role='PARENT')),
             teachers=Count('users', filter=models.Q(users__role='TEACHER'))
         )
@@ -71,5 +71,23 @@ def school(request, school_id, invalidator):
         school = School.objects.get(school_id=school_id)
         serializer = SchoolSerializer(instance=school)
         return Response({"school" : serializer.data}, status=200)
+    except Exception as e:
+        return Response({"error" : str(e)}, status=500)
+
+
+@api_view(['GET'])
+@cache_control(max_age=300, private=True)
+@token_required
+@founder_only
+def school_info(request, school_id, invalidator):
+    try:
+        schools = School.objects.all().annotate(
+            students=Count('users', filter=models.Q(users__role='STUDENT')),
+            parents=Count('users', filter=models.Q(users__role='PARENT')),
+            teachers=Count('users', filter=models.Q(users__role='TEACHER')),
+            admins=Count('users', filter=models.Q(users__role='ADMIN'))
+        )
+        serializer = SchoolInfoSerializer(schools, many=True)
+        return Response({"schools" : serializer.data}, status=200)
     except Exception as e:
         return Response({"error" : str(e)}, status=500)
