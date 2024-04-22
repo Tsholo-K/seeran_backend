@@ -149,7 +149,7 @@ def create_principal(request, school_id):
 def delete_principal(request):
     try:
         # Get the school instance
-        user = CustomUser.objects.get(account_id=request.data.user_id)
+        user = CustomUser.objects.get(account_id=request.data['user_id'])
     except CustomUser.DoesNotExist:
         return Response({"error" : "provided user not found"})
     try:
