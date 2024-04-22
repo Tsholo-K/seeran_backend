@@ -80,6 +80,7 @@ def my_security_info(request, invalidator):
 ### principal account views ##
 
 
+# create principal account
 @api_view(['POST'])
 @token_required
 @founder_only
@@ -141,7 +142,7 @@ def create_principal(request, school_id):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)    
     return Response({"error" : serializer.errors}, status=400)
 
-
+# delete principal account
 @api_view(['POST'])
 @token_required
 @founder_only
@@ -162,7 +163,7 @@ def delete_principal(request):
         # if any exceptions rise during return the response return it as the response
         return Response({"error": f"error deleting account: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
+# get principal profile information
 @api_view(['GET'])
 @cache_control(max_age=3600, private=True)
 @token_required
@@ -177,7 +178,7 @@ def principal_profile(request, user_id, invalidator):
     serializer = PrincipalProfileSerializer(instance=principal)
     return Response({ "principal" : serializer.data }, status=201)
 
-
+# get principal id infromation
 @api_view(['GET'])
 @cache_control(max_age=3600, private=True)
 @token_required
@@ -192,7 +193,7 @@ def principal_id(request, user_id, invalidator):
     serializer = PrincipalIDSerializer(instance=principal)
     return Response({ "principal" : serializer.data }, status=201)
 
-
+# get principal information
 @api_view(['GET'])
 @cache_control(max_age=3600, private=True)
 @token_required
@@ -230,6 +231,4 @@ def update_profile_picture(request):
         return response
     else:
         return Response({"error" : "No file was uploaded."}, status=400)
-
-
 
