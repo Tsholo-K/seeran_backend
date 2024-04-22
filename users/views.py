@@ -143,6 +143,27 @@ def create_principal(request, school_id):
     return Response({"error" : serializer.errors}, status=400)
 
 
+@api_view(['POST'])
+@token_required
+@founder_only
+def delete_principal(request):
+    try:
+        # Get the school instance
+        user = CustomUser.objects.get(account_id=request.data.user_id)
+    except CustomUser.DoesNotExist:
+        return Response({"error" : "provided user not found"})
+    try:
+        # Add the school instance to the request data
+        user.delete()
+        # Generate a random 6-digit number
+        # this will invalidate the cache on the frontend
+        random_number = random.randint(100000, 999999)
+        return Response({"message" : "user account deleted", "invalidator" : random_number}, status=status.HTTP_200_OK)
+    except Exception as e:
+        # if any exceptions rise during return the response return it as the response
+        return Response({"error": f"error deleting account: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 @api_view(['GET'])
 @cache_control(max_age=3600, private=True)
 @token_required
