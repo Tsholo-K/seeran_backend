@@ -5,6 +5,9 @@ import datetime
 # rest framework
 from rest_framework import serializers
 
+# django
+from django.db.models import Q
+
 # models
 from .models import School
 from users.models import CustomUser
@@ -143,5 +146,5 @@ class SchoolInfoSerializer(serializers.ModelSerializer):
         return CustomUser.objects.filter(role='TEACHER', school=obj).count()
 
     def get_admins(self, obj):
-        return CustomUser.objects.filter(role='ADMIN', school=obj).count()
+        return CustomUser.objects.filter(Q(role='ADMIN') | Q(role='PRINCIPAL'), school=obj).count()
     
