@@ -17,5 +17,5 @@ urlpatterns = [
     
     # principal account creation
     path('create-principal/<str:school_id>', views.create_principal, name="create school account"),
-    path('principal-profile/<str:user_id>/<int:invalidator>/', views.create_principal, name="create school account"),
+    path('principal-profile/<str:user_id>/<int:invalidator>/', views.principal_profile, name="return principal profile information"),
 ]
