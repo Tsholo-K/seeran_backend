@@ -165,7 +165,7 @@ def delete_principal(request):
 
 # get principal profile information
 @api_view(['GET'])
-@cache_control(max_age=3600, private=True)
+@cache_control(max_age=300, private=True)
 @token_required
 @founder_only
 def principal_profile(request, user_id, invalidator):
@@ -180,7 +180,7 @@ def principal_profile(request, user_id, invalidator):
 
 # get principal id infromation
 @api_view(['GET'])
-@cache_control(max_age=3600, private=True)
+@cache_control(max_age=300, private=True)
 @token_required
 @founder_only
 def principal_id(request, user_id, invalidator):
@@ -195,7 +195,7 @@ def principal_id(request, user_id, invalidator):
 
 # get principal information
 @api_view(['GET'])
-@cache_control(max_age=3600, private=True)
+@cache_control(max_age=300, private=True)
 @token_required
 @founder_only
 def principal_info(request, user_id, invalidator):
