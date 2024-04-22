@@ -36,6 +36,7 @@ key_id = 'K1E45RUK43W3WT'
 cloudfront_signer = CloudFrontSigner(key_id, rsa_signer)
 
 
+
 ### users serilizers ###
 
 
@@ -87,7 +88,7 @@ class MyDetailsSerializer(serializers.ModelSerializer):
         return signed_url
     
     
-# user profile information
+# user ID information
 class MyIDSerializer(serializers.ModelSerializer):
     
     class Meta:
@@ -95,7 +96,7 @@ class MyIDSerializer(serializers.ModelSerializer):
         fields = [ 'name', 'surname', 'email', 'role', 'account_id' ]
         
         
-# user profile information
+# user security information
 class MySecurityInfoSerializer(serializers.ModelSerializer):
     
     class Meta:
@@ -122,7 +123,7 @@ class PrincipalProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = CustomUser
-        fields = [ 'name', 'surname', 'email', 'image' ]
+        fields = [ 'name', 'surname', 'email', 'image', 'account_id', 'role' ]
         
     def get_image(self, obj):
         if not obj.profile_picture:
@@ -137,12 +138,4 @@ class PrincipalProfileSerializer(serializers.ModelSerializer):
             date_less_than=expiration_time
         )
         return signed_url
-
-
-# principal profile
-class PrincipalIDSerializer(serializers.ModelSerializer):
-    
-    class Meta:
-        model = CustomUser
-        fields = [ 'name', 'surname', 'email', 'role', 'account_id' ]
         
