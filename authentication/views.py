@@ -768,7 +768,7 @@ def resend_otp(request):
         # Check the response to ensure the email was successfully sent
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
             cache.set(user.email, hashed_otp, timeout=300)  # 300 seconds = 5 mins
-            return Response({"message": "OTP created and sent to your email", "email" : user.email}, status=status.HTTP_200_OK)
+            return Response({"message": "OTP created and sent to your email"}, status=status.HTTP_200_OK)
         else:
             return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     except (BotoCoreError, ClientError) as error:
