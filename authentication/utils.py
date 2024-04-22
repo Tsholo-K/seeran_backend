@@ -119,11 +119,11 @@ def generate_token(user):
 def get_upload_path(instance, filename):
     if instance.role == "PARENT":
         return 'parents_profile_pictures/{}'.format(filename)
-    if instance.role == "STUDENT":
-        return 'students_profile_pictures/{}'.format(filename)
-    if instance.role == "TEACHER":
+    elif instance.role == "TEACHER":
         return 'teachers_profile_pictures/{}'.format(filename)
-    if instance.role == "ADMIN":
+    elif instance.role == "ADMIN":
         return 'admins_profile_pictures/{}'.format(filename)
-    if instance.role == "FOUNDER":
+    elif instance.role == "FOUNDER":
         return 'founders_profile_pictures/{}'.format(filename)
+    else:
+        return 'students_profile_pictures/{}'.format(filename)
