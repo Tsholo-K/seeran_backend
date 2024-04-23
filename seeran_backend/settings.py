@@ -77,7 +77,7 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     'https://www.seeran-grades.com',
     'https://server.seeran-grades.com',
-    
+    'https://localhost:3000'
     # Add other allowed origins as needed
 ]
 
