@@ -21,7 +21,7 @@ from balances.models import Balance
 from users.models import CustomUser
 
 # serializers
-from .serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSerializer, SchoolInfoSerializer
+from .serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSerializer
 from balances.serializers import BalanceSerializer
 
 # custom decorators
@@ -70,19 +70,6 @@ def school(request, school_id, invalidator):
     try:
         school = School.objects.get(school_id=school_id)
         serializer = SchoolSerializer(instance=school)
-        return Response({"school" : serializer.data}, status=200)
-    except Exception as e:
-        return Response({"error" : str(e)}, status=500)
-
-
-@api_view(['GET'])
-@cache_control(max_age=300, private=True)
-@token_required
-@founder_only
-def school_info(request, school_id, invalidator):
-    try:
-        school = School.objects.get(school_id=school_id)
-        serializer = SchoolInfoSerializer(instance=school)
         return Response({"school" : serializer.data}, status=200)
     except Exception as e:
         return Response({"error" : str(e)}, status=500)
