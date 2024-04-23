@@ -14,3 +14,10 @@ class CreateBugReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = BugReport
         fields = [ 'user', 'section', 'description' ]
+        
+        
+class BugReportsSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = BugReport
+        fields = [ 'section', 'created_at', 'updated_at', 'status' ]

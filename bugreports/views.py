@@ -15,7 +15,7 @@ from .models import BugReport
 from users.models import CustomUser
 
 # serializers
-from .serializers import CreateBugReportSerializer
+from .serializers import CreateBugReportSerializer, BugReportsSerializer
 
 
 
@@ -39,3 +39,14 @@ def create_bug_report(request):
             return Response({"error": f"{str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     else:
         return Response({"error" : "invalid information"})
+    
+    
+# get users id info
+@api_view(["GET"])
+@cache_control(max_age=120, private=True)
+@token_required
+@founder_only
+def bug_reports(request, invalidator):
+    reports = BugReport.objects.all()
+    serializer = BugReportsSerializer(reports, many=True)
+    return Response({ "reports" : serializer.data },status=200)
