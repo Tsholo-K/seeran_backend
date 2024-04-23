@@ -22,5 +22,6 @@ urlpatterns = [
     path('api/auth/', include('authentication.urls') ),
     path('api/schl/', include('schools.urls') ),
     path('api/usrs/', include('users.urls') ),
-    path('api/blnc/', include('balances.urls') )
+    path('api/blnc/', include('balances.urls') ),
+    path('api/bgrp/', include('bugreports.urls') ),
 ]

@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'schools', # schools/locations/logos
     'users',
     'balances',
+    'bugreports',
     
     # third party apps
     'corsheaders', # handle cors 

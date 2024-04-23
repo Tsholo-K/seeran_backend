@@ -1,6 +1,5 @@
 # django
 from django.views.decorators.cache import cache_control
-from django.shortcuts import render
 
 # rest framework
 from rest_framework.decorators import api_view
@@ -11,7 +10,7 @@ from authentication.decorators import token_required
 from users.decorators import founder_only
 
 # models 
-from .models import Balance, Bill
+from .models import Bill
 from users.models import CustomUser
 
 # serializers
