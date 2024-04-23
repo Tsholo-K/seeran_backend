@@ -28,7 +28,7 @@ def create_bug_report(request):
     except CustomUser.DoesNotExist:
         return Response({"error" : "access denied"})
     data = request.data.copy()
-    data['user'] = user
+    data['user'] = user.id
     serializer = CreateBugReportSerializer(data=data)
     if serializer.is_valid():
         try:
