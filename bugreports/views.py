@@ -30,12 +30,12 @@ def create_bug_report(request):
     data = request.data.copy()
     data['user'] = user
     serializer = CreateBugReportSerializer(data=data)
-    if serializer.is_valid:
+    if serializer.is_valid():
         try:
             serializer.save()
             return Response({"message" : "bug report submitted successfully"}, status=status.HTTP_201_CREATED)
         except Exception as e:
-            # if any exceptions rise during return the response return it as the response
-            return Response({"error": f"error deleting account: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # if any exceptions rise during return the response, return it as the response
+            return Response({"error": f"{str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     else:
         return Response({"error" : "invalid information"})
