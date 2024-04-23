@@ -60,6 +60,8 @@ def login(request):
     # after successful authentication try to get the user object from the database
     try:
         user = CustomUser.objects.get(email=request.data.get('email'))
+        if user.school.none_compliant:
+            return Response({"error": "access denied"})
     except ObjectDoesNotExist:
         # if the user doesnt exist return an error
         # this far through the view this should be impossible but to stay on the safe side we'll handle the error 
@@ -241,6 +243,8 @@ def signin(request):
     # try to validate the credentials by getting a user with the provided credentials 
     try:
         user = CustomUser.objects.get(name=name, surname=surname, email=email)
+        if user.school.none_compliant:
+            return Response({"error": "access denied"})
     except ObjectDoesNotExist:
         # if there's no user with the provided credentials return an error 
         return Response({"error": "invalid credentials"})

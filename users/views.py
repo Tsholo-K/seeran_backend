@@ -179,7 +179,6 @@ def principal_profile(request, user_id, invalidator):
     serializer = PrincipalProfileSerializer(instance=principal)
     return Response({ "principal" : serializer.data }, status=201)
 
-
 # get principal information
 @api_view(['GET'])
 @cache_control(max_age=300, private=True)
