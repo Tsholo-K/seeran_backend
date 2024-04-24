@@ -55,6 +55,6 @@ def bug_reports(request, invalidator):
 @token_required
 @founder_only
 def bug_report(request, bug_report_id):
-    report = BugReport.objects.get(pk=bug_report_id)
+    report = BugReport.objects.get(bugreport_id=bug_report_id)
     serializer = BugReportSerializer(instance=report)
     return Response({ "report" : serializer.data },status=200)
