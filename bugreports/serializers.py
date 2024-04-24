@@ -90,9 +90,8 @@ class BugReportSerializer(serializers.ModelSerializer):
             return {
                 "name" : user.name,
                 "surname" : user.surname,
-                "id" : user.account_id,
+                "id" : user.role,
                 'image': signed_url,
-                'role' : user.role
                 # add any other fields you want to include
             }
         else:
