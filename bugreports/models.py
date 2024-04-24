@@ -26,6 +26,8 @@ class BugReport(models.Model):
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='NEW')
     
+    bugreport_id = models.CharField(max_length=15, unique=True, default=generate_account_id('BR'))
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
