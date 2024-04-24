@@ -13,7 +13,7 @@ class BugReport(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     
     # Detailed description of the bug
-    section = models.CharField(max_length=32)
+    section = models.CharField(max_length=124)
 
     # Detailed description of the bug
     description = models.TextField()
