@@ -35,7 +35,7 @@ def create_bug_report(request):
             # if any exceptions rise during return the response, return it as the response
             return Response({"error": f"{str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     else:
-        return Response({"error" : "invalid information"})
+        return Response({"error" : serializer.errors})
     
     
 # get bug reports

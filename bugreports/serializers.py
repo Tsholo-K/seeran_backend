@@ -12,7 +12,7 @@ from .models import BugReport
 ### users balance serilizers ###
 
 
-# user profile information
+# create bug report seralizer
 class CreateBugReportSerializer(serializers.ModelSerializer):
 
     class Meta:
