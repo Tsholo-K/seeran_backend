@@ -62,4 +62,4 @@ def bug_reports(request, invalidator):
 def bug_report(request, bug_report_id):
     report = BugReport.objects.get(pk=bug_report_id)
     serializer = BugReportSerializer(instance=report)
-    return Response({ "reports" : serializer.data },status=200)
+    return Response({ "report" : serializer.data },status=200)
