@@ -1,5 +1,6 @@
 # django
 from django.views.decorators.cache import cache_control
+from django.shortcuts import get_object_or_404
 
 # rest framework
 from rest_framework.decorators import api_view
@@ -15,7 +16,7 @@ from .models import BugReport
 from users.models import CustomUser
 
 # serializers
-from .serializers import CreateBugReportSerializer, BugReportsSerializer, BugReportSerializer
+from .serializers import CreateBugReportSerializer, BugReportsSerializer, BugReportSerializer, UpdateBugReportStatusSerializer
 
 
 # create bug report
@@ -44,17 +45,31 @@ def create_bug_report(request):
 @token_required
 @founder_only
 def bug_reports(request, invalidator):
-    reports = BugReport.objects.all()
+    reports = BugReport.objects.exclude(status="RESOLVED")
     serializer = BugReportsSerializer(reports, many=True)
     return Response({ "reports" : serializer.data },status=200)
 
 
 # get users id info
 @api_view(["GET"])
-@cache_control(max_age=120, private=True)
+@cache_control(max_age=0, private=True)
 @token_required
 @founder_only
 def bug_report(request, bug_report_id):
     report = BugReport.objects.get(bugreport_id=bug_report_id)
     serializer = BugReportSerializer(instance=report)
     return Response({ "report" : serializer.data },status=200)
+
+
+# change bug report status
+@api_view(["GET"])
+@token_required
+@founder_only
+def update_bug_report_status(request, bug_report_id):
+    bug_report = get_object_or_404(BugReport, bugreport_id=bug_report_id)
+    serializer = UpdateBugReportStatusSerializer(bug_report, data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response({ "message" : "bug report status successfully changed" }, status=200)
+    else:
+        return Response({ "error" : serializer.errors }, status=status.HTTP_400_BAD_REQUEST)

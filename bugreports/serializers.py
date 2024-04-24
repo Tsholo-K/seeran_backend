@@ -55,6 +55,13 @@ class CreateBugReportSerializer(serializers.ModelSerializer):
         fields = [ 'user', 'section', 'description' ]
         
         
+class UpdateBugReportStatusSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = BugReport
+        fields = [ 'status' ]
+        
+        
 class BugReportsSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -65,10 +72,14 @@ class BugReportsSerializer(serializers.ModelSerializer):
 class BugReportSerializer(serializers.ModelSerializer):
     
     user = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
 
     class Meta:
         model = BugReport
         fields = [ 'section', 'created_at', 'updated_at', 'status', 'description', 'user' ]
+        
+    def get_status(self, obj):
+        return obj.status.title()
     
     def get_user(self, obj):
         try:
