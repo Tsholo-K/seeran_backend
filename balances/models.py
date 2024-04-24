@@ -1,5 +1,4 @@
 # python 
-import datetime
 from dateutil.relativedelta import relativedelta
 
 # django
@@ -36,8 +35,9 @@ class Bill(models.Model):
     bill_id = models.CharField(max_length=15, unique=True, default=generate_account_id('BI'))
 
     def save(self, *args, **kwargs):
+        # This is a new bill, so update the billing date in the Balance model
         if not self.id:
-            # This is a new bill, so set the billing date to next month.
-            self.billing_date = timezone.now().date().replace(day=1) + datetime.timedelta(days=32)
-            self.billing_date = self.billing_date.replace(day=1)
+            balance = self.user.balance
+            balance.billing_date = timezone.now().date().replace(day=1) + relativedelta(months=1)
+            balance.save()
         super().save(*args, **kwargs)
