@@ -24,13 +24,8 @@ from .serializers import CreateBugReportSerializer, BugReportsSerializer, BugRep
 def create_bug_report(request):
     if request.user.role == "FOUNDER":
         return Response({"denied" : "come on dude"})
-    try:
-        # Get the school instance
-        user = CustomUser.objects.get(account_id=request.user.account_id)
-    except CustomUser.DoesNotExist:
-        return Response({"error" : "access denied"})
     data = request.data.copy()
-    data['user'] = user.id
+    data['user'] = request.user.id
     serializer = CreateBugReportSerializer(data=data)
     if serializer.is_valid():
         try:
