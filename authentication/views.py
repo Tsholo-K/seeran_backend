@@ -352,7 +352,7 @@ def set_password(request):
 @api_view(["GET"])
 @token_required
 def authenticate(request):
-    if CustomUser.objects.get(pk=request.user.id):
+    if request.user:
         return Response({"message" : "authenticated", "role" : request.user.role}, status=status.HTTP_200_OK)
     else:
         return Response({"error" : "unauthenticated",}, status=status.HTTP_200_OK)

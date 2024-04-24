@@ -48,7 +48,7 @@ from .decorators import founder_only
 @cache_control(max_age=3600, private=True)
 @token_required
 def my_id(request, invalidator):
-    serializer = MyIDSerializer(CustomUser.objects.get(pk=request.user.id))
+    serializer = MyIDSerializer(instance=request.user)
     return Response({ "user" : serializer.data },status=200)
 
 # get users profile info
@@ -56,7 +56,7 @@ def my_id(request, invalidator):
 @cache_control(max_age=3600, private=True)
 @token_required
 def my_profile(request, invalidator):
-    serializer = MyProfileSerializer(CustomUser.objects.get(pk=request.user.id))
+    serializer = MyProfileSerializer(instance=request.user)
     return Response({ "user" : serializer.data },status=200)
 
 # get users profile info
@@ -64,7 +64,7 @@ def my_profile(request, invalidator):
 @cache_control(max_age=3600, private=True)
 @token_required
 def my_details(request, invalidator):
-    serializer = MyDetailsSerializer(CustomUser.objects.get(pk=request.user.id))
+    serializer = MyDetailsSerializer(instance=request.user)
     return Response({ "user" : serializer.data },status=200)
 
 # get users profile info
@@ -72,7 +72,7 @@ def my_details(request, invalidator):
 @cache_control(max_age=0, private=True)
 @token_required
 def my_security_info(request, invalidator):
-    serializer = MySecurityInfoSerializer(CustomUser.objects.get(pk=request.user.id))
+    serializer = MySecurityInfoSerializer(instance=request.user)
     return Response({ "user" : serializer.data },status=200)
 
 
