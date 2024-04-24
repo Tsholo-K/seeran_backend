@@ -70,30 +70,30 @@ class BugReportSerializer(serializers.ModelSerializer):
         model = BugReport
         fields = [ 'section', 'created_at', 'updated_at', 'status', 'description', 'user' ]
     
-        def get_user(self, obj):
-            try:
-                user = CustomUser.objects.get(pk=obj.user)
-            except CustomUser.DoesNotExist:
-                return None
-            if user:
-                if not user.profile_picture:
-                    s3_url = 'https://seeran-storage.s3.amazonaws.com/defaults/default-user-icon.svg'
-                else:
-                    s3_url = user.profile_picture.url
-                cloudfront_url = s3_url.replace('https://seeran-storage.s3.amazonaws.com', 'https://d376l49ehaoi1m.cloudfront.net')
-                # Calculate expiration time (current time + 1 hour)
-                expiration_time = datetime.datetime.now() + datetime.timedelta(hours=1)
-                signed_url = cloudfront_signer.generate_presigned_url(
-                    cloudfront_url, 
-                    date_less_than=expiration_time
-                )
-                return {
-                    "name" : user.name,
-                    "surname" : user.surname,
-                    "id" : user.account_id,
-                    'image': signed_url,
-                    # add any other fields you want to include
-                }
+    def get_user(self, obj):
+        try:
+            user = CustomUser.objects.get(pk=obj.user)
+        except CustomUser.DoesNotExist:
+            return None
+        if user:
+            if not user.profile_picture:
+                s3_url = 'https://seeran-storage.s3.amazonaws.com/defaults/default-user-icon.svg'
             else:
-                return None
+                s3_url = user.profile_picture.url
+            cloudfront_url = s3_url.replace('https://seeran-storage.s3.amazonaws.com', 'https://d376l49ehaoi1m.cloudfront.net')
+            # Calculate expiration time (current time + 1 hour)
+            expiration_time = datetime.datetime.now() + datetime.timedelta(hours=1)
+            signed_url = cloudfront_signer.generate_presigned_url(
+                cloudfront_url, 
+                date_less_than=expiration_time
+            )
+            return {
+                "name" : user.name,
+                "surname" : user.surname,
+                "id" : user.account_id,
+                'image': signed_url,
+                # add any other fields you want to include
+            }
+        else:
+            return None
         
