@@ -62,7 +62,7 @@ def bug_report(request, bug_report_id):
 
 
 # change bug report status
-@api_view(["GET"])
+@api_view(["POST"])
 @token_required
 @founder_only
 def update_bug_report_status(request, bug_report_id):
