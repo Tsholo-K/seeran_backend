@@ -52,7 +52,7 @@ def bug_reports(request, invalidator):
 
 # get users id info
 @api_view(["GET"])
-@cache_control(max_age=0, private=True)
+@cache_control(max_age=300, private=True)
 @token_required
 @founder_only
 def bug_report(request, bug_report_id):
