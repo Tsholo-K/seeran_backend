@@ -72,7 +72,7 @@ class BugReportSerializer(serializers.ModelSerializer):
     
     def get_user(self, obj):
         try:
-            user = CustomUser.objects.get(pk=obj.user)
+            user = CustomUser.objects.get(pk=obj.user.id)
         except CustomUser.DoesNotExist:
             return None
         if user:
