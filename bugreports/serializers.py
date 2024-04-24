@@ -28,12 +28,8 @@ class BugReportsSerializer(serializers.ModelSerializer):
         
         
 class BugReportSerializer(serializers.ModelSerializer):
-
-    dashboard = serializers.SerializerMethodField()
     
     class Meta:
         model = BugReport
-        fields = [ 'section', 'created_at', 'updated_at', 'status', 'description', 'dashboard' ]
+        fields = [ 'section', 'created_at', 'updated_at', 'status', 'description', 'user' ]
         
-    def get_dashboard(self, obj):
-        return obj.user.role
