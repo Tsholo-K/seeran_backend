@@ -47,7 +47,8 @@ INSTALLED_APPS = [
     # third party apps
     'corsheaders', # handle cors 
     'django_redis', # redis caching
-    'storages',# allows for the application to read/write to s3 bucket in production
+    'storages', # allows for the application to read/write to s3 bucket
+    'channels',
 ]
 
 

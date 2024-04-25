@@ -46,7 +46,7 @@ def create_school(request):
 
 
 @api_view(['GET'])
-@cache_control(max_age=120, private=True)
+@cache_control(max_age=0, private=True)
 @token_required
 @founder_only
 def schools(request, invalidator):
@@ -63,7 +63,7 @@ def schools(request, invalidator):
 
 
 @api_view(['GET'])
-@cache_control(max_age=300, private=True)
+@cache_control(max_age=0, private=True)
 @token_required
 @founder_only
 def school(request, school_id, invalidator):
