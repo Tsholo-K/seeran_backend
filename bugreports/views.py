@@ -41,7 +41,7 @@ def create_bug_report(request):
     
 # get bug reports
 @api_view(["GET"])
-@cache_control(max_age=120, private=True)
+@cache_control(max_age=0, private=True)
 @token_required
 @founder_only
 def bug_reports(request, invalidator):
