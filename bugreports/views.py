@@ -62,10 +62,7 @@ def bug_report(request, bug_report_id, invalidator):
     report = BugReport.objects.get(bugreport_id=bug_report_id)
     serializer = BugReportSerializer(instance=report)
     
-    # Generate a random 6-digit number
-    # this will invalidate the cache on the frontend
-    random_number = random.randint(100000, 999999)
-    return Response({ "report" : serializer.data, "invalidator" : random_number },status=200)
+    return Response({ "report" : serializer.data},status=200)
 
 
 # change bug report status
@@ -77,6 +74,10 @@ def update_bug_report_status(request, bug_report_id):
     serializer = UpdateBugReportStatusSerializer(bug_report, data=request.data)
     if serializer.is_valid():
         serializer.save()
-        return Response({ "message" : "bug report status successfully changed" }, status=200)
+        
+        # Generate a random 6-digit number
+        # this will invalidate the cache on the frontend
+        bug_reports_section = random.randint(100000, 999999)
+        return Response({ "message" : "bug report status successfully changed", "bug_reports_section" : bug_reports_section  }, status=200)
     else:
         return Response({ "error" : serializer.errors }, status=status.HTTP_400_BAD_REQUEST)
