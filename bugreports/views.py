@@ -1,3 +1,6 @@
+# python 
+import random
+
 # django
 from django.views.decorators.cache import cache_control
 from django.shortcuts import get_object_or_404
@@ -52,13 +55,17 @@ def bug_reports(request, invalidator):
 
 # get users id info
 @api_view(["GET"])
-@cache_control(max_age=0, private=True)
+@cache_control(max_age=300, private=True)
 @token_required
 @founder_only
-def bug_report(request, bug_report_id):
+def bug_report(request, bug_report_id, invalidator):
     report = BugReport.objects.get(bugreport_id=bug_report_id)
     serializer = BugReportSerializer(instance=report)
-    return Response({ "report" : serializer.data },status=200)
+    
+    # Generate a random 6-digit number
+    # this will invalidate the cache on the frontend
+    random_number = random.randint(100000, 999999)
+    return Response({ "report" : serializer.data, "invalidator" : random_number },status=200)
 
 
 # change bug report status
