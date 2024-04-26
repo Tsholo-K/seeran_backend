@@ -38,6 +38,7 @@ def create_school(request):
     serializer = SchoolCreationSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save()
+        
         # Generate a random 6-digit number
         # this will invalidate the cache on the frontend
         random_number = random.randint(100000, 999999)
@@ -63,7 +64,7 @@ def schools(request, invalidator):
 
 
 @api_view(['GET'])
-@cache_control(max_age=0, private=True)
+@cache_control(max_age=300, private=True)
 @token_required
 @founder_only
 def school(request, school_id, invalidator):

@@ -50,12 +50,12 @@ def create_bug_report(request):
 def bug_reports(request, invalidator):
     reports = BugReport.objects.exclude(status="RESOLVED")
     serializer = BugReportsSerializer(reports, many=True)
+    
     return Response({ "reports" : serializer.data },status=200)
-
 
 # get users id info
 @api_view(["GET"])
-@cache_control(max_age=300, private=True)
+@cache_control(max_age=3600, private=True)
 @token_required
 @founder_only
 def bug_report(request, bug_report_id, invalidator):
@@ -63,7 +63,6 @@ def bug_report(request, bug_report_id, invalidator):
     serializer = BugReportSerializer(instance=report)
     
     return Response({ "report" : serializer.data},status=200)
-
 
 # change bug report status
 @api_view(["POST"])
