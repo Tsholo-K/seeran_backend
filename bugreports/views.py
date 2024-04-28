@@ -40,8 +40,7 @@ def create_bug_report(request):
             return Response({"error": f"{str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     else:
         return Response({"error" : serializer.errors})
-    
-    
+
 # get bug reports
 @api_view(["GET"])
 @cache_control(max_age=0, private=True)
@@ -55,7 +54,7 @@ def unresolved_bug_reports(request, invalidator):
 
 # get resolved bug reports
 @api_view(["GET"])
-@cache_control(max_age=0, private=True)
+@cache_control(max_age=3600, private=True)
 @token_required
 @founder_only
 def resolved_bug_reports(request, invalidator):

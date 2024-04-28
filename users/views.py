@@ -186,11 +186,11 @@ def principal_profile(request, user_id, invalidator):
 @founder_only
 def principal_info(request, user_id, invalidator):
     try:
-        # Get the school instance
+        # Get the principal instance
         principal = CustomUser.objects.get(account_id=user_id)
     except CustomUser.DoesNotExist:
         return Response({"error" : "user not found"})
-    # Add the school instance to the request data
+    # Add the principal instance to the request data
     serializer = PrincipalProfileSerializer(instance=principal)
     return Response({ "principal" : serializer.data }, status=201)
 
