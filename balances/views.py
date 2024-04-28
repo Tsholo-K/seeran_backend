@@ -29,7 +29,7 @@ def principal_invoices(request, user_id, invalidator):
     except CustomUser.DoesNotExist:
         return Response({"error" : "user not found"}, status=404)
     # Get the principal's bills
-    principal_bills = Bill.objects.filter(user=principal)
+    principal_bills = Bill.objects.filter(user=principal).order_by('-date_billed')
     if not principal_bills:
         return Response({"invoices" : None}, status=200)
     # Serialize the bills
