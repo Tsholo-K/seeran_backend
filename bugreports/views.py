@@ -47,8 +47,19 @@ def create_bug_report(request):
 @cache_control(max_age=0, private=True)
 @token_required
 @founder_only
-def bug_reports(request, invalidator):
-    reports = BugReport.objects.exclude(status="RESOLVED")
+def unresolved_bug_reports(request, invalidator):
+    reports = BugReport.objects.exclude(status="RESOLVED").order_by('-created_at')
+    serializer = BugReportsSerializer(reports, many=True)
+    
+    return Response({ "reports" : serializer.data },status=200)
+
+# get resolved bug reports
+@api_view(["GET"])
+@cache_control(max_age=0, private=True)
+@token_required
+@founder_only
+def resolved_bug_reports(request, invalidator):
+    reports = BugReport.objects.filter(status="RESOLVED").order_by('-created_at')
     serializer = BugReportsSerializer(reports, many=True)
     
     return Response({ "reports" : serializer.data },status=200)
