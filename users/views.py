@@ -207,7 +207,8 @@ def update_profile_picture(request):
         # Generate a random 6-digit number
         # this will invalidate the cache on the frontend
         profile_section = random.randint(100000, 999999)
-        return Response({ 'profile_section' : profile_section },status=200)
+        serialiser = MyProfileSerializer(instance=user)
+        return Response({ 'user' : serialiser.data, 'profile_section' : profile_section },status=200)
     else:
         return Response({"error" : "No file was uploaded."}, status=400)
 
