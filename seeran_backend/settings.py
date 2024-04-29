@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'users',
     'balances',
     'bugreports',
+    'emailbanappeals',
     
     # third party apps
     'corsheaders', # handle cors 
