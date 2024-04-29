@@ -202,11 +202,16 @@ def principal_info(request, user_id, invalidator):
 # user profile pictures upload 
 @api_view(['PATCH'])
 @parser_classes([MultiPartParser, FormParser])
+@cache_control(max_age=3600, private=True)
 @token_required
 def update_profile_picture(request):
     profile_picture = request.FILES.get('profile_picture', None)
     if profile_picture:
-        user = CustomUser.objects.get(email=request.user.email)  # get the current user
+        try:
+            user = CustomUser.objects.get(email=request.user.email)  # get the current user
+        except CustomUser.DoesNotExist:
+            return Response({"error" : "presented user not found"})
+        
         user.profile_picture.delete()  # delete the old profile picture if it exists
 
         # Generate a new filename
@@ -218,9 +223,9 @@ def update_profile_picture(request):
 
         # Generate a random 6-digit number
         # this will invalidate the cache on the frontend
-        random_number = random.randint(100000, 999999)
-        response = Response({"message": "profile picture updated successfully.", "invalidator" : random_number}, status=200)
-        return response
+        profile_section = random.randint(100000, 999999)
+        serializer = MyProfileSerializer(instance=user)
+        return Response({ "user" : serializer.data, 'profile_section' : profile_section },status=200)
     else:
         return Response({"error" : "No file was uploaded."}, status=400)
 
