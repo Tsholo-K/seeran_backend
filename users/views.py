@@ -130,8 +130,8 @@ def create_principal(request, school_id):
                 Balance.objects.create(user=created_user)
                 # Generate a random 6-digit number
                 # this will invalidate the cache on the frontend
-                random_number = random.randint(100000, 999999)
-                return Response({"message": "principal account created successfully", "invalidator" : random_number }, status=status.HTTP_200_OK)
+                schools_section = random.randint(100000, 999999)
+                return Response({"message": "principal account created successfully", "schools_section" : schools_section }, status=status.HTTP_200_OK)
             else:
                 return Response({"error": "email sent to users email address bounced"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         except (BotoCoreError, ClientError) as error:

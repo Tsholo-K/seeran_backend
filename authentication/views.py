@@ -335,12 +335,24 @@ def set_password(request):
         user = CustomUser.objects.get(email=email)
         user.password = make_password(new_password)
         user.save()
-        # then generate an access and refresh token for the user 
-        token = generate_token(user)
+        
         # Generate a random 6-digit number
         # this will be the cache invalidator on the frontend
-        random_number = random.randint(100000, 999999)
-        response = Response({"message": "account activated successfully", "role": user.role, "invalidator" : random_number}, status=status.HTTP_200_OK)
+        # generate a section random numbers 
+        # this will be the cache invalidators on the frontend
+        if user.role == "FOUNDER":
+            profile_section = random.randint(100000, 999999)
+            schools_section = random.randint(100000, 999999)
+            bug_reports_section = random.randint(100000, 999999)
+            email_ban_appeal_section = random.randint(100000, 999999)
+            response = Response({"message": "login successful", "role": user.role, "profile_section" : profile_section, "schools_section" : schools_section, "bug_reports_section" : bug_reports_section, "email_ban_appeal_section" : email_ban_appeal_section}, status=status.HTTP_200_OK)
+        else: # user.role == "PRINCIPAL" or  user.role == "ADMIN"
+            profile_section = random.randint(100000, 999999)
+            response = Response({"message": "login successful", "role": user.role, "invalidator" : profile_section}, status=status.HTTP_200_OK)
+                
+        # then generate an access and refresh token for the user 
+        token = generate_token(user)
+
         # set access token cookie with custom expiration (5 mins)
         response.set_cookie('access_token', token['access_token'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
         # set refresh token cookie with custom expiration (86400 seconds = 24 hours)
