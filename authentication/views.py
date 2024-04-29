@@ -23,7 +23,7 @@ import boto3
 from botocore.exceptions import BotoCoreError
 
 # models
-from .models import BouncedComplaintEmail
+from emailbanappeals.models import BouncedComplaintEmail
 from users.models import CustomUser
 
 # serializers
