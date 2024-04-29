@@ -34,3 +34,7 @@ class BugReport(models.Model):
 
     def __str__(self):
         return f'Bug Report {self.id} by {self.user.username}'
+    
+    
+    class Meta:
+        app_label = 'bug_reports'

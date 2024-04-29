@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     'schools', # schools/locations/logos
     'users',
     'balances',
-    'bugreports',
+    'bug_reports',
     'email_ban_appeals',
     
     # third party apps
