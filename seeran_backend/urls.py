@@ -23,5 +23,5 @@ urlpatterns = [
     path('api/schl/', include('schools.urls') ),
     path('api/usrs/', include('users.urls') ),
     path('api/blnc/', include('balances.urls') ),
-    path('api/bgrp/', include('bugreports.urls') ),
+    path('api/bgrp/', include('bug_reports.urls') ),
 ]
