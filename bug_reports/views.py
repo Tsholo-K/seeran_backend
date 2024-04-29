@@ -16,7 +16,6 @@ from users.decorators import founder_only
 
 # models 
 from .models import BugReport
-from users.models import CustomUser
 
 # serializers
 from .serializers import CreateBugReportSerializer, BugReportsSerializer, BugReportSerializer, UpdateBugReportStatusSerializer

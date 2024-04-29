@@ -38,8 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     
     # project apps 
-    'authentication', # users/security/authentication
-    'schools', # schools/locations/logos
+    'authentication',
+    'schools',
     'users',
     'balances',
     'bug_reports',

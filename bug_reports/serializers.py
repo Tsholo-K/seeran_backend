@@ -18,9 +18,6 @@ from botocore.signers import CloudFrontSigner
 from .models import BugReport
 from users.models import CustomUser
 
-# utility functions
-
-
 # root url 
 from pathlib import Path
 

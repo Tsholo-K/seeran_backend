@@ -12,17 +12,11 @@ from django.db import models
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-# amazon email sending service
-import boto3
-
 # models
 from .models import School
-from balances.models import Balance
-from users.models import CustomUser
 
 # serializers
 from .serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSerializer
-from balances.serializers import BalanceSerializer
 
 # custom decorators
 from authentication.decorators import token_required
