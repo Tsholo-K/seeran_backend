@@ -47,31 +47,7 @@ class MyProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = [ 'name', 'surname', 'email', 'image' ]
-        
-    def get_image(self, obj):
-        if not obj.profile_picture:
-            s3_url = 'https://seeran-storage.s3.amazonaws.com/defaults/default-user-icon.svg'
-        else:
-            s3_url = obj.profile_picture.url
-        cloudfront_url = s3_url.replace('https://seeran-storage.s3.amazonaws.com', 'https://d376l49ehaoi1m.cloudfront.net')
-        # Calculate expiration time (current time + 1 hour)
-        expiration_time = datetime.datetime.now() + datetime.timedelta(hours=1)
-        signed_url = cloudfront_signer.generate_presigned_url(
-            cloudfront_url, 
-            date_less_than=expiration_time
-        )
-        return signed_url
-
-
-# user details 
-class MyDetailsSerializer(serializers.ModelSerializer):
-    
-    image = serializers.SerializerMethodField()
-
-    class Meta:
-        model = CustomUser
-        fields = [ 'name', 'surname', 'image' ]
+        fields = [ 'name', 'surname', 'email', 'image', 'account_id', 'role' ]
         
     def get_image(self, obj):
         if not obj.profile_picture:
@@ -87,21 +63,15 @@ class MyDetailsSerializer(serializers.ModelSerializer):
         )
         return signed_url
     
-    
-# user ID information
-class MyIDSerializer(serializers.ModelSerializer):
-    
-    class Meta:
-        model = CustomUser
-        fields = [ 'name', 'surname', 'email', 'role', 'account_id' ]
-        
+    def get_role(self, obj):
+        return obj.role.title()        
         
 # user security information
 class MySecurityInfoSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = CustomUser
-        fields = [ 'email', 'multifactor_authentication', 'event_emails' ]
+        fields = [ 'multifactor_authentication', 'event_emails' ]
 
 
 

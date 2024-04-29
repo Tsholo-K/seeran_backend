@@ -22,8 +22,8 @@ from schools.models import School
 from balances.models import Balance
 
 # serilializer
-from .serializers import (MyProfileSerializer, MySecurityInfoSerializer, MyIDSerializer,
-    MyDetailsSerializer, PrincipalCreationSerializer, PrincipalProfileSerializer, 
+from .serializers import (MyProfileSerializer, MySecurityInfoSerializer,
+    PrincipalCreationSerializer, PrincipalProfileSerializer, 
 )
 
 # boto
@@ -43,14 +43,6 @@ from .decorators import founder_only
 ### users infomation views ###
 
 
-# get users id info
-@api_view(["GET"])
-@cache_control(max_age=3600, private=True)
-@token_required
-def my_id(request, invalidator):
-    serializer = MyIDSerializer(instance=request.user)
-    return Response({ "user" : serializer.data },status=200)
-
 # get users profile info
 @api_view(["GET"])
 @cache_control(max_age=3600, private=True)
@@ -61,19 +53,11 @@ def my_profile(request, invalidator):
 
 # get users profile info
 @api_view(["GET"])
-@cache_control(max_age=3600, private=True)
-@token_required
-def my_details(request, invalidator):
-    serializer = MyDetailsSerializer(instance=request.user)
-    return Response({ "user" : serializer.data },status=200)
-
-# get users profile info
-@api_view(["GET"])
 @cache_control(max_age=0, private=True)
 @token_required
 def my_security_info(request, invalidator):
     serializer = MySecurityInfoSerializer(instance=request.user)
-    return Response({ "user" : serializer.data },status=200)
+    return Response({ "users_security_info" : serializer.data },status=200)
 
 
 
@@ -202,7 +186,6 @@ def principal_info(request, user_id, invalidator):
 # user profile pictures upload 
 @api_view(['PATCH'])
 @parser_classes([MultiPartParser, FormParser])
-@cache_control(max_age=3600, private=True)
 @token_required
 def update_profile_picture(request):
     profile_picture = request.FILES.get('profile_picture', None)
@@ -224,8 +207,7 @@ def update_profile_picture(request):
         # Generate a random 6-digit number
         # this will invalidate the cache on the frontend
         profile_section = random.randint(100000, 999999)
-        serializer = MyProfileSerializer(instance=user)
-        return Response({ "user" : serializer.data, 'profile_section' : profile_section },status=200)
+        return Response({ 'profile_section' : profile_section },status=200)
     else:
         return Response({"error" : "No file was uploaded."}, status=400)
 
