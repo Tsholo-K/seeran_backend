@@ -44,7 +44,8 @@ cloudfront_signer = CloudFrontSigner(key_id, rsa_signer)
 class MyProfileSerializer(serializers.ModelSerializer):
     
     image = serializers.SerializerMethodField()
-
+    role = serializers.SerializerMethodField()
+    
     class Meta:
         model = CustomUser
         fields = [ 'name', 'surname', 'email', 'image', 'account_id', 'role' ]
@@ -85,16 +86,19 @@ class PrincipalCreationSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = [ 'name', 'surname', 'email', 'school', 'role' ]
 
-
 # principal profile
 class PrincipalProfileSerializer(serializers.ModelSerializer):
 
     image = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
     
     class Meta:
         model = CustomUser
         fields = [ 'name', 'surname', 'email', 'image', 'account_id', 'role' ]
-        
+    
+    def get_role(self, obj):
+        return obj.role.lower().title() 
+    
     def get_image(self, obj):
         if not obj.profile_picture:
             s3_url = 'https://seeran-storage.s3.amazonaws.com/defaults/default-user-icon.svg'

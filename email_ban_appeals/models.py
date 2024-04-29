@@ -10,6 +10,7 @@ class BouncedComplaintEmail(models.Model):
     email = models.EmailField(_('email'), unique=True)
     reason = models.TextField(_('reason for banned email'), )    
 
+
 class EmailBanAppeal(models.Model):
     email = models.EmailField(_('email'), unique=True)
     reason = models.TextField(_('reason for appeal'), )
