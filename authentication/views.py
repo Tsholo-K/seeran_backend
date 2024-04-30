@@ -18,10 +18,6 @@ from django.core.cache import cache
 from django.contrib.auth.hashers import make_password
 from django.views.decorators.csrf import csrf_exempt
 
-# boto
-import boto3
-from botocore.exceptions import BotoCoreError
-
 # models
 from email_ban_appeals.models import BouncedComplaintEmail
 from users.models import CustomUser

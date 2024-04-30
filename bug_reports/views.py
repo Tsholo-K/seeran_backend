@@ -45,7 +45,7 @@ def create_bug_report(request):
 @cache_control(max_age=0, private=True)
 @token_required
 @founder_only
-def unresolved_bug_reports(request, invalidator):
+def unresolved_bug_reports(request):
     reports = BugReport.objects.exclude(status="RESOLVED").order_by('-created_at')
     serializer = BugReportsSerializer(reports, many=True)
     
@@ -56,7 +56,7 @@ def unresolved_bug_reports(request, invalidator):
 @cache_control(max_age=3600, private=True)
 @token_required
 @founder_only
-def resolved_bug_reports(request, invalidator):
+def resolved_bug_reports(request):
     reports = BugReport.objects.filter(status="RESOLVED").order_by('-created_at')
     serializer = BugReportsSerializer(reports, many=True)
     
