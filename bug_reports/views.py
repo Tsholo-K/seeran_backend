@@ -42,7 +42,6 @@ def create_bug_report(request):
 
 # get bug reports
 @api_view(["GET"])
-@cache_control(max_age=0, private=True)
 @token_required
 @founder_only
 def unresolved_bug_reports(request):

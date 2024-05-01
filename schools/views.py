@@ -41,10 +41,9 @@ def create_school(request):
 
 
 @api_view(['GET'])
-@cache_control(max_age=0, private=True)
 @token_required
 @founder_only
-def schools(request, invalidator):
+def schools(request):
     try:
         schools = School.objects.all().annotate(
             students=Count('users', filter=models.Q(users__role='STUDENT')),
