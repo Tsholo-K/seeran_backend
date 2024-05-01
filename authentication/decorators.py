@@ -9,6 +9,7 @@ from rest_framework_simplejwt.tokens import AccessToken
 
 # django
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.cache import cache
 
 # utility functions 
 from .utils import validate_access_token, refresh_access_token
@@ -24,6 +25,8 @@ def token_required(view_func):
 
         if not refresh_token:
             return JsonResponse({'error': 'missing refresh token'}, status=status.HTTP_401_UNAUTHORIZED)
+        if cache.get(refresh_token) == 'blacklisted':
+            return JsonResponse({'error': 'refresh token is blacklisted'}, status=status.HTTP_401_UNAUTHORIZED)
         if not access_token:
             new_access_token = refresh_access_token(refresh_token)
         else:
