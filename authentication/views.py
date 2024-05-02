@@ -888,7 +888,7 @@ def account_status(request):
         user = CustomUser.objects.get(email=email)
     except CustomUser.DoesNotExist:
         return Response({"error": "user with the provided email does not exist."})
-    if not user.password == '' or user.has_usable_password():
+    if not user.password == '' and user.has_usable_password():
         return Response({"error": "account already activated"})
     return Response({"message":"account not activated"})
 
