@@ -138,8 +138,8 @@ def delete_principal(request):
         user.delete()
         # Generate a random 6-digit number
         # this will invalidate the cache on the frontend
-        random_number = random.randint(100000, 999999)
-        return Response({"message" : "user account deleted", "invalidator" : random_number}, status=status.HTTP_200_OK)
+        schools_section = random.randint(100000, 999999)
+        return Response({"message" : "user account deleted", "invalidator" : schools_section}, status=status.HTTP_200_OK)
     except Exception as e:
         # if any exceptions rise during return the response return it as the response
         return Response({"error": f"error deleting account: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
