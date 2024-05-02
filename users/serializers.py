@@ -48,7 +48,7 @@ class MyProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = CustomUser
-        fields = [ 'name', 'surname', 'email', 'image', 'account_id', 'role' ]
+        fields = [ 'name', 'surname', 'email', 'image', 'user_id', 'role' ]
         
     def get_image(self, obj):
         if not obj.profile_picture:
@@ -94,7 +94,7 @@ class PrincipalProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = CustomUser
-        fields = [ 'name', 'surname', 'email', 'image', 'account_id', 'role' ]
+        fields = [ 'name', 'surname', 'email', 'image', 'user_id', 'role' ]
     
     def get_role(self, obj):
         return obj.role.lower().title() 

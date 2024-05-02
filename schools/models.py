@@ -60,7 +60,7 @@ class School(models.Model):
     school_district = models.CharField(_('school district'), max_length=100, choices=SCHOOL_DISTRICT_CHOICES, default="")  # School District or Region
 
     # school account id 
-    school_id = models.CharField(max_length=15, unique=True, default=generate_account_id('SC')) # school account
+    school_id = models.CharField(max_length=15, unique=True, default=generate_account_id('SA')) # school accounts
         
     # all required fields
     REQUIRED_FIELDS = ['name', 'email', 'location', 'contact_number', 'school_type', 'school_district']

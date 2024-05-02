@@ -66,7 +66,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     id_number = models.CharField(_('ID number'), max_length=13, unique=True, blank=True, null=True)
     name = models.CharField(_('name'), max_length=32)
     surname = models.CharField(_('surname'), max_length=32)
-    account_id = models.CharField(max_length=15, unique=True, default=generate_account_id('UI')) # custom user account
+    user_id = models.CharField(max_length=15, unique=True, default=generate_account_id('UA')) # user account
 
     school = models.ForeignKey(School, on_delete=models.SET_NULL, related_name='users', null=True)
     

@@ -19,7 +19,7 @@ from django.contrib.auth.hashers import make_password
 from django.views.decorators.csrf import csrf_exempt
 
 # models
-from email_ban_appeals.models import BouncedComplaintEmail
+from email_ban_appeals.models import EmailBan
 from users.models import CustomUser
 
 # amazon email sending service
@@ -384,7 +384,7 @@ def logout(request):
     if refresh_token:
         try:
             # Add the refresh token to the blacklist
-            response = Response({"message": "logout successful"})
+            response = Response({"message": "logged you out successful"})
             # Clear the refresh token cookie
             response.delete_cookie('access_token', domain='.seeran-grades.com')
             response.delete_cookie('refresh_token', domain='.seeran-grades.com')
@@ -847,7 +847,7 @@ def sns_endpoint(request):
                     # Check if the bounce is permanent
                     if bounce['bounceType'] == 'Permanent':
                         # Add the email to your bounce table
-                        BouncedComplaintEmail.objects.get_or_create(email=email_address, reason="email bounced permanently")
+                        EmailBan.objects.get_or_create(email=email_address, reason="email bounced permanently", can_appeal=False)
                         # Look up the user and tag them
                         try:
                             user = CustomUser.objects.get(email=email_address)
@@ -857,26 +857,32 @@ def sns_endpoint(request):
                         except CustomUser.DoesNotExist:
                             pass
                     else:
-                        # Add the email to your bounce table
-                        BouncedComplaintEmail.objects.get_or_create(email=email_address, reason="email soft bounced, there might be an issues with the your email address or mail server. these issues can include a full mailbox or a temporarily unavailable server") # the user can appeal to get thier email unbanned 
                         try:
                             user = CustomUser.objects.get(email=email_address)
-                            user.email_banned = True
-                            user.email_ban_amount = user.email_ban_amount + 1
-                            user.save()
+                            if user.email_ban_amount > 2:
+                                EmailBan.objects.get_or_create(email=email_address, reason="more than 3 emails sent to your email address soft bounced, and as a result your email address has been permanetly banned. to change your accounts email address visit your schools admin desk for help", can_appeal=False)
+                            else:
+                                # Add the email to bounce table
+                                EmailBan.objects.get_or_create(email=email_address, reason="an email sent to your email address soft bounced, and your email address has been temporarily banned. you can appeal this in the profile settings page") # the user can appeal to get thier email unbanned 
+                                user.email_banned = True
+                                user.email_ban_amount = user.email_ban_amount + 1
+                                user.save()
                         except CustomUser.DoesNotExist:
                             pass
             elif notification['notificationType'] == 'Complaint':
                 complaint = notification['complaint']
                 for recipient in complaint['complainedRecipients']:
                     email_address = recipient['emailAddress']
-                    # Handle complaints here
-                    BouncedComplaintEmail.objects.get_or_create(email=email_address, reason='you marked one of our emails as spam. we respect our customers, so we will refrain from sending you any emails here on out') # the user can appeal to get thier email unbanned 
                     try:
                         user = CustomUser.objects.get(email=email_address)
-                        user.email_banned = True
-                        user.email_ban_amount = user.email_ban_amount + 1
-                        user.save()
+                        if user.email_ban_amount > 2:
+                            EmailBan.objects.get_or_create(email=email_address, reason="you marked three of our emails as spam, this badly harms our companys email sender reputation. we respect our customers, so we will refrain from sending you any emails here on out. to change your accounts email address visit your schools admin desk for help", can_appeal=False)
+                        else:
+                            # Handle complaints here
+                            EmailBan.objects.get_or_create(email=email_address, reason='you marked one of our emails as spam this badly harms our companys email sender reputation. we respect our customers, so we will refrain from sending you any emails here on out. you can appeal this in the profile settings page') # the user can appeal to get thier email unbanned 
+                            user.email_banned = True
+                            user.email_ban_amount = user.email_ban_amount + 1
+                            user.save()
                     except CustomUser.DoesNotExist:
                         pass
             elif notification['notificationType'] == 'Delivery':
