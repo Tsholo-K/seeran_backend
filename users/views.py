@@ -152,7 +152,7 @@ def delete_principal(request):
 def principal_profile(request, user_id, invalidator):
     try:
         # Get the school instance
-        principal = CustomUser.objects.get(account_id=user_id)
+        principal = CustomUser.objects.get(user_id=user_id)
     except CustomUser.DoesNotExist:
         return Response({"error" : "user not found"})
     # Add the school instance to the request data
@@ -167,7 +167,7 @@ def principal_profile(request, user_id, invalidator):
 def principal_info(request, user_id, invalidator):
     try:
         # Get the principal instance
-        principal = CustomUser.objects.get(account_id=user_id)
+        principal = CustomUser.objects.get(user_id=user_id)
     except CustomUser.DoesNotExist:
         return Response({"error" : "user not found"})
     # Add the principal instance to the request data
