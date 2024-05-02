@@ -25,7 +25,7 @@ from .serializers import BillsSerializer
 def principal_invoices(request, user_id, invalidator):
     try:
         # Get the principal instance
-        principal = CustomUser.objects.get(account_id=user_id)
+        principal = CustomUser.objects.get(user_id=user_id)
     except CustomUser.DoesNotExist:
         return Response({"error" : "user not found"}, status=404)
     # Get the principal's bills
