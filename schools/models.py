@@ -1,11 +1,18 @@
+# python 
+import uuid
+
 # django imports
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.db import IntegrityError
 
 # models
+from schools.models import School
 
 # utility functions
 from authentication.utils import generate_account_id
+
+# models
 
 
 class School(models.Model):
@@ -60,8 +67,8 @@ class School(models.Model):
     school_district = models.CharField(_('school district'), max_length=100, choices=SCHOOL_DISTRICT_CHOICES, default="")  # School District or Region
 
     # school account id 
-    school_id = models.CharField(max_length=15, unique=True, default=generate_account_id('SA')) # school accounts
-        
+    school_id = models.CharField(max_length=15, unique=True)   
+         
     # all required fields
     REQUIRED_FIELDS = ['name', 'email', 'location', 'contact_number', 'school_type', 'school_district']
 
@@ -94,3 +101,29 @@ class School(models.Model):
     def __str__(self):
         return self.name
 
+    # school account id creation handler
+    def save(self, *args, **kwargs):
+        if not self.school_id:
+            self.school_id = self.generate_unique_account_id('SA')
+
+        attempts = 0
+        while attempts < 5:
+            try:
+                super().save(*args, **kwargs)
+                break
+            except IntegrityError:
+                self.school_id = self.generate_unique_account_id('SA') # school account
+                attempts += 1
+        if attempts >= 5:
+            raise ValueError('Could not create school with unique account ID after 5 attempts. Please try again later.')
+
+
+    @staticmethod
+    def generate_unique_account_id(prefix=''):
+        while True:
+            unique_part = uuid.uuid4().hex
+            account_id = prefix + unique_part
+            account_id = account_id[:15].ljust(15, '0')
+
+            if not School.objects.filter(school_id=account_id).exists():
+                return account_id

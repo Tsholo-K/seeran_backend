@@ -1,10 +1,14 @@
+# python 
+import uuid
+
+# django
 from django.db import models
+from django.db import IntegrityError
 
 # models
 from users.models import CustomUser
 
 # utility 
-from authentication.utils import generate_account_id
 
 
 class BugReport(models.Model):
@@ -26,7 +30,7 @@ class BugReport(models.Model):
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='NEW')
     
-    bugreport_id = models.CharField(max_length=15, unique=True, default=generate_account_id('BR'))
+    bugreport_id = models.CharField(max_length=15, unique=True)
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -34,3 +38,32 @@ class BugReport(models.Model):
 
     def __str__(self):
         return f'Bug Report {self.id} by {self.user.username}'
+
+    # overwrite save method 
+    def save(self, *args, **kwargs):
+        if not self.bugreport_id:
+            self.bugreport_id = self.generate_unique_account_id('BR')
+
+        attempts = 0
+        while attempts < 5:
+            try:
+                super().save(*args, **kwargs)
+                break
+            except IntegrityError:
+                # If an IntegrityError is raised, it means the bugreport_id was not unique.
+                # Generate a new bugreport_id and try again.
+                self.bugreport_id = self.generate_unique_account_id('BR')
+                attempts += 1
+        if attempts >= 5:
+            raise ValueError('Could not create bug report with unique report ID after 5 attempts. Please try again later.')
+
+
+    @staticmethod
+    def generate_unique_account_id(prefix=''):
+        while True:
+            unique_part = uuid.uuid4().hex
+            account_id = prefix + unique_part
+            account_id = account_id[:15].ljust(15, '0')
+
+            if not BugReport.objects.filter(bugreport_id=account_id).exists():
+                return account_id

@@ -5,6 +5,10 @@ from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from django.db import IntegrityError
+
+# python 
+import uuid
 
 # models
 from schools.models import School
@@ -17,7 +21,7 @@ class CustomUserManager(BaseUserManager):
     # user creation 
     def create_user(self, email=None, id_number=None, name=None, surname=None, role=None, school=None, **extra_fields):
         if not email and not id_number:
-            raise ValueError(_('Either email or ID number must be set'))
+            raise ValueError(_('either email or ID number must be set'))
         
         if email:
             email = self.normalize_email(email)
@@ -26,16 +30,7 @@ class CustomUserManager(BaseUserManager):
             raise ValueError(_('user must be part of a school'))
         
         user = self.model(email=email, id_number=id_number, name=name, surname=surname, role=role, school=school, **extra_fields)
-
-        while True:
-            try:
-                user.save(using=self._db)
-                return user
-
-            except IntegrityError:
-                # If an IntegrityError is raised, it means the user_id was not unique.
-                # Generate a new user_id and try again.
-                user.user_id = generate_account_id('UA')
+        return user
         
     
     # user first sign-in activation
@@ -76,7 +71,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     id_number = models.CharField(_('ID number'), max_length=13, unique=True, blank=True, null=True)
     name = models.CharField(_('name'), max_length=32)
     surname = models.CharField(_('surname'), max_length=32)
-    user_id = models.CharField(max_length=15, unique=True, default=generate_account_id('UA')) # user account
+    user_id = models.CharField(max_length=15, unique=True)
 
     school = models.ForeignKey(School, on_delete=models.SET_NULL, related_name='users', null=True)
     
@@ -127,3 +122,31 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email if self.email else self.id_number
 
+    # overwirte save method
+    def save(self, *args, **kwargs):
+        if not self.user_id:
+            self.user_id = self.generate_unique_account_id('UA')
+
+        attempts = 0
+        while attempts < 5:
+            try:
+                super().save(*args, **kwargs)
+                break
+            except IntegrityError:
+                # If an IntegrityError is raised, it means the user_id was not unique.
+                # Generate a new user_id and try again.
+                self.user_id = self.generate_unique_account_id('UA') # user account
+                attempts += 1
+        if attempts >= 5:
+            raise ValueError('Could not create user with unique user ID after 5 attempts. Please try again later.')
+
+    @staticmethod
+    def generate_unique_account_id(prefix=''):
+        while True:
+            unique_part = uuid.uuid4().hex
+            account_id = prefix + unique_part
+            account_id = account_id[:15].ljust(15, '0')
+
+            if not CustomUser.objects.filter(user_id=account_id).exists():
+                return account_id
+            
