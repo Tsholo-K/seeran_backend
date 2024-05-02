@@ -14,7 +14,7 @@ from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 
 # models 
-from users.models import CustomUser
+
 
 # account id generator
 def generate_account_id(prefix=''):
@@ -27,10 +27,7 @@ def generate_account_id(prefix=''):
 
         # Ensure it's exactly 15 digits long (2 for prefix and 13 for the rest)
         account_id = account_id[:15].ljust(15, '0')
-
-        # Check if this ID already exists in the database
-        if not CustomUser.objects.filter(user_id=account_id).exists():
-            return account_id
+        return account_id
 
 # validate token
 def validate_access_token(access_token):
