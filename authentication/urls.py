@@ -10,11 +10,12 @@ urlpatterns = [
     path('authenticate/', views.authenticate, name='get name and surname'),
     
     # email change
-    path('validate-email/', views.validate_email, name='validate users email before email change'),
+    path('validate-email/', views.validate_email_change, name='validate users email before email change'),
     path('change-email/', views.change_email, name='change users email'),
     
     # password change
     path('validate-password/', views.validate_password, name='validate users password before password change'),
+    path('validate-password-reset/', views.validate_password_reset, name='validate users password before password change'),
     path('change-password/', views.change_password, name='change users password'),   
     path('set-password/', views.set_password, name='set account password( account activation )'),
     

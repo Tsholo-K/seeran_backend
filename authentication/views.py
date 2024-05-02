@@ -561,7 +561,7 @@ def validate_password(request):
 # validate email before email change
 @api_view(['POST'])
 @token_required
-def validate_email(request):
+def validate_email_change(request):
     if request.user.email_banned:
         return Response({ "error" : "your email address has been banned"})
     sent_email = request.data.get('email')   
@@ -613,6 +613,72 @@ def validate_email(request):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+# validate email before password reset
+@api_view(['POST'])
+def validate_password_reset(request):
+    sent_email = request.data.get('email')
+    if not sent_email:
+        return Response({"error": "email address is required"})
+    
+    try:
+        user = CustomUser.objects.get(email=sent_email)
+        if not user.role == "FOUNDER":
+            if user.school.none_compliant:
+                return Response({"denied": "access denied"})
+    except ObjectDoesNotExist:
+        return Response({"error": "invalid email address, no user with provided email"})
+    
+    if user.password == '' and not user.has_usable_password():
+        return Response({"error": "account with provided email hasn't been activated, please try to sign in first"})
+    
+    if user.email_banned:
+        return Response({ "error" : "your email address has been banned, failed to send OTP"})
+    
+    # Validate the email
+    if not validate_user_email(sent_email):
+        return Response({"error": " invalid email address"})
+    
+    # Create an OTP for the user
+    otp, hashed_otp = generate_otp()
+    
+    # Send the OTP via email
+    try:
+        client = boto3.client('ses', region_name='af-south-1')  # AWS region
+        # Read the email template from a file
+        with open('authentication/templates/authentication/emailotptemplate.html', 'r') as file:
+            email_body = file.read()
+        # Replace the {{otp}} placeholder with the actual OTP
+        email_body = email_body.replace('{{otp}}', otp)
+        response = client.send_email(
+            Destination={
+                'ToAddresses': [sent_email],
+            },
+            Message={
+                'Body': {
+                    'Html': {
+                        'Data': email_body,
+                    },
+                },
+                'Subject': {
+                    'Data': 'One Time Passcode',
+                },
+            },
+            Source='seeran grades <authorization@seeran-grades.com>',  # SES verified email address
+        )
+        # Check the response to ensure the email was successfully sent
+        if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+            # cache hashed otp and return reponse
+            cache.set(sent_email, hashed_otp, timeout=300)  # 300 seconds = 5 mins
+            return Response({"message": "email verified, OTP created and sent to your email"}, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except (BotoCoreError, ClientError) as error:
+        # Handle specific errors and return appropriate responses
+        return Response({"error": f"email not sent: {error}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except BadHeaderError:
+        return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 ### email/password change views ###
