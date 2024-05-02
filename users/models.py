@@ -14,7 +14,7 @@ import uuid
 from schools.models import School
 
 # utility functions
-from authentication.utils import generate_account_id, get_upload_path
+from authentication.utils import get_upload_path
 
 
 class CustomUserManager(BaseUserManager):

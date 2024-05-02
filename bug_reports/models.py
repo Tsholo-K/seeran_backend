@@ -8,8 +8,6 @@ from django.db import IntegrityError
 # models
 from users.models import CustomUser
 
-# utility 
-
 
 class BugReport(models.Model):
 

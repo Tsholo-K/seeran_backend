@@ -6,11 +6,6 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.db import IntegrityError
 
-# utility functions
-from authentication.utils import generate_account_id
-
-# models
-
 
 
 class EmailBan(models.Model):
