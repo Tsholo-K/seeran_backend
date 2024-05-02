@@ -626,10 +626,10 @@ def validate_password_reset(request):
             if user.school.none_compliant:
                 return Response({"denied": "access denied"})
     except ObjectDoesNotExist:
-        return Response({"error": "invalid email address, no user with provided email"})
+        return Response({"error": "invalid email address"})
     
-    if user.password == '' and not user.has_usable_password():
-        return Response({"error": "account with provided email hasn't been activated, please try to sign in first"})
+    if user.password == '' or not user.has_usable_password():
+        return Response({"error": "account with provided email hasn't been activated"})
     
     if user.email_banned:
         return Response({ "error" : "your email address has been banned, failed to send OTP"})
@@ -888,7 +888,7 @@ def account_status(request):
         user = CustomUser.objects.get(email=email)
     except CustomUser.DoesNotExist:
         return Response({"error": "user with the provided email does not exist."})
-    if user.password != '' and user.has_usable_password():
+    if user.password != '' or user.has_usable_password():
         return Response({"error": "account already activated"})
     return Response({"message":"account not activated"})
 
