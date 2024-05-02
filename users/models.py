@@ -4,6 +4,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 
 # models
 from schools.models import School
@@ -25,8 +26,17 @@ class CustomUserManager(BaseUserManager):
             raise ValueError(_('user must be part of a school'))
         
         user = self.model(email=email, id_number=id_number, name=name, surname=surname, role=role, school=school, **extra_fields)
-        user.save(using=self._db)
-        return user
+
+        while True:
+            try:
+                user.save(using=self._db)
+                return user
+
+            except IntegrityError:
+                # If an IntegrityError is raised, it means the user_id was not unique.
+                # Generate a new user_id and try again.
+                user.user_id = generate_account_id('UA')
+        
     
     # user first sign-in activation
     def activate_user(self, user_id, password):

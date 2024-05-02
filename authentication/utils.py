@@ -13,19 +13,24 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 
+# models 
+from users.models import CustomUser
 
 # account id generator
 def generate_account_id(prefix=''):
-    # Generate a UUID
-    unique_part = uuid.uuid4().hex
+    while True:
+        # Generate a UUID
+        unique_part = uuid.uuid4().hex
 
-    # Concatenate prefix and UUID and convert to string
-    account_id = prefix + unique_part
+        # Concatenate prefix and UUID and convert to string
+        account_id = prefix + unique_part
 
-    # Ensure it's exactly 15 digits long (2 for prefix and 13 for the rest)
-    account_id = account_id[:15].ljust(15, '0')
+        # Ensure it's exactly 15 digits long (2 for prefix and 13 for the rest)
+        account_id = account_id[:15].ljust(15, '0')
 
-    return account_id
+        # Check if this ID already exists in the database
+        if not CustomUser.objects.filter(user_id=account_id).exists():
+            return account_id
 
 # validate token
 def validate_access_token(access_token):
