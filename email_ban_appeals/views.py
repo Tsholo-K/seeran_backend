@@ -42,7 +42,7 @@ def unresolved_email_ban_appeals(request):
 @cache_control(max_age=3600, private=True)
 @token_required
 @founder_only
-def resolved_bug_reports(request, invalidator):
+def resolved_email_ban_appeals(request, invalidator):
     email_ban_appeals = EmailBanAppeal.objects.exclude(status="PENDING").order_by('-appealed_at')
     serializer = EmailBanAppealsSerializer(email_ban_appeals, many=True)
     
