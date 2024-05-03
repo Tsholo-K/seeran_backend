@@ -21,4 +21,4 @@ def email_bans(request):
     email_bans = EmailBan.objects.filter(email=request.user.email).order_by('-banned_at')
     serializer = EmailBansSerializer(email_bans, many=True)
     
-    return Response({ "reports" : serializer.data },status=200)
+    return Response({ "bans" : serializer.data },status=200)
