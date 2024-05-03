@@ -48,7 +48,7 @@ class EmailBan(models.Model):
 
 class EmailBanAppeal(models.Model):
     email = models.EmailField(_('email'))
-    reason = models.TextField(_('reason for appeal'), )
+    appeal = models.TextField(_('request'), )
     status = models.CharField(_('status'), max_length=10, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING')
    
     appeal_id = models.CharField(max_length=15, unique=True) # ban appeals

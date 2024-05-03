@@ -53,12 +53,19 @@ class UpdateEmailBanAppealStatusSerializer(serializers.ModelSerializer):
         model = EmailBan
         fields = [ 'status' ]
         
-        
+           
 class EmailBansSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EmailBan
         fields = [ 'email', 'reason', 'can_appeal', 'ban_id', 'banned_at' ]
+        
+        
+class EmailBanAppealsSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = EmailBan
+        fields = [ 'email', 'appeal', 'status', 'appeal_id', 'appealed_at' ]
         
         
 class EmailBanSerializer(serializers.ModelSerializer):
