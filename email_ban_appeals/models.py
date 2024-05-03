@@ -7,13 +7,15 @@ from django.utils.translation import gettext_lazy as _
 from django.db import IntegrityError
 
 
-
 class EmailBan(models.Model):
     email = models.EmailField(_('email'), unique=True)
     reason = models.TextField(_('reason for banned email'), )
     can_appeal = models.BooleanField(default=True)
 
     ban_id = models.CharField(max_length=15, unique=True)
+    
+    # Timestamps
+    banned_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
         if not self.ban_id:
@@ -50,6 +52,10 @@ class EmailBanAppeal(models.Model):
     status = models.CharField(_('status'), max_length=10, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING')
    
     appeal_id = models.CharField(max_length=15, unique=True) # ban appeals
+    
+    # Timestamps
+    appealed_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
         if not self.appeal_id:

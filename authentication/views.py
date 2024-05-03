@@ -60,7 +60,7 @@ def login(request):
     except ObjectDoesNotExist:
         # if the user doesnt exist return an error
         # this far through the view this should be impossible but to stay on the safe side we'll handle the error 
-        return Response({"error": "invalid credentials/tokens"})
+        return Response({"error": "invalid credentials/tokens"})    
     # if users multi-factor authentication is enabled do this..
     if user.multifactor_authentication:
         # if the users email has recently been banned, disable multi-factor authentication 
