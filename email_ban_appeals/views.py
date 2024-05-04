@@ -49,9 +49,9 @@ def email_ban_appeals(request):
 @api_view(['GET'])
 @token_required
 @founder_only
-def email_ban_appeal(request, email_ban_appeal_id):
+def email_ban_appeal(request, email_ban_id):
     try:
-        email_ban_appeal = EmailBan.objects.get(ban_id=email_ban_appeal_id)
+        email_ban_appeal = EmailBan.objects.get(ban_id=email_ban_id)
         serializer = EmailBanAppealSerializer(email_ban_appeal, many=True)
         
         return Response({ "appeal" : serializer.data }, status=status.HTTP_200_OK)
@@ -60,9 +60,9 @@ def email_ban_appeal(request, email_ban_appeal_id):
 
 @api_view(['PATCH'])
 @token_required
-def appeal(request, email_ban_appeal_id):
+def appeal(request, email_ban_id):
     try:
-        email_ban_appeal = EmailBan.objects.get(ban_id=email_ban_appeal_id)
+        email_ban_appeal = EmailBan.objects.get(ban_id=email_ban_id)
         if email_ban_appeal.appeal is not None:
             return Response({ "error" : "An appeal has already been made for this ban" }, status=status.HTTP_400_BAD_REQUEST)
         
