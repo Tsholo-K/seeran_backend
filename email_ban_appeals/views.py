@@ -8,13 +8,14 @@ from django.core.exceptions import ObjectDoesNotExist
 # rest framework
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework import status
 
 # custom decorators
 from authentication.decorators import token_required
 from users.decorators import founder_only
 
 # serializers
-from .serializers import EmailBansSerializer, EmailBanSerializer, EmailBanAppealsSerializer, EmailBanAppealSerializer
+from .serializers import EmailBansSerializer, EmailBanSerializer, EmailBanAppealsSerializer, EmailBanAppealSerializer, AppealEmailBanSerializer
 
 
 @api_view(['GET'])
@@ -33,33 +34,40 @@ def email_ban(request, email_ban_id):
         serializer = EmailBanSerializer(email_ban)
         return Response({ "email_ban" : serializer.data }, status=200)
     except ObjectDoesNotExist:
-        return Response({ "error" : "Invalid ban_id" }, status=400)
+        return Response({ "error" : "invalid email ban id" }, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET'])
 @token_required
 @founder_only
-def email_ban_appeal(request, email_ban_appeal_id):
-    email_ban_appeal = EmailBan.objects.get(ban_id=email_ban_appeal_id)
-    serializer = EmailBanAppealSerializer(email_ban_appeal, many=True)
-    
-    return Response({ "appeal" : serializer.data },status=200)
-
-@api_view(['GET'])
-@token_required
-@founder_only
-def unresolved_email_ban_appeals(request):
+def email_ban_appeals(request):
     email_ban_appeals = EmailBan.objects.filter(status='PENDING', appeal__isnull=False).order_by('-appealed_at')
     serializer = EmailBanAppealsSerializer(email_ban_appeals, many=True)
     
     return Response({ "appeals" : serializer.data },status=200)
 
-# get resolved bug reports
-@api_view(["GET"])
-@cache_control(max_age=3600, private=True)
+@api_view(['GET'])
 @token_required
 @founder_only
-def resolved_email_ban_appeals(request, invalidator):
-    email_ban_appeals = EmailBan.objects.exclude(status="PENDING").order_by('-appealed_at')
-    serializer = EmailBanAppealsSerializer(email_ban_appeals, many=True)
-    
-    return Response({ "appeals" : serializer.data },status=200)
+def email_ban_appeal(request, email_ban_appeal_id):
+    try:
+        email_ban_appeal = EmailBan.objects.get(ban_id=email_ban_appeal_id)
+        serializer = EmailBanAppealSerializer(email_ban_appeal, many=True)
+        
+        return Response({ "appeal" : serializer.data },status=200)
+    except ObjectDoesNotExist:
+        return Response({ "error" : "invalid email ban id" }, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['PATCH'])
+@token_required
+def appeal(request, email_ban_appeal_id):
+    try:
+        email_ban_appeal = EmailBan.objects.get(ban_id=email_ban_appeal_id)
+        serializer = AppealEmailBanSerializer(email_ban_appeal, data=request.data, partial=True)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response({ "message" : 'appeal submitted successfully' }, status=status.HTTP_200_OK)
+        else:
+            return Response({'error' : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    except ObjectDoesNotExist:
+        return Response({ "error" : "invalid email ban id" }, status=status.HTTP_400_BAD_REQUEST)
