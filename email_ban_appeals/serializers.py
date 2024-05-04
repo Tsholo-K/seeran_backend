@@ -69,9 +69,14 @@ class EmailBanSerializer(serializers.ModelSerializer):
         
 class EmailBanAppealsSerializer(serializers.ModelSerializer):
 
+    status = serializers.SerializerMethodField()
+
     class Meta:
         model = EmailBan
         fields = [ 'appeal', 'status', 'ban_id', 'appealed_at' ]
+        
+    def get_status(self, obj):
+        return obj.status.title()
         
         
 class EmailBanAppealSerializer(serializers.ModelSerializer):
