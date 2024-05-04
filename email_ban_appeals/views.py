@@ -22,15 +22,15 @@ def email_bans(request):
     email_bans = EmailBan.objects.filter(email=request.user.email).order_by('-banned_at')
     serializer = EmailBansSerializer(email_bans, many=True)
     
-    return Response({ "bans" : serializer.data },status=200)
+    return Response({ "email_bans" : serializer.data },status=200)
 
 @api_view(['GET'])
 @token_required
-def email_ban(request, ban_id):
-    email_bans = EmailBan.objects.get(ban_id=ban_id)
+def email_ban(request, email_ban_id):
+    email_bans = EmailBan.objects.get(ban_id=email_ban_id)
     serializer = EmailBansSerializer(email_bans)
     
-    return Response({ "bans" : serializer.data },status=200)
+    return Response({ "email_ban" : serializer.data },status=200)
 
 @api_view(['GET'])
 @token_required
