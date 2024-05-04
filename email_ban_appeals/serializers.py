@@ -36,30 +36,36 @@ def rsa_signer(message):
 key_id = 'K1E45RUK43W3WT'
 cloudfront_signer = CloudFrontSigner(key_id, rsa_signer)
 
-### users balance serilizers ###
 
 
-# create bug report seralizer
-class CreateEmailBanSerializer(serializers.ModelSerializer):
+### email ban serilizers ###
 
-    class Meta:
-        model = EmailBan
-        fields = [ 'user', 'section', 'description' ]
-        
-        
-class UpdateEmailBanAppealStatusSerializer(serializers.ModelSerializer):
 
-    class Meta:
-        model = EmailBan
-        fields = [ 'status' ]
-        
-           
+# users email bans serializer   
 class EmailBansSerializer(serializers.ModelSerializer):
+    
+    status = serializers.SerializerMethodField()
 
     class Meta:
         model = EmailBan
-        fields = [ 'email', 'reason', 'can_appeal', 'ban_id', 'banned_at' ]
+        fields = [ 'can_appeal', 'reason', 'ban_id', 'banned_at', 'status' ]
         
+    def get_status(self, obj):
+        return obj.status.title()
+
+
+# users email ban
+class EmailBanSerializer(serializers.ModelSerializer):
+    
+    status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = EmailBan
+        fields = [ 'can_appeal', 'email', 'banned_at', 'reason', 'ban_id', 'status' ]
+        
+    def get_status(self, obj):
+        return obj.status.title()
+ 
         
 class EmailBanAppealsSerializer(serializers.ModelSerializer):
 
@@ -68,42 +74,9 @@ class EmailBanAppealsSerializer(serializers.ModelSerializer):
         fields = [ 'email', 'appeal', 'status', 'appeal_id', 'appealed_at' ]
         
         
-class EmailBanSerializer(serializers.ModelSerializer):
-    
-    user = serializers.SerializerMethodField()
-    status = serializers.SerializerMethodField()
+class UpdateEmailBanAppealStatusSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EmailBan
-        fields = [ 'section', 'created_at', 'updated_at', 'status', 'description', 'user' ]
-        
-    def get_status(self, obj):
-        return obj.status.replace("_", " ").title()
-    
-    def get_user(self, obj):
-        try:
-            user = CustomUser.objects.get(pk=obj.user.id)
-        except CustomUser.DoesNotExist:
-            return None
-        if user:
-            if not user.profile_picture:
-                s3_url = 'https://seeran-storage.s3.amazonaws.com/defaults/default-user-icon.svg'
-            else:
-                s3_url = user.profile_picture.url
-            cloudfront_url = s3_url.replace('https://seeran-storage.s3.amazonaws.com', 'https://d376l49ehaoi1m.cloudfront.net')
-            # Calculate expiration time (current time + 1 hour)
-            expiration_time = datetime.datetime.now() + datetime.timedelta(minutes=5)
-            signed_url = cloudfront_signer.generate_presigned_url(
-                cloudfront_url, 
-                date_less_than=expiration_time
-            )
-            return {
-                "name" : user.name,
-                "surname" : user.surname,
-                "id" : user.role.title(),
-                'image': signed_url,
-                # add any other fields you want to include
-            }
-        else:
-            return None
+        fields = [ 'status' ]
         
