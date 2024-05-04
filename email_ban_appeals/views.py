@@ -52,7 +52,7 @@ def email_ban_appeals(request):
 def email_ban_appeal(request, email_ban_id):
     try:
         email_ban_appeal = EmailBan.objects.get(ban_id=email_ban_id)
-        serializer = EmailBanAppealSerializer(email_ban_appeal, many=True)
+        serializer = EmailBanAppealSerializer(email_ban_appeal)
         
         return Response({ "appeal" : serializer.data }, status=status.HTTP_200_OK)
     except ObjectDoesNotExist:
