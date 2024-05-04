@@ -45,13 +45,24 @@ cloudfront_signer = CloudFrontSigner(key_id, rsa_signer)
 class EmailBansSerializer(serializers.ModelSerializer):
     
     status = serializers.SerializerMethodField()
-
+    strikes = serializers.SerializerMethodField()
+    
     class Meta:
         model = EmailBan
-        fields = [ 'can_appeal', 'reason', 'ban_id', 'banned_at', 'status' ]
+        fields = [ 'can_appeal', 'reason', 'ban_id', 'banned_at', 'status', 'strikes' ]
         
     def get_status(self, obj):
         return obj.status.title()
+    
+    def get_strikes(self, obj):
+        try:
+            user = CustomUser.objects.get(email=obj.email)
+        except CustomUser.DoesNotExist:
+            return None
+        if user:
+            return user.email_ban_amount
+        else:
+            return None
 
 
 # users email ban

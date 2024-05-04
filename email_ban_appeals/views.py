@@ -29,7 +29,8 @@ def email_bans(request):
 
 @api_view(['GET'])
 @token_required
-def email_ban(request, email_ban_id):
+@cache_control(max_age=120, private=True)
+def email_ban(request, email_ban_id, invalidator):
     try:
         email_ban = EmailBan.objects.get(ban_id=email_ban_id)
         serializer = EmailBanSerializer(email_ban)
@@ -49,6 +50,7 @@ def email_ban_appeals(request):
 @api_view(['GET'])
 @token_required
 @founder_only
+@cache_control(max_age=300, private=True)
 def email_ban_appeal(request, email_ban_id):
     try:
         email_ban_appeal = EmailBan.objects.get(ban_id=email_ban_id)

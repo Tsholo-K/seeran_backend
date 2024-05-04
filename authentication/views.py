@@ -926,10 +926,10 @@ def sns_endpoint(request):
                         try:
                             user = CustomUser.objects.get(email=email_address)
                             if user.email_ban_amount > 2:
-                                EmailBan.objects.get_or_create(email=email_address, reason="more than 3 emails sent to your email address soft bounced, and as a result your email address has been permanetly banned.", can_appeal=False)
+                                EmailBan.objects.get_or_create(email=email_address, reason="more than 3 emails sent to your email address soft bounced", can_appeal=False)
                             else:
                                 # Add the email to bounce table
-                                EmailBan.objects.get_or_create(email=email_address, reason="an email sent to your email address soft bounced, and your email address has been temporarily banned.") # the user can appeal to get thier email unbanned 
+                                EmailBan.objects.get_or_create(email=email_address, reason="an email sent to your email address soft bounced") # the user can appeal to get thier email unbanned 
                                 user.email_banned = True
                                 user.email_ban_amount = user.email_ban_amount + 1
                                 user.save()
@@ -942,10 +942,10 @@ def sns_endpoint(request):
                     try:
                         user = CustomUser.objects.get(email=email_address)
                         if user.email_ban_amount > 2:
-                            EmailBan.objects.get_or_create(email=email_address, reason="you marked three of our emails as spam, this badly harms our companys email sender reputation. we respect our customers, so we will refrain from sending you any emails here on out.", can_appeal=False)
+                            EmailBan.objects.get_or_create(email=email_address, reason="marked three of our emails as spam, this badly harms our companys email sender reputation.", can_appeal=False)
                         else:
                             # Handle complaints here
-                            EmailBan.objects.get_or_create(email=email_address, reason='you marked one of our emails as spam this badly harms our companys email sender reputation. we respect our customers, so we will refrain from sending you any emails here on out.') # the user can appeal to get thier email unbanned 
+                            EmailBan.objects.get_or_create(email=email_address, reason='marked one of our emails as spam this badly harms our companys email sender reputation.') # the user can appeal to get thier email unbanned 
                             user.email_banned = True
                             user.email_ban_amount = user.email_ban_amount + 1
                             user.save()
