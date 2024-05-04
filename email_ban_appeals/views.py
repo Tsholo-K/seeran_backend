@@ -1,5 +1,5 @@
 # models
-from .models import EmailBan, EmailBanAppeal
+from .models import EmailBan
 
 # django
 from django.views.decorators.cache import cache_control
