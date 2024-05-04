@@ -25,7 +25,7 @@ def email_bans(request):
     email_bans = EmailBan.objects.filter(email=request.user.email).order_by('-banned_at')
     serializer = EmailBansSerializer(email_bans, many=True)
     
-    return Response({ "email_bans" : serializer.data }, status=status.HTTP_200_OK)
+    return Response({ "email_bans" : serializer.data, 'strikes' : request.user.email_ban_amount }, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
 @token_required
