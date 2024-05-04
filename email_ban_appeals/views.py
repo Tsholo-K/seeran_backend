@@ -16,8 +16,6 @@ from users.decorators import founder_only
 from .serializers import EmailBansSerializer, EmailBanAppealsSerializer
 
 
-
-# Create your views here.
 @api_view(['GET'])
 @token_required
 def email_bans(request):
@@ -26,6 +24,13 @@ def email_bans(request):
     
     return Response({ "bans" : serializer.data },status=200)
 
+@api_view(['GET'])
+@token_required
+def email_ban(request, ban_id):
+    email_bans = EmailBan.objects.get(ban_id=ban_id)
+    serializer = EmailBansSerializer(email_bans)
+    
+    return Response({ "bans" : serializer.data },status=200)
 
 @api_view(['GET'])
 @token_required
@@ -35,7 +40,6 @@ def unresolved_email_ban_appeals(request):
     serializer = EmailBanAppealsSerializer(email_ban_appeals, many=True)
     
     return Response({ "appeals" : serializer.data },status=200)
-
 
 # get resolved bug reports
 @api_view(["GET"])
