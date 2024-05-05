@@ -19,7 +19,7 @@ from django.contrib.auth.hashers import make_password
 from django.views.decorators.csrf import csrf_exempt
 
 # models
-from email_ban_appeals.models import EmailBan
+from email_bans.models import EmailBan
 from users.models import CustomUser
 
 # amazon email sending service
@@ -898,7 +898,7 @@ def account_status(request):
 
 
 # sns topic notification endpoint
-# recieve post request when emails fail to send
+# recieve post request when emails bounce/report
 @csrf_exempt
 @api_view(['POST'])
 def sns_endpoint(request):
@@ -912,8 +912,10 @@ def sns_endpoint(request):
                     email_address = recipient['emailAddress']
                     # Check if the bounce is permanent
                     if bounce['bounceType'] == 'Permanent':
+                        
                         # Add the email to your bounce table
                         EmailBan.objects.get_or_create(email=email_address, reason="email bounced permanently", can_appeal=False)
+                        
                         # Look up the user and tag them
                         try:
                             user = CustomUser.objects.get(email=email_address)
