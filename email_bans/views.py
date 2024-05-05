@@ -13,7 +13,6 @@ from rest_framework import status
 
 # custom decorators
 from authentication.decorators import token_required
-from users.decorators import founder_only
 
 # serializers
 from .serializers import EmailBansSerializer, EmailBanSerializer, AppealEmailBanSerializer
