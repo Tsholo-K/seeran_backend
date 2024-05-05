@@ -508,8 +508,6 @@ def otp_verification(request):
 @api_view(['POST'])
 @token_required
 def validate_password(request):
-    if request.user.email_banned:
-        return Response({ "error" : "your email address has been banned"})
     sent_password = request.data.get('password')
     # make sure an password was sent
     if not sent_password:
@@ -517,6 +515,10 @@ def validate_password(request):
     # Validate the password
     if not check_password(sent_password, request.user.password):
         return Response({"error": "invalid password, please try again"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    if request.user.email_banned:
+        return Response({ "error" : "your email address has been banned"})
+    
     # Create an OTP for the user
     otp, hashed_otp = generate_otp()
     # Send the OTP via email
@@ -562,8 +564,6 @@ def validate_password(request):
 @api_view(['POST'])
 @token_required
 def validate_email_change(request):
-    if request.user.email_banned:
-        return Response({ "error" : "your email address has been banned"})
     sent_email = request.data.get('email')   
     if not sent_email:
         return Response({"error": "email address is required"})
@@ -572,6 +572,10 @@ def validate_email_change(request):
     # Validate the email
     if sent_email != request.user.email:
         return Response({"error" : "invalid email address for account"})
+    
+    if request.user.email_banned:
+        return Response({ "error" : "your email address has been banned"})
+    
     # Create an OTP for the user
     otp, hashed_otp = generate_otp()
     # Send the OTP via email
@@ -612,6 +616,7 @@ def validate_email_change(request):
         return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 # validate email before password reset
 @api_view(['POST'])
@@ -820,13 +825,16 @@ def resend_otp(request):
     email = request.data.get('email')
     if not email:
         return Response({"message" : "an email is required"}, status=status.HTTP_400_BAD_REQUEST)
+    
     # try to get the user
     try:
         user = CustomUser.objects.get(email=email)
     except CustomUser.DoesNotExist:
         return Response({"error": "user with this email does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+    
     if user.email_banned:
-        return Response({ "error" : "your email address has been banned"})
+        return Response({ "error" : "your email address has been banned, failed to send OTP"})
+    
     otp, hashed_otp = generate_otp()
     # Send the OTP via email
     try:
