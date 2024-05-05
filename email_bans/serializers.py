@@ -54,7 +54,6 @@ class EmailBansSerializer(serializers.ModelSerializer):
         return obj.status.title()
 
 
-
 # users email ban
 class EmailBanSerializer(serializers.ModelSerializer):
     
@@ -67,58 +66,6 @@ class EmailBanSerializer(serializers.ModelSerializer):
     def get_status(self, obj):
         return obj.status.title()
  
-        
-class EmailBanAppealsSerializer(serializers.ModelSerializer):
-
-    status = serializers.SerializerMethodField()
-
-    class Meta:
-        model = EmailBan
-        fields = [ 'appeal', 'status', 'ban_id', 'appealed_at' ]
-        
-    def get_status(self, obj):
-        return obj.status.title()
-        
-        
-class EmailBanAppealSerializer(serializers.ModelSerializer):
-    
-    user = serializers.SerializerMethodField()
-    status = serializers.SerializerMethodField()
-
-    class Meta:
-        model = EmailBan
-        fields = [ 'email', 'appeal', 'status', 'ban_id', 'appealed_at', 'user', 'reason' ]
-
-    def get_status(self, obj):
-        return obj.status.title()
-
-    def get_user(self, obj):
-        try:
-            user = CustomUser.objects.get(email=obj.email)
-        except CustomUser.DoesNotExist:
-            return None
-        if user:
-            if not user.profile_picture:
-                s3_url = 'https://seeran-storage.s3.amazonaws.com/defaults/default-user-icon.svg'
-            else:
-                s3_url = user.profile_picture.url
-            cloudfront_url = s3_url.replace('https://seeran-storage.s3.amazonaws.com', 'https://d376l49ehaoi1m.cloudfront.net')
-            # Calculate expiration time (current time + 1 hour)
-            expiration_time = datetime.datetime.now() + datetime.timedelta(minutes=5)
-            signed_url = cloudfront_signer.generate_presigned_url(
-                cloudfront_url, 
-                date_less_than=expiration_time
-            )
-            return {
-                "name" : user.name,
-                "surname" : user.surname,
-                "id" : user.role.title(),
-                'image': signed_url,
-                # add any other fields you want to include
-            }
-        else:
-            return None
-        
 
 # users email ban
 class AppealEmailBanSerializer(serializers.ModelSerializer):

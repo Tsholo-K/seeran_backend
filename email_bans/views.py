@@ -16,7 +16,7 @@ from authentication.decorators import token_required
 from users.decorators import founder_only
 
 # serializers
-from .serializers import EmailBansSerializer, EmailBanSerializer, EmailBanAppealsSerializer, EmailBanAppealSerializer, AppealEmailBanSerializer
+from .serializers import EmailBansSerializer, EmailBanSerializer, AppealEmailBanSerializer
 
 
 @api_view(['GET'])
@@ -25,7 +25,7 @@ def email_bans(request):
     email_bans = EmailBan.objects.filter(email=request.user.email).order_by('-banned_at')
     serializer = EmailBansSerializer(email_bans, many=True)
     
-    return Response({ "email_bans" : serializer.data, 'strikes' : request.user.email_ban_amount }, status=status.HTTP_200_OK)
+    return Response({ "email_bans" : serializer.data, 'strikes' : request.user.email_ban_amount, 'banned' : request.user.email_banned }, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
 @token_required
