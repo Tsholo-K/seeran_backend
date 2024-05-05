@@ -13,7 +13,7 @@ class EmailBan(models.Model):
     can_appeal = models.BooleanField(_('can user appeal the ban'), default=True)
     
     otp_send = models.IntegerField(default=0)
-    status = models.CharField(_('status'), max_length=10, choices=[('BANNED', 'Banned'), ('PENDING', 'Pending'), ('REJECTED', 'Rejected'), ('APPROVED', 'Approved')], default='BANNED')
+    status = models.CharField(_('status'), max_length=10, choices=[('BANNED', 'Banned'), ('PENDING', 'Pending'), ('APPEALED', 'Appealed')], default='BANNED')
     
     # Timestamps
     banned_at = models.DateTimeField(_('the date the email was banned'), auto_now_add=True)

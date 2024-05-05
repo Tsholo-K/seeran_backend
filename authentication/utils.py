@@ -1,9 +1,9 @@
 # python 
 import hashlib
-import random
 import json
 import re
 import uuid
+import secrets
 
 # django
 from django.core.cache import cache
@@ -29,6 +29,7 @@ def generate_account_id(prefix=''):
         account_id = account_id[:15].ljust(15, '0')
         return account_id
 
+
 # validate token
 def validate_access_token(access_token):
     try:
@@ -38,6 +39,7 @@ def validate_access_token(access_token):
     except TokenError:
         # Access token is invalid, try refreshing
         return None
+
 
 # validate refresh token
 def validate_refresh_token(refresh_token):
@@ -49,7 +51,8 @@ def validate_refresh_token(refresh_token):
         # Refresh token is invalid
         return None
 
-# refresh token
+
+# refresh access token
 def refresh_access_token(refresh_token):
     try:
         refresh = RefreshToken(refresh_token)
@@ -59,18 +62,27 @@ def refresh_access_token(refresh_token):
         # Refresh token is invalid or expired
         return None
 
-# functions
+
 # otp generation function
 def generate_otp():
-    otp = str(random.randint(100000, 999999))
-    hashed_otp = hashlib.sha256(otp.encode()).hexdigest()
-    # Generate timestamp for 5 minutes from now
-    return otp, hashed_otp
+    otp = str(secrets.randbelow(900000) + 100000)
+    
+    # Generate a random salt
+    salt = secrets.token_bytes(16)
+    
+    # Combine the OTP and the salt, then hash them
+    hashed_otp = hashlib.sha256(otp.encode() + salt).hexdigest()
+    
+    # Return the OTP, hashed OTP, and salt
+    return otp, hashed_otp, salt
+
 
 # otp verification function
-def verify_user_otp(user_otp, stored_hashed_otp):
-    hashed_user_otp = hashlib.sha256(user_otp.encode()).hexdigest()
+def verify_user_otp(user_otp, stored_hashed_otp_and_salt):
+    salt, stored_hashed_otp = stored_hashed_otp_and_salt
+    hashed_user_otp = hashlib.sha256(user_otp.encode() + salt).hexdigest()
     return hashed_user_otp == stored_hashed_otp
+
 
 # rate limit function 
 def rate_limit(request):
@@ -97,10 +109,12 @@ def rate_limit(request):
     # Increment the request count and set expiry
     cache.set(cache_key, request_count + 1, timeout=3600)  # 3600 seconds = 1 hour
 
+
 def validate_user_email(email):
     # Regular expression pattern for basic email format validation
     pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
     return re.match(pattern, email)
+
 
 def generate_access_token(user):
     # Create a refresh token
@@ -108,6 +122,7 @@ def generate_access_token(user):
     # Optionally, access the access token and its payload
     access_token = refresh.access_token
     return access_token
+
 
 def generate_token(user):
     # Create a refresh token
@@ -117,6 +132,7 @@ def generate_token(user):
     refresh_token = str(refresh)  # Get the string representation of the refresh token
     # Create a refresh token
     return  {"access_token" : access_token , "refresh_token" : refresh_token }
+
 
 def get_upload_path(instance, filename):
     if instance.role == "PARENT":
