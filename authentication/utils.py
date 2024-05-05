@@ -70,17 +70,20 @@ def generate_otp():
     # Generate a random salt
     salt = secrets.token_bytes(16)
     
+    # Convert the salt to hexadecimal
+    salt_hex = salt.hex()
+    
     # Combine the OTP and the salt, then hash them
-    hashed_otp = hashlib.sha256(otp.encode() + salt).hexdigest()
+    hashed_otp = hashlib.sha256((otp + salt_hex).encode()).hexdigest()
     
     # Return the OTP, hashed OTP, and salt
-    return otp, hashed_otp, salt
+    return otp, hashed_otp, salt_hex
 
 
 # otp verification function
 def verify_user_otp(user_otp, stored_hashed_otp_and_salt):
-    salt, stored_hashed_otp = stored_hashed_otp_and_salt
-    hashed_user_otp = hashlib.sha256(user_otp.encode() + salt).hexdigest()
+    stored_hashed_otp, salt_hex = stored_hashed_otp_and_salt
+    hashed_user_otp = hashlib.sha256((user_otp + salt_hex).encode()).hexdigest()
     return hashed_user_otp == stored_hashed_otp
 
 
