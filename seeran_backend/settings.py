@@ -161,7 +161,7 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            "hosts": [('redis://seeran-redis-database.qqnsrs.clustercfg.afs1.cache.amazonaws.com:6379/', 6379)],
+            "hosts": [('seeran-redis-database.qqnsrs.clustercfg.afs1.cache.amazonaws.com:6379', 6379)],
         },
     },
 }
