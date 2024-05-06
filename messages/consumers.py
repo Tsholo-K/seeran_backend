@@ -1,9 +1,9 @@
-# chat/consumers.py
-
 from channels.generic.websocket import AsyncWebsocketConsumer
 import json
 
+
 class ChatConsumer(AsyncWebsocketConsumer):
+    
     async def connect(self):
         # Called when the WebSocket connection is established
         await self.accept()
