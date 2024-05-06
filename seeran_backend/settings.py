@@ -197,7 +197,7 @@ STORAGES = {
     "staticfiles": {
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
         "OPTIONS": {
-            "bucket_name": config('AWS_STATIC_BUCKET_NAME'),
+            "bucket_name": config('AWS_STORAGE_BUCKET_NAME'),
             "object_parameters": {
                 'CacheControl': 'max-age=86400',
             },
