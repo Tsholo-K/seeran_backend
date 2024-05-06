@@ -180,6 +180,8 @@ DATABASES = {
 # }
 
 
+AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
+STATIC_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/project_static_files/'
 
 # s3 bucket
 # s3 bucket configuration
@@ -187,7 +189,7 @@ STORAGES = {
     "default": {
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
         "OPTIONS": {
-            "bucket_name": config('AWS_STORAGE_BUCKET_NAME'),
+            "bucket_name": AWS_STORAGE_BUCKET_NAME,
             "object_parameters": {
                 'CacheControl': 'max-age=86400',
             },
@@ -197,7 +199,7 @@ STORAGES = {
     "staticfiles": {
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
         "OPTIONS": {
-            "bucket_name": config('AWS_STORAGE_BUCKET_NAME'),
+            "bucket_name": AWS_STORAGE_BUCKET_NAME,
             "object_parameters": {
                 'CacheControl': 'max-age=86400',
             },
