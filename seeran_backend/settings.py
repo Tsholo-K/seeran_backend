@@ -49,7 +49,7 @@ INSTALLED_APPS = [
     'corsheaders', # handle cors 
     'django_redis', # redis caching
     'storages', # allows for the application to read/write to s3 bucket
-    'channels',
+    'channels', # websockets
 ]
 
 
@@ -154,6 +154,16 @@ CACHES = {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         }
     }
+}
+
+# redis channel layer
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('redis://seeran-redis-database.qqnsrs.clustercfg.afs1.cache.amazonaws.com', 6379)],
+        },
+    },
 }
 
 
