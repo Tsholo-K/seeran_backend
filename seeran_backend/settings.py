@@ -194,7 +194,19 @@ STORAGES = {
             'file_overwrite': False
         },
     },
+    "staticfiles": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        "OPTIONS": {
+            "bucket_name": config('AWS_STATIC_BUCKET_NAME'),
+            "object_parameters": {
+                'CacheControl': 'max-age=86400',
+            },
+            'file_overwrite': False,
+            'location': 'project_static_files/',
+        },
+    },
 }
+
 
 
 # Email sending config
