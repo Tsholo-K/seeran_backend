@@ -29,6 +29,9 @@ ALLOWED_HOSTS = ["*"]
 # a list of all installed apps
 INSTALLED_APPS = [
     
+    # asgi server 
+    'daphne',
+    
     # django apps
     'django.contrib.admin',
     'django.contrib.auth',
