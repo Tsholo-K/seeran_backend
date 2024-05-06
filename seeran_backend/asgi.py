@@ -10,7 +10,18 @@ https://docs.djangoproject.com/en/5.0/howto/deployment/asgi/
 import os
 
 from django.core.asgi import get_asgi_application
+from channels.routing import ProtocolTypeRouter, URLRouter
+from channels.auth import AuthMiddlewareStack
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'seeran_backend.settings')
 
-application = get_asgi_application()
+wsgi_application = get_asgi_application()
+
+application = ProtocolTypeRouter(
+    {
+        "http": wsgi_application,  # Regular Django ASGI application for HTTP
+        # "websocket": AuthMiddlewareStack(
+        #     URLRouter(websocket_urlpatterns)  # WebSocket routing
+        # ),
+    }
+)
