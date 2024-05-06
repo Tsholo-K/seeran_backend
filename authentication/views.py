@@ -164,15 +164,16 @@ def login(request):
             response = Response({"message": "login successful", "role": user.role, "profile_section" : profile_section, "schools_section" : schools_section, "bug_reports_section" : bug_reports_section, "email_ban_appeal_section" : email_ban_appeal_section}, status=status.HTTP_200_OK)
         else: # user.role == "PRINCIPAL" or  user.role == "ADMIN"
             profile_section = random.randint(100000, 999999)
-            response = Response({"message": "login successful", "role": user.role, "invalidator" : profile_section}, status=status.HTTP_200_OK)
+            response = Response({"message": "login successful", "role": user.role, "profile_section" : profile_section}, status=status.HTTP_200_OK)
 
         # set access token cookie with custom expiration (5 mins)
         response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
         if 'refresh' in token:
             # set refresh token cookie with custom expiration (86400 seconds = 24 hours)
             response.set_cookie('refresh_token', token['refresh'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=86400)
-        # return response 
+
         return response
+    
     # if any exception occurs during the proccess return an error
     except Exception as e:
         return Response({"error": f"there was an error logging you in"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

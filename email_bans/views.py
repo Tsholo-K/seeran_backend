@@ -60,6 +60,9 @@ def send_otp(request, email_ban_id):
         if not email_ban.email == request.user.email:
             return Response({ "error" : "invalid request, banned email different from account email" }, status=status.HTTP_400_BAD_REQUEST)
 
+        if email_ban.status == 'APPEALED':
+            return Response({ "error" : "ban already appealed" }, status=status.HTTP_400_BAD_REQUEST)
+
         if not email_ban.can_appeal:
             return Response({ "error" : "can not appeal email ban" }, status=status.HTTP_400_BAD_REQUEST)
         
