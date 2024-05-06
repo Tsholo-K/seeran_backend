@@ -232,8 +232,9 @@ TEMPLATES = [
 
 
 # seeran_backend/settings.py
-WSGI_APPLICATION = 'seeran_backend.wsgi.application'
+# WSGI_APPLICATION = 'seeran_backend.wsgi.application'
 
+ASGI_APPLICATION = "seeran_backend.asgi.application"
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
