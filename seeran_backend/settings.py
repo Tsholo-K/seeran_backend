@@ -156,16 +156,6 @@ CACHES = {
     }
 }
 
-# redis channel layer
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            "hosts": [('seeran-redis-database.qqnsrs.clustercfg.afs1.cache.amazonaws.com:6379', 6379)],
-        },
-    },
-}
-
 
 # postfres database
 # application database
