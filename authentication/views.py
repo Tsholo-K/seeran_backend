@@ -288,7 +288,7 @@ def signin(request):
     
     # if there is a user with the provided credentials check if their account has already been activated 
     # if it has been indeed activated return an error 
-    if user.password != '' and user.has_usable_password():
+    if user.password != '' or user.has_usable_password() or user.activated == True:
         return Response({"error": "account already activated"}, status=403)
     
     # if the users account has'nt been activated yet check if their email address is banned
@@ -371,6 +371,7 @@ def set_password(request):
     try:
         user = CustomUser.objects.get(email=email)
         user.password = make_password(new_password)
+        user.activated = True
         user.save()
         
         # Generate a random 6-digit number
@@ -719,7 +720,7 @@ def validate_password_reset(request):
         return Response({"error": "invalid email address"})
     
     # check if the account is activated 
-    if user.password == '' or not user.has_usable_password():
+    if user.password == '' or not user.has_usable_password() or user.activated == False:
         return Response({"error": "account with provided email hasn't been activated"})
     
     # check if the email is banned 
@@ -1001,7 +1002,7 @@ def account_status(request):
         user = CustomUser.objects.get(email=email)
     except CustomUser.DoesNotExist:
         return Response({"error": "user with the provided email does not exist."})
-    if not user.password == '' and user.has_usable_password():
+    if user.password != '' and user.has_usable_password() and user.activated == True:
         return Response({"error": "account already activated"})
     return Response({"message":"account not activated"})
 

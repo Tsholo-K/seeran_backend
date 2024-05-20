@@ -18,6 +18,7 @@ from authentication.utils import get_upload_path
 
 
 class CustomUserManager(BaseUserManager):
+    
     # user creation 
     def create_user(self, email=None, id_number=None, name=None, surname=None, role=None, school=None, **extra_fields):
         if not email and not id_number:
@@ -74,6 +75,8 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     user_id = models.CharField(max_length=15, unique=True)
 
     school = models.ForeignKey(School, on_delete=models.SET_NULL, related_name='users', null=True)
+    
+    activated = models.BooleanField(_('account active or not'), default=False)
     
     # profile picutre
     profile_picture = models.ImageField(upload_to=get_upload_path, blank=True, null=True)
