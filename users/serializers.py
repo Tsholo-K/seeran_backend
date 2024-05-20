@@ -65,7 +65,7 @@ class MyProfileSerializer(serializers.ModelSerializer):
         return signed_url
     
     def get_role(self, obj):
-        return obj.role.lower().title()       
+        return obj.role.lower().title()
         
 # user security information
 class MySecurityInfoSerializer(serializers.ModelSerializer):
@@ -97,7 +97,7 @@ class PrincipalProfileSerializer(serializers.ModelSerializer):
         fields = [ 'name', 'surname', 'email', 'image', 'user_id', 'role' ]
     
     def get_role(self, obj):
-        return obj.role.lower().title() 
+        return obj.role.lower().title()
     
     def get_image(self, obj):
         if not obj.profile_picture:
