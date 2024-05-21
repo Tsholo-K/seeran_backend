@@ -70,6 +70,7 @@ MIDDLEWARE = [
     # project middleware
     # none
     
+    # django middleware
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]

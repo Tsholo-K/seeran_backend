@@ -15,7 +15,6 @@ from django.contrib.auth.hashers import check_password
 from django.core.mail import BadHeaderError
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
-from django.contrib.auth.hashers import make_password
 from django.views.decorators.csrf import csrf_exempt
 
 # models
@@ -268,11 +267,10 @@ def multi_factor_authentication(request):
 def signin(request):
     
     # retrieve provided infomation
-    name = request.data.get('name')
-    surname = request.data.get('surname')
+    full_names = request.data.get('full_names')
     email = request.data.get('email')
     # if there's a missing credential return an error
-    if not name or not surname or not email:
+    if not full_names or not email:
         return Response({"error": "all feilds are required"})
     
     # try to validate the credentials by getting a user with the provided credentials 
@@ -369,34 +367,21 @@ def set_password(request):
     if not verify_user_otp(otp, hashed_authorization_otp):
         return Response({"error": "incorrect OTP, action forbiden"}, status=status.HTTP_400_BAD_REQUEST)
     try:
-        user = CustomUser.objects.get(email=email)
-        user.password = make_password(new_password)
-        user.activated = True
-        user.save()
-        
-        # Generate a random 6-digit number
-        # this will be the cache invalidator on the frontend
-        # generate a section random numbers 
-        # this will be the cache invalidators on the frontend
-        if user.role == "FOUNDER":
-            profile_section = random.randint(100000, 999999)
-            schools_section = random.randint(100000, 999999)
-            bug_reports_section = random.randint(100000, 999999)
-            email_ban_appeal_section = random.randint(100000, 999999)
-            response = Response({"message": "login successful", "role": user.role, "profile_section" : profile_section, "schools_section" : schools_section, "bug_reports_section" : bug_reports_section, "email_ban_appeal_section" : email_ban_appeal_section}, status=status.HTTP_200_OK)
-        else: # user.role == "PRINCIPAL" or  user.role == "ADMIN"
-            profile_section = random.randint(100000, 999999)
-            response = Response({"message": "login successful", "role": user.role, "invalidator" : profile_section}, status=status.HTTP_200_OK)
+        user = CustomUser.objects.activate_user(email=email, password=new_password)
+
+        response = Response({"message": "login successful", "role": user.role,}, status=status.HTTP_200_OK)
                 
-        # then generate an access and refresh token for the user 
+        # generate an access and refresh token for the user 
         token = generate_token(user)
 
         # set access token cookie with custom expiration (5 mins)
         response.set_cookie('access_token', token['access_token'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
         # set refresh token cookie with custom expiration (86400 seconds = 24 hours)
         response.set_cookie('refresh_token', token['refresh_token'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=86400)
+        
         # return response
         return response
+    
     except ObjectDoesNotExist:
         # if theres no user with the provided email return an error
         return Response({"error": "user does not exist."}, status=status.HTTP_404_NOT_FOUND)
