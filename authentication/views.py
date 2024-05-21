@@ -378,19 +378,19 @@ def set_password(request):
         return Response({"error": "passwords do not match"}, status=status.HTTP_400_BAD_REQUEST)
     
     try:
-        hashed_authorization_otp = cache.get(email + 'authorization_otp')
-        if not hashed_authorization_otp:
+        hashed_authorization_otp_and_salt = cache.get(email + 'authorization_otp')
+        if not hashed_authorization_otp_and_salt:
             return Response({"error": "OTP expired, please reload the page to request a new OTP"}, status=status.HTTP_400_BAD_REQUEST)
     
     except Exception as e:
         return Response({"error": f"error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-    if not verify_user_otp(otp, hashed_authorization_otp):
+    if not verify_user_otp(otp, hashed_authorization_otp_and_salt):
         return Response({"error": "incorrect OTP, action forbiden"}, status=status.HTTP_400_BAD_REQUEST)
     
     try:
+        # activate users account
         user = CustomUser.objects.activate_user(email=email, password=new_password)
-
         response = Response({"message": "login successful", "role": user.role,}, status=status.HTTP_200_OK)
                 
         # generate an access and refresh token for the user 
@@ -501,23 +501,24 @@ def verify_otp(request):
     
     email = request.data.get('email')
     otp = request.data.get('otp')
+
     if not email or not otp:
         return Response({"error": "email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
     
     try:
-        stored_hashed_otp = cache.get(email)
-        if not stored_hashed_otp:
+        stored_hashed_otp_and_salt = cache.get(email)
+        if not stored_hashed_otp_and_salt:
             return Response({"error": "OTP expired. Please generate a new one"}, status=status.HTTP_400_BAD_REQUEST)
     
     except Exception as e:
         return Response({"error": f"error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-    if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp):
+    if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
         
         # OTP is verified, prompt the user to set their password
         cache.delete(email)
-        authorization_otp, hashed_authorization_otp = generate_otp()
-        cache.set(email+'authorization_otp', hashed_authorization_otp, timeout=300)  # 300 seconds = 5 mins
+        authorization_otp, hashed_authorization_otp, salt = generate_otp()
+        cache.set(email+'authorization_otp', (hashed_authorization_otp, salt), timeout=300)  # 300 seconds = 5 mins
         
         response = Response({"message": "OTP verified successfully"}, status=status.HTTP_200_OK)
         response.set_cookie('authorization_otp', authorization_otp, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
@@ -793,26 +794,35 @@ def validate_password_reset(request):
 @api_view(['POST'])
 @token_required
 def change_password(request):
+
     otp = request.COOKIES.get('authorization_otp')
+
     # Get the new password and confirm password from the request data
     new_password = request.data.get('new_password')
     confirm_password = request.data.get('confirm_password')
+
     if not new_password or not confirm_password or not otp:
         return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
+    
     try:
         hashed_authorization_otp = cache.get(request.user.email + 'authorization_otp')
         if not hashed_authorization_otp:
             return Response({"error": "OTP expired, please reload the page to request a new OTP"}, status=status.HTTP_400_BAD_REQUEST)
+    
     except Exception as e:
         return Response({"error": f"error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
     if not verify_user_otp(otp, hashed_authorization_otp):
         return Response({"error": "incorrect OTP, action forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
+    
     # Validate that the new password and confirm password match
     if new_password != confirm_password:
         return Response({"error": "new password and confirm password do not match"}, status=status.HTTP_400_BAD_REQUEST)
+    
     # Update the user's password
     request.user.set_password(new_password)
     request.user.save()
+    
     try:
         # Return an appropriate response (e.g., success message)
         response = Response({"message": "password changed successfully"}, status=200)
@@ -823,6 +833,7 @@ def change_password(request):
         refresh_token = request.COOKIES.get('refresh_token')
         cache.set(refresh_token, 'blacklisted', timeout=86400)
         return response
+    
     except:
         pass
  
@@ -846,6 +857,7 @@ def reset_password(request):
     otp = request.COOKIES.get('authorization_otp')
     new_password = request.data.get('new_password')
     confirm_password = request.data.get('confirm_password')
+    
     if not new_password or not confirm_password or not otp:
         return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -893,41 +905,56 @@ def reset_password(request):
 @api_view(['POST'])
 @token_required
 def change_email(request):
+
     otp = request.COOKIES.get('authorization_otp')
     new_email = request.data.get('new_email')
     confirm_email = request.data.get('confirm_email')
+   
     # make sure all required fields are provided
     if not new_email or not confirm_email or not otp:
         return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
+   
     # check if emails match 
     if new_email != confirm_email:
         return Response({"error": "emails do not match"}, status=status.HTTP_400_BAD_REQUEST)
+ 
     if new_email == request.user.email:
         return Response({"error": "cannot set current email as new email"}, status=status.HTTP_400_BAD_REQUEST)
+  
     try:
         hashed_authorization_otp = cache.get(request.user.email + 'authorization_otp')
         if not hashed_authorization_otp:
             return Response({"error": "OTP expired, please reload the page to request a new OTP"}, status=status.HTTP_400_BAD_REQUEST)
+  
     except Exception as e:
         return Response({"error": f"error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+  
     if not verify_user_otp(otp, hashed_authorization_otp):
         return Response({"error": "incorrect OTP, action forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
+ 
     try:
+     
         if not validate_user_email(new_email):
             return Response({'error': 'Invalid email format'}, status=400)
+    
         request.user.email = new_email
         request.user.save()
+   
         try:
             # Add the refresh token to the blacklist
             refresh_token = request.COOKIES.get('refresh_token')
             cache.set(refresh_token, 'blacklisted', timeout=86400)
             response = Response({"message": "email changed successfully"})
+       
             # Clear the refresh token cookie
             response.delete_cookie('access_token', domain='.seeran-grades.com')
             response.delete_cookie('refresh_token', domain='.seeran-grades.com')
+         
             return response
+   
         except Exception as e:
             return Response({"error": e})
+  
     except Exception as e:
         return Response({"error": f"error setting email: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -1003,7 +1030,9 @@ def mfa_status(request):
 # checks if the account is activated by checking if the account has the password attr
 @api_view(["POST"]) 
 def account_status(request):
+
     email = request.data.get("email")
+
     # try to get the user
     try:
         user = CustomUser.objects.get(email=email)
