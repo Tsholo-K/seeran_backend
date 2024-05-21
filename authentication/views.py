@@ -391,6 +391,10 @@ def set_password(request):
     try:
         # activate users account
         user = CustomUser.objects.activate_user(email=email, password=new_password)
+
+        if user == str:
+            return Response({"error": user}, status=status.HTTP_400_BAD_REQUEST)
+
         response = Response({"message": "login successful", "role": user.role,}, status=status.HTTP_200_OK)
                 
         # generate an access and refresh token for the user 

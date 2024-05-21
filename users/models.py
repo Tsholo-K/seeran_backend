@@ -36,21 +36,25 @@ class CustomUserManager(BaseUserManager):
     
     # user first sign-in activation
     def activate_user(self, email, password):
+
         # try finding the user using the provided email 
         try:
             user = self.get(email=email)
+    
         except self.model.DoesNotExist:
             return "User not found"
 
         # Validate the password
         try:
             validate_password(password)
+     
         except ValidationError as e:
             return str(e)
 
         # Hash and salt the password
         user.set_password(password)
         user.activated = True
+      
         # save the updated user to the database
         user.save(using=self._db)
         return user
