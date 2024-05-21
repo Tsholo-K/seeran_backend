@@ -89,6 +89,7 @@ def verify_user_otp(user_otp, stored_hashed_otp_and_salt):
 
 # rate limit function 
 def rate_limit(request):
+
     # You can adjust the rate limit and key as needed
     rate_limit = 5  # Requests per hour
     body_unicode = request.body.decode('utf-8')
@@ -148,3 +149,11 @@ def get_upload_path(instance, filename):
         return 'founders_profile_pictures/{}'.format(filename)
     else:
         return 'students_profile_pictures/{}'.format(filename)
+    
+    
+def validate_names(names):
+    parts = names.split(' ')
+    if len(parts) == 2:
+        return True
+    else:
+        return False

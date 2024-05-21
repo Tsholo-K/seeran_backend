@@ -26,7 +26,7 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 # utility functions 
-from .utils import validate_access_token, generate_access_token, generate_token, generate_otp, verify_user_otp, validate_user_email
+from .utils import validate_access_token, generate_access_token, generate_token, generate_otp, verify_user_otp, validate_user_email, validate_names
 
 # custom decorators
 from .decorators import token_required
@@ -260,30 +260,41 @@ def multi_factor_authentication(request):
         return Response({"error": "incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# sign
+# account search
 # this is used for first time account activation
-# it sets the users password so they can login
+# the first api the user comes in contact with
 @api_view(['POST'])
 def signin(request):
     
     # retrieve provided infomation
-    full_names = request.data.get('full_names')
+    full_names = request.data.get('fullname')
     email = request.data.get('email')
+
     # if there's a missing credential return an error
     if not full_names or not email:
-        return Response({"error": "all feilds are required"})
+        return Response({"error": "missing credentials"})
     
+    if not validate_names(full_names):
+        return Response({"error": "only provide your first name and surname"})
+
     # try to validate the credentials by getting a user with the provided credentials 
     try:
-        user = CustomUser.objects.get(name=name, surname=surname, email=email)
+        user = CustomUser.objects.get(email=email)
         if not user.role == "FOUNDER":
             if user.school.none_compliant:
                 return Response({"denied": "access denied"})
-            
+                
     except ObjectDoesNotExist:
         # if there's no user with the provided credentials return an error 
         return Response({"error": "invalid credentials"})
     
+    # check if the provided name and surname can be split into exactly two parts
+    name, surname = full_names.split(' ')
+
+    # check if the provided name and surname are correct
+    if not user.name == name and user.surname == surname or not user.name == surname and user.surname == name:
+        return Response({"error": "invalid credentials"})
+
     # if there is a user with the provided credentials check if their account has already been activated 
     # if it has been indeed activated return an error 
     if user.password != '' or user.has_usable_password() or user.activated == True:
@@ -301,9 +312,11 @@ def signin(request):
     # try to send the otp to thier email address
     try:
         client = boto3.client('ses', region_name='af-south-1')  # AWS region
+
         # Read the email template from a file
         with open('authentication/templates/authentication/emailotptemplate.html', 'r') as file:
             email_body = file.read()
+
         # Replace the {{otp}} placeholder with the actual OTP
         email_body = email_body.replace('{{otp}}', otp)
         response = client.send_email(
@@ -322,6 +335,7 @@ def signin(request):
             },
             Source='seeran grades <authorization@seeran-grades.com>',  # SES verified email address
         )
+
         # Check the response to ensure the email was successfully sent
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
             
@@ -330,6 +344,7 @@ def signin(request):
             return Response({"message": "OTP created and sent to your email", "email" : user.email}, status=status.HTTP_200_OK)
         
         else:
+            
             # if there was an error sending the email respond accordingly
             # this will kick off our sns service and their email will get banned 
             # regardless of wether it was a soft of hard bounce
