@@ -392,9 +392,6 @@ def set_password(request):
         # activate users account
         user = CustomUser.objects.activate_user(email=email, password=new_password)
 
-        if user == str:
-            return Response({"error": user}, status=status.HTTP_400_BAD_REQUEST)
-
         response = Response({"message": "login successful", "role": user.role,}, status=status.HTTP_200_OK)
                 
         # generate an access and refresh token for the user 
@@ -413,7 +410,7 @@ def set_password(request):
         return Response({"error": "user does not exist."}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         # if any exceptions rise during return the response return it as the response
-        return Response({"error": f"error setting password: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": f"{str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # authenticates incoming tokens
