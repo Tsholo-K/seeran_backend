@@ -297,7 +297,7 @@ def signin(request):
 
     # if there is a user with the provided credentials check if their account has already been activated 
     # if it has been indeed activated return an error 
-    if user.password != '' or user.has_usable_password() or user.activated == True:
+    if not user.password == '' or user.has_usable_password() or user.activated == True:
         return Response({"error": "account already activated"}, status=403)
     
     # if the users account has'nt been activated yet check if their email address is banned
@@ -344,7 +344,7 @@ def signin(request):
             return Response({"message": "OTP created and sent to your email", "email" : user.email}, status=status.HTTP_200_OK)
         
         else:
-            
+
             # if there was an error sending the email respond accordingly
             # this will kick off our sns service and their email will get banned 
             # regardless of wether it was a soft of hard bounce
