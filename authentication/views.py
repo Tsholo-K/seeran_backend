@@ -297,7 +297,7 @@ def signin(request):
 
     # if there is a user with the provided credentials check if their account has already been activated 
     # if it has been indeed activated return an error 
-    if not user.password == '' or user.has_usable_password() or user.activated == True:
+    if user.activated == True:
         return Response({"error": "account already activated"}, status=403)
     
     # if the users account has'nt been activated yet check if their email address is banned
@@ -365,22 +365,29 @@ def signin(request):
 # sets user password
 @api_view(['POST'])
 def set_password(request):
+
     otp = request.COOKIES.get('authorization_otp')
     email = request.data.get('email')
     new_password = request.data.get('password')
     confirm_password = request.data.get('confirmpassword')
+
     if not email or not new_password or not confirm_password or not otp:
         return Response({"error": "email, new password and confrim password are required."}, status=status.HTTP_400_BAD_REQUEST)
+    
     if new_password != confirm_password:
         return Response({"error": "passwords do not match"}, status=status.HTTP_400_BAD_REQUEST)
+    
     try:
         hashed_authorization_otp = cache.get(email + 'authorization_otp')
         if not hashed_authorization_otp:
             return Response({"error": "OTP expired, please reload the page to request a new OTP"}, status=status.HTTP_400_BAD_REQUEST)
+    
     except Exception as e:
         return Response({"error": f"error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
     if not verify_user_otp(otp, hashed_authorization_otp):
         return Response({"error": "incorrect OTP, action forbiden"}, status=status.HTTP_400_BAD_REQUEST)
+    
     try:
         user = CustomUser.objects.activate_user(email=email, password=new_password)
 
@@ -720,8 +727,8 @@ def validate_password_reset(request):
         return Response({"error": "invalid email address"})
     
     # check if the account is activated 
-    if user.password == '' or not user.has_usable_password() or user.activated == False:
-        return Response({"error": "account with provided email hasn't been activated"})
+    if user.activated == False:
+        return Response({"error": "action forbiden for provided account"})
     
     # check if the email is banned 
     if user.email_banned:
