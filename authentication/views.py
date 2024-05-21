@@ -366,13 +366,18 @@ def signin(request):
 @api_view(['POST'])
 def set_password(request):
 
+    # get authorization otp 
     otp = request.COOKIES.get('authorization_otp')
+
+    if not otp:
+        return Response({"error": "permission denied"}, status=status.HTTP_401_UNAUTHORIZED)
+    
     email = request.data.get('email')
     new_password = request.data.get('password')
     confirm_password = request.data.get('confirmpassword')
 
-    if not email or not new_password or not confirm_password or not otp:
-        return Response({"error": "email, new password and confrim password are required."}, status=status.HTTP_400_BAD_REQUEST)
+    if not email or not new_password or not confirm_password:
+        return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
     
     if new_password != confirm_password:
         return Response({"error": "passwords do not match"}, status=status.HTTP_400_BAD_REQUEST)
