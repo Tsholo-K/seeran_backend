@@ -10,6 +10,9 @@ urlpatterns = [
     path('my-profile/', views.my_profile, name='returns user info'),
     path('my-security-info/', views.my_security_info, name='returns user profile image'),
     
+    # get users profile picture
+    path("profile-picture/<str:user_id>/", views.get_profile_picture, name="get users profile picture"),
+
     # profile picture change 
     path("update-profile-picture/", views.update_profile_picture, name="update user profile picture"),
     

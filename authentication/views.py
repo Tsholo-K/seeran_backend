@@ -16,7 +16,6 @@ from django.core.mail import BadHeaderError
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.cache import cache_control
 
 # models
 from email_bans.models import EmailBan
@@ -71,6 +70,7 @@ def login(request):
      
     # if users multi-factor authentication is enabled do this..
     if user.multifactor_authentication:
+    
         # if the users email has recently been banned, disable multi-factor authentication 
         # because mfa requires we send an otp to the users email
         # then log them in without multi-factor authentication 
@@ -425,7 +425,6 @@ def set_password(request):
 # authenticates incoming tokens
 @api_view(["GET"])
 @token_required
-@cache_control(max_age=3600, private=True)
 def authenticate(request):
    
     # if the user is authenticated, return their profile information 

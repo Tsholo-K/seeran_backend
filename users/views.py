@@ -23,7 +23,7 @@ from balances.models import Balance
 
 # serilializer
 from .serializers import (MyProfileSerializer, MySecurityInfoSerializer,
-    PrincipalCreationSerializer, PrincipalProfileSerializer, 
+    PrincipalCreationSerializer, PrincipalProfileSerializer, GetImageSerializer
 )
 
 # amazon email sending service
@@ -58,6 +58,23 @@ def my_security_info(request):
     serializer = MySecurityInfoSerializer(instance=request.user)
     return Response({ "users_security_info" : serializer.data },status=200)
 
+
+# get users profile picture
+@api_view(["GET"])
+@token_required
+@cache_control(max_age=3600, private=True)
+def get_profile_picture(request, user_id):
+
+    # get user with the provided account id
+    try:
+        user = CustomUser.objects.get(account_id=user_id)
+
+    except CustomUser.DoesNotExist:
+        return Response({"error" : "user not found"})
+
+    serializer = GetImageSerializer(instance=user)
+
+    return Response({ "image" : serializer.data },status=200)
 
 
 
@@ -169,9 +186,9 @@ def delete_principal(request):
 
 # get principal profile information
 @api_view(['GET'])
-@cache_control(max_age=300, private=True)
 @token_required
 @founder_only
+@cache_control(max_age=300, private=True)
 def principal_profile(request, user_id):
  
     try:

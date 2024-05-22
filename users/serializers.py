@@ -46,26 +46,53 @@ cloudfront_signer = CloudFrontSigner(key_id, rsa_signer)
 # user profile information
 class MyProfileSerializer(serializers.ModelSerializer):
     
-    image = serializers.SerializerMethodField()
     role = serializers.SerializerMethodField()
     
     class Meta:
         model = CustomUser
-        fields = [ 'name', 'surname', 'email', 'image', 'user_id', 'role' ]
+        fields = [ 'name', 'surname', 'email', 'user_id', 'role' ]
+            
+    def get_role(self, obj):
+        return obj.role.lower().title()
+       
         
+# user security information
+class MySecurityInfoSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = CustomUser
+        fields = [ 'multifactor_authentication', 'event_emails' ]
+
+
+# users image serializer
+class GetImageSerializer(serializers.Modelserializers):
+
+    iamge = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = CustomUser
+        fields = [ 'image' ]
+
     def get_image(self, obj):
       
+        # if the user has no profile image return the default profile image 
         if not obj.profile_picture:
             s3_url = 'https://seeranbucket.s3.amazonaws.com/defaults/default-user-icon.svg'
     
+        # if they do have a profile image
         else:
+            # try to get the users signed image url from cache
             s3_url = cache.get(obj.email + 'profile_picture')
             
+            # if its not there get their profile picture url from the db
             if s3_url == None:
                 s3_url = obj.profile_picture.url
+      
+            # if there's a signed url in the cache return it instead
             else:
                 return s3_url
        
+        # make sure the url format is valid 
         cloudfront_url = s3_url.replace('https://seeranbucket.s3.amazonaws.com', 'https://d31psdy2k7b4vc.cloudfront.net')
         
         # Calculate expiration time (current time + 1 hour)
@@ -77,21 +104,11 @@ class MyProfileSerializer(serializers.ModelSerializer):
             date_less_than=expiration_time
         )
    
-        # save it to cache
+        # save it to cache for an hour
         cache.set(obj.email + 'profile_picture', signed_url, timeout=3600)
         
+        # return it 
         return signed_url
-    
-    def get_role(self, obj):
-        return obj.role.lower().title()
-        
-# user security information
-class MySecurityInfoSerializer(serializers.ModelSerializer):
-    
-    class Meta:
-        model = CustomUser
-        fields = [ 'multifactor_authentication', 'event_emails' ]
-
 
 
 #### principal serilizers ###
@@ -104,45 +121,16 @@ class PrincipalCreationSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = [ 'name', 'surname', 'email', 'school', 'role' ]
 
+
 # principal profile
 class PrincipalProfileSerializer(serializers.ModelSerializer):
 
-    image = serializers.SerializerMethodField()
     role = serializers.SerializerMethodField()
     
     class Meta:
         model = CustomUser
-        fields = [ 'name', 'surname', 'email', 'image', 'user_id', 'role' ]
+        fields = [ 'name', 'surname', 'email', 'user_id', 'role' ]
     
     def get_role(self, obj):
         return obj.role.lower().title()
-    
-    def get_image(self, obj):
-      
-        if not obj.profile_picture:
-            s3_url = 'https://seeranbucket.s3.amazonaws.com/defaults/default-user-icon.svg'
-    
-        else:
-            s3_url = cache.get(obj.email + 'profile_picture')
             
-            if s3_url == None:
-                s3_url = obj.profile_picture.url
-            else:
-                return s3_url
-       
-        cloudfront_url = s3_url.replace('https://seeranbucket.s3.amazonaws.com', 'https://d31psdy2k7b4vc.cloudfront.net')
-        
-        # Calculate expiration time (current time + 1 hour)
-        expiration_time = datetime.datetime.now() + datetime.timedelta(hours=1)
-       
-        # sign the url
-        signed_url = cloudfront_signer.generate_presigned_url(
-            cloudfront_url, 
-            date_less_than=expiration_time
-        )
-   
-        # save it to cache
-        cache.set(obj.email + 'profile_picture', signed_url, timeout=3600)
-        
-        return signed_url
-        
