@@ -54,8 +54,8 @@ class MyProfileSerializer(serializers.ModelSerializer):
             
     def get_role(self, obj):
         return obj.role.lower().title()
-       
-        
+
+
 # user security information
 class MySecurityInfoSerializer(serializers.ModelSerializer):
     
@@ -65,7 +65,7 @@ class MySecurityInfoSerializer(serializers.ModelSerializer):
 
 
 # users image serializer
-class GetImageSerializer(serializers.Modelserializers):
+class GetImageSerializer(serializers.ModelSerializer):
 
     iamge = serializers.SerializerMethodField()
     
