@@ -43,7 +43,7 @@ from .decorators import founder_only
 @api_view(["GET"])
 @cache_control(max_age=3600, private=True)
 @token_required
-def my_profile(request, invalidator):
+def my_profile(request):
     serializer = MyProfileSerializer(instance=request.user)
     return Response({ "user" : serializer.data },status=200)
 
