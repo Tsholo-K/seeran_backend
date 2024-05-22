@@ -16,6 +16,7 @@ from django.core.mail import BadHeaderError
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.cache import cache_control
 
 # models
 from email_bans.models import EmailBan
@@ -425,6 +426,7 @@ def set_password(request):
 # authenticates incoming tokens
 @api_view(["GET"])
 @token_required
+@cache_control(max_age=300, private=True)
 def authenticate(request):
    
     # if the user is authenticated, return their profile information 
