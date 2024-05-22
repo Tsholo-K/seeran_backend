@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     
     # third party apps
     'corsheaders', # handle cors 
+    'django_redis', # redis caching
     'storages', # allows for the application to read/write to s3 bucket
     'channels', # websockets
 ]
@@ -148,17 +149,11 @@ SIMPLE_JWT = {
 # applications caching configuration
 CACHES = {
     'default': {
-        'BACKEND': 'redis_cache.RedisCache',
+        'BACKEND': 'django_redis.cache.RedisCache',
         'LOCATION': config('CACHE_LOCATION'),
         'OPTIONS': {
-            'DB': 0,
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
             'PARSER_CLASS': 'redis.connection.HiredisParser',
-            'REDIS_CLIENT_CLASS': 'rediscluster.RedisCluster',
-            'CONNECTION_POOL_CLASS': 'redis.BlockingConnectionPool',
-            'CONNECTION_POOL_CLASS_KWARGS': {
-                'max_connections': 50,
-                'timeout': 20,
-            }
         }
     }
 }
