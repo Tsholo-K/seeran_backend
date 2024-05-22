@@ -67,7 +67,7 @@ class MySecurityInfoSerializer(serializers.ModelSerializer):
 # users image serializer
 class GetImageSerializer(serializers.ModelSerializer):
 
-    iamge = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
     
     class Meta:
         model = CustomUser
