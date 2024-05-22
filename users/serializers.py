@@ -52,10 +52,10 @@ class MyProfileSerializer(serializers.ModelSerializer):
         
     def get_image(self, obj):
         if not obj.profile_picture:
-            s3_url = 'https://seeran-storage.s3.amazonaws.com/defaults/default-user-icon.svg'
+            s3_url = 'https://seeranbucket.s3.amazonaws.com/defaults/default-user-icon.svg'
         else:
             s3_url = obj.profile_picture.url
-        cloudfront_url = s3_url.replace('https://seeran-storage.s3.amazonaws.com', 'https://d376l49ehaoi1m.cloudfront.net')
+        cloudfront_url = s3_url.replace('https://seeranbucket.s3.amazonaws.com', 'https://d31psdy2k7b4vc.cloudfront.net')
         # Calculate expiration time (current time + 1 hour)
         expiration_time = datetime.datetime.now() + datetime.timedelta(hours=1)
         signed_url = cloudfront_signer.generate_presigned_url(
