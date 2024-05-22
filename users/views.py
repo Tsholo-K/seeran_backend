@@ -66,18 +66,23 @@ def my_security_info(request, invalidator):
 @token_required
 @founder_only
 def create_principal(request, school_id):
+  
     try:
         # Get the school instance
         school = School.objects.get(school_id=school_id)
+  
     except School.DoesNotExist:
         return Response({"error" : "School not found"})
+  
     # Check if the school already has a principal
     if CustomUser.objects.filter(school=school, role="PRINCIPAL").exists():
         return Response({"error" : "This school already has a principal account linked to it"}, status=400)
+   
     # Add the school instance to the request data
     data = request.data.copy()
     data['school'] = school.id
     data['role'] = "PRINCIPAL"
+  
     serializer = PrincipalCreationSerializer(data=data)
     if serializer.is_valid():
         try:
@@ -121,55 +126,67 @@ def create_principal(request, school_id):
             return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)    
+ 
     return Response({"error" : serializer.errors}, status=400)
+
 
 # delete principal account
 @api_view(['POST'])
 @token_required
 @founder_only
 def delete_principal(request):
+   
     try:
         # Get the school instance
         user = CustomUser.objects.get(user_id=request.data['user_id'])
+ 
     except CustomUser.DoesNotExist:
         return Response({"error" : "provided user not found"})
+ 
     try:
         # Add the school instance to the request data
         user.delete()
-        # Generate a random 6-digit number
-        # this will invalidate the cache on the frontend
-        schools_section = random.randint(100000, 999999)
-        return Response({"message" : "user account deleted", "invalidator" : schools_section}, status=status.HTTP_200_OK)
+      
+        return Response({"message" : "user account deleted",}, status=status.HTTP_200_OK)
+ 
     except Exception as e:
         # if any exceptions rise during return the response return it as the response
         return Response({"error": f"error deleting account: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 # get principal profile information
 @api_view(['GET'])
 @cache_control(max_age=300, private=True)
 @token_required
 @founder_only
-def principal_profile(request, user_id, invalidator):
+def principal_profile(request, user_id):
+ 
     try:
         # Get the school instance
         principal = CustomUser.objects.get(user_id=user_id)
+ 
     except CustomUser.DoesNotExist:
         return Response({"error" : "user not found"})
+ 
     # Add the school instance to the request data
     serializer = PrincipalProfileSerializer(instance=principal)
     return Response({ "principal" : serializer.data }, status=201)
+
 
 # get principal information
 @api_view(['GET'])
 @cache_control(max_age=300, private=True)
 @token_required
 @founder_only
-def principal_info(request, user_id, invalidator):
+def principal_info(request, user_id):
+ 
     try:
         # Get the principal instance
         principal = CustomUser.objects.get(user_id=user_id)
+ 
     except CustomUser.DoesNotExist:
         return Response({"error" : "user not found"})
+ 
     # Add the principal instance to the request data
     serializer = PrincipalProfileSerializer(instance=principal)
     return Response({ "principal" : serializer.data }, status=201)

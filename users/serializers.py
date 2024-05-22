@@ -56,6 +56,7 @@ class MyProfileSerializer(serializers.ModelSerializer):
         else:
             s3_url = obj.profile_picture.url
         cloudfront_url = s3_url.replace('https://seeranbucket.s3.amazonaws.com', 'https://d31psdy2k7b4vc.cloudfront.net')
+        
         # Calculate expiration time (current time + 1 hour)
         expiration_time = datetime.datetime.now() + datetime.timedelta(hours=1)
         signed_url = cloudfront_signer.generate_presigned_url(
@@ -105,6 +106,7 @@ class PrincipalProfileSerializer(serializers.ModelSerializer):
         else:
             s3_url = obj.profile_picture.url
         cloudfront_url = s3_url.replace('https://seeran-storage.s3.amazonaws.com', 'https://d376l49ehaoi1m.cloudfront.net')
+        
         # Calculate expiration time (current time + 1 hour)
         expiration_time = datetime.datetime.now() + datetime.timedelta(minutes=5)
         signed_url = cloudfront_signer.generate_presigned_url(
