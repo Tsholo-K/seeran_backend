@@ -67,7 +67,7 @@ def get_profile_picture(request, user_id):
 
     # get user with the provided account id
     try:
-        user = CustomUser.objects.get(account_id=user_id)
+        user = CustomUser.objects.get(user_id=user_id)
 
     except CustomUser.DoesNotExist:
         return Response({"error" : "user not found"})
