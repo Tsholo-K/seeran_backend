@@ -44,14 +44,17 @@ from .decorators import founder_only
 @cache_control(max_age=3600, private=True)
 @token_required
 def my_profile(request):
+
     serializer = MyProfileSerializer(instance=request.user)
+
     return Response({ "user" : serializer.data },status=200)
+
 
 # get users profile info
 @api_view(["GET"])
-@cache_control(max_age=0, private=True)
 @token_required
-def my_security_info(request, invalidator):
+def my_security_info(request):
+
     serializer = MySecurityInfoSerializer(instance=request.user)
     return Response({ "users_security_info" : serializer.data },status=200)
 
