@@ -25,14 +25,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # cloudfront url signer 
 def rsa_signer(message):
-    with open(os.path.join(BASE_DIR, 'private_key.pem'), 'rb') as key_file:
+    with open(os.path.join(BASE_DIR, '/private_keys/cloudfront_private_key.pem'), 'rb') as key_file:
         private_key = serialization.load_pem_private_key(
             key_file.read(),
             password=None,
             backend=default_backend()
         )
     return private_key.sign(message, padding.PKCS1v15(), hashes.SHA1())
-key_id = 'K1E45RUK43W3WT'
+key_id = 'K2HSBJR82PHOT4'
 cloudfront_signer = CloudFrontSigner(key_id, rsa_signer)
 
 
