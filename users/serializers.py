@@ -2,6 +2,9 @@
 import os
 import datetime
 
+# django
+from django.core.cache import cache
+
 # rest framework
 from rest_framework import serializers
 
@@ -51,18 +54,32 @@ class MyProfileSerializer(serializers.ModelSerializer):
         fields = [ 'name', 'surname', 'email', 'image', 'user_id', 'role' ]
         
     def get_image(self, obj):
+      
         if not obj.profile_picture:
             s3_url = 'https://seeranbucket.s3.amazonaws.com/defaults/default-user-icon.svg'
+    
         else:
-            s3_url = obj.profile_picture.url
+            s3_url = cache.get(obj.email + 'profile_picture')
+            
+            if s3_url == None:
+                s3_url = obj.profile_picture.url
+            else:
+                return s3_url
+       
         cloudfront_url = s3_url.replace('https://seeranbucket.s3.amazonaws.com', 'https://d31psdy2k7b4vc.cloudfront.net')
         
         # Calculate expiration time (current time + 1 hour)
         expiration_time = datetime.datetime.now() + datetime.timedelta(hours=1)
+       
+        # sign the url
         signed_url = cloudfront_signer.generate_presigned_url(
             cloudfront_url, 
             date_less_than=expiration_time
         )
+   
+        # save it to cache
+        cache.set(obj.email + 'profile_picture', signed_url, timeout=3600)
+        
         return signed_url
     
     def get_role(self, obj):
@@ -101,17 +118,31 @@ class PrincipalProfileSerializer(serializers.ModelSerializer):
         return obj.role.lower().title()
     
     def get_image(self, obj):
+      
         if not obj.profile_picture:
-            s3_url = 'https://seeran-storage.s3.amazonaws.com/defaults/default-user-icon.svg'
+            s3_url = 'https://seeranbucket.s3.amazonaws.com/defaults/default-user-icon.svg'
+    
         else:
-            s3_url = obj.profile_picture.url
-        cloudfront_url = s3_url.replace('https://seeran-storage.s3.amazonaws.com', 'https://d376l49ehaoi1m.cloudfront.net')
+            s3_url = cache.get(obj.email + 'profile_picture')
+            
+            if s3_url == None:
+                s3_url = obj.profile_picture.url
+            else:
+                return s3_url
+       
+        cloudfront_url = s3_url.replace('https://seeranbucket.s3.amazonaws.com', 'https://d31psdy2k7b4vc.cloudfront.net')
         
         # Calculate expiration time (current time + 1 hour)
-        expiration_time = datetime.datetime.now() + datetime.timedelta(minutes=5)
+        expiration_time = datetime.datetime.now() + datetime.timedelta(hours=1)
+       
+        # sign the url
         signed_url = cloudfront_signer.generate_presigned_url(
             cloudfront_url, 
             date_less_than=expiration_time
         )
+   
+        # save it to cache
+        cache.set(obj.email + 'profile_picture', signed_url, timeout=3600)
+        
         return signed_url
         

@@ -41,8 +41,8 @@ from .decorators import founder_only
 
 # get users profile info
 @api_view(["GET"])
-@cache_control(max_age=3600, private=True)
 @token_required
+@cache_control(max_age=3600, private=True)
 def my_profile(request):
 
     serializer = MyProfileSerializer(instance=request.user)
@@ -87,12 +87,16 @@ def create_principal(request, school_id):
     data['role'] = "PRINCIPAL"
   
     serializer = PrincipalCreationSerializer(data=data)
+   
     if serializer.is_valid():
+      
         try:
             client = boto3.client('ses', region_name='af-south-1')  # AWS region
             # Read the email template from a file
+      
             with open('authentication/templates/authentication/accountcreationnotification.html', 'r') as file:
                 email_body = file.read()
+      
             # Replace the {{otp}} placeholder with the actual OTP
             # email_body = email_body.replace('{{name}}', (user.name.title() + user.surname.title()))
             response = client.send_email(
@@ -111,22 +115,28 @@ def create_principal(request, school_id):
                 },
                 Source='seeran grades <authorization@seeran-grades.com>',  # SES verified email address
             )
+        
             # Check the response to ensure the email was successfully sent
             if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+             
                 created_user = serializer.save()
+           
                 # Create a new Balance instance for the user
                 Balance.objects.create(user=created_user)
-                # Generate a random 6-digit number
-                # this will invalidate the cache on the frontend
-                schools_section = random.randint(100000, 999999)
-                return Response({"message": "principal account created successfully", "schools_section" : schools_section }, status=status.HTTP_200_OK)
+           
+                return Response({"message": "principal account created successfully"}, status=status.HTTP_200_OK)
+            
             else:
                 return Response({"error": "email sent to users email address bounced"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+      
         except (BotoCoreError, ClientError) as error:
+        
             # Handle specific errors and return appropriate responses
             return Response({"error": f"couldn't send account creation email to users email address"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
         except BadHeaderError:
             return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
+      
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)    
  

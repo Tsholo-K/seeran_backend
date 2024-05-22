@@ -16,6 +16,7 @@ from django.core.mail import BadHeaderError
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.cache import cache_control
 
 # models
 from email_bans.models import EmailBan
@@ -31,6 +32,8 @@ from .utils import validate_access_token, generate_access_token, generate_token,
 # custom decorators
 from .decorators import token_required
 
+# serializers
+from users.serializers import MyProfileSerializer
 
 
 ### login and authentication views ###
@@ -117,6 +120,7 @@ def login(request):
             )
             # Check the response to ensure the email was successfully sent
             if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+         
                 # if the email was successfully delivered cache the hashed otp against the users 'email' address for 5 mins( 300 seconds)
                 # this is cached to our redis database for faster retrieval when we verify the otp
                 cache.set(user.email, (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
@@ -421,11 +425,16 @@ def set_password(request):
 # authenticates incoming tokens
 @api_view(["GET"])
 @token_required
+@cache_control(max_age=3600, private=True)
 def authenticate(request):
+   
+    # if the user is authenticated, return their profile information 
     if request.user:
-        return Response({"message" : "authenticated", "role" : request.user.role}, status=status.HTTP_200_OK)
+        serializer = MyProfileSerializer(instance=request.user)
+        return Response({"user" : serializer.data}, status=status.HTTP_200_OK)
+
     else:
-        return Response({"error" : "unauthenticated",}, status=status.HTTP_200_OK)
+        return Response({"error" : "unauthenticated",}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 
