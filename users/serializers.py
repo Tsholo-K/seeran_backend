@@ -47,32 +47,15 @@ cloudfront_signer = CloudFrontSigner(key_id, rsa_signer)
 class MyProfileSerializer(serializers.ModelSerializer):
     
     role = serializers.SerializerMethodField()
-    
+    image = serializers.SerializerMethodField()
+
     class Meta:
         model = CustomUser
-        fields = [ 'name', 'surname', 'email', 'user_id', 'role' ]
+        fields = [ 'name', 'surname', 'email', 'user_id', 'role', 'image' ]
             
     def get_role(self, obj):
         return obj.role.lower().title()
-
-
-# user security information
-class MySecurityInfoSerializer(serializers.ModelSerializer):
     
-    class Meta:
-        model = CustomUser
-        fields = [ 'multifactor_authentication', 'event_emails' ]
-
-
-# users image serializer
-class GetImageSerializer(serializers.ModelSerializer):
-
-    image = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = CustomUser
-        fields = [ 'image' ]
-
     def get_image(self, obj):
       
         # if the user has no profile image return the default profile image 
@@ -109,6 +92,25 @@ class GetImageSerializer(serializers.ModelSerializer):
         
         # return it 
         return signed_url
+
+
+
+# user security information
+class MySecurityInfoSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = CustomUser
+        fields = [ 'multifactor_authentication', 'event_emails' ]
+
+
+# users image serializer
+class GetImageSerializer(serializers.ModelSerializer):
+
+    
+    class Meta:
+        model = CustomUser
+        fields = [ 'image' ]
+
 
 
 #### principal serilizers ###

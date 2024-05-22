@@ -39,42 +39,13 @@ from .decorators import founder_only
 ### users infomation views ###
 
 
-# get users profile info
-@api_view(["GET"])
-@token_required
-@cache_control(max_age=3600, private=True)
-def my_profile(request):
-
-    serializer = MyProfileSerializer(instance=request.user)
-
-    return Response({ "user" : serializer.data },status=200)
-
-
-# get users profile info
+# get users security info
 @api_view(["GET"])
 @token_required
 def my_security_info(request):
 
     serializer = MySecurityInfoSerializer(instance=request.user)
     return Response({ "users_security_info" : serializer.data },status=200)
-
-
-# get users profile picture
-@api_view(["GET"])
-@token_required
-@cache_control(max_age=3600, private=True)
-def get_profile_picture(request, user_id):
-
-    # get user with the provided account id
-    try:
-        user = CustomUser.objects.get(user_id=user_id)
-
-    except CustomUser.DoesNotExist:
-        return Response({"error" : "user not found"})
-
-    serializer = GetImageSerializer(instance=user)
-
-    return Response({ "image" : serializer.data },status=200)
 
 
 
