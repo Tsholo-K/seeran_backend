@@ -60,7 +60,7 @@ def schools(request):
 @cache_control(max_age=300, private=True)
 @token_required
 @founder_only
-def school(request, school_id, invalidator):
+def school(request, school_id):
     try:
         school = School.objects.get(school_id=school_id)
         serializer = SchoolSerializer(instance=school)
