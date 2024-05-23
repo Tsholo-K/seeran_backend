@@ -74,6 +74,9 @@ class SchoolSerializer(serializers.ModelSerializer):
     parents = serializers.SerializerMethodField()
     teachers = serializers.SerializerMethodField()
     admins = serializers.SerializerMethodField()
+    school_type = serializers.SerializerMethodField()
+    school_district = serializers.SerializerMethodField()
+    province = serializers.SerializerMethodField()
 
     class Meta:
         model = School
@@ -81,6 +84,15 @@ class SchoolSerializer(serializers.ModelSerializer):
         
     def get_name(self, obj):
         return obj.name.title()
+    
+    def get_school_type(self, obj):
+        return obj.school_type.title()
+
+    def get_school_district(self, obj):
+        return obj.school_district.title()
+
+    def get_province(self, obj):
+        return obj.province.title()
 
     def get_students(self, obj):
         return CustomUser.objects.filter(role='STUDENT', school=obj).count()
