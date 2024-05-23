@@ -40,7 +40,20 @@ def create_bug_report(request):
     else:
         return Response({"error" : serializer.errors})
 
-# get bug reports
+
+# get users id info
+@api_view(["GET"])
+@token_required
+@founder_only
+def bug_report(request, bug_report_id):
+   
+    report = BugReport.objects.get(bugreport_id=bug_report_id)
+    serializer = BugReportSerializer(instance=report)
+    
+    return Response({ "report" : serializer.data},status=200)
+
+
+# get unresolved bug reports
 @api_view(["GET"])
 @token_required
 @founder_only
@@ -50,41 +63,36 @@ def unresolved_bug_reports(request):
     
     return Response({ "reports" : serializer.data },status=200)
 
+
 # get resolved bug reports
 @api_view(["GET"])
-@cache_control(max_age=3600, private=True)
 @token_required
 @founder_only
-def resolved_bug_reports(request, invalidator):
-    reports = BugReport.objects.filter(status="RESOLVED").order_by('-created_at')
+def resolved_bug_reports(request):
+ 
+    reports = BugReport.objects.filter(status="RESOLVED").order_by('-created_at')   
     serializer = BugReportsSerializer(reports, many=True)
     
     return Response({ "reports" : serializer.data },status=200)
 
-# get users id info
-@api_view(["GET"])
-@cache_control(max_age=3600, private=True)
-@token_required
-@founder_only
-def bug_report(request, bug_report_id, invalidator):
-    report = BugReport.objects.get(bugreport_id=bug_report_id)
-    serializer = BugReportSerializer(instance=report)
-    
-    return Response({ "report" : serializer.data},status=200)
 
 # change bug report status
 @api_view(["POST"])
 @token_required
 @founder_only
 def update_bug_report_status(request, bug_report_id):
+   
     bug_report = get_object_or_404(BugReport, bugreport_id=bug_report_id)
     serializer = UpdateBugReportStatusSerializer(bug_report, data=request.data)
+   
     if serializer.is_valid():
         serializer.save()
         
         # Generate a random 6-digit number
         # this will invalidate the cache on the frontend
         bug_reports_section = random.randint(100000, 999999)
+      
         return Response({ "message" : "bug report status successfully changed", "bug_reports_section" : bug_reports_section  }, status=200)
+  
     else:
         return Response({ "error" : serializer.errors }, status=status.HTTP_400_BAD_REQUEST)
