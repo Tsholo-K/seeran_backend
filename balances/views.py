@@ -22,7 +22,7 @@ from .serializers import BillsSerializer
 @cache_control(max_age=300, private=True)
 @token_required
 @founder_only
-def principal_invoices(request, user_id, invalidator):
+def principal_invoices(request, user_id):
     try:
         # Get the principal instance
         principal = CustomUser.objects.get(user_id=user_id)
