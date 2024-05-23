@@ -16,6 +16,5 @@ urlpatterns = [
     path('create-principal/<str:school_id>', views.create_principal, name="create school account"),
     path('delete-principal/', views.delete_principal, name="create school account"),
     path('principal-profile/<str:user_id>/', views.principal_profile, name="return principal profile information"),
-    path('principal-info/<str:user_id>/', views.principal_info, name="return principal profile information"),
     
 ]

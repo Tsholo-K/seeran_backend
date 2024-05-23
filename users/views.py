@@ -159,7 +159,6 @@ def delete_principal(request):
 @api_view(['GET'])
 @token_required
 @founder_only
-@cache_control(max_age=300, private=True)
 def principal_profile(request, user_id):
  
     try:
@@ -170,25 +169,6 @@ def principal_profile(request, user_id):
         return Response({"error" : "user not found"})
  
     # Add the school instance to the request data
-    serializer = PrincipalProfileSerializer(instance=principal)
-    return Response({ "principal" : serializer.data }, status=201)
-
-
-# get principal information
-@api_view(['GET'])
-@cache_control(max_age=300, private=True)
-@token_required
-@founder_only
-def principal_info(request, user_id):
- 
-    try:
-        # Get the principal instance
-        principal = CustomUser.objects.get(user_id=user_id)
- 
-    except CustomUser.DoesNotExist:
-        return Response({"error" : "user not found"})
- 
-    # Add the principal instance to the request data
     serializer = PrincipalProfileSerializer(instance=principal)
     return Response({ "principal" : serializer.data }, status=201)
 
