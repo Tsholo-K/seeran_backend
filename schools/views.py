@@ -16,7 +16,7 @@ from rest_framework.response import Response
 from .models import School
 
 # serializers
-from .serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSerializer
+from .serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSerializer, SchoolDetailsSerializer
 
 # custom decorators
 from authentication.decorators import token_required
@@ -29,14 +29,13 @@ from users.decorators import founder_only
 @token_required
 @founder_only
 def create_school(request):
+  
     serializer = SchoolCreationSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save()
         
-        # Generate a random 6-digit number
-        # this will invalidate the cache on the frontend
-        random_number = random.randint(100000, 999999)
-        return Response({ "message" : serializer.data, "invalidator" : random_number }, status=201)
+        return Response({ "message" : "school account created successfully" }, status=201)
+   
     return Response({"error" : serializer.errors})
 
 
@@ -44,14 +43,17 @@ def create_school(request):
 @token_required
 @founder_only
 def schools(request):
+   
     try:
         schools = School.objects.all().annotate(
             students=Count('users', filter=models.Q(users__role='STUDENT')),
             parents=Count('users', filter=models.Q(users__role='PARENT')),
             teachers=Count('users', filter=models.Q(users__role='TEACHER'))
         )
+ 
         serializer = SchoolsSerializer(schools, many=True)
         return Response({"schools" : serializer.data}, status=200)
+ 
     except Exception as e:
         return Response({"error" : str(e)}, status=500)
 
@@ -60,9 +62,27 @@ def schools(request):
 @token_required
 @founder_only
 def school(request, school_id):
+
     try:
         school = School.objects.get(school_id=school_id)
         serializer = SchoolSerializer(instance=school)
+      
         return Response({"school" : serializer.data}, status=200)
+ 
+    except Exception as e:
+        return Response({"error" : str(e)}, status=500)
+
+
+@api_view(['GET'])
+@token_required
+@founder_only
+def school_details(request, school_id):
+ 
+    try:
+        school = School.objects.get(school_id=school_id)
+        serializer = SchoolDetailsSerializer(instance=school)
+    
+        return Response({"school" : serializer.data}, status=200)
+ 
     except Exception as e:
         return Response({"error" : str(e)}, status=500)
