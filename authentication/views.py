@@ -75,33 +75,45 @@ def login(request):
         # because mfa requires we send an otp to the users email
         # then log them in without multi-factor authentication 
         if user.email_banned:
+           
             # disable mfa
             user.multifactor_authentication = False
             user.save()
+         
             try:    
-                # generate a random 6-digit number that will act as an invalidtor fro cached data on the frontend
-                random_number = random.randint(100000, 999999)
+           
                 # the alert key is used on the frontend to alert the user of their email being banned and what they can do to appeal(if they can)
-                response = Response({"message": "login successful", "role": user.role, "alert" : "your email address has been blacklisted", "invalidator" : random_number}, status=status.HTTP_200_OK)
+                response = Response({"message": "login successful", "alert" : "your email address has been blacklisted", "role" : user.role.title()}, status=status.HTTP_200_OK)
+              
                 # set access token cookie with custom expiration (5 mins)
                 response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+            
                 if 'refresh' in token:
                     # set refresh token cookie with custom expiration (86400 seconds = 24 hours)
                     response.set_cookie('refresh_token', token['refresh'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=86400)
+              
                 return response
+        
             except Exception as e:
+             
                 # if an exception occurs during the entire proccess return an error
                 return Response({"error": f"there was an error logging you in"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
         # else if their email address is not banned generate an otp for the user
         otp, hashed_otp, salt = generate_otp()
+     
         # then try to send the OTP to their email address 
         try:
+       
             client = boto3.client('ses', region_name='af-south-1')  # AWS region
+      
             # Read the email template from a file
             with open('authentication/templates/authentication/emailotptemplate.html', 'r') as file:
                 email_body = file.read()
+       
             # Replace the {{otp}} placeholder with the actual OTP
             email_body = email_body.replace('{{otp}}', otp)
+        
             response = client.send_email(
                 Destination={
                     'ToAddresses': [user.email], # send to users email address
@@ -118,6 +130,7 @@ def login(request):
                 },
                 Source='seeran grades <authorization@seeran-grades.com>',  # SES verified email address
             )
+     
             # Check the response to ensure the email was successfully sent
             if response['ResponseMetadata']['HTTPStatusCode'] == 200:
          
@@ -132,7 +145,8 @@ def login(request):
                 # cache the authorization otp under the users 'email+"authorization_otp"'
                 cache.set(user.email+'authorization_otp', (hashed_authorization_otp, authorization_otp_salt), timeout=300)  # 300 seconds = 5 mins
                 
-                response = Response({"message": "a new OTP has been sent to your email address"}, status=status.HTTP_200_OK)
+                response = Response({"mfa": "a new OTP has been sent to your email address"}, status=status.HTTP_200_OK)
+            
                 # set the authorization cookie then return the response
                 response.set_cookie('authorization_otp', authorization_otp, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
                 
@@ -157,21 +171,13 @@ def login(request):
     # if users multi-factor authentication is disabled do this..
     try:
         
-        # generate a section random numbers 
-        # this will be the cache invalidators on the frontend
-        if user.role == "FOUNDER":
-            profile_section = random.randint(100000, 999999)
-            schools_section = random.randint(100000, 999999)
-            bug_reports_section = random.randint(100000, 999999)
-            email_ban_appeal_section = random.randint(100000, 999999)
-            response = Response({"message": "login successful", "role": user.role, "profile_section" : profile_section, "schools_section" : schools_section, "bug_reports_section" : bug_reports_section, "email_ban_appeal_section" : email_ban_appeal_section}, status=status.HTTP_200_OK)
-        else: # user.role == "PRINCIPAL" or  user.role == "ADMIN"
-            profile_section = random.randint(100000, 999999)
-            response = Response({"message": "login successful", "role": user.role, "profile_section" : profile_section}, status=status.HTTP_200_OK)
+        response = Response({"message": "login successful", "role" : user.role.title()}, status=status.HTTP_200_OK)
 
         # set access token cookie with custom expiration (5 mins)
         response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+     
         if 'refresh' in token:
+          
             # set refresh token cookie with custom expiration (86400 seconds = 24 hours)
             response.set_cookie('refresh_token', token['refresh'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=86400)
 
