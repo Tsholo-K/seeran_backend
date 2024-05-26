@@ -11,10 +11,11 @@ from rest_framework import status
 # django
 from django.views.decorators.cache import cache_control
 from django.core.mail import BadHeaderError
+from django.db.models import Q
 
 # custom decorators
 from authentication.decorators import token_required
-from users.decorators import founder_only
+from users.decorators import founder_only, admins_only
 
 # models
 from users.models import CustomUser
@@ -22,8 +23,8 @@ from schools.models import School
 from balances.models import Balance
 
 # serilializer
-from .serializers import (MyProfileSerializer, MySecurityInfoSerializer,
-    PrincipalCreationSerializer, PrincipalProfileSerializer, GetImageSerializer
+from .serializers import (MySecurityInfoSerializer,
+    PrincipalCreationSerializer, PrincipalProfileSerializer, AdminsSerializer
 )
 
 # amazon email sending service
@@ -36,7 +37,7 @@ from .decorators import founder_only
 
 
 
-### users infomation views ###
+############################### users infomation views ####################################
 
 
 # get users security info
@@ -48,8 +49,11 @@ def my_security_info(request):
     return Response({ "users_security_info" : serializer.data },status=200)
 
 
+##########################################################################################
 
-### principal account views for founderdashboard ##
+
+
+###################### principal account views for founderdashboard #######################
 
 
 # create principal account
@@ -174,8 +178,32 @@ def principal_profile(request, user_id):
     return Response({ "principal" : serializer.data }, status=201)
 
 
+#############################################################################################
 
-### user upload views ###
+
+
+########################### admin account views for admindashboard ###########################
+
+
+# get all admin accounts in the school
+@api_view(['GET'])
+@token_required
+@admins_only
+def admins(request):
+ 
+    # Get the school instance
+    admin_accounts = CustomUser.objects.filter( Q(role='ADMIN') | Q(role='PRINCIPAL'), school=request.user.school).exclude(instance=request.user)
+  
+    # serialize query set
+    serializer = AdminsSerializer(admin_accounts, many=True)
+    return Response({ "admins" : serializer.data }, status=201)
+
+
+#############################################################################################
+
+
+
+################################# user upload views ##########################################
 
 
 # user profile pictures upload 
@@ -216,3 +244,4 @@ def update_profile_picture(request):
         return Response({"error" : "No file was uploaded."}, status=400)
 
 
+##########################################################################################
