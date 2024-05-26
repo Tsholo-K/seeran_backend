@@ -196,7 +196,6 @@ class AdminCreationSerializer(serializers.ModelSerializer):
 # admins 
 class AdminsSerializer(serializers.ModelSerializer):
 
-    role = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
 
     class Meta:
