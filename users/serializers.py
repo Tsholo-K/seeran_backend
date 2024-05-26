@@ -197,13 +197,14 @@ class AdminCreationSerializer(serializers.ModelSerializer):
 class AdminsSerializer(serializers.ModelSerializer):
 
     image = serializers.SerializerMethodField()
+    id = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
-        fields = [ 'name', 'surname', 'user_id', 'image' ]
+        fields = [ 'name', 'surname', 'id', 'image' ]
     
-    def get_role(self, obj):
-        return obj.role.lower().title()
+    def get_id(self, obj):
+        return obj.user_id
             
     def get_image(self, obj):
       
