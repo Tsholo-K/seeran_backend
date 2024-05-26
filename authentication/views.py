@@ -395,13 +395,13 @@ def set_password(request):
     try:
         hashed_authorization_otp_and_salt = cache.get(email + 'authorization_otp')
         if not hashed_authorization_otp_and_salt:
-            return Response({"error": "OTP expired, please reload the page to request a new OTP"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "OTP expired, please reload the page to request a new one"}, status=status.HTTP_400_BAD_REQUEST)
     
     except Exception as e:
-        return Response({"error": f"error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     if not verify_user_otp(otp, hashed_authorization_otp_and_salt):
-        return Response({"error": "incorrect OTP, action forbiden"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "incorrect OTP, permission denied"}, status=status.HTTP_400_BAD_REQUEST)
     
     try:
         # activate users account
@@ -423,10 +423,11 @@ def set_password(request):
     
     except ObjectDoesNotExist:
         # if theres no user with the provided email return an error
-        return Response({"error": "user does not exist."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error": "user with the provided credentials does not exist."}, status=status.HTTP_404_NOT_FOUND)
+  
     except Exception as e:
         # if any exceptions rise during return the response return it as the response
-        return Response({"error": f"{str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # authenticates incoming tokens
@@ -450,18 +451,25 @@ def authenticate(request):
 # user logout view
 @api_view(['POST'])
 def logout(request):
+  
     refresh_token = request.COOKIES.get('refresh_token')
+  
     if refresh_token:
+       
         try:
             # Add the refresh token to the blacklist
             response = Response({"message": "logged you out successful"})
+        
             # Clear the refresh token cookie
             response.delete_cookie('access_token', domain='.seeran-grades.com')
             response.delete_cookie('refresh_token', domain='.seeran-grades.com')
             cache.set(refresh_token, 'blacklisted', timeout=86400)
+         
             return response
+   
         except Exception as e:
             return Response({"error": e})
+  
     else:
         return Response({"error": "No refresh token provided"})
 
@@ -474,20 +482,27 @@ def logout(request):
 @api_view(['POST'])
 @token_required
 def mfa_change(request):
+ 
     if request.user.email_banned:
         return Response({ "error" : "your email has been banned"})
+
     sent_email = request.data.get('email')
     toggle = request.data.get('toggle')
+  
     if not sent_email or toggle == None:
         return Response({"error": "supplied credentials are invalid"})
+
     if not validate_user_email(sent_email):
         return Response({"error": " invalid email address"})
+ 
     # Validate the email
     if sent_email != request.user.email:
         return Response({"error" : "invalid email address for account"})
+  
     # Validate toggle value
     request.user.multifactor_authentication = toggle
     request.user.save()
+   
     return Response({'message': 'Multifactor authentication {} successfully'.format('enabled' if toggle else 'disabled')}, status=status.HTTP_200_OK)
 
 
@@ -495,20 +510,27 @@ def mfa_change(request):
 @api_view(['POST'])
 @token_required
 def event_emails_subscription(request):
+   
     if request.user.email_banned:
         return Response({ "error" : "your email has been banned"})
+  
     sent_email = request.data.get('email')
     toggle = request.data.get('toggle')
+  
     if not sent_email or toggle == None:
         return Response({"error": "supplied credentials are invalid"})
+ 
     if not validate_user_email(sent_email):
         return Response({"error": " invalid email address"})
+ 
     # Validate the email
     if sent_email != request.user.email:
         return Response({"error" : "invalid email address for account"})
+ 
     # Validate toggle value
     request.user.event_emails = toggle
     request.user.save()
+ 
     return Response({'message': '{}'.format('subscribed to event emails' if toggle else 'unsubscribed from event emails')}, status=status.HTTP_200_OK)
 
 
