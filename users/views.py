@@ -24,7 +24,8 @@ from balances.models import Balance
 
 # serilializer
 from .serializers import (MySecurityInfoSerializer,
-    PrincipalCreationSerializer, PrincipalProfileSerializer, AdminsSerializer
+    PrincipalCreationSerializer, PrincipalProfileSerializer, AdminsSerializer,
+    AdminCreationSerializer
 )
 
 # amazon email sending service
@@ -124,7 +125,7 @@ def create_principal(request, school_id):
         except (BotoCoreError, ClientError) as error:
         
             # Handle specific errors and return appropriate responses
-            return Response({"error": f"could not send account creation email to users email address"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": error}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
         except BadHeaderError:
             return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
@@ -183,6 +184,79 @@ def principal_profile(request, user_id):
 
 
 ########################### admin account views for admindashboard ###########################
+
+
+# create admin account
+@api_view(['POST'])
+@token_required
+@admins_only
+def create_admin(request):
+  
+    try:
+        # Get the school instance
+        school = School.objects.get(instance=request.user.school)
+  
+    except School.DoesNotExist:
+        return Response({"error" : "school with the provided credentials can not be found"})
+   
+    # Add the school instance to the request data
+    data = request.data.copy()
+    data['school'] = school.id
+    data['role'] = "ADMIN"
+  
+    serializer = AdminCreationSerializer(data=data)
+   
+    if serializer.is_valid():
+      
+        try:
+            client = boto3.client('ses', region_name='af-south-1')  # AWS region
+            # Read the email template from a file
+      
+            with open('authentication/templates/authentication/accountcreationnotification.html', 'r') as file:
+                email_body = file.read()
+      
+            # Replace the {{otp}} placeholder with the actual OTP
+            # email_body = email_body.replace('{{name}}', (user.name.title() + user.surname.title()))
+            response = client.send_email(
+                Destination={
+                    'ToAddresses': [data['email']],
+                },
+                Message={
+                    'Body': {
+                        'Html': {
+                            'Data': email_body,
+                        },
+                    },
+                    'Subject': {
+                        'Data': 'Account Creation Confirmation',
+                    },
+                },
+                Source='seeran grades <authorization@seeran-grades.com>',  # SES verified email address
+            )
+        
+            # Check the response to ensure the email was successfully sent
+            if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+             
+                serializer.save()
+           
+                return Response({"message": "admin account created successfully"}, status=status.HTTP_200_OK)
+            
+            else:
+                return Response({"error": "email sent to users email address bounced"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+      
+        except (BotoCoreError, ClientError) as error:
+        
+            # Handle specific errors and return appropriate responses
+            return Response({"error": error}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+        except BadHeaderError:
+            return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
+      
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)    
+ 
+    return Response({"error" : serializer.errors}, status=400)
+
 
 
 # get all admin accounts in the school

@@ -124,7 +124,7 @@ class PrincipalCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = [ 'name', 'surname', 'email', 'school', 'role' ]
+        fields = [ 'name', 'surname', 'phone_number', 'email', 'school', 'role' ]
 
 
 # principal profile
@@ -185,7 +185,15 @@ class PrincipalProfileSerializer(serializers.ModelSerializer):
 ################################### admin serilizers ####################################
 
 
-# principal profile
+# principal creation
+class AdminCreationSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = CustomUser
+        fields = [ 'name', 'surname', 'email', 'school', 'role' ]
+
+
+# admins 
 class AdminsSerializer(serializers.ModelSerializer):
 
     role = serializers.SerializerMethodField()
