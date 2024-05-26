@@ -121,13 +121,21 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     role = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
+    surname = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
         fields = [ 'name', 'surname', 'email', 'user_id', 'role', 'image' ]
     
+    def get_name(self, obj):
+        return obj.name.title()
+    
+    def get_surname(self, obj):
+        return obj.surname.title()
+    
     def get_role(self, obj):
-        return obj.role.lower().title()
+        return obj.role.title()
             
     def get_image(self, obj):
       

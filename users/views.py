@@ -304,8 +304,12 @@ def admins(request):
 def admin_profile(request, user_id):
  
     # Get the school instance
-    admin = CustomUser.objects.get(user_id=user_id)
-  
+    try:
+        admin = CustomUser.objects.get(user_id=user_id)
+
+    except CustomUser.DoesNotExist:
+        return Response({"error" : "user with the provided credentials doesnot exist"})
+
     # serialize query set
     serializer = ProfileSerializer(instance=admin)
     return Response({ "admin" : serializer.data }, status=201)
