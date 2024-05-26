@@ -18,6 +18,6 @@ urlpatterns = [
     path('principal-profile/<str:user_id>/', views.principal_profile, name="return principal profile information"),
         
     # admin account urls
-    path('admins/', views.admin, name="get school admin accounts"),
+    path('admins/', views.admins, name="get school admin accounts"),
 
 ]
