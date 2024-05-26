@@ -194,7 +194,7 @@ def create_admin(request):
   
     try:
         # Get the school instance
-        school = School.objects.get(instance=request.user.school)
+        school = School.objects.get(school_id=request.user.school.school_id)
   
     except School.DoesNotExist:
         return Response({"error" : "school with the provided credentials can not be found"})
