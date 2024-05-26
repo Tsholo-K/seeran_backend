@@ -192,7 +192,7 @@ def principal_profile(request, user_id):
 def admins(request):
  
     # Get the school instance
-    admin_accounts = CustomUser.objects.filter( Q(role='ADMIN') | Q(role='PRINCIPAL'), school=request.user.school).exclude(instance=request.user)
+    admin_accounts = CustomUser.objects.filter( Q(role='ADMIN') | Q(role='PRINCIPAL'), school=request.user.school).exclude(user_id=request.user.user_id)
   
     # serialize query set
     serializer = AdminsSerializer(admin_accounts, many=True)
