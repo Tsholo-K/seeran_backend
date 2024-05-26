@@ -14,13 +14,13 @@ import uuid
 from schools.models import School
 
 # utility functions
-from authentication.utils import get_upload_path
+from authentication.utils import get_upload_path, is_phone_number_valid
 
 
 class CustomUserManager(BaseUserManager):
     
     # user creation 
-    def create_user(self, email=None, id_number=None, name=None, surname=None, role=None, school=None, **extra_fields):
+    def create_user(self, email=None, id_number=None, name=None, surname=None, phone_number=None, role=None, school=None, **extra_fields):
         if not email and not id_number:
             raise ValueError(_('either email or ID number must be set'))
         
@@ -30,7 +30,13 @@ class CustomUserManager(BaseUserManager):
         if role != 'FOUNDER' and school is None:
             raise ValueError(_('user must be part of a school'))
         
-        user = self.model(email=email, id_number=id_number, name=name, surname=surname, role=role, school=school, **extra_fields)
+        if role == 'PRINCIPAL':
+            if phone_number is None:
+                raise ValueError(_('user must have a contact number'))
+            if not is_phone_number_valid(phone_number):
+                raise ValueError(_('invalid phone number format'))
+
+        user = self.model(email=email, id_number=id_number, name=name, surname=surname, phone_number=phone_number, role=role, school=school, **extra_fields)
         return user
         
     
@@ -77,6 +83,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     id_number = models.CharField(_('ID number'), max_length=13, unique=True, blank=True, null=True)
     name = models.CharField(_('name'), max_length=32)
     surname = models.CharField(_('surname'), max_length=32)
+    phone_number = models.CharField(_('phone number'), max_length=9, unique=True, blank=True, null=True)
     user_id = models.CharField(max_length=15, unique=True)
 
     school = models.ForeignKey(School, on_delete=models.SET_NULL, related_name='users', null=True)

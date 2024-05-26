@@ -63,11 +63,11 @@ def create_principal(request, school_id):
         school = School.objects.get(school_id=school_id)
   
     except School.DoesNotExist:
-        return Response({"error" : "School not found"})
+        return Response({"error" : "school with the provided credentials can not be found"})
   
     # Check if the school already has a principal
     if CustomUser.objects.filter(school=school, role="PRINCIPAL").exists():
-        return Response({"error" : "This school already has a principal account linked to it"}, status=400)
+        return Response({"error" : "school already has a principal account linked to it"}, status=400)
    
     # Add the school instance to the request data
     data = request.data.copy()
@@ -120,7 +120,7 @@ def create_principal(request, school_id):
         except (BotoCoreError, ClientError) as error:
         
             # Handle specific errors and return appropriate responses
-            return Response({"error": f"couldn't send account creation email to users email address"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": f"could not send account creation email to users email address"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
         except BadHeaderError:
             return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
@@ -142,17 +142,18 @@ def delete_principal(request):
         user = CustomUser.objects.get(user_id=request.data['user_id'])
  
     except CustomUser.DoesNotExist:
-        return Response({"error" : "provided user not found"})
+        return Response({"error" : "user with the provided credentials can not be found"})
  
     try:
         # Add the school instance to the request data
         user.delete()
       
-        return Response({"message" : "user account deleted",}, status=status.HTTP_200_OK)
+        return Response({"message" : "user account successfully deleted",}, status=status.HTTP_200_OK)
  
     except Exception as e:
+       
         # if any exceptions rise during return the response return it as the response
-        return Response({"error": f"error deleting account: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": {str(e)}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # get principal profile information
@@ -166,7 +167,7 @@ def principal_profile(request, user_id):
         principal = CustomUser.objects.get(user_id=user_id)
  
     except CustomUser.DoesNotExist:
-        return Response({"error" : "user not found"})
+        return Response({"error" : "user with the provided credentials does not exist"})
  
     # Add the school instance to the request data
     serializer = PrincipalProfileSerializer(instance=principal)
@@ -182,26 +183,35 @@ def principal_profile(request, user_id):
 @parser_classes([MultiPartParser, FormParser])
 @token_required
 def update_profile_picture(request):
+   
     profile_picture = request.FILES.get('profile_picture', None)
+ 
     if profile_picture:
+     
         try:
-            user = CustomUser.objects.get(email=request.user.email)  # get the current user
+            user = CustomUser.objects.get(instance=request.user)  # get the current user
+    
         except CustomUser.DoesNotExist:
-            return Response({"error" : "presented user not found"})
+            return Response({"error" : "user with the provided credentials does not exist"})
         
-        user.profile_picture.delete()  # delete the old profile picture if it exists
+        try:
+        
+            user.profile_picture.delete()  # delete the old profile picture if it exists
 
-        # Generate a new filename
-        ext = profile_picture.name.split('.')[-1]  # Get the file extension
-        filename = f'{uuid.uuid4()}.{ext}'  # Create a new filename using a UUID
+            # Generate a new filename
+            ext = profile_picture.name.split('.')[-1]  # Get the file extension
+            filename = f'{uuid.uuid4()}.{ext}'  # Create a new filename using a UUID
 
-        user.profile_picture.save(filename, profile_picture)  # save the new profile picture
-        user.save()
+            user.profile_picture.save(filename, profile_picture)  # save the new profile picture
+            user.save()
 
-        # Generate a random 6-digit number
-        # this will invalidate the cache on the frontend
-        profile_section = random.randint(100000, 999999)
-        return Response({ 'profile_section' : profile_section },status=200)
+            return Response({ 'message' : 'profile picture cahnge successfully'},status=200)
+        
+        except Exception as e:
+    
+            # if any exceptions rise during return the response return it as the response
+            return Response({"error": {str(e)}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     else:
         return Response({"error" : "No file was uploaded."}, status=400)
 

@@ -152,8 +152,17 @@ def get_upload_path(instance, filename):
     
     
 def validate_names(names):
+  
     parts = names.split(' ')
     if len(parts) == 2:
         return True
+ 
     else:
         return False
+    
+def is_phone_number_valid(phone_number):
+    
+    # South African phone numbers without the leading 0
+    pattern = r"^(1|6|7|8|9)\d{8}$"
+  
+    return bool(re.match(pattern, phone_number))
