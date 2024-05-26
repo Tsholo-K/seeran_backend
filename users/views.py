@@ -258,6 +258,31 @@ def create_admin(request):
     return Response({"error" : serializer.errors}, status=400)
 
 
+# delete admin account
+@api_view(['POST'])
+@token_required
+@admins_only
+def delete_admin(request):
+   
+    try:
+        # Get the school instance
+        user = CustomUser.objects.get(user_id=request.data['user_id'])
+ 
+    except CustomUser.DoesNotExist:
+        return Response({"error" : "user with the provided credentials can not be found"})
+ 
+    try:
+        # Add the school instance to the request data
+        user.delete()
+      
+        return Response({"message" : "user account successfully deleted",}, status=status.HTTP_200_OK)
+ 
+    except Exception as e:
+       
+        # if any exceptions rise during return the response return it as the response
+        return Response({"error": {str(e)}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 # get all admin accounts in the school
 @api_view(['GET'])
 @token_required
