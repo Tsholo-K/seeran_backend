@@ -114,21 +114,10 @@ class GetImageSerializer(serializers.ModelSerializer):
 
 #############################################################################################
 
+###################################### general ##############################################
 
-
-################################### principal serilizers ####################################
-
-
-# principal creation
-class PrincipalCreationSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = CustomUser
-        fields = [ 'name', 'surname', 'phone_number', 'email', 'school', 'role' ]
-
-
-# principal profile
-class PrincipalProfileSerializer(serializers.ModelSerializer):
+# user profile
+class ProfileSerializer(serializers.ModelSerializer):
 
     role = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
@@ -176,6 +165,21 @@ class PrincipalProfileSerializer(serializers.ModelSerializer):
         
         # return it 
         return signed_url
+
+
+#############################################################################################
+
+
+
+################################### principal serilizers ####################################
+
+
+# principal creation
+class PrincipalCreationSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = CustomUser
+        fields = [ 'name', 'surname', 'phone_number', 'email', 'school', 'role' ]
 
 
 #############################################################################################

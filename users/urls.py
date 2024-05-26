@@ -20,5 +20,6 @@ urlpatterns = [
     # admin account urls
     path('create-admin/', views.create_admin, name="create admin account"),
     path('admins/', views.admins, name="get school admin accounts"),
+    path('admin-profile/<str:user_id>/', views.admin_profile, name="get admin profile"),
 
 ]

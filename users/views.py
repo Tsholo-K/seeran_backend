@@ -24,7 +24,7 @@ from balances.models import Balance
 
 # serilializer
 from .serializers import (MySecurityInfoSerializer,
-    PrincipalCreationSerializer, PrincipalProfileSerializer, AdminsSerializer,
+    PrincipalCreationSerializer, ProfileSerializer, AdminsSerializer,
     AdminCreationSerializer
 )
 
@@ -175,7 +175,7 @@ def principal_profile(request, user_id):
         return Response({"error" : "user with the provided credentials does not exist"})
  
     # Add the school instance to the request data
-    serializer = PrincipalProfileSerializer(instance=principal)
+    serializer = ProfileSerializer(instance=principal)
     return Response({ "principal" : serializer.data }, status=201)
 
 
@@ -258,7 +258,6 @@ def create_admin(request):
     return Response({"error" : serializer.errors}, status=400)
 
 
-
 # get all admin accounts in the school
 @api_view(['GET'])
 @token_required
@@ -271,6 +270,20 @@ def admins(request):
     # serialize query set
     serializer = AdminsSerializer(admin_accounts, many=True)
     return Response({ "admins" : serializer.data }, status=201)
+
+
+# get admin account
+@api_view(['GET'])
+@token_required
+@admins_only
+def admin_profile(request, user_id):
+ 
+    # Get the school instance
+    admin = CustomUser.objects.get(user_id=user_id)
+  
+    # serialize query set
+    serializer = ProfileSerializer(instance=admin)
+    return Response({ "admin" : serializer.data }, status=201)
 
 
 #############################################################################################
