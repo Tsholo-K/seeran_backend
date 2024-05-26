@@ -186,7 +186,7 @@ class PrincipalProfileSerializer(serializers.ModelSerializer):
 
 
 # principal profile
-class AdminSerializer(serializers.ModelSerializer):
+class AdminsSerializer(serializers.ModelSerializer):
 
     role = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
