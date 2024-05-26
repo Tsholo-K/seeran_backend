@@ -407,13 +407,14 @@ def set_password(request):
         # activate users account
         user = CustomUser.objects.activate_user(email=email, password=new_password)
 
-        response = Response({"message": "login successful", "role": user.role,}, status=status.HTTP_200_OK)
+        response = Response({"message": "login successful", "role": user.role.title()}, status=status.HTTP_200_OK)
                 
         # generate an access and refresh token for the user 
         token = generate_token(user)
 
         # set access token cookie with custom expiration (5 mins)
         response.set_cookie('access_token', token['access_token'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+       
         # set refresh token cookie with custom expiration (86400 seconds = 24 hours)
         response.set_cookie('refresh_token', token['refresh_token'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=86400)
         
