@@ -23,9 +23,9 @@ from schools.models import School
 from balances.models import Balance
 
 # serilializer
-from .serializers import (MySecurityInfoSerializer,
-    PrincipalCreationSerializer, ProfileSerializer, AdminsSerializer,
-    AdminCreationSerializer
+from .serializers import (SecurityInfoSerializer,
+    PrincipalCreationSerializer, ProfileSerializer, UsersSerializer,
+    UserCreationSerializer
 )
 
 # amazon email sending service
@@ -38,7 +38,7 @@ from .decorators import founder_only
 
 
 
-############################### users infomation views ####################################
+###################################### general views ###########################################
 
 
 # get users security info
@@ -46,15 +46,110 @@ from .decorators import founder_only
 @token_required
 def my_security_info(request):
 
-    serializer = MySecurityInfoSerializer(instance=request.user)
+    serializer = SecurityInfoSerializer(instance=request.user)
     return Response({ "users_security_info" : serializer.data },status=200)
 
 
-##########################################################################################
+# get user profile information
+@api_view(['GET'])
+@token_required
+def user_profile(request):
+    
+    user_id = request.data.get('user_id')
+
+    if not user_id:
+        return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # try to get the user instance
+    try:
+        user = CustomUser.objects.get(user_id=user_id)
+ 
+    except CustomUser.DoesNotExist:
+        return Response({"error" : "user with the provided credentials does not exist"})
+         
+    if request.user.role == 'FOUNDER' and user.role != 'PRINCIPAL':
+        return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
+
+    # permission check
+    if request.user.role != 'FOUNDER':
+
+        if user.role == 'FOUNDER' or (request.user.role != 'PARENT' and user.school != request.user.school):
+            return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # students 
+        if request.user.role == 'STUDENT':
+
+            if user.role == 'PRINCIPAL' or user.role == 'STUDENT':
+                return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
+            
+            if user.role == 'PARENT' and request.user not in user.children:
+                return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
+
+            if user.role == 'TEACHER':
+
+                teachers = []
+
+                for clas in request.user.classes:
+                    teachers.append(clas.teacher)
+
+                if user not in teachers:
+                    return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
+
+        # parents
+        if request.user.role == 'PARENT':
+
+            if user.role == 'PRINCIPAL' or ( user.role == 'STUDENT' and user not in request.user.children ):
+                return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
+            
+            if user.role == 'STUDENT':
+                pass
+            
+            else:
+                schools = []
+                teachers = []
+
+                for child in request.user.children:
+                    schools.append(child.school)
+                    for clas in child.classes:
+                        teachers.append(clas.teacher)
+
+                if user.role == 'ADMIN'  and user.school not in schools:
+                    return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
+                
+                if user.role == 'TEACHER' and user not in teachers:
+                    return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
+                
+        # teacher
+        if request.user.role == 'TEACHER':
+
+            if user.role == 'PARENT' or user.role == 'STUDENT':
+                in_class = False
+
+                if user.role == 'STUDENT':
+                    for clas in request.user.classes:
+                        if user in clas.students:
+                            in_class = True
+                            break
+                
+                if user.role == 'PARENT':
+                    for clas in request.user.classes:
+                        if user in clas.parents:
+                            in_class = True
+                            break
+
+                if not in_class:
+                    return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
+
+    # return the users profile
+    serializer = ProfileSerializer(instance=user)
+    return Response({ "user" : serializer.data }, status=201)
+
+
+################################################################################################
 
 
 
-###################### principal account views for founderdashboard #######################
+############################## founderdashboard view functions #################################
 
 
 # create principal account
@@ -62,9 +157,9 @@ def my_security_info(request):
 @token_required
 @founder_only
 def create_principal(request, school_id):
-  
+          
+    # try to get the school instance
     try:
-        # Get the school instance
         school = School.objects.get(school_id=school_id)
   
     except School.DoesNotExist:
@@ -161,50 +256,61 @@ def delete_principal(request):
         return Response({"error": {str(e)}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# get principal profile information
-@api_view(['GET'])
-@token_required
-@founder_only
-def principal_profile(request, user_id):
- 
-    try:
-        # Get the school instance
-        principal = CustomUser.objects.get(user_id=user_id)
- 
-    except CustomUser.DoesNotExist:
-        return Response({"error" : "user with the provided credentials does not exist"})
- 
-    # Add the school instance to the request data
-    serializer = ProfileSerializer(instance=principal)
-    return Response({ "principal" : serializer.data }, status=201)
-
-
-#############################################################################################
+################################################################################################
 
 
 
-########################### admin account views for admindashboard ###########################
+#################################### admindashboard views ######################################
 
 
-# create admin account
+# create user account
 @api_view(['POST'])
 @token_required
 @admins_only
-def create_admin(request):
-  
+def create_user(request):
+
+    role = request.data.get('role')
+
+    if not role:
+        return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if role == 'FOUNDER' or role == 'PRINCIPAL':
+        return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
+
+    # try to get the school instance
     try:
-        # Get the school instance
         school = School.objects.get(school_id=request.user.school.school_id)
   
     except School.DoesNotExist:
         return Response({"error" : "school with the provided credentials can not be found"})
-   
-    # Add the school instance to the request data
+    
+    # retrieve the provided information
+    name = request.data.get('name')
+    surname = request.data.get('surname')
+    id_number = request.data.get('id_number')
+    email = request.data.get('email')
+
+    # if anyone of these is missing return a 400 error
+    if not name or not surname:
+        return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if role == 'ADMIN' or  role == 'PARENT' or  role == 'TEACHER':
+
+        # if anyone of these is missing return a 400 error
+        if not email:
+            return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if role == 'STUDENT':
+
+        # if anyone of these is missing return a 400 error
+        if not id_number:
+            return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
+        
+    # copy the request data to a data variable and add school
     data = request.data.copy()
     data['school'] = school.id
-    data['role'] = "ADMIN"
-  
-    serializer = AdminCreationSerializer(data=data)
+    
+    serializer = UserCreationSerializer(data=data)
    
     if serializer.is_valid():
       
@@ -239,7 +345,7 @@ def create_admin(request):
              
                 serializer.save()
            
-                return Response({"message": "admin account created successfully"}, status=status.HTTP_200_OK)
+                return Response({"message": "{} account created successfully".format(role.title()) }, status=status.HTTP_200_OK)
             
             else:
                 return Response({"error": "email sent to users email address bounced"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -262,19 +368,22 @@ def create_admin(request):
 @api_view(['POST'])
 @token_required
 @admins_only
-def delete_admin(request):
+def delete_user(request):
    
+    # try to get user
     try:
-        # Get the school instance
-        user = CustomUser.objects.get(user_id=request.data['user_id'])
+        user = CustomUser.objects.get(user_id=request.data.get('user_id'))
  
     except CustomUser.DoesNotExist:
         return Response({"error" : "user with the provided credentials can not be found"})
  
+    if user.role == 'PRINCIPAL' or request.user.school != user.school or (user.role == 'ADMIN' and request.user.role != 'PRINCIPAL'):
+        return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
+
+    # try to delete the user instance
     try:
-        # Add the school instance to the request data
+
         user.delete()
-      
         return Response({"message" : "user account successfully deleted",}, status=status.HTTP_200_OK)
  
     except Exception as e:
@@ -283,18 +392,35 @@ def delete_admin(request):
         return Response({"error": {str(e)}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# get all admin accounts in the school
+# get all 'role' accounts in the school
 @api_view(['GET'])
 @token_required
 @admins_only
-def admins(request):
+def users(request):
  
-    # Get the school instance
-    admin_accounts = CustomUser.objects.filter( Q(role='ADMIN') | Q(role='PRINCIPAL'), school=request.user.school).exclude(user_id=request.user.user_id)
+    role = request.data.get('role')
+
+    if not role or role == 'PARENTS':
+        return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if role == 'ADMIN':
+        # Get the school admin users
+        accounts = CustomUser.objects.filter( Q(role='ADMIN') | Q(role='PRINCIPAL'), school=request.user.school).exclude(user_id=request.user.user_id)
+   
+    if role == 'STUDENT':
+        grade = request.data.get('grade')
+
+        if not grade:
+            return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
+
+        accounts = CustomUser.objects.filter(role=role, grade=grade, school=request.user.school)
   
+    if role == 'TEACHER':
+        accounts = CustomUser.objects.filter(role=role, school=request.user.school)
+
     # serialize query set
-    serializer = AdminsSerializer(admin_accounts, many=True)
-    return Response({ "admins" : serializer.data }, status=201)
+    serializer = UsersSerializer(accounts, many=True)
+    return Response({ "users" : serializer.data }, status=201)
 
 
 # get admin account

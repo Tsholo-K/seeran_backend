@@ -2,7 +2,6 @@
 import random
 
 # django
-from django.views.decorators.cache import cache_control
 from django.shortcuts import get_object_or_404
 
 # rest framework

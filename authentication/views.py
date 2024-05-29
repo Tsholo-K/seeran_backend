@@ -32,7 +32,7 @@ from .utils import validate_access_token, generate_access_token, generate_token,
 from .decorators import token_required
 
 # serializers
-from users.serializers import MyProfileSerializer
+from users.serializers import ProfileSerializer
 
 
 ### login and authentication views ###
@@ -197,6 +197,7 @@ def multi_factor_authentication(request):
     email = request.data.get('email')
     otp = request.data.get('otp')
     authorization_cookie_otp = request.COOKIES.get('authorization_otp')
+    
     # if anyone of these is missing return a 400 error
     if not email or not otp or not authorization_cookie_otp:
         return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
@@ -437,7 +438,7 @@ def authenticate(request):
    
     # if the user is authenticated, return their profile information 
     if request.user:
-        serializer = MyProfileSerializer(instance=request.user)
+        serializer = ProfileSerializer(instance=request.user)
         return Response({"user" : serializer.data}, status=status.HTTP_200_OK)
 
     else:
