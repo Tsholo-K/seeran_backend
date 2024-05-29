@@ -21,18 +21,32 @@ class CustomUserManager(BaseUserManager):
     
     # user creation 
     def create_user(self, email=None, id_number=None, name=None, surname=None, phone_number=None, role=None, school=None, **extra_fields):
+          
         if not email and not id_number:
             raise ValueError(_('either email or ID number must be set'))
+     
+        # Check if the email already exists in the system
+        if email and self.model.objects.filter(email=email).exists():
+            raise ValueError(_('A user with the provided email already exists'))
+
+        # Check if the ID number already exists in the system
+        if id_number and self.model.objects.filter(id_number=id_number).exists():
+            raise ValueError(_('A user with the provided ID number already exists'))
         
+        if role in ['STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL'] and school is None:
+            raise ValueError(_('user must be part of a school'))
+
+        if role == 'STUDENT' and not id_number:
+            raise ValueError(_('ID number is required for a student account'))
+
         if email:
             email = self.normalize_email(email)
-            
-        if role != 'FOUNDER' and school is None:
-            raise ValueError(_('user must be part of a school'))
         
         if role == 'PRINCIPAL':
-            if phone_number is None:
+        
+            if phone_number is None:      
                 raise ValueError(_('user must have a contact number'))
+          
             if not is_phone_number_valid(phone_number):
                 raise ValueError(_('invalid phone number format'))
 
