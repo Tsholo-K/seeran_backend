@@ -309,6 +309,7 @@ def create_user(request):
     serializer = UserCreationSerializer(data=data)
    
     try:
+    
         if serializer.is_valid():
         
             try:
@@ -339,9 +340,8 @@ def create_user(request):
             
                 # Check the response to ensure the email was successfully sent
                 if response['ResponseMetadata']['HTTPStatusCode'] == 200:
-                
+
                     serializer.save()
-            
                     return Response({"message": "{} account created successfully".format(role.title()) }, status=status.HTTP_200_OK)
                 
                 else:
@@ -361,6 +361,7 @@ def create_user(request):
         return Response({"error" : serializer.errors}, status=400)
     
     except ValidationError as e:
+       
         # Return the error messages if validation fails
         return Response({"error": e.detail}, status=status.HTTP_400_BAD_REQUEST)
 
