@@ -6,6 +6,7 @@ import uuid
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError
 from rest_framework import status
 
 # django
@@ -307,56 +308,61 @@ def create_user(request):
     
     serializer = UserCreationSerializer(data=data)
    
-    if serializer.is_valid():
-      
-        try:
-            client = boto3.client('ses', region_name='af-south-1')  # AWS region
-            # Read the email template from a file
-      
-            with open('authentication/templates/authentication/accountcreationnotification.html', 'r') as file:
-                email_body = file.read()
-      
-            # Replace the {{otp}} placeholder with the actual OTP
-            # email_body = email_body.replace('{{name}}', (user.name.title() + user.surname.title()))
-            response = client.send_email(
-                Destination={
-                    'ToAddresses': [data['email']],
-                },
-                Message={
-                    'Body': {
-                        'Html': {
-                            'Data': email_body,
+    try:
+        if serializer.is_valid():
+        
+            try:
+                client = boto3.client('ses', region_name='af-south-1')  # AWS region
+                # Read the email template from a file
+        
+                with open('authentication/templates/authentication/accountcreationnotification.html', 'r') as file:
+                    email_body = file.read()
+        
+                # Replace the {{otp}} placeholder with the actual OTP
+                # email_body = email_body.replace('{{name}}', (user.name.title() + user.surname.title()))
+                response = client.send_email(
+                    Destination={
+                        'ToAddresses': [data['email']],
+                    },
+                    Message={
+                        'Body': {
+                            'Html': {
+                                'Data': email_body,
+                            },
+                        },
+                        'Subject': {
+                            'Data': 'Account Creation Confirmation',
                         },
                     },
-                    'Subject': {
-                        'Data': 'Account Creation Confirmation',
-                    },
-                },
-                Source='seeran grades <authorization@seeran-grades.com>',  # SES verified email address
-            )
-        
-            # Check the response to ensure the email was successfully sent
-            if response['ResponseMetadata']['HTTPStatusCode'] == 200:
-             
-                serializer.save()
-           
-                return Response({"message": "{} account created successfully".format(role.title()) }, status=status.HTTP_200_OK)
+                    Source='seeran grades <authorization@seeran-grades.com>',  # SES verified email address
+                )
             
-            else:
-                return Response({"error": "email sent to users email address bounced"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-      
-        except (BotoCoreError, ClientError) as error:
+                # Check the response to ensure the email was successfully sent
+                if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+                
+                    serializer.save()
+            
+                    return Response({"message": "{} account created successfully".format(role.title()) }, status=status.HTTP_200_OK)
+                
+                else:
+                    return Response({"error": "email sent to users email address bounced"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-            # Handle specific errors and return appropriate responses
-            return Response({"error": error}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            except (BotoCoreError, ClientError) as error:
+            
+                # Handle specific errors and return appropriate responses
+                return Response({"error": error}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+            except BadHeaderError:
+                return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
+        
+            except Exception as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)    
     
-        except BadHeaderError:
-            return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
-      
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)    
- 
-    return Response({"error" : serializer.errors}, status=400)
+        return Response({"error" : serializer.errors}, status=400)
+    
+    except ValidationError as e:
+        # Return the error messages if validation fails
+        return Response({"error": e.detail}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # delete admin account
