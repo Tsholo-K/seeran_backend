@@ -396,12 +396,7 @@ def delete_user(request):
 @api_view(['GET'])
 @token_required
 @admins_only
-def users(request):
- 
-    role = request.data.get('role')
-
-    if not role or role == 'PARENTS':
-        return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
+def users(request, role):
 
     if role == 'ADMIN':
         # Get the school admin users
