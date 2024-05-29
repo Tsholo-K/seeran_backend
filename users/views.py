@@ -53,12 +53,7 @@ def my_security_info(request):
 # get user profile information
 @api_view(['GET'])
 @token_required
-def user_profile(request):
-    
-    user_id = request.data.get('user_id')
-
-    if not user_id:
-        return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
+def user_profile(request, user_id):
 
     # try to get the user instance
     try:
@@ -416,24 +411,6 @@ def users(request, role):
     # serialize query set
     serializer = UsersSerializer(accounts, many=True)
     return Response({ "users" : serializer.data }, status=201)
-
-
-# get admin account
-@api_view(['GET'])
-@token_required
-@admins_only
-def admin_profile(request, user_id):
- 
-    # Get the school instance
-    try:
-        admin = CustomUser.objects.get(user_id=user_id)
-
-    except CustomUser.DoesNotExist:
-        return Response({"error" : "user with the provided credentials doesnot exist"})
-
-    # serialize query set
-    serializer = ProfileSerializer(instance=admin)
-    return Response({ "admin" : serializer.data }, status=201)
 
 
 #############################################################################################

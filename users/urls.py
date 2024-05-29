@@ -13,7 +13,7 @@ urlpatterns = [
     path("update-profile-picture/", views.update_profile_picture, name="update profile picture"),
 
     # general urls
-    path('profile/', views.user_profile, name="get users profile information"),
+    path('profile/<str:user_id>/', views.user_profile, name="get users profile information"),
 
     # principal account urls // for founderdashboard, 'FOUNDER' role required
     path('create-principal/<str:school_id>/', views.create_principal, name="create principal account"),
