@@ -20,7 +20,7 @@ from authentication.utils import get_upload_path, is_phone_number_valid
 class CustomUserManager(BaseUserManager):
     
     # user creation 
-    def create_user(self, email=None, id_number=None, name=None, surname=None, phone_number=None, role=None, school=None, **extra_fields):
+    def create_user(self, email=None, id_number=None, name=None, surname=None, phone_number=None, role=None, school=None, grade=None, **extra_fields):
           
         if not email and not id_number:
             raise ValueError(_('either email or ID number must be set'))
@@ -36,8 +36,13 @@ class CustomUserManager(BaseUserManager):
         if role in ['STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL'] and school is None:
             raise ValueError(_('user must be part of a school'))
 
-        if role == 'STUDENT' and not id_number:
-            raise ValueError(_('ID number is required for a student account'))
+        if role == 'STUDENT':
+           
+            if not id_number:
+                raise ValueError(_('ID number is required for a student account'))
+          
+            if not grade:
+                raise ValueError(_('student needs to be in an allocated grade'))
 
         if email:
             email = self.normalize_email(email)
@@ -100,7 +105,9 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     phone_number = models.CharField(_('phone number'), max_length=9, unique=True, blank=True, null=True)
     user_id = models.CharField(max_length=15, unique=True)
 
-    school = models.ForeignKey(School, on_delete=models.SET_NULL, related_name='users', null=True)
+    grade = models.IntegerField(_('students grade'), max_length=2, blank=True, null=True)
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='users', null=True)
     
     activated = models.BooleanField(_('account active or not'), default=False)
     

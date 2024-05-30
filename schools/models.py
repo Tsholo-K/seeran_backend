@@ -1,7 +1,7 @@
 # python 
 import uuid
 
-# django imports
+# django 
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.db import IntegrityError
@@ -10,7 +10,7 @@ from django.db import IntegrityError
 class School(models.Model):
     
     
-    #### required fields ####
+    ########################################### required fields #############################################
     
     
     name = models.CharField(_('school name'), max_length=100)
@@ -60,15 +60,11 @@ class School(models.Model):
 
     # school account id 
     school_id = models.CharField(max_length=15, unique=True)   
-         
-    # all required fields
-    REQUIRED_FIELDS = ['name', 'email', 'location', 'contact_number', 'school_type', 'school_district']
 
 
-    #### fields set by school ####
+    ##################################### fields set by school( not important ) ################################
     
     
-    # important particulars
     grading_system = models.TextField(blank=True, null=True)  # Grading System Details
     library_details = models.TextField(blank=True, null=True)  # Library Details
     laboratory_details = models.TextField(blank=True, null=True)  # Laboratory Details
@@ -83,9 +79,12 @@ class School(models.Model):
     accreditation = models.CharField(max_length=100, blank=True, null=True)
     academic_calendar = models.TextField(blank=True, null=True)
     curriculum_details = models.TextField(blank=True, null=True)  # Curriculum Details
-    # courses_offered = models.ManyToManyField(Course, related_name='school_courses')  # List of Courses/Subjects Offered
     school_motto = models.CharField(max_length=255, blank=True, null=True)  # School Motto or Mission Statement
     
+
+    ############################################### model extra details ###########################################
+
+
     class Meta:
         verbose_name = _('school')
         verbose_name_plural = _('schools')
@@ -108,7 +107,6 @@ class School(models.Model):
                 attempts += 1
         if attempts >= 5:
             raise ValueError('Could not create school with unique account ID after 5 attempts. Please try again later.')
-
 
     @staticmethod
     def generate_unique_account_id(prefix=''):

@@ -15,13 +15,14 @@ urlpatterns = [
     # general urls
     path('profile/<str:user_id>/', views.user_profile, name="get users profile information"),
 
-    # principal account urls // for founderdashboard, 'FOUNDER' role required
+    # urls for founderdashboard, 'FOUNDER' role required
     path('create-principal/<str:school_id>/', views.create_principal, name="create principal account"),
     path('delete-principal/', views.delete_principal, name="delete principal account"),
         
-    # admin account urls // for admindashboard, 'ADMIN' role required 
+    # urls  for admindashboard, 'ADMIN' role required 
     path('create-user/', views.create_user, name="create user account"),
     path('delete-user/', views.delete_user, name="delete user account"),
-    path('users/<str:role>/', views.users, name="get school user accounts"),
+    path('users/<str:role>/', views.users, name="get school admin or teacher accounts"),
+    path('students/<str:grade>/', views.students, name="get student accounts in provided grade"),
 
 ]

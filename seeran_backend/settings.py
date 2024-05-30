@@ -281,3 +281,18 @@ USE_TZ = True
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# model id prefixes
+# user model : UA
+# school model : SA
+# activity model : AI
+# assessment model : AS
+# balance model : BL
+# bill model : BI
+# bug report model : BR
+# chat model : CH
+# classroom model : CR
+# email ban : EB
+# grade model : GR
+# schedule model : SC

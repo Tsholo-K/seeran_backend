@@ -1,16 +1,13 @@
 # python 
-import random
 import uuid
 
 # rest framework
 from rest_framework.decorators import api_view, parser_classes
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
-from rest_framework.exceptions import ValidationError
 from rest_framework import status
 
 # django
-from django.views.decorators.cache import cache_control
 from django.core.mail import BadHeaderError
 from django.db.models import Q
 
@@ -23,7 +20,7 @@ from users.models import CustomUser
 from schools.models import School
 from balances.models import Balance
 
-# serilializer
+# serilializers
 from .serializers import (SecurityInfoSerializer,
     PrincipalCreationSerializer, ProfileSerializer, UsersSerializer,
     UserCreationSerializer
@@ -61,7 +58,7 @@ def user_profile(request, user_id):
         user = CustomUser.objects.get(user_id=user_id)
  
     except CustomUser.DoesNotExist:
-        return Response({"error" : "user with the provided credentials does not exist"})
+        return Response({"error" : "user with the provided credentials does not exist"}, status=status.HTTP_404_NOT_FOUND)
          
     if request.user.role == 'FOUNDER' and user.role != 'PRINCIPAL':
         return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
@@ -159,11 +156,11 @@ def create_principal(request, school_id):
         school = School.objects.get(school_id=school_id)
   
     except School.DoesNotExist:
-        return Response({"error" : "school with the provided credentials can not be found"})
+        return Response({"error" : "school with the provided credentials can not be found"}, status=status.HTTP_404_NOT_FOUND)
   
     # Check if the school already has a principal
     if CustomUser.objects.filter(school=school, role="PRINCIPAL").exists():
-        return Response({"error" : "school already has a principal account linked to it"}, status=400)
+        return Response({"error" : "school already has a principal account linked to it"}, status=status.HTTP_400_BAD_REQUEST)
    
     # Add the school instance to the request data
     data = request.data.copy()
@@ -224,7 +221,7 @@ def create_principal(request, school_id):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)    
  
-    return Response({"error" : serializer.errors}, status=400)
+    return Response({"error" : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # delete principal account
@@ -238,7 +235,7 @@ def delete_principal(request):
         user = CustomUser.objects.get(user_id=request.data['user_id'])
  
     except CustomUser.DoesNotExist:
-        return Response({"error" : "user with the provided credentials can not be found"})
+        return Response({"error" : "user with the provided credentials can not be found"}, status=status.HTTP_404_NOT_FOUND)
  
     try:
         # Add the school instance to the request data
@@ -259,7 +256,7 @@ def delete_principal(request):
 #################################### admindashboard views ######################################
 
 
-# create user account
+# create ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT'] user accounts
 @api_view(['POST'])
 @token_required
 @admins_only
@@ -270,7 +267,7 @@ def create_user(request):
     if not role:
         return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
 
-    if role == 'FOUNDER' or role == 'PRINCIPAL':
+    if role == 'FOUNDER' or role == 'PRINCIPAL' or (role not in ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT']):
         return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
 
     # try to get the school instance
@@ -278,13 +275,14 @@ def create_user(request):
         school = School.objects.get(school_id=request.user.school.school_id)
   
     except School.DoesNotExist:
-        return Response({"error" : "school with the provided credentials can not be found"})
+        return Response({"error" : "school with the provided credentials can not be found"}, status=status.HTTP_404_NOT_FOUND)
     
     # retrieve the provided information
     name = request.data.get('name')
     surname = request.data.get('surname')
     id_number = request.data.get('id_number')
     email = request.data.get('email')
+    child_id = request.data.get('child_id')
 
     # if anyone of these is missing return a 400 error
     if not name or not surname:
@@ -307,86 +305,94 @@ def create_user(request):
     data['school'] = school.id
     
     serializer = UserCreationSerializer(data=data)
-   
-    try:
     
-        if serializer.is_valid():
+    if serializer.is_valid():
+
+        # Extract validated data
+        validated_data = serializer.validated_data
         
-            try:
-                client = boto3.client('ses', region_name='af-south-1')  # AWS region
-                # Read the email template from a file
-        
-                with open('authentication/templates/authentication/accountcreationnotification.html', 'r') as file:
-                    email_body = file.read()
-        
-                # Replace the {{otp}} placeholder with the actual OTP
-                # email_body = email_body.replace('{{name}}', (user.name.title() + user.surname.title()))
-                response = client.send_email(
-                    Destination={
-                        'ToAddresses': [data['email']],
-                    },
-                    Message={
-                        'Body': {
-                            'Html': {
-                                'Data': email_body,
-                            },
-                        },
-                        'Subject': {
-                            'Data': 'Account Creation Confirmation',
-                        },
-                    },
-                    Source='seeran grades <authorization@seeran-grades.com>',  # SES verified email address
-                )
+        # Try to create the user using the manager's method
+        try:
+            user = CustomUser.objects.create_user(**validated_data)
             
-                # Check the response to ensure the email was successfully sent
-                if response['ResponseMetadata']['HTTPStatusCode'] == 200:
-
-                    serializer.save()
-                    return Response({"message": "{} account created successfully".format(role.title()) }, status=status.HTTP_200_OK)
-                
-                else:
-                    return Response({"error": "email sent to users email address bounced"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except ValueError as e:
+            # Handle the ValueError raised from create_user method
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    
+        try:
+            client = boto3.client('ses', region_name='af-south-1')  # AWS region
+            # Read the email template from a file
+    
+            with open('authentication/templates/authentication/accountcreationnotification.html', 'r') as file:
+                email_body = file.read()
+    
+            # Replace the {{otp}} placeholder with the actual OTP
+            # email_body = email_body.replace('{{name}}', (user.name.title() + user.surname.title()))
+            response = client.send_email(
+                Destination={
+                    'ToAddresses': [user.email],
+                },
+                Message={
+                    'Body': {
+                        'Html': {
+                            'Data': email_body,
+                        },
+                    },
+                    'Subject': {
+                        'Data': 'Account Creation Confirmation',
+                    },
+                },
+                Source='seeran grades <authorization@seeran-grades.com>',  # SES verified email address
+            )
         
-            except (BotoCoreError, ClientError) as error:
+            # Check the response to ensure the email was successfully sent
+            if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+
+                return Response({"message": "{} account created successfully".format(role.title()) }, status=status.HTTP_200_OK)
             
-                # Handle specific errors and return appropriate responses
-                return Response({"error": error}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-            except BadHeaderError:
-                return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
-        
-            except Exception as e:
-                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)    
+            else:
+                return Response({"error": "email sent to users email address bounced"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-        return Response({"error" : serializer.errors}, status=400)
+        except (BotoCoreError, ClientError) as error:
+        
+            # Handle specific errors and return appropriate responses
+            return Response({"error": error}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-    except ValidationError as e:
-       
-        # Return the error messages if validation fails
-        return Response({"error": e.detail}, status=status.HTTP_400_BAD_REQUEST)
+        except BadHeaderError:
+            return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
+    
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)    
+
+    return Response({"error" : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# delete admin account
+# delete user account
 @api_view(['POST'])
 @token_required
 @admins_only
 def delete_user(request):
    
+    user_id = request.data.get('user_id')
+
+    if not user_id:
+        return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
+
     # try to get user
     try:
-        user = CustomUser.objects.get(user_id=request.data.get('user_id'))
+        user = CustomUser.objects.get(user_id=user_id)
  
     except CustomUser.DoesNotExist:
-        return Response({"error" : "user with the provided credentials can not be found"})
+        return Response({"error" : "user with the provided credentials can not be found"}, status=status.HTTP_404_NOT_FOUND)
  
-    if user.role == 'PRINCIPAL' or request.user.school != user.school or (user.role == 'ADMIN' and request.user.role != 'PRINCIPAL'):
+    if user.role == 'PRINCIPAL' or (user.role == 'ADMIN' and request.user.role != 'PRINCIPAL') or request.user.school != user.school:
         return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
 
     # try to delete the user instance
     try:
-
+        
         user.delete()
-        return Response({"message" : "user account successfully deleted",}, status=status.HTTP_200_OK)
+        return Response({"message" : "user account successfully removed from system",}, status=status.HTTP_200_OK)
  
     except Exception as e:
        
@@ -394,26 +400,34 @@ def delete_user(request):
         return Response({"error": {str(e)}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# get all 'role' accounts in the school
+# get ['ADMIN', 'TEACHER', 'PRINCIPAL'] accounts in the school
 @api_view(['GET'])
 @token_required
 @admins_only
 def users(request, role):
 
+    if role not in ['ADMIN', 'TEACHER']:
+        return Response({ "error" : 'invalid role request' }, status=status.HTTP_400_BAD_REQUEST)
+
+    # Get the school admin users
     if role == 'ADMIN':
-        # Get the school admin users
         accounts = CustomUser.objects.filter( Q(role='ADMIN') | Q(role='PRINCIPAL'), school=request.user.school).exclude(user_id=request.user.user_id)
-   
-    if role == 'STUDENT':
-        grade = request.data.get('grade')
-
-        if not grade:
-            return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
-
-        accounts = CustomUser.objects.filter(role=role, grade=grade, school=request.user.school)
   
     if role == 'TEACHER':
         accounts = CustomUser.objects.filter(role=role, school=request.user.school)
+
+    # serialize query set
+    serializer = UsersSerializer(accounts, many=True)
+    return Response({ "users" : serializer.data }, status=201)
+
+
+# get all ['ADMIN', 'TEACHER', 'PRINCIPAL'] accounts in the school
+@api_view(['GET'])
+@token_required
+@admins_only
+def students(request, grade):
+
+    accounts = CustomUser.objects.filter( role='STUDENT', school=request.user.school, grade=grade)
 
     # serialize query set
     serializer = UsersSerializer(accounts, many=True)
@@ -441,7 +455,7 @@ def update_profile_picture(request):
             user = CustomUser.objects.get(instance=request.user)  # get the current user
     
         except CustomUser.DoesNotExist:
-            return Response({"error" : "user with the provided credentials does not exist"})
+            return Response({"error" : "user with the provided credentials does not exist"}, status=status.HTTP_404_NOT_FOUND)
         
         try:
         
@@ -462,7 +476,7 @@ def update_profile_picture(request):
             return Response({"error": {str(e)}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     else:
-        return Response({"error" : "No file was uploaded."}, status=400)
+        return Response({"error" : "No file was uploaded."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 ##########################################################################################

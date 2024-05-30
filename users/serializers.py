@@ -40,7 +40,7 @@ cloudfront_signer = CloudFrontSigner(key_id, rsa_signer)
 
 
 
-###################################### general ##############################################
+########################################## general ##############################################
 
 
 # user security information
@@ -58,16 +58,20 @@ class ProfileSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
     name = serializers.SerializerMethodField()
     surname = serializers.SerializerMethodField()
+    id = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
-        fields = [ 'name', 'surname', 'email', 'user_id', 'role', 'image' ]
+        fields = [ 'name', 'surname', 'email', 'id', 'role', 'image' ]
     
     def get_name(self, obj):
         return obj.name.title()
     
     def get_surname(self, obj):
         return obj.surname.title()
+    
+    def get_id(self, obj):
+        return obj.user_id
     
     def get_role(self, obj):
         return obj.role.title()
@@ -110,11 +114,11 @@ class ProfileSerializer(serializers.ModelSerializer):
         return signed_url
 
 
-#############################################################################################
+###################################################################################################
 
 
 
-############################## founderdashboard serilizers ###################################
+################################### founderdashboard serilizers ###################################
 
 
 # principal creation 
@@ -125,22 +129,23 @@ class PrincipalCreationSerializer(serializers.ModelSerializer):
         fields = [ 'name', 'surname', 'phone_number', 'email', 'school', 'role' ]
 
 
-##############################################################################################
+###################################################################################################
 
 
 
-################################ admindashboard serilizers ###################################
+################################### admindashboard serilizers #####################################
 
 
 # user account creation
 class UserCreationSerializer(serializers.ModelSerializer):
 
     email = serializers.EmailField(required=False)  # Make email optional
-    id_number = serializers.EmailField(required=False)  # Make id number optional
+    id_number = serializers.CharField(required=False)  # Make id number optional
+    grade = serializers.IntegerField(required=False)  # Make id number optional
 
     class Meta:
         model = CustomUser
-        fields = [ 'name', 'surname', 'id_number', 'email', 'school', 'role' ]
+        fields = [ 'name', 'surname', 'id_number', 'email', 'school', 'role', 'grade' ]
 
     def validate_email(self, value):
         """
