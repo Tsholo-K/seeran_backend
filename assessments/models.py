@@ -21,8 +21,8 @@ class Assessment(models.Model):
     total = models.IntegerField()
     formal = models.BooleanField(default=False)
 
-    percentage_towards_term_mark = models.IntegerField(max_length=3)
-    term = models.IntegerField(max_length=1)
+    percentage_towards_term_mark = models.IntegerField()
+    term = models.IntegerField()
 
     students_assessed = models.ManyToManyField(CustomUser)
 

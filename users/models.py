@@ -105,7 +105,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     phone_number = models.CharField(_('phone number'), max_length=9, unique=True, blank=True, null=True)
     user_id = models.CharField(max_length=15, unique=True)
 
-    grade = models.IntegerField(_('students grade'), max_length=2, blank=True, null=True)
+    grade = models.IntegerField(_('students grade'), blank=True, null=True)
 
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='users', null=True)
     
