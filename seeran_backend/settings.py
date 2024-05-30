@@ -44,6 +44,12 @@ INSTALLED_APPS = [
     'balances',
     'bug_reports',
     'email_bans',
+    'activities',
+    'assessments',
+    'chats',
+    'classes',
+    'grades',
+    'timetables',
     
     # third party apps
     'corsheaders', # handle cors 
