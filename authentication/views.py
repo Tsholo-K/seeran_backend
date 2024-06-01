@@ -459,7 +459,7 @@ def logout(request):
        
         try:
             # Add the refresh token to the blacklist
-            response = Response({"message": "logged you out successful"})
+            response = Response({"message": "logged you out successful"}, status=status.HTTP_200_OK)
         
             # Clear the refresh token cookie
             response.delete_cookie('access_token', domain='.seeran-grades.com')
@@ -472,7 +472,7 @@ def logout(request):
             return Response({"error": e})
   
     else:
-        return Response({"error": "No refresh token provided"})
+        return Response({"error": "No refresh token provided"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 
