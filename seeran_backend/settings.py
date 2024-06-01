@@ -302,3 +302,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # email ban : EB
 # grade model : GR
 # schedule model : SC
+# teacherschedule : TS
+# groudschedule : GS

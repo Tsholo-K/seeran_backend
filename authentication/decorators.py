@@ -20,26 +20,34 @@ from rest_framework import status
 
 def token_required(view_func):
     def _wrapped_view_func(request, *args, **kwargs):
+   
         access_token = request.COOKIES.get('access_token')
         refresh_token = request.COOKIES.get('refresh_token')
 
         if not refresh_token:
             return JsonResponse({'error': 'missing refresh token'}, status=status.HTTP_401_UNAUTHORIZED)
+   
         if cache.get(refresh_token) == 'blacklisted':
             return JsonResponse({'error': 'refresh token is blacklisted'}, status=status.HTTP_401_UNAUTHORIZED)
+    
         if not access_token:
             new_access_token = refresh_access_token(refresh_token)
+   
         else:
             new_access_token = validate_access_token(access_token)
+     
             if new_access_token == None:
                 new_access_token = refresh_access_token(refresh_token)
 
         if new_access_token:
+      
             decoded_token = AccessToken(new_access_token)
             try:
                 request.user = CustomUser.objects.get(pk=decoded_token['user_id'])
+     
             except ObjectDoesNotExist:
                 return JsonResponse({"error": "invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
+     
         else:
             return JsonResponse({'error': 'Invalid tokens'}, status=status.HTTP_400_BAD_REQUEST)
 

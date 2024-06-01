@@ -4,7 +4,6 @@ import uuid
 # django 
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from django.db import IntegrityError
 
 # models
 from schools.models import School
@@ -28,28 +27,19 @@ class Grade(models.Model):
     # grade id creation handler
     def save(self, *args, **kwargs):
         if not self.grade_id:
-            self.grade_id = self.generate_unique_account_id('GR')
+            self.grade_id = self.generate_unique_id('GR')
 
-        attempts = 0
-        while attempts < 5:
-            try:
-                super().save(*args, **kwargs)
-                break
-            except IntegrityError:
-                self.grade_id = self.generate_unique_account_id('GR') # Grade
-                attempts += 1
-        if attempts >= 5:
-            raise ValueError('Could not create grade with unique account ID after 5 attempts. Please try again later.')
+        super(Grade, self).save(*args, **kwargs)
 
     @staticmethod
-    def generate_unique_account_id(prefix=''):
-        while True:
-            unique_part = uuid.uuid4().hex
-            account_id = prefix + unique_part
-            account_id = account_id[:15].ljust(15, '0')
-
-            if not Grade.objects.filter(grade_id=account_id).exists():
-                return account_id
+    def generate_unique_id(prefix=''):
+        max_attempts = 10
+        for _ in range(max_attempts):
+            unique_part = uuid.uuid4().hex[:13]  # Take only the first 13 characters
+            id = f"{prefix}{unique_part}"
+            if not Grade.objects.filter(grade_id=id).exists():
+                return id
+        raise ValueError('failed to generate a unique grade ID after 10 attempts, please try again later.')
             
 
 class Subject(models.Model):
@@ -85,30 +75,21 @@ class Subject(models.Model):
         verbose_name_plural = _('subjects')
 
     def __str__(self):
-        return self.name
+        return self.subject
 
     # class account id creation handler
     def save(self, *args, **kwargs):
         if not self.subject_id:
-            self.subject_id = self.generate_unique_account_id('SB')
+            self.subject_id = self.generate_unique_id('SB')
 
-        attempts = 0
-        while attempts < 5:
-            try:
-                super().save(*args, **kwargs)
-                break
-            except IntegrityError:
-                self.subject_id = self.generate_unique_account_id('SB') # Class Room
-                attempts += 1
-        if attempts >= 5:
-            raise ValueError('Could not create grade with unique account ID after 5 attempts. Please try again later.')
+        super(Subject, self).save(*args, **kwargs)
 
     @staticmethod
-    def generate_unique_account_id(prefix=''):
-        while True:
-            unique_part = uuid.uuid4().hex
-            account_id = prefix + unique_part
-            account_id = account_id[:15].ljust(15, '0')
-
-            if not Subject.objects.filter(subject_id=account_id).exists():
-                return account_id
+    def generate_unique_id(prefix=''):
+        max_attempts = 10
+        for _ in range(max_attempts):
+            unique_part = uuid.uuid4().hex[:13]  # Take only the first 13 characters
+            id = f"{prefix}{unique_part}"
+            if not Subject.objects.filter(subject_id=id).exists():
+                return id
+        raise ValueError('failed to generate a unique subject ID after 10 attempts, please try again later.')

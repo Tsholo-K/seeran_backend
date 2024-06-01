@@ -48,33 +48,26 @@ class Assessment(models.Model):
         verbose_name_plural = _('assessments')
 
     def __str__(self):
-        return self.name
+        return self.unique_identifier
 
     # assessment id creation handler
     def save(self, *args, **kwargs):
         if not self.assessment_id:
-            self.assessment_id = self.generate_unique_account_id('AS')
+            self.assessment_id = self.generate_unique_id('AS')
 
-        attempts = 0
-        while attempts < 5:
-            try:
-                super().save(*args, **kwargs)
-                break
-            except IntegrityError:
-                self.assessment_id = self.generate_unique_account_id('AS') # Assessment
-                attempts += 1
-        if attempts >= 5:
-            raise ValueError('Could not create school with unique account ID after 5 attempts. Please try again later.')
+        super(Assessment, self).save(*args, **kwargs)
 
     @staticmethod
-    def generate_unique_account_id(prefix=''):
-        while True:
-            unique_part = uuid.uuid4().hex
-            account_id = prefix + unique_part
-            account_id = account_id[:15].ljust(15, '0')
-
-            if not Assessment.objects.filter(assessment_id=account_id).exists():
-                return account_id
+    def generate_unique_id(prefix=''):
+        max_attempts = 10
+    
+        for _ in range(max_attempts):
+            unique_part = uuid.uuid4().hex[:13]  # Take only the first 13 characters
+            id = f"{prefix}{unique_part}"
+            if not Assessment.objects.filter(assessment_id=id).exists():
+                return id
+   
+        raise ValueError('failed to generate a unique account ID after 10 attempts, please try again later.')
 
 
 class Transcript(models.Model):
@@ -91,31 +84,24 @@ class Transcript(models.Model):
         verbose_name_plural = _('transcripts')
 
     def __str__(self):
-        return self.name
+        return self.assessment
 
     # transcript id creation handler
     def save(self, *args, **kwargs):
         if not self.transcript_id:
-            self.transcript_id = self.generate_unique_account_id('TR')
+            self.transcript_id = self.generate_unique_id('TR')
 
-        attempts = 0
-        while attempts < 5:
-            try:
-                super().save(*args, **kwargs)
-                break
-            except IntegrityError:
-                self.transcript_id = self.generate_unique_account_id('TR') # Assessment
-                attempts += 1
-        if attempts >= 5:
-            raise ValueError('Could not create transcript with unique account ID after 5 attempts. Please try again later.')
+        super(Transcript, self).save(*args, **kwargs)
 
     @staticmethod
-    def generate_unique_account_id(prefix=''):
-        while True:
-            unique_part = uuid.uuid4().hex
-            account_id = prefix + unique_part
-            account_id = account_id[:15].ljust(15, '0')
-
-            if not Assessment.objects.filter(transcript_id=account_id).exists():
-                return account_id
+    def generate_unique_id(prefix=''):
+        max_attempts = 10
+      
+        for _ in range(max_attempts):
+            unique_part = uuid.uuid4().hex[:13]  # Take only the first 13 characters
+            id = f"{prefix}{unique_part}"
+            if not Transcript.objects.filter(transcript_id=id).exists():
+                return id
+     
+        raise ValueError('failed to generate a unique account ID after 10 attempts, please try again later.')
 

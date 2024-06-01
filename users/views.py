@@ -51,11 +51,11 @@ def my_security_info(request):
 # get user profile information
 @api_view(['GET'])
 @token_required
-def user_profile(request, user_id):
+def user_profile(request, account_id):
 
     # try to get the user instance
     try:
-        user = CustomUser.objects.get(user_id=user_id)
+        user = CustomUser.objects.get(account_id=account_id)
  
     except CustomUser.DoesNotExist:
         return Response({"error" : "user with the provided credentials does not exist"}, status=status.HTTP_404_NOT_FOUND)
@@ -232,7 +232,7 @@ def delete_principal(request):
    
     try:
         # Get the school instance
-        user = CustomUser.objects.get(user_id=request.data['user_id'])
+        user = CustomUser.objects.get(account_id=request.data['account_id'])
  
     except CustomUser.DoesNotExist:
         return Response({"error" : "user with the provided credentials can not be found"}, status=status.HTTP_404_NOT_FOUND)
@@ -373,14 +373,14 @@ def create_user(request):
 @admins_only
 def delete_user(request):
    
-    user_id = request.data.get('user_id')
+    account_id = request.data.get('account_id')
 
-    if not user_id:
+    if not account_id:
         return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
 
     # try to get user
     try:
-        user = CustomUser.objects.get(user_id=user_id)
+        user = CustomUser.objects.get(account_id=account_id)
  
     except CustomUser.DoesNotExist:
         return Response({"error" : "user with the provided credentials can not be found"}, status=status.HTTP_404_NOT_FOUND)

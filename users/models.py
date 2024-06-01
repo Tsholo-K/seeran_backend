@@ -84,6 +84,7 @@ class CustomUserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
+
     # super user 
     def create_superuser(self, email, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
@@ -103,7 +104,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     name = models.CharField(_('name'), max_length=32)
     surname = models.CharField(_('surname'), max_length=32)
     phone_number = models.CharField(_('phone number'), max_length=9, unique=True, blank=True, null=True)
-    user_id = models.CharField(max_length=15, unique=True)
+    account_id = models.CharField(max_length=15, unique=True)
 
     grade = models.IntegerField(_('students grade'), blank=True, null=True)
 
@@ -158,31 +159,20 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email if self.email else self.id_number
 
-    # overwirte save method
+    # overwirte save method for account id generation
     def save(self, *args, **kwargs):
-        if not self.user_id:
-            self.user_id = self.generate_unique_account_id('UA')
+        if not self.account_id:
+            self.account_id = self.generate_unique_id('UA')
 
-        attempts = 0
-        while attempts < 5:
-            try:
-                super().save(*args, **kwargs)
-                break
-            except IntegrityError:
-                # If an IntegrityError is raised, it means the user_id was not unique.
-                # Generate a new user_id and try again.
-                self.user_id = self.generate_unique_account_id('UA') # user account
-                attempts += 1
-        if attempts >= 5:
-            raise ValueError('Could not create user with unique user ID after 5 attempts. Please try again later.')
+        super(CustomUser, self).save(*args, **kwargs)
 
     @staticmethod
-    def generate_unique_account_id(prefix=''):
-        while True:
-            unique_part = uuid.uuid4().hex
-            account_id = prefix + unique_part
-            account_id = account_id[:15].ljust(15, '0')
-
-            if not CustomUser.objects.filter(user_id=account_id).exists():
-                return account_id
+    def generate_unique_id(prefix=''):
+        max_attempts = 10
+        for _ in range(max_attempts):
+            unique_part = uuid.uuid4().hex[:13]  # Take only the first 13 characters
+            id = f"{prefix}{unique_part}"
+            if not CustomUser.objects.filter(account_id=id).exists():
+                return id
+        raise ValueError('failed to generate a unique account ID after 10 attempts, please try again later.')
             

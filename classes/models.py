@@ -42,26 +42,19 @@ class Classroom(models.Model):
     # class account id creation handler
     def save(self, *args, **kwargs):
         if not self.class_id:
-            self.class_id = self.generate_unique_account_id('CR')
+            self.class_id = self.generate_unique_id('CR')
 
-        attempts = 0
-        while attempts < 5:
-            try:
-                super().save(*args, **kwargs)
-                break
-            except IntegrityError:
-                self.class_id = self.generate_unique_account_id('CR') # Class Room
-                attempts += 1
-        if attempts >= 5:
-            raise ValueError('Could not create class with unique account ID after 5 attempts. Please try again later.')
+        super(Classroom, self).save(*args, **kwargs)
 
     @staticmethod
-    def generate_unique_account_id(prefix=''):
-        while True:
-            unique_part = uuid.uuid4().hex
-            account_id = prefix + unique_part
-            account_id = account_id[:15].ljust(15, '0')
-
-            if not Classroom.objects.filter(class_id=account_id).exists():
-                return account_id
+    def generate_unique_id(prefix=''):
+        max_attempts = 10
+     
+        for _ in range(max_attempts):
+            unique_part = uuid.uuid4().hex[:13]  # Take only the first 13 characters
+            id = f"{prefix}{unique_part}"
+            if not Classroom.objects.filter(class_id=id).exists():
+                return id
+      
+        raise ValueError('failed to generate a unique classroom ID after 10 attempts, please try again later.')
 

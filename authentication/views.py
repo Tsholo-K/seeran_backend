@@ -580,6 +580,7 @@ def otp_verification(request):
     
     email = request.data.get('email')
     otp = request.data.get('otp')
+  
     if not email or not otp:
         return Response({"error": "email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
     
@@ -870,9 +871,11 @@ def change_password(request):
     try:
         # Return an appropriate response (e.g., success message)
         response = Response({"message": "password changed successfully"}, status=200)
+       
         # Remove access and refresh token cookies from the response
         response.delete_cookie('access_token', domain='.seeran-grades.com')
         response.delete_cookie('refresh_token', domain='.seeran-grades.com')
+     
         # blacklist refresh token
         refresh_token = request.COOKIES.get('refresh_token')
         cache.set(refresh_token, 'blacklisted', timeout=86400)
@@ -935,8 +938,8 @@ def reset_password(request):
     user.save()
     
     try:
-        
         response = Response({"message": "password changed successfully"}, status=200)
+   
         # Remove access token cookie from the response
         response.delete_cookie('access_token', domain='.seeran-grades.com')
         return response
@@ -988,6 +991,7 @@ def change_email(request):
             # Add the refresh token to the blacklist
             refresh_token = request.COOKIES.get('refresh_token')
             cache.set(refresh_token, 'blacklisted', timeout=86400)
+           
             response = Response({"message": "email changed successfully"})
        
             # Clear the refresh token cookie
@@ -1006,13 +1010,16 @@ def change_email(request):
 # Request otp view
 @api_view(['POST'])
 def resend_otp(request):
+ 
     email = request.data.get('email')
+  
     if not email:
         return Response({"message" : "an email is required"}, status=status.HTTP_400_BAD_REQUEST)
     
     # try to get the user
     try:
         user = CustomUser.objects.get(email=email)
+ 
     except CustomUser.DoesNotExist:
         return Response({"error": "user with this email does not exist."}, status=status.HTTP_400_BAD_REQUEST)
     
@@ -1020,6 +1027,7 @@ def resend_otp(request):
         return Response({ "error" : "your email address has been banned, failed to send OTP"})
     
     otp, hashed_otp = generate_otp()
+  
     # Send the OTP via email
     try:
         client = boto3.client('ses', region_name='af-south-1')  # AWS region
@@ -1044,17 +1052,22 @@ def resend_otp(request):
             },
             Source='seeran grades <authorization@seeran-grades.com>',  # SES verified email address
         )
+    
         # Check the response to ensure the email was successfully sent
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
             cache.set(user.email, hashed_otp, timeout=300)  # 300 seconds = 5 mins
             return Response({"message": "OTP created and sent to your email"}, status=status.HTTP_200_OK)
+    
         else:
             return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+  
     except (BotoCoreError, ClientError) as error:
         # Handle specific errors and return appropriate responses
         return Response({"error": f"couldn't send email to the specified email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+   
     except BadHeaderError:
         return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
+  
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -1080,10 +1093,13 @@ def account_status(request):
     # try to get the user
     try:
         user = CustomUser.objects.get(email=email)
+ 
     except CustomUser.DoesNotExist:
         return Response({"error": "user with the provided email does not exist."})
+  
     if user.password != '' and user.has_usable_password() and user.activated == True:
         return Response({"error": "account already activated"})
+  
     return Response({"message":"account not activated"})
 
 

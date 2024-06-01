@@ -41,7 +41,7 @@ def teacher_classes(request, user_id):
     serializer = ClassesSerializer(teachers_classes, many=True)
     
     # Return the response
-    return Response(serializer.data)
+    return Response({ "classes" : serializer.data }, status=201)
 
 
 # get all register classes in a specific grade
@@ -64,7 +64,8 @@ def register_classes(request, grade):
     serializer = ClassesSerializer(classes, many=True)
     
     # Return the response
-    return Response(serializer.data)
+    return Response({ "classes" : serializer.data }, status=201)
 
 
 ################################################################################################
+

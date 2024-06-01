@@ -4,15 +4,21 @@ import uuid
 # django 
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from django.db import IntegrityError
 
 # models
 from users.models import CustomUser
+from grades.models import Grade
+
+
+class Session(models.Model):
+
+    type = models.CharField(_('session class type'), max_length=32)
+    classroom = models.CharField(max_length=6, null=True, blank=True)
+    session_from = models.TimeField()
+    session_till = models.TimeField()
 
 
 class Schedule(models.Model):
-    
-    teacher = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='teachers_schedules')
 
     # schedule day of the week choices
     DAY_OF_THE_WEEK_CHOICES = [
@@ -26,6 +32,8 @@ class Schedule(models.Model):
     ]
     day = models.CharField(_('schedule day'), max_length=10, choices=DAY_OF_THE_WEEK_CHOICES, default="MONDAY")
 
+    sessions = models.ManyToManyField(Session)
+
     # schedule id 
     schedule_id = models.CharField(max_length=15, unique=True)  
 
@@ -34,40 +42,98 @@ class Schedule(models.Model):
         verbose_name_plural = _('schedules')
 
     def __str__(self):
-        return self.name
+        return self.schedule_id
 
-    # assessment id creation handler
+    # schedule id creation handler
     def save(self, *args, **kwargs):
         if not self.schedule_id:
-            self.schedule_id = self.generate_unique_account_id('SC')
+            self.schedule_id = self.generate_unique_id('SC')
 
-        attempts = 0
-        while attempts < 5:
-            try:
-                super().save(*args, **kwargs)
-                break
-            except IntegrityError:
-                self.schedule_id = self.generate_unique_account_id('SC') # schedule
-                attempts += 1
-        if attempts >= 5:
-            raise ValueError('Could not create school with unique account ID after 5 attempts. Please try again later.')
+        super(Schedule, self).save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        self.sessions.all().delete()  # Delete all related Session objects
+        super(Schedule, self).delete(*args, **kwargs)
 
     @staticmethod
-    def generate_unique_account_id(prefix=''):
-        while True:
-            unique_part = uuid.uuid4().hex
-            account_id = prefix + unique_part
-            account_id = account_id[:15].ljust(15, '0')
-
-            if not Schedule.objects.filter(schedule_id=account_id).exists():
-                return account_id
-
-
-class Session(models.Model):
+    def generate_unique_id(prefix=''):
+        max_attempts = 10
+        for _ in range(max_attempts):
+            unique_part = uuid.uuid4().hex[:13]  # Take only the first 13 characters
+            id = f"{prefix}{unique_part}"
+            if not Schedule.objects.filter(schedule_id=id).exists():
+                return id
+        raise ValueError('failed to generate a unique schedule ID after 10 attempts, please try again later.')
     
-    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, related_name='schedule_sessions')
 
-    type = models.CharField(max_length=32)
-    classroom = models.CharField(max_length=6, null=True, blank=True)
-    session_from = models.TimeField()
-    session_till = models.TimeField()
+class TeacherSchedule(models.Model):
+    
+    teacher = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='teacher_schedule')
+    schedules = models.ManyToManyField(Schedule)
+
+    # teacher schedule id 
+    teacher_schedule_id = models.CharField(max_length=15, unique=True)  
+
+    class Meta:
+        verbose_name = _('schedule')
+        verbose_name_plural = _('schedules')
+
+    def __str__(self):
+        return self.schedule_id
+
+    # schedule id creation handler
+    def save(self, *args, **kwargs):
+        if not self.teacher_schedule_id:
+            self.teacher_schedule_id = self.generate_unique_id('TS')
+
+        super(Schedule, self).save(*args, **kwargs)
+
+    @staticmethod
+    def generate_unique_id(prefix=''):
+      
+        max_attempts = 10
+    
+        for _ in range(max_attempts):
+            unique_part = uuid.uuid4().hex[:13]  # Take only the first 13 characters
+            id = f"{prefix}{unique_part}"
+            if not TeacherSchedule.objects.filter(teacher_schedule_id=id).exists():
+                return id
+        raise ValueError('failed to generate a unique teacher schedule ID after 10 attempts, please try again later.')
+
+
+class GroupSchedule(models.Model):
+    
+    students = models.ManyToManyField(CustomUser, related_name='my_group_schedule')
+    schedules = models.ManyToManyField(Schedule)
+
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='grade_group_schedules')
+
+    # schedule id 
+    group_schedule_id = models.CharField(max_length=15, unique=True)  
+
+    class Meta:
+        verbose_name = _('group schedule')
+        verbose_name_plural = _('group schedules')
+
+    def __str__(self):
+        return self.group_schedule_id
+
+    # group schedule id creation handler
+    def save(self, *args, **kwargs):
+        if not self.group_schedule_id:
+            self.group_schedule_id = self.generate_unique_id('GS')
+
+        super(GroupSchedule, self).save(*args, **kwargs)
+
+    @staticmethod
+    def generate_unique_id(prefix=''):
+       
+        max_attempts = 10
+    
+        for _ in range(max_attempts):
+            unique_part = uuid.uuid4().hex[:13]  # Take only the first 13 characters
+            id = f"{prefix}{unique_part}"
+            if not GroupSchedule.objects.filter(group_schedule_id=id).exists():
+                return id
+        raise ValueError('failed to generate a unique group schedule ID after 10 attempts, please try again later.')
+

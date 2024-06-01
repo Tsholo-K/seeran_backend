@@ -71,7 +71,7 @@ class ProfileSerializer(serializers.ModelSerializer):
         return obj.surname.title()
     
     def get_id(self, obj):
-        return obj.user_id
+        return obj.account_id
     
     def get_role(self, obj):
         return obj.role.title()
@@ -147,22 +147,6 @@ class UserCreationSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = [ 'name', 'surname', 'id_number', 'email', 'school', 'role', 'grade' ]
 
-    def validate_email(self, value):
-        """
-        Check if the email already exists.
-        """
-        if value and CustomUser.objects.filter(email=value).exists():
-            raise serializers.ValidationError("A user with the provided email already exists")
-        return value
-
-    def validate_id_number(self, value):
-        """
-        Check if the ID number already exists.
-        """
-        if value and CustomUser.objects.filter(id_number=value).exists():
-            raise serializers.ValidationError("A user with the provided ID number already exists")
-        return value
-
 
 # users serializers 
 class UsersSerializer(serializers.ModelSerializer):
@@ -175,7 +159,7 @@ class UsersSerializer(serializers.ModelSerializer):
         fields = [ 'name', 'surname', 'id', 'image' ]
     
     def get_id(self, obj):
-        return obj.user_id
+        return obj.account_id
             
     def get_image(self, obj):
       
