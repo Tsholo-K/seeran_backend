@@ -35,16 +35,18 @@ def teacher_schedules(request, account_id):
     if request.user.school != user.school or user.role != 'TEACHER':
         return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
     
-    schedule = user.teacher_schedule
+    teacher_schedules = user.teacher_schedule.all()
 
-    # if not schedule:
-    #     return Response({ "schedules" : [] }, status=status.HTTP_200_OK)
+    if not teacher_schedules.exists():
+        return Response({"schedules": []}, status=status.HTTP_200_OK)
 
-    schedules = schedule.schedules.all().values('day', 'schedule_id')
-    serializer = SchedulesSerializer(schedules, many=True)
+    schedules_data = []
+    for teacher_schedule in teacher_schedules:
+        schedules = teacher_schedule.schedules.all().values('day', 'schedule_id')
+        serializer = SchedulesSerializer(schedules, many=True)
+        schedules_data.append(serializer.data)
     
-    # Return the response
-    return Response({ "schedules" : serializer.data }, status=status.HTTP_200_OK)
+    return Response({"schedules": schedules_data}, status=status.HTTP_200_OK)
 
 
 # get a schedules sessions 
