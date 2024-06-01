@@ -9,7 +9,7 @@ from .models import Schedule, Session
 
 
 # teacher schedule days
-class ScheduleDaysSerializer(serializers.ModelSerializer):
+class SchedulesSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Schedule

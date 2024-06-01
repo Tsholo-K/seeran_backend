@@ -8,7 +8,7 @@ from authentication.decorators import token_required
 from users.decorators import admins_only
 
 # serilializers
-from .serializers import ScheduleDaysSerializer, SessoinsSerializer
+from .serializers import SchedulesSerializer, SessoinsSerializer
 
 # models
 from users.models import CustomUser
@@ -35,8 +35,13 @@ def teacher_schedules(request, account_id):
     if request.user.school != user.school or user.role != 'TEACHER':
         return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
     
-    schedule_days = user.teacher_schedule.schedules.all().values('day', 'schedule_id')
-    serializer = ScheduleDaysSerializer(schedule_days, many=True)
+    schedule = user.teacher_schedule
+
+    # if not schedule:
+    #     return Response({ "schedules" : [] }, status=status.HTTP_200_OK)
+
+    schedules = schedule.schedules.all().values('day', 'schedule_id')
+    serializer = SchedulesSerializer(schedules, many=True)
     
     # Return the response
     return Response({ "schedules" : serializer.data }, status=status.HTTP_200_OK)
