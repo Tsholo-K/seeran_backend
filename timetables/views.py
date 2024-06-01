@@ -23,7 +23,7 @@ from .models import Schedule
 @api_view(['GET'])
 @token_required
 @admins_only
-def teacher_schedule_days(request, account_id):
+def teacher_schedules(request, account_id):
     
     # try to get the user instance
     try:
@@ -39,7 +39,7 @@ def teacher_schedule_days(request, account_id):
     serializer = ScheduleDaysSerializer(schedule_days, many=True)
     
     # Return the response
-    return Response({ "days" : serializer.data }, status=status.HTTP_200_OK)
+    return Response({ "schedules" : serializer.data }, status=status.HTTP_200_OK)
 
 
 # get a schedules sessions 

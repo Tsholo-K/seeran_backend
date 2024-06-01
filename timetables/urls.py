@@ -7,6 +7,6 @@ from . import views
 urlpatterns = [
     
     # admindashboard urls
-    path('teacher-schedule-days/<str:account_id>/', views.teacher_schedule_days, name='returns a specific teachers schedule days'),
+    path('teacher-schedules/<str:account_id>/', views.teacher_schedules, name='returns a specific teachers schedules'),
 
 ]
