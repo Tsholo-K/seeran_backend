@@ -302,7 +302,7 @@ def create_user(request):
         
     # copy the request data to a data variable and add school
     data = request.data.copy()
-    data['school'] = school.school_id
+    data['school'] = school.id
     
     serializer = UserCreationSerializer(data=data)
     

@@ -4,8 +4,6 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError
-from django.db import IntegrityError
 
 # python 
 import uuid
@@ -56,6 +54,8 @@ class CustomUserManager(BaseUserManager):
                 raise ValueError(_('invalid phone number format'))
 
         user = self.model(email=email, id_number=id_number, name=name, surname=surname, phone_number=phone_number, role=role, school=school, **extra_fields)
+        user.save(using=self._db)
+
         return user
         
     
