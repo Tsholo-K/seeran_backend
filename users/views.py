@@ -267,7 +267,7 @@ def create_user(request):
     if not role:
         return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
 
-    if role == 'FOUNDER' or role == 'PRINCIPAL' or (role not in ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT']):
+    if role not in ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT']:
         return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
 
     # try to get the school instance
@@ -302,7 +302,7 @@ def create_user(request):
         
     # copy the request data to a data variable and add school
     data = request.data.copy()
-    data['school'] = school.id
+    data['school'] = school.school_id
     
     serializer = UserCreationSerializer(data=data)
     

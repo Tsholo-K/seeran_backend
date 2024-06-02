@@ -57,7 +57,9 @@ class Schedule(models.Model):
 
     @staticmethod
     def generate_unique_id(prefix=''):
+     
         max_attempts = 10
+      
         for _ in range(max_attempts):
             unique_part = uuid.uuid4().hex[:13]  # Take only the first 13 characters
             id = f"{prefix}{unique_part}"
@@ -86,7 +88,7 @@ class TeacherSchedule(models.Model):
         if not self.teacher_schedule_id:
             self.teacher_schedule_id = self.generate_unique_id('TS')
 
-        super(Schedule, self).save(*args, **kwargs)
+        super(TeacherSchedule, self).save(*args, **kwargs)
 
     @staticmethod
     def generate_unique_id(prefix=''):

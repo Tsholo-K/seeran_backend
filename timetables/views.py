@@ -16,7 +16,7 @@ from .models import Schedule
 
 
 
-######################################### admindashboard views ###########################################
+########################################## admindashboard views ############################################
 
 
 # get teachers schedule days 
@@ -42,6 +42,7 @@ def teacher_schedules(request, account_id):
 
     schedules_data = []
     for teacher_schedule in teacher_schedules:
+      
         schedules = teacher_schedule.schedules.all().values('day', 'schedule_id')
         serializer = SchedulesSerializer(schedules, many=True)
         schedules_data.append(serializer.data)
@@ -69,4 +70,4 @@ def schedule_sessions(request, schedule_id):
     return Response({ "sessions" : serializer.data }, status=status.HTTP_200_OK)
 
 
-#########################################################################################################
+###########################################################################################################
