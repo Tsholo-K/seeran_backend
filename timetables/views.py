@@ -57,7 +57,7 @@ def teacher_schedules(request, account_id):
 @api_view(['GET'])
 @token_required
 @admins_only
-def schedule_sessions(request, schedule_id):
+def schedule(request, schedule_id):
     
     # try to get the user instance
     try:
