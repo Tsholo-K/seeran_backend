@@ -32,26 +32,24 @@ def teacher_schedules(request, account_id):
     
     # try to get the user instance
     try:
-        user = CustomUser.objects.get(account_id=account_id)
+        teacher = CustomUser.objects.get(account_id=account_id)
  
     except CustomUser.DoesNotExist:
         return Response({"error" : "user with the provided account ID does not exist"}, status=status.HTTP_404_NOT_FOUND)
     
-    if request.user.school != user.school or user.role != 'TEACHER':
+    if request.user.school != teacher.school or teacher.role != 'TEACHER':
         return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
     
-    teacher_schedules = user.teacher_schedule.all()
+   # Use the related_name 'teacher_schedule' to access the TeacherSchedule object
+    teacher_schedule = teacher.teacher_schedule.first()
 
-    if not teacher_schedules.exists():
+    if not teacher_schedule:
         return Response({"schedules": []}, status=status.HTTP_200_OK)
 
-    schedules_data = []
-    for teacher_schedule in teacher_schedules:
-      
-        schedules = teacher_schedule.schedules.all().values('day', 'schedule_id')
-        serializer = SchedulesSerializer(schedules, many=True)
-        schedules_data.append(serializer.data)
-    
+    schedules = teacher_schedule.schedules.all()
+    serializer = SchedulesSerializer(schedules, many=True)
+    schedules_data = serializer.data
+
     return Response({"schedules": schedules_data}, status=status.HTTP_200_OK)
 
 
