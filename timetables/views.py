@@ -1,5 +1,7 @@
 # django 
 from django.utils.dateparse import parse_time
+from django.core.exceptions import ValidationError
+from django.db import transaction
 
 # rest framework
 from rest_framework.decorators import api_view
@@ -79,75 +81,85 @@ def schedule_sessions(request, schedule_id):
 @admins_only
 def create_schedule(request):
 
-    # Extract the 'sessions' list from the nested 'schedule' dictionary
-    sessions = request.data.get('schedule', {}).get('sessions', [])
-    
-    # Extract the day of the schedule from the nested 'schedule' dictionary
-    day_of_week = request.data.get('schedule', {}).get('day', '').upper()
-
-    # Extract the account id from the nested 'schedule' dictionary
-    account_id = request.data.get('schedule', {}).get('account', None)
-
-    if not sessions or not day_of_week or not account_id:
-        return Response({ "error" : 'missing information' }, status=status.HTTP_400_BAD_REQUEST)
-
-    if day_of_week not in [ 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']:
-        return Response({ "error" : 'invalid schedule day' }, status=status.HTTP_400_BAD_REQUEST)
-
-    # Retrieve the user instance using the provided account ID
     try:
-        teacher = CustomUser.objects.get(account_id=account_id)
 
+        # Extract the 'sessions' list from the nested 'schedule' dictionary
+        sessions = request.data.get('sessions', [])
+        
+        # Extract the day of the schedule from the nested 'schedule' dictionary
+        day_of_week = request.data.get('day', '').upper()
+
+        # Extract the account id from the nested 'schedule' dictionary
+        account_id = request.data.get('account', None)
+
+        if not sessions or not day_of_week or not account_id:
+            return Response({ "error" : 'missing information' }, status=status.HTTP_400_BAD_REQUEST)
+
+        if day_of_week not in [ 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']:
+            return Response({ "error" : 'invalid schedule day' }, status=status.HTTP_400_BAD_REQUEST)
+        
+        with transaction.atomic():
+
+            # Retrieve the user instance using the provided account ID
+            teacher = CustomUser.objects.get(account_id=account_id)
+            
+            schedule = Schedule(day=day_of_week)
+            schedule.save()  # Save to generate a unique schedule_id
+            
+            # Iterate over the sessions in the provided data
+            for session_info in sessions:
+                
+                # Convert the start and end times to Time objects
+                start_time = parse_time(f"{session_info['startTime']['hour']}:{session_info['startTime']['minute']}:{session_info['startTime']['second']}")
+                end_time = parse_time(f"{session_info['endTime']['hour']}:{session_info['endTime']['minute']}:{session_info['endTime']['second']}")
+                
+                # Create a new Session object
+                session = Session(
+                    type=session_info['class'],
+                    classroom=session_info.get('classroom'),  # Using .get() in case 'classroom' is not provided
+                    session_from=start_time,
+                    session_till=end_time
+                )
+                session.save()
+                
+                # Add the session to the schedule's sessions
+                schedule.sessions.add(session)
+            
+            # Save the schedule again to commit the added sessions
+            schedule.save()
+
+            # Check if the teacher already has a schedule for the provided day
+            existing_teacher_schedule = TeacherSchedule.objects.filter(teacher=teacher, schedules__day=day_of_week)
+
+            for schedules in existing_teacher_schedule:
+                # Remove the specific schedules for that day
+                schedules.schedules.filter(day=day_of_week).delete()
+
+            # Check if the teacher already has a TeacherSchedule object
+            teacher_schedule, created = TeacherSchedule.objects.get_or_create(teacher=teacher)
+
+            # If the object was created, a new unique teacher_schedule_id will be generated
+            if created:
+                teacher_schedule.save()
+
+            # Add the new schedule to the teacher's schedules
+            teacher_schedule.schedules.add(schedule)
+
+            # Save the TeacherSchedule object to commit any changes
+            teacher_schedule.save()
+        
     except CustomUser.DoesNotExist:
         return Response({"error": "account with the provided account ID does not exist"}, status=status.HTTP_404_NOT_FOUND)
+
+    except ValidationError as e:
+        # Handle specific known validation errors
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
-    schedule = Schedule(day=day_of_week)
-    schedule.save()  # Save to generate a unique schedule_id
-    
-    # Iterate over the sessions in the provided data
-    for session_info in sessions:
-        
-        # Convert the start and end times to Time objects
-        start_time = parse_time(f"{session_info['startTime']['hour']}:{session_info['startTime']['minute']}:{session_info['startTime']['second']}")
-        end_time = parse_time(f"{session_info['endTime']['hour']}:{session_info['endTime']['minute']}:{session_info['endTime']['second']}")
-        
-        # Create a new Session object
-        session = Session(
-            type=session_info['class'],
-            classroom=session_info.get('classroom'),  # Using .get() in case 'classroom' is not provided
-            session_from=start_time,
-            session_till=end_time
-        )
-        session.save()
-        
-        # Add the session to the schedule's sessions
-        schedule.sessions.add(session)
-    
-    # Save the schedule again to commit the added sessions
-    schedule.save()
-
-    # Check if the teacher already has a schedule for the provided day
-    existing_teacher_schedule = TeacherSchedule.objects.filter(teacher=teacher, schedules__day=day_of_week)
-
-    for schedules in existing_teacher_schedule:
-        # Remove the specific schedules for that day
-        schedules.schedules.filter(day=day_of_week).delete()
-
-    # Check if the teacher already has a TeacherSchedule object
-    teacher_schedule, created = TeacherSchedule.objects.get_or_create(teacher=teacher)
-
-    # If the object was created, a new unique teacher_schedule_id will be generated
-    if created:
-        teacher_schedule.save()
-
-    # Add the new schedule to the teacher's schedules
-    teacher_schedule.schedules.add(schedule)
-
-    # Save the TeacherSchedule object to commit any changes
-    teacher_schedule.save()
+    except Exception as e:
+        # Handle unexpected errors
+        return Response({'error': 'An unexpected error occurred'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     # Return a success response
     return Response({'message': 'schedule successfully created'}, status=status.HTTP_201_CREATED)
-
 
 ###########################################################################################################
