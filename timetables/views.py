@@ -1,3 +1,6 @@
+# python 
+import datetime
+
 # rest framework
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -12,7 +15,7 @@ from .serializers import SchedulesSerializer, SessoinsSerializer
 
 # models
 from users.models import CustomUser
-from .models import Schedule
+from .models import Session, Schedule
 
 
 
@@ -68,6 +71,54 @@ def schedule_sessions(request, schedule_id):
     
     # Return the response
     return Response({ "sessions" : serializer.data }, status=status.HTTP_200_OK)
+
+
+# create teacher schedule 
+@api_view(['POST'])
+@token_required
+@admins_only
+def create_schedule(request):
+
+    return Response({ 'schedule' : request.data })
+
+    # Assuming the request body is JSON and contains the schedule data
+    schedule_data = request.data
+    
+    # Create a new Schedule object for Monday
+    schedule = Schedule(day='MONDAY')
+    schedule.save()  # Save to generate a unique schedule_id
+    
+    # Iterate over the sessions in the provided data
+    for session_info in schedule_data:
+        # Convert the start and end times to Time objects
+        start_time = datetime.time(
+            hour=session_info['startTime']['hour'],
+            minute=session_info['startTime']['minute'],
+            second=session_info['startTime']['second']
+        )
+        end_time = datetime.time(
+            hour=session_info['endTime']['hour'],
+            minute=session_info['endTime']['minute'],
+            second=session_info['endTime']['second']
+        )
+        
+        # Create a new Session object
+        session = Session(
+            type=session_info['class'],
+            classroom=session_info.get('classroom'),  # Using .get() in case 'classroom' is not provided
+            session_from=start_time,
+            session_till=end_time
+        )
+        session.save()
+        
+        # Add the session to the schedule's sessions
+        schedule.sessions.add(session)
+    
+    # Save the schedule again to commit the added sessions
+    schedule.save()
+    
+    # Return a success response
+    return Response({'status': 'success', 'schedule_id': schedule.schedule_id})
 
 
 ###########################################################################################################

@@ -8,5 +8,6 @@ urlpatterns = [
     
     # admindashboard urls
     path('teacher-schedules/<str:account_id>/', views.teacher_schedules, name='returns a specific teachers schedules'),
+    path('create-schedule/', views.create_schedule, name='returns a specific teachers schedules'),
 
 ]

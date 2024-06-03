@@ -348,6 +348,7 @@ def create_user(request):
             # Check the response to ensure the email was successfully sent
             if response['ResponseMetadata']['HTTPStatusCode'] == 200:
 
+                user.save()
                 return Response({"message": "{} account created successfully".format(role.title()) }, status=status.HTTP_200_OK)
             
             else:
