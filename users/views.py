@@ -205,7 +205,7 @@ def create_principal(request, school_id):
                 # Create a new Balance instance for the user
                 Balance.objects.create(user=created_user)
            
-                return Response({"message": "principal account created successfully"}, status=status.HTTP_200_OK)
+                return Response({"message": "principal account created successfully"}, status=status.HTTP_201_CREATED)
             
             else:
                 return Response({"error": "email sent to users email address bounced"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -349,7 +349,7 @@ def create_user(request):
             if response['ResponseMetadata']['HTTPStatusCode'] == 200:
 
                 user.save()
-                return Response({"message": "{} account created successfully".format(role.title()) }, status=status.HTTP_200_OK)
+                return Response({"message": "{} account created successfully".format(role.title()) }, status=status.HTTP_201_CREATED)
             
             else:
                 return Response({"error": "email sent to users email address bounced"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
