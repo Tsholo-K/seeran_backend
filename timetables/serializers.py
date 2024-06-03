@@ -12,6 +12,7 @@ from .models import Schedule, Session
 class SchedulesSerializer(serializers.ModelSerializer):
     
     id = serializers.SerializerMethodField()
+    day = serializers.SerializerMethodField()
 
     class Meta:
         model = Schedule
@@ -19,6 +20,9 @@ class SchedulesSerializer(serializers.ModelSerializer):
     
     def get_id(self, obj):
         return obj.schedule_id
+    
+    def get_day(self, obj):
+        return obj.day.title()
 
 
 
