@@ -71,7 +71,7 @@ class Schedule(models.Model):
 class TeacherSchedule(models.Model):
     
     teacher = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='teacher_schedule')
-    schedules = models.ManyToManyField(Schedule)
+    schedules = models.ManyToManyField(Schedule, related_name='teacher_linked_to')
 
     # teacher schedule id 
     teacher_schedule_id = models.CharField(max_length=15, unique=True)  
@@ -105,8 +105,9 @@ class TeacherSchedule(models.Model):
 
 class GroupSchedule(models.Model):
     
+    group_name = models.CharField(max_length=32)
     students = models.ManyToManyField(CustomUser, related_name='my_group_schedule')
-    schedules = models.ManyToManyField(Schedule)
+    schedules = models.ManyToManyField(Schedule, related_name='group_linked_to')
 
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='grade_group_schedules')
 

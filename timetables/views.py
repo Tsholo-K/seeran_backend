@@ -95,11 +95,14 @@ def create_schedule(request):
 
         if day_of_week not in [ 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']:
             return Response({ "error" : 'invalid schedule day' }, status=status.HTTP_400_BAD_REQUEST)
-        
-        with transaction.atomic():
 
-            # Retrieve the user instance using the provided account ID
-            teacher = CustomUser.objects.get(account_id=account_id)
+        # Retrieve the user instance using the provided account ID
+        teacher = CustomUser.objects.get(account_id=account_id, role='TEACHER')
+
+        if request.user.school != teacher.school:
+            return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
             
             schedule = Schedule(day=day_of_week)
             schedule.save()  # Save to generate a unique schedule_id
@@ -147,7 +150,7 @@ def create_schedule(request):
             teacher_schedule.save()
         
     except CustomUser.DoesNotExist:
-        return Response({"error": "account with the provided account ID does not exist"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error": "account with the provided credentials does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
     except ValidationError as e:
         # Handle specific known validation errors
@@ -159,5 +162,45 @@ def create_schedule(request):
     
     # Return a success response
     return Response({'message': 'schedule successfully created'}, status=status.HTTP_201_CREATED)
+
+
+# delete schedule 
+@api_view(['POST'])
+@token_required
+@admins_only
+def delete_schedule(request):
+
+    try:
+        # Extract the schedule id
+        schedule_id = request.data.get('schedule', '')
+        
+        if not schedule_id:
+            return Response({"error": 'missing information'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Retrieve the schedule object
+        schedule = Schedule.objects.get(schedule_id=schedule_id)
+
+        # Check if the user has permission to delete the schedule
+        if request.user.school != schedule.teacher_linked_to.teacher.school:
+            return Response({"error": 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Delete the schedule
+        schedule.delete()
+        
+    except Schedule.DoesNotExist:
+        return Response({"error": "Schedule with the provided ID does not exist"}, status=status.HTTP_404_NOT_FOUND)
+  
+    except ValidationError as e:
+        # Handle specific known validation errors
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+  
+    except Exception as e:
+        # Handle unexpected errors
+        return Response({'error': 'An unexpected error occurred'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    # Return a success response
+    return Response({'message': 'Schedule deleted successfully'}, status=status.HTTP_200_OK)
+
+
 
 ###########################################################################################################
