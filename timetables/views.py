@@ -196,11 +196,10 @@ def delete_schedule(request):
   
     except Exception as e:
         # Handle unexpected errors
-        return Response({'error': 'An unexpected error occurred'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     # Return a success response
     return Response({'message': 'Schedule deleted successfully'}, status=status.HTTP_200_OK)
-
 
 
 ###########################################################################################################
