@@ -180,8 +180,11 @@ def delete_schedule(request):
         # Retrieve the schedule object
         schedule = Schedule.objects.get(schedule_id=schedule_id)
 
+        # Retrieve the TeacherSchedule object linked to this schedule
+        teacher_schedule = schedule.teacher_linked_to.first()
+
         # Check if the user has permission to delete the schedule
-        if request.user.school != schedule.teacher_linked_to.teacher.school:
+        if request.user.school != teacher_schedule.teacher.school:
             return Response({"error": 'permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
         # Delete the schedule
