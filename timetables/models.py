@@ -70,7 +70,7 @@ class Schedule(models.Model):
 
 class TeacherSchedule(models.Model):
     
-    teacher = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='teacher_schedule')
+    teacher = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='teacher_schedule')
     schedules = models.ManyToManyField(Schedule, related_name='teacher_linked_to')
 
     # teacher schedule id 
