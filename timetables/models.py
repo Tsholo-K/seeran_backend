@@ -51,10 +51,6 @@ class Schedule(models.Model):
 
         super(Schedule, self).save(*args, **kwargs)
 
-    def delete(self, *args, **kwargs):
-        self.sessions.all().delete()  # Delete all related Session objects
-        super(Schedule, self).delete(*args, **kwargs)
-
     @staticmethod
     def generate_unique_id(prefix=''):
      
@@ -89,6 +85,19 @@ class TeacherSchedule(models.Model):
             self.teacher_schedule_id = self.generate_unique_id('TS')
 
         super(TeacherSchedule, self).save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+      
+        # Delete all related schedules and their sessions
+        for schedule in self.schedules.all():
+            # Delete all sessions related to each schedule
+            schedule.sessions.all().delete()
+          
+            # Delete the schedule itself
+            schedule.delete()
+        
+        # Finally, delete the TeacherSchedule instance
+        super(TeacherSchedule, self).delete(*args, **kwargs)
 
     @staticmethod
     def generate_unique_id(prefix=''):
@@ -127,6 +136,19 @@ class GroupSchedule(models.Model):
             self.group_schedule_id = self.generate_unique_id('GS')
 
         super(GroupSchedule, self).save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+      
+        # Delete all related schedules and their sessions
+        for schedule in self.schedules.all():
+            # Delete all sessions related to each schedule
+            schedule.sessions.all().delete()
+          
+            # Delete the schedule itself
+            schedule.delete()
+        
+        # Finally, delete the TeacherSchedule instance
+        super(TeacherSchedule, self).delete(*args, **kwargs)
 
     @staticmethod
     def generate_unique_id(prefix=''):
