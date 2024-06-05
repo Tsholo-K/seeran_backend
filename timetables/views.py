@@ -40,16 +40,20 @@ def teacher_schedules(request, account_id):
     if request.user.school != teacher.school or teacher.role != 'TEACHER':
         return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
     
-   # Use the related_name 'teacher_schedule' to access the TeacherSchedule object
-    teacher_schedule = teacher.teacher_schedule.first()
+   # Access the TeacherSchedule object directly
+    teacher_schedule = teacher.teacher_schedule
 
-    if not teacher_schedule:
+    # Check if the teacher_schedule exists
+    if teacher_schedule is None:
+        # If there is no associated TeacherSchedule, return an empty list
         return Response({"schedules": []}, status=status.HTTP_200_OK)
 
+    # If there is a TeacherSchedule, proceed to serialize the schedules
     schedules = teacher_schedule.schedules.all()
     serializer = SchedulesSerializer(schedules, many=True)
     schedules_data = serializer.data
 
+    # Return the serialized data
     return Response({"schedules": schedules_data}, status=status.HTTP_200_OK)
 
 
