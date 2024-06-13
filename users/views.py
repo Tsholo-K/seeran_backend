@@ -1,5 +1,6 @@
 # python 
 import uuid
+import urllib.parse
 
 # rest framework
 from rest_framework.decorators import api_view, parser_classes
@@ -466,6 +467,9 @@ def update_profile_picture(request):
             # Generate a new filename
             ext = profile_picture.name.split('.')[-1]  # Get the file extension
             filename = f'{uuid.uuid4()}.{ext}'  # Create a new filename using a UUID
+
+            # URL-encode the filename
+            filename = urllib.parse.quote(filename)
 
             user.profile_picture.save(filename, profile_picture)  # save the new profile picture
             user.save()
