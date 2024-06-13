@@ -474,12 +474,15 @@ def update_profile_picture(request):
             user.profile_picture.save(filename, profile_picture)  # save the new profile picture
             user.save()
 
-            # try to get the users signed image url from cache
-            url = cache.get(request.user.account_id + 'profile_picture')
-            
-            # if its not there get their profile picture url from the db
-            if url:
-                cache.delete(request.user.account_id + 'profile_picture')
+            for _ in range(10):
+                if not cache.get(str(request.user.account_id) + 'profile_picture'):
+                    break  # Exit the loop if the cached URL has been deleted
+
+                cache.delete(str(request.user.account_id) + 'profile_picture')
+                
+            else:
+                # Return an error response if the cached URL couldn't be deleted after 10 attempts
+                return Response({"error": "there was an error overwriting existing image url"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
             serializer = ProfileSerializer(instance=request.user)
             return Response({"user" : serializer.data}, status=status.HTTP_200_OK)

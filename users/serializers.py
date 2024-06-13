@@ -85,7 +85,7 @@ class ProfileSerializer(serializers.ModelSerializer):
         # if they do have a profile image
         else:
             # try to get the users signed image url from cache
-            s3_url = cache.get(obj.account_id + 'profile_picture')
+            s3_url = cache.get(str(obj.account_id) + 'profile_picture')
             
             # if its not there get their profile picture url from the db
             if s3_url == None:
@@ -108,7 +108,7 @@ class ProfileSerializer(serializers.ModelSerializer):
         )
    
         # save it to cache for an hour
-        cache.set(obj.account_id + 'profile_picture', signed_url, timeout=3600)
+        cache.set(str(obj.account_id) + 'profile_picture', signed_url, timeout=3600)
         
         # return it 
         return signed_url
@@ -170,7 +170,7 @@ class UsersSerializer(serializers.ModelSerializer):
         # if they do have a profile image
         else:
             # try to get the users signed image url from cache
-            s3_url = cache.get(obj.account_id + 'profile_picture')
+            s3_url = cache.get(str(obj.account_id) + 'profile_picture')
             
             # if its not there get their profile picture url from the db
             if s3_url == None:
@@ -193,7 +193,7 @@ class UsersSerializer(serializers.ModelSerializer):
         )
    
         # save it to cache for an hour
-        cache.set(obj.account_id + 'profile_picture', signed_url, timeout=3600)
+        cache.set(str(obj.account_id) + 'profile_picture', signed_url, timeout=3600)
         
         # return image url 
         return signed_url
