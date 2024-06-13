@@ -474,7 +474,12 @@ def update_profile_picture(request):
             user.profile_picture.save(filename, profile_picture)  # save the new profile picture
             user.save()
 
-            cache.delete(request.user.email + 'profile_picture')
+            # try to get the users signed image url from cache
+            url = cache.get(request.user.account_id + 'profile_picture')
+            
+            # if its not there get their profile picture url from the db
+            if url:
+                cache.delete(request.user.account_id + 'profile_picture')
 
             serializer = ProfileSerializer(instance=request.user)
             return Response({"user" : serializer.data}, status=status.HTTP_200_OK)
