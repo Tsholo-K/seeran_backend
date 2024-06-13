@@ -80,7 +80,7 @@ class ProfileSerializer(serializers.ModelSerializer):
       
         # if the user has no profile image return the default profile image 
         if not obj.profile_picture:
-            s3_url = 'https://seeranbucket.s3.af-south-1.amazonaws.com/defaults/default-user-icon.svg'
+            s3_url = 'https://seeranbucket.s3.amazonaws.com/defaults/default-user-icon.svg'
     
         # if they do have a profile image
         else:
@@ -96,7 +96,7 @@ class ProfileSerializer(serializers.ModelSerializer):
                 return s3_url
        
         # make sure the url format is valid 
-        cloudfront_url = s3_url.replace('https://seeranbucket.s3.af-south-1.amazonaws.com', 'https://d31psdy2k7b4vc.cloudfront.net')
+        cloudfront_url = s3_url.replace('https://seeranbucket.s3.amazonaws.com', 'https://d31psdy2k7b4vc.cloudfront.net')
         
         # Calculate expiration time (current time + 1 hour)
         expiration_time = datetime.datetime.now() + datetime.timedelta(hours=1)
@@ -165,7 +165,7 @@ class UsersSerializer(serializers.ModelSerializer):
       
         # if the user has no profile image return the default profile image 
         if not obj.profile_picture:
-            s3_url = 'https://seeranbucket.s3.af-south-1.amazonaws.com/defaults/default-user-icon.svg'
+            s3_url = 'https://seeranbucket.s3.amazonaws.com/defaults/default-user-icon.svg'
     
         # if they do have a profile image
         else:
@@ -181,7 +181,7 @@ class UsersSerializer(serializers.ModelSerializer):
                 return s3_url
        
         # make sure the url format is valid 
-        cloudfront_url = s3_url.replace('https://seeranbucket.s3.af-south-1.amazonaws.com', 'https://d31psdy2k7b4vc.cloudfront.net')
+        cloudfront_url = s3_url.replace('https://seeranbucket.s3.amazonaws.com', 'https://d31psdy2k7b4vc.cloudfront.net')
         
         # Calculate expiration time (current time + 1 hour)
         expiration_time = datetime.datetime.now() + datetime.timedelta(hours=1)
