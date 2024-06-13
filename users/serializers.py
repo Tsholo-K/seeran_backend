@@ -170,31 +170,31 @@ class UsersSerializer(serializers.ModelSerializer):
         # if they do have a profile image
         else:
             # try to get the users signed image url from cache
-            s3_url = cache.get(obj.email + 'profile_picture')
+            # s3_url = cache.get(obj.email + 'profile_picture')
             
             # if its not there get their profile picture url from the db
-            if s3_url == None:
-                s3_url = obj.profile_picture.url
+            # if s3_url == None:
+            s3_url = obj.profile_picture.url
       
             # if there's a signed url in the cache return it instead
-            else:
-                return s3_url
+            # else:
+            #     return s3_url
        
-        # make sure the url format is valid 
-        cloudfront_url = s3_url.replace('https://seeranbucket.s3.amazonaws.com', 'https://d31psdy2k7b4vc.cloudfront.net')
+        # # make sure the url format is valid 
+        # cloudfront_url = s3_url.replace('https://seeranbucket.s3.amazonaws.com', 'https://d31psdy2k7b4vc.cloudfront.net')
         
-        # Calculate expiration time (current time + 1 hour)
-        expiration_time = datetime.datetime.now() + datetime.timedelta(hours=1)
+        # # Calculate expiration time (current time + 1 hour)
+        # expiration_time = datetime.datetime.now() + datetime.timedelta(hours=1)
        
-        # sign the url
-        signed_url = cloudfront_signer.generate_presigned_url(
-            cloudfront_url, 
-            date_less_than=expiration_time
-        )
+        # # sign the url
+        # signed_url = cloudfront_signer.generate_presigned_url(
+        #     cloudfront_url, 
+        #     date_less_than=expiration_time
+        # )
    
         # save it to cache for an hour
-        cache.set(obj.email + 'profile_picture', signed_url, timeout=3600)
+        # cache.set(obj.email + 'profile_picture', signed_url, timeout=3600)
         
-        # return image url 
-        return signed_url
+        # return it 
+        return s3_url
 
