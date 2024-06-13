@@ -475,16 +475,19 @@ def update_profile_picture(request):
             user.save()
 
             for _ in range(10):
-                if not cache.get(str(request.user.account_id) + 'profile_picture'):
+                if not cache.get(str(user.account_id) + 'profile_picture'):
                     break  # Exit the loop if the cached URL has been deleted
 
-                cache.delete(str(request.user.account_id) + 'profile_picture')
+                cache.delete(str(user.account_id) + 'profile_picture')
                 
             else:
                 # Return an error response if the cached URL couldn't be deleted after 10 attempts
-                return Response({"error": "there was an error overwriting existing image url, please try again later"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({"error": "there was an error overwriting existing image url"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            user.refresh_from_db()  # Refresh the user instance from the database
 
-            return Response({"message" : "profile picture updated successfully"}, status=status.HTTP_200_OK)
+            serializer = ProfileSerializer(instance=user)
+            return Response({"user" : serializer.data}, status=status.HTTP_200_OK)
         
         except Exception as e:
     
