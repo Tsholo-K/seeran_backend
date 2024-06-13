@@ -476,7 +476,8 @@ def update_profile_picture(request):
 
             cache.delete(request.user.email + 'profile_picture')
 
-            return Response({ 'message' : 'profile picture updated successfully'},status=200)
+            serializer = ProfileSerializer(instance=request.user)
+            return Response({"user" : serializer.data}, status=status.HTTP_200_OK)
         
         except Exception as e:
     
