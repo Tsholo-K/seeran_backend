@@ -10,6 +10,7 @@ from rest_framework import status
 # django
 from django.core.mail import BadHeaderError
 from django.db.models import Q
+from django.core.cache import cache
 
 # custom decorators
 from authentication.decorators import token_required
@@ -453,7 +454,7 @@ def update_profile_picture(request):
     if profile_picture:
      
         try:
-            user = CustomUser.objects.get(instance=request.user)  # get the current user
+            user = CustomUser.objects.get(account_id=request.user.account_id)  # get the current user
     
         except CustomUser.DoesNotExist:
             return Response({"error" : "user with the provided credentials does not exist"}, status=status.HTTP_404_NOT_FOUND)
@@ -469,12 +470,14 @@ def update_profile_picture(request):
             user.profile_picture.save(filename, profile_picture)  # save the new profile picture
             user.save()
 
-            return Response({ 'message' : 'profile picture cahnge successfully'},status=200)
+            cache.delete(request.user.email + 'profile_picture')
+
+            return Response({ 'message' : 'profile picture updated successfully'},status=200)
         
         except Exception as e:
     
             # if any exceptions rise during return the response return it as the response
-            return Response({"error": {str(e)}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     else:
         return Response({"error" : "No file was uploaded."}, status=status.HTTP_400_BAD_REQUEST)
