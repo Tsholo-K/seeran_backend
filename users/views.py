@@ -482,10 +482,9 @@ def update_profile_picture(request):
                 
             else:
                 # Return an error response if the cached URL couldn't be deleted after 10 attempts
-                return Response({"error": "there was an error overwriting existing image url"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({"error": "there was an error overwriting existing image url, please try again later"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            serializer = ProfileSerializer(instance=request.user)
-            return Response({"user" : serializer.data}, status=status.HTTP_200_OK)
+            return Response({"message" : "profile picture updated successfully"}, status=status.HTTP_200_OK)
         
         except Exception as e:
     
