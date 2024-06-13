@@ -184,6 +184,7 @@ DATABASES = {
 #     }
 # }
 
+AWS_S3_REGION_NAME = 'af-south-1'  # The AWS region to connect to.
 
 AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
 STATIC_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/project_static_files/'
