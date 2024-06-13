@@ -5,10 +5,10 @@ from rest_framework import serializers
 from .models import Schedule, Session
 
 
-####################################### admindashboard serializer ############################################
+############################################ general serializer ##################################################
 
 
-# teacher schedule days
+# schedule days
 class SchedulesSerializer(serializers.ModelSerializer):
     
     id = serializers.SerializerMethodField()
@@ -25,7 +25,6 @@ class SchedulesSerializer(serializers.ModelSerializer):
         return obj.day.title()
 
 
-
 # schedule sessions
 class SessoinsSerializer(serializers.ModelSerializer):
     
@@ -35,3 +34,6 @@ class SessoinsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Session
         fields = [ 'type', 'classroom', 'session_from', 'session_till' ]
+
+
+##################################################################################################################

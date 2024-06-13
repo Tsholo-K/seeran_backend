@@ -10,6 +10,7 @@ import uuid
 
 # models
 from schools.models import School
+from grades.models import Grade
 
 # utility functions
 from authentication.utils import get_upload_path, is_phone_number_valid
@@ -104,7 +105,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     phone_number = models.CharField(_('phone number'), max_length=9, unique=True, blank=True, null=True)
     account_id = models.CharField(max_length=15, unique=True)
 
-    grade = models.IntegerField(_('students grade'), blank=True, null=True)
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='grade_students', blank=True, null=True)
 
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='users', null=True)
     
@@ -114,15 +115,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     profile_picture = models.ImageField(upload_to=get_upload_path, blank=True, null=True)
     
     # choices for the role field
-    ROLE_CHOICES = [
-        ('STUDENT', 'Student'),
-        ('TEACHER', 'Teacher'),
-        ('ADMIN', 'Admin'),
-        ('PRINCIPAL', 'Principal'),
-        ('FOUNDER', 'Founder'),
-        # Add more roles as needed
-    ]
-    # Role field
+    ROLE_CHOICES = [ ('STUDENT', 'Student'), ('TEACHER', 'Teacher'), ('ADMIN', 'Admin'), ('PRINCIPAL', 'Principal'), ('FOUNDER', 'Founder'), ]
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="STUDENT")
     
     # children field

@@ -20,8 +20,33 @@ from users.models import CustomUser
 from .models import Session, Schedule, TeacherSchedule
 
 
+############################################## general views ####################################################
 
-########################################## admindashboard views ############################################
+
+# get a schedules sessions 
+@api_view(['GET'])
+@token_required
+def schedule(request, schedule_id):
+    
+    # try to get the user instance
+    try:
+        schedule = Schedule.objects.get(schedule_id=schedule_id)
+ 
+    except Schedule.DoesNotExist:
+        return Response({"error" : "schedule with the provided ID does not exist"}, status=status.HTTP_404_NOT_FOUND)
+    
+    sessions = schedule.sessions.all()
+    serializer = SessoinsSerializer(sessions, many=True)
+    
+    # Return the response
+    return Response({ "sessions" : serializer.data }, status=status.HTTP_200_OK)
+
+
+#################################################################################################################
+
+
+
+########################################### admindashboard views ################################################
 
 
 # get teachers schedule days 
@@ -55,26 +80,6 @@ def teacher_schedules(request, account_id):
 
     # Return the serialized data
     return Response({"schedules": schedules_data}, status=status.HTTP_200_OK)
-
-
-# get a schedules sessions 
-@api_view(['GET'])
-@token_required
-@admins_only
-def schedule(request, schedule_id):
-    
-    # try to get the user instance
-    try:
-        schedule = Schedule.objects.get(schedule_id=schedule_id)
- 
-    except Schedule.DoesNotExist:
-        return Response({"error" : "schedule with the provided ID does not exist"}, status=status.HTTP_404_NOT_FOUND)
-    
-    sessions = schedule.sessions.all()
-    serializer = SessoinsSerializer(sessions, many=True)
-    
-    # Return the response
-    return Response({ "sessions" : serializer.data }, status=status.HTTP_200_OK)
 
 
 # create schedule 
@@ -209,4 +214,4 @@ def delete_schedule(request):
     return Response({'message': 'Schedule deleted successfully'}, status=status.HTTP_200_OK)
 
 
-###########################################################################################################
+#############################################################################################################

@@ -4,7 +4,6 @@ import uuid
 # django 
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from django.db import IntegrityError
 
 # models
 from users.models import CustomUser
@@ -35,7 +34,7 @@ class Assessment(models.Model):
 
     moderator = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, related_name='assessments_moderated')
 
-    classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE, related_name='class_assessments', null=True, blank=True)
+    classroom = models.ForeignKey(Classroom, on_delete=models.DO_NOTHING, related_name='class_assessments', null=True, blank=True)
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='grade_assessments')
 
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='school_assessments')

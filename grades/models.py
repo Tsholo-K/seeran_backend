@@ -11,7 +11,9 @@ from schools.models import School
 
 class Grade(models.Model):
 
-    grade = models.CharField(_('school grade'), max_length=2)
+    # grade choices
+    SCHOOL_GRADES_CHOICES = [ '000', '00', 'R', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12' ]
+    grade = models.CharField(_('school grade'), choices=SCHOOL_GRADES_CHOICES)
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='school_grades')
 
     # grade  id 
