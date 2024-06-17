@@ -305,3 +305,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # schedule model : SC
 # teacherschedule : TS
 # groudschedule : GS
+# Announcement : AN

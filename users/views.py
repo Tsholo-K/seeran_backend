@@ -50,6 +50,19 @@ def my_security_info(request):
     return Response({ "users_security_info" : serializer.data },status=200)
 
 
+@api_view(["GET"])
+@token_required
+def my_profile(request):
+   
+    # if the user is authenticated, return their profile information 
+    if request.user:
+        serializer = ProfileSerializer(instance=request.user)
+        return Response({"user" : serializer.data}, status=status.HTTP_200_OK)
+
+    else:
+        return Response({"error" : "unauthenticated",}, status=status.HTTP_401_UNAUTHORIZED)
+
+
 # get user profile information
 @api_view(['GET'])
 @token_required

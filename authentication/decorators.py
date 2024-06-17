@@ -25,10 +25,10 @@ def token_required(view_func):
         refresh_token = request.COOKIES.get('refresh_token')
 
         if not refresh_token:
-            return JsonResponse({'error': 'missing refresh token'}, status=status.HTTP_401_UNAUTHORIZED)
+            return JsonResponse({'error': 'request not authenticated.. access denied'}, status=status.HTTP_401_UNAUTHORIZED)
    
         if cache.get(refresh_token) == 'blacklisted':
-            return JsonResponse({'error': 'refresh token is blacklisted'}, status=status.HTTP_401_UNAUTHORIZED)
+            return JsonResponse({'error': 'invalid security credentials.. request revoked'}, status=status.HTTP_401_UNAUTHORIZED)
     
         if not access_token:
             new_access_token = refresh_access_token(refresh_token)
@@ -46,10 +46,10 @@ def token_required(view_func):
                 request.user = CustomUser.objects.get(pk=decoded_token['user_id'])
      
             except ObjectDoesNotExist:
-                return JsonResponse({"error": "invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
+                return JsonResponse({"error": "invalid credentials.. no such user exists"}, status=status.HTTP_400_BAD_REQUEST)
      
         else:
-            return JsonResponse({'error': 'Invalid tokens'}, status=status.HTTP_400_BAD_REQUEST)
+            return JsonResponse({'error': 'invalid security credentials.. request revoked'}, status=status.HTTP_400_BAD_REQUEST)
 
         response = view_func(request, *args, **kwargs)
 
