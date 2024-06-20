@@ -12,6 +12,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 
 
+# The AWS region to connect to.
+AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME')  
+
+
 # uplaod image max-size 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 26214400  # 25 MB
 
@@ -84,23 +88,11 @@ MIDDLEWARE = [
 
 # cors config
 # origins/domains allowed to communicate with the application in production
-CORS_ALLOWED_ORIGINS = [
-    'https://www.seeran-grades.com',
-    'https://proxy.seeran-grades.com',
-    'https://localhost:3000'
-    # Add other allowed origins as needed
-]
+CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS').split(',')
 
 
 # allowed methods
-CORS_ALLOW_METHODS = [
-    'DELETE',
-    'GET',
-    'OPTIONS',
-    'PATCH',
-    'POST',
-    'PUT',
-]
+CORS_ALLOW_METHODS = config('CORS_ALLOW_METHODS').split(',')
 
 
 # cors credentials
@@ -139,6 +131,7 @@ REST_FRAMEWORK = {
 # simplejwt config
 # Define JWT_AUTH_COOKIE setting
 JWT_AUTH_COOKIE = 'access_token'
+
 # simplejwt token settings
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),  # Short-lived access token (adjust as needed)
@@ -173,7 +166,7 @@ DATABASES = {
         'NAME': config('DB_NAME'),
         'USER': config('DB_USER'),
         'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST'),
+        'HOST': config('DB_ENDPOINT'),
         'PORT': '5432',
     }
 }
@@ -184,10 +177,10 @@ DATABASES = {
 #     }
 # }
 
-AWS_S3_REGION_NAME = 'af-south-1'  # The AWS region to connect to.
 
 AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
 STATIC_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/project_static_files/'
+
 
 # s3 bucket
 # s3 bucket configuration
@@ -234,6 +227,7 @@ if not DEBUG:
 # the rest are default django settigns
 ROOT_URLCONF = 'seeran_backend.urls'
 
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -253,8 +247,8 @@ TEMPLATES = [
 
 # seeran_backend/settings.py
 # WSGI_APPLICATION = 'seeran_backend.wsgi.application'
-
 ASGI_APPLICATION = "seeran_backend.asgi.application"
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators

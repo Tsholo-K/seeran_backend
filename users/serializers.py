@@ -1,6 +1,7 @@
 # python 
 import os
 import datetime
+from decouple import config
 
 # django
 from django.core.cache import cache
@@ -35,7 +36,7 @@ def rsa_signer(message):
             backend=default_backend()
         )
     return private_key.sign(message, padding.PKCS1v15(), hashes.SHA1())
-key_id = 'K2HSBJR82PHOT4' # public keys id
+key_id = config('CLOUDFRONT_KEY_ID') # public key id
 cloudfront_signer = CloudFrontSigner(key_id, rsa_signer)
 
 
@@ -80,7 +81,7 @@ class ProfileSerializer(serializers.ModelSerializer):
       
         # if the user has no profile image return the default profile image 
         if not obj.profile_picture:
-            s3_url = 'https://seeranbucket.s3.amazonaws.com/defaults/default-user-icon.svg'
+            s3_url =  config('AWS_STORAGE_BUCKET_DOMAIN') + '/defaults/default-user-icon.svg'
     
         # if they do have a profile image
         else:
@@ -96,7 +97,7 @@ class ProfileSerializer(serializers.ModelSerializer):
                 return s3_url
        
         # make sure the url format is valid 
-        cloudfront_url = s3_url.replace('https://seeranbucket.s3.amazonaws.com', 'https://d31psdy2k7b4vc.cloudfront.net')
+        cloudfront_url = s3_url.replace( config('AWS_STORAGE_BUCKET_DOMAIN'), config('CLOUDFRONT_CUSTOM_DOMAIN'))
         
         # Calculate expiration time (current time + 1 hour)
         expiration_time = datetime.datetime.now() + datetime.timedelta(hours=1)
@@ -165,7 +166,7 @@ class UsersSerializer(serializers.ModelSerializer):
       
         # if the user has no profile image return the default profile image 
         if not obj.profile_picture:
-            s3_url = 'https://seeranbucket.s3.amazonaws.com/defaults/default-user-icon.svg'
+            s3_url =  config('AWS_STORAGE_BUCKET_DOMAIN') + '/defaults/default-user-icon.svg'
     
         # if they do have a profile image
         else:
@@ -181,7 +182,7 @@ class UsersSerializer(serializers.ModelSerializer):
                 return s3_url
        
         # make sure the url format is valid 
-        cloudfront_url = s3_url.replace('https://seeranbucket.s3.amazonaws.com', 'https://d31psdy2k7b4vc.cloudfront.net')
+        cloudfront_url = s3_url.replace( config('AWS_STORAGE_BUCKET_DOMAIN'), config('CLOUDFRONT_CUSTOM_DOMAIN'))
         
         # Calculate expiration time (current time + 1 hour)
         expiration_time = datetime.datetime.now() + datetime.timedelta(hours=1)
