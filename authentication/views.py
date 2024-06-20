@@ -16,6 +16,8 @@ from django.core.mail import BadHeaderError
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
 from django.views.decorators.csrf import csrf_exempt
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 
 # models
 from email_bans.models import EmailBan
@@ -282,33 +284,42 @@ def signin(request):
 
     # if there's a missing credential return an error
     if not full_names or not email:
-        return Response({"error": "missing credentials"})
+        return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # validate email format
+    try:
+        validate_email(email)
+
+    except ValidationError:
+        return Response({"error": "Invalid email format."}, status=status.HTTP_400_BAD_REQUEST)
     
     if not validate_names(full_names):
-        return Response({"error": "only provide your first name and surname"})
+        return Response({"error": "only provide your first name and surname"}, status=status.HTTP_400_BAD_REQUEST)
 
     # try to validate the credentials by getting a user with the provided credentials 
     try:
         user = CustomUser.objects.get(email=email)
         if not user.role == "FOUNDER":
             if user.school.none_compliant:
-                return Response({"denied": "access denied"})
+                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
                 
     except ObjectDoesNotExist:
         # if there's no user with the provided credentials return an error 
-        return Response({"error": "invalid credentials"})
+        return Response({"error": "provided credentials are invalid"})
     
-    # check if the provided name and surname can be split into exactly two parts
-    name, surname = full_names.split(' ')
-
     # check if the provided name and surname are correct
-    if not (user.name == name and user.surname == surname) or not (user.name == surname and user.surname == name):
-        return Response({"error": "invalid credentials provided"})
-
+    try:
+        name, surname = full_names.split(' ', 1)
+        if not ((user.name.casefold() == name.casefold() and user.surname.casefold() == surname.casefold()) or (user.name.casefold() == surname.casefold() and user.surname.casefold() == name.casefold())):
+            return Response({"error": "provided credentials are invalid"}, status=status.HTTP_400_BAD_REQUEST)
+        
+    except ValueError:
+        return Response({"error": "please enter your first name followed by your surname."}, status=status.HTTP_400_BAD_REQUEST)
+    
     # if there is a user with the provided credentials check if their account has already been activated 
     # if it has been indeed activated return an error 
     if user.activated == True:
-        return Response({"error": "invalid request, access denied"}, status=403)
+        return Response({"error": "invalid request, access denied"}, status=status.HTTP_403_FORBIDDEN)
     
     # if the users account has'nt been activated yet check if their email address is banned
     if user.email_banned:
