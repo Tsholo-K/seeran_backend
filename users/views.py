@@ -25,7 +25,7 @@ from balances.models import Balance
 # serilializers
 from .serializers import (SecurityInfoSerializer,
     PrincipalCreationSerializer, ProfileSerializer, UsersSerializer,
-    UserCreationSerializer
+    UserCreationSerializer, ProfilePictureSerializer
 )
 
 # amazon email sending service
@@ -499,8 +499,8 @@ def update_profile_picture(request):
             
             user.refresh_from_db()  # Refresh the user instance from the database
 
-            serializer = ProfileSerializer(instance=user)
-            return Response({"user" : serializer.data}, status=status.HTTP_200_OK)
+            serializer = ProfilePictureSerializer(instance=user)
+            return Response({"profile_picture" : serializer.data}, status=status.HTTP_200_OK)
         
         except Exception as e:
     
@@ -510,5 +510,36 @@ def update_profile_picture(request):
     else:
         return Response({"error" : "No file was uploaded."}, status=status.HTTP_400_BAD_REQUEST)
 
+
+# remove users picture
+@api_view(['POST'])
+@token_required
+def remove_profile_picture(request):
+     
+    try:
+        user = CustomUser.objects.get(account_id=request.user.account_id)  # get the current user
+
+    except CustomUser.DoesNotExist:
+        return Response({"error" : "user with the provided credentials does not exist"}, status=status.HTTP_404_NOT_FOUND)
+    
+    try:
+        
+        if user.profile_picture:
+            user.profile_picture.delete()  # delete the old profile picture if it exists
+
+        else:
+            return Response({"error" : 'you already dont have a custom profile picture to remove'}, status=status.HTTP_200_OK)
+        
+        user.refresh_from_db()  # Refresh the user instance from the database
+
+        serializer = ProfilePictureSerializer(instance=user)
+        return Response({"profile_picture" : serializer.data}, status=status.HTTP_200_OK)
+    
+    except Exception as e:
+
+        # if any exceptions rise during return the response return it as the response
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    
 
 ##########################################################################################

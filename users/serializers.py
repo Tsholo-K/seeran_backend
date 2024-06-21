@@ -113,6 +113,53 @@ class ProfileSerializer(serializers.ModelSerializer):
         
         # return it 
         return signed_url
+    
+
+# user profile
+class ProfilePictureSerializer(serializers.ModelSerializer):
+
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CustomUser
+        fields = [ 'image' ]
+            
+    def get_image(self, obj):
+      
+        # if the user has no profile image return the default profile image 
+        if not obj.profile_picture:
+            s3_url =  config('AWS_STORAGE_BUCKET_DOMAIN') + '/defaults/default-user-icon.svg'
+    
+        # if they do have a profile image
+        else:
+            # try to get the users signed image url from cache
+            s3_url = cache.get(str(obj.account_id) + 'profile_picture')
+            
+            # if its not there get their profile picture url from the db
+            if s3_url == None:
+                s3_url = obj.profile_picture.url
+      
+            # if there's a signed url in the cache return it instead
+            else:
+                return s3_url
+       
+        # make sure the url format is valid 
+        cloudfront_url = s3_url.replace( config('AWS_STORAGE_BUCKET_DOMAIN'), config('CLOUDFRONT_CUSTOM_DOMAIN'))
+        
+        # Calculate expiration time (current time + 1 hour)
+        expiration_time = datetime.datetime.now() + datetime.timedelta(hours=1)
+       
+        # sign the url
+        signed_url = cloudfront_signer.generate_presigned_url(
+            cloudfront_url, 
+            date_less_than=expiration_time
+        )
+   
+        # save it to cache for an hour
+        cache.set(str(obj.account_id) + 'profile_picture', signed_url, timeout=3600)
+        
+        # return it 
+        return signed_url
 
 
 ###################################################################################################
