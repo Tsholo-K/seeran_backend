@@ -1,6 +1,5 @@
 # python
 import json
-import random
 
 # rest framework
 from rest_framework.decorators import api_view
@@ -37,12 +36,30 @@ from .decorators import token_required
 from users.serializers import ProfileSerializer
 
 
-### login and authentication views ###
+####################################################### login and authentication views #############################################
 
 
-# user login
 @api_view(['POST'])
 def login(request):
+
+    """
+        This view handles the login process. It expects a POST request with user credentials.
+
+        Steps:
+        1. It tries to authenticate the incoming credentials using the `CustomTokenObtainPairSerializer`.
+        2. If authentication fails, it returns a 401 Unauthorized error.
+        3. If some other exception occurs during authentication, it returns a 500 Internal Server Error.
+        4. After successful authentication, it tries to get the user object from the database using the provided email.
+        5. If the user doesn't exist or if the user is not a "FOUNDER" and their school is non-compliant, it returns an error.
+        6. If the user's multi-factor authentication is enabled:
+            - If the user's email has recently been banned, it disables multi-factor authentication and logs them in without it.
+            - If the user's email is not banned, it generates an OTP and tries to send it to the user's email address.
+            - If the OTP email is successfully sent, it caches the hashed OTP against the user's email address for 5 minutes.
+            - If there was an error sending the OTP email, it returns a 500 Internal Server Error.
+        7. If the user's multi-factor authentication is disabled, it logs the user in and sets the access and refresh token cookies.
+
+        Note: All exceptions are handled and appropriate HTTP status codes are returned.
+    """
     
     # try to authenticate the incoming credentials
     try:
@@ -63,12 +80,12 @@ def login(request):
         user = CustomUser.objects.get(email=request.data.get('email'))
         if not user.role == "FOUNDER":
             if user.school.none_compliant:
-                return Response({"denied": "access denied"})
+                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
             
     except ObjectDoesNotExist:
         # if the user doesnt exist return an error
         # this far through the view this should be impossible but to stay on the safe side we'll handle the error 
-        return Response({"error": "invalid credentials/tokens"})   
+        return Response({"error": "invalid credentials/tokens"}, status=status.HTTP_404_NOT_FOUND)   
      
     # if users multi-factor authentication is enabled do this..
     if user.multifactor_authentication:
@@ -187,13 +204,31 @@ def login(request):
     
     # if any exception occurs during the proccess return an error
     except Exception as e:
-        return Response({"error": f"there was an error logging you in"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# user multi-factor login
-# when a user has mfa enabled this view verifies their otp
 @api_view(['POST'])
 def multi_factor_authentication(request):
+
+    """
+        This view handles the multi-factor authentication (MFA) process. It expects a POST request with the user's email and OTP.
+
+        Steps:
+        1. It retrieves the provided email, OTP, and the authorization OTP from the cookie.
+        2. If any of these are missing, it returns a 400 Bad Request error.
+        3. It tries to get the user object using the provided email address.
+        4. If no user exists, it returns an error.
+        5. After getting the user object, it retrieves the stored OTP from the cache.
+        6. If there's no OTP in the cache, it returns a 400 Bad Request error.
+        7. If any other exception occurs while retrieving the OTP from the cache, it returns a 500 Internal Server Error.
+        8. If everything checks out, it verifies the provided OTP against the stored OTP.
+        9. If the provided OTP is verified successfully, it verifies the authorization OTP in the request's cookies.
+        10. If the authorization OTP doesn't match the one stored for the user, it returns a 400 Bad Request error.
+        11. If there's no error until here, verification is successful. It deletes all cached OTPs and generates an access and refresh token for the user.
+        12. It then sets the access/refresh token cookies and returns a successful response.
+
+        Note: All exceptions are handled and appropriate HTTP status codes are returned.
+    """
     
     # retrieve the provided email, otp and the authorization otp in the cookie
     email = request.data.get('email')
@@ -210,37 +245,37 @@ def multi_factor_authentication(request):
         
     except ObjectDoesNotExist:
         # if no user exists return an error 
-        return Response({"error": "invalid credentials"})
+        return Response({"error": "invalid credentials"}, status=status.HTTP_404_NOT_FOUND)
     
     # after getting the user object retrieve the stored otp from cache 
     try:
-        stored_hashed_otp = cache.get(user.email)
-        if not stored_hashed_otp:
+        stored_hashed_otp_and_salt = cache.get(user.email)
+        if not stored_hashed_otp_and_salt:
             # if there's no otp in cache( wasn't provided in the first place, or expired since it has a 5 minute lifespan )
             # return an error 
             return Response({"error": "OTP expired. Please generate a new one"}, status=status.HTTP_400_BAD_REQUEST)
     
     # if any other exception rises while retirieving the otp from cache return an error 
     except Exception as e:
-        return Response({"error": {str(e)}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     # if everything above checks out verify the provided otp against the stored otp
-    if verify_user_otp(user_otp=otp, stored_hashed_otp=stored_hashed_otp):
+    if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
         # provided otp is verified successfully 
         # next we verify the authorization otp in the requests cookies
         # try to get the the suthorization otp from cache
         try:
-            hashed_authorization_otp = cache.get(user.email + 'authorization_otp')
-            if not hashed_authorization_otp:
+            hashed_authorization_otp_and_salt = cache.get(user.email + 'authorization_otp')
+            if not hashed_authorization_otp_and_salt:
                 # if there's no authorization otp in cache( wasn't provided in the first place, or expired since it also has a 5 minute lifespan )
                 # return an error 
                 return Response({"error": "OTP expired, please reload the page to request a new OTP"}, status=status.HTTP_400_BAD_REQUEST)
         
         except Exception as e:
             # handle any other error that might occur during the retrieval of the otp
-            return Response({"error": {str(e)}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-        if not verify_user_otp(authorization_cookie_otp, hashed_authorization_otp):
+        if not verify_user_otp(user_otp=authorization_cookie_otp, stored_hashed_otp_and_salt=hashed_authorization_otp_and_salt):
             # if the authorization otp does'nt match the one stored for the user return an error 
             return Response({"error": "incorrect authorization OTP, action forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
         
@@ -253,11 +288,9 @@ def multi_factor_authentication(request):
         token = generate_token(user)
         
         try:    
-            # Generate a random 6-digit number
-            # this will be the cache invalidator on the frontend
-            random_number = random.randint(100000, 999999)
             
-            response = Response({"message": "login successful, welcome back.", "role": user.role, "invalidator" : random_number}, status=status.HTTP_200_OK)
+            response = Response({"message": "login successful, welcome back!", "role": user.role.title()}, status=status.HTTP_200_OK)
+            
             # set access/refresh token cookies
             response.set_cookie('access_token', token['access_token'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
             response.set_cookie('refresh_token', token['refresh_token'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=86400)
@@ -266,17 +299,34 @@ def multi_factor_authentication(request):
         
         except Exception as e:
             # if any exceptions rise during return the response return it as the response
-            return Response({"error": f"error logging you in: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     else:
         # if the provided otp is invalid return an appropriate response 
         return Response({"error": "incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# account search, if an account is found with the provided credentials the user can sign-in
-# this is used for first time sign in
 @api_view(['POST'])
 def signin(request):
+
+    """
+        This view handles the first-time sign-in process. It expects a POST request with the user's full name and email.
+
+        Steps:
+        1. It retrieves the provided full name and email.
+        2. If any of these are missing, it returns a 400 Bad Request error.
+        3. It validates the email format and the full name format.
+        4. It tries to get the user object using the provided email address.
+        5. If no user exists or if the user is not a "FOUNDER" and their school is non-compliant, it returns an error.
+        6. It checks if the provided name and surname are correct.
+        7. If the user's account has already been activated, it returns a 403 Forbidden error.
+        8. If the user's email is banned, it returns an alert.
+        9. If everything checks out, it creates an OTP for the user and tries to send it to their email address.
+        10. If the OTP email is successfully sent, it caches the OTP and returns a successful response.
+        11. If there was an error sending the OTP email, it returns a 500 Internal Server Error.
+
+        Note: All exceptions are handled and appropriate HTTP status codes are returned.
+    """
     
     # retrieve provided infomation
     full_names = request.data.get('fullname')
@@ -305,7 +355,7 @@ def signin(request):
                 
     except ObjectDoesNotExist:
         # if there's no user with the provided credentials return an error 
-        return Response({"error": "provided credentials are invalid"})
+        return Response({"error": "provided credentials are invalid"}, status=status.HTTP_404_NOT_FOUND)
     
     # check if the provided name and surname are correct
     try:
@@ -382,10 +432,26 @@ def signin(request):
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# account activation, when user signs in for the first time
-# sets user password
 @api_view(['POST'])
 def set_password(request):
+
+    """
+        This view handles the account activation process for first-time sign-in. It expects a POST request with the user's email and new password.
+
+        Steps:
+        1. It retrieves the authorization OTP from the cookie, and the provided email and new password.
+        2. If any of these are missing or if the new password doesn't match the confirm password, it returns a 400 Bad Request error.
+        3. It retrieves the stored authorization OTP from the cache.
+        4. If there's no OTP in the cache, it returns a 400 Bad Request error.
+        5. If any other exception occurs while retrieving the OTP from the cache, it returns a 500 Internal Server Error.
+        6. It verifies the provided OTP against the stored OTP.
+        7. If the provided OTP is verified successfully, it activates the user's account and sets the new password.
+        8. It then generates an access and refresh token for the user, sets the access/refresh token cookies, and returns a successful response.
+        9. If the user with the provided email doesn't exist, it returns a 404 Not Found error.
+        10. If any other exception occurs, it returns a 500 Internal Server Error.
+
+        Note: All exceptions are handled and appropriate HTTP status codes are returned.
+    """
 
     # get authorization otp 
     otp = request.COOKIES.get('authorization_otp')
@@ -441,20 +507,32 @@ def set_password(request):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# authenticates incoming request
 @api_view(["GET"])
 @token_required
 def authenticate(request):
+
+    """
+        This view handles the authentication of incoming requests. It expects a GET request.
+
+        Steps:
+        1. If the user is authenticated, it returns a 200 OK status code along with the user's role.
+        2. If the user is not authenticated, it returns a 401 Unauthorized error.
+
+        Note: The `@token_required` decorator is used to check if the incoming request has a valid token.
+    """
    
     # if the user is authenticated, return a 200 status code
     if request.user:
         return Response({"role" : request.user.role.title()}, status=status.HTTP_200_OK)
 
     else:
-        return Response({"error" : "request not authenticated.. access denied",}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({"error" : "request not authenticated.. access denied",}, status=status.HTTP_403_FORBIDDEN)
 
 
-### logout view ###
+####################################################################################################################################
+
+
+############################################################ logout view ###########################################################
 
 
 # user logout view
@@ -477,14 +555,16 @@ def logout(request):
             return response
    
         except Exception as e:
-            return Response({"error": e})
+            return Response({"error": str(e)})
   
     else:
         return Response({"error": "No refresh token provided"}, status=status.HTTP_400_BAD_REQUEST)
 
 
+####################################################################################################################################
 
-### toggle features views ###
+
+######################################################## toggle features views #####################################################
 
 
 # activate multi-factor authentication
@@ -543,8 +623,10 @@ def event_emails_subscription(request):
     return Response({'message': '{}'.format('subscribed to event emails' if toggle else 'unsubscribed from event emails')}, status=status.HTTP_200_OK)
 
 
+####################################################################################################################################
 
-### validation and verification views ###
+
+##################################################### validation and verification views ############################################
 
 
 # Verify otp
@@ -697,33 +779,41 @@ def validate_password(request):
 def validate_email_change(request):
     
     # check for sent email
-    sent_email = request.data.get('email')   
+    sent_email = request.data.get('email')
+
     if not sent_email:
-        return Response({"error": "email address is required"})
+        return Response({"error": "email address is required"}, status=status.HTTP_400_BAD_REQUEST)
     
-    # validate the email to make sure it is in the correct format
-    if not validate_user_email(sent_email):
-        return Response({"error": " invalid email address"})
+        # validate email format
+    try:
+        validate_email(sent_email)
+
+    except ValidationError:
+        return Response({"error": "invalid email format."}, status=status.HTTP_400_BAD_REQUEST)
     
     # Validate the email
     if sent_email != request.user.email:
-        return Response({"error" : "invalid email address for account"})
+        return Response({"error" : "invalid email address for account, request denied"}, status=status.HTTP_403_FORBIDDEN)
     
     # check if users email is banned
     if request.user.email_banned:
-        return Response({ "error" : "your email address has been banned"})
+        return Response({ "error" : "your email address has been banned, request denied"}, status=status.HTTP_403_FORBIDDEN)
     
     # Create an OTP for the user
     otp, hashed_otp, salt = generate_otp()
     
     # Send the OTP via email
     try:
+
         client = boto3.client('ses', region_name='af-south-1')  # AWS region
+
         # Read the email template from a file
         with open('authentication/templates/authentication/emailotptemplate.html', 'r') as file:
             email_body = file.read()
+
         # Replace the {{otp}} placeholder with the actual OTP
         email_body = email_body.replace('{{otp}}', otp)
+
         response = client.send_email(
             Destination={
                 'ToAddresses': [request.user.email],
@@ -740,6 +830,7 @@ def validate_email_change(request):
             },
             Source='seeran grades <authorization@seeran-grades.com>',  # SES verified email address
         )
+
         # Check the response to ensure the email was successfully sent
         if response['ResponseMetadata']['HTTPStatusCode'] == 200:
             
@@ -840,8 +931,10 @@ def validate_password_reset(request):
         return Response({"error": "invalid email address"})
 
 
+####################################################################################################################################
 
-### email/password change views ###
+
+################################################## email/password change views #####################################################
 
 
 # Password change view
@@ -1081,8 +1174,10 @@ def resend_otp(request):
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+####################################################################################################################################
 
-### account status check views ###
+
+###################################################### account status check views ##################################################
 
 
 # checks the accounts multi-factor authentication status
@@ -1112,8 +1207,9 @@ def account_status(request):
     return Response({"message":"account not activated"})
 
 
+####################################################################################################################################
 
-### aws endpoints views ###
+################################################## aws endpoints views #############################################################
 
 
 # sns topic notification endpoint
@@ -1179,3 +1275,4 @@ def sns_endpoint(request):
         return Response({'status':'Invalid request'})
 
 
+####################################################################################################################################
