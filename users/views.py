@@ -28,10 +28,6 @@ from .serializers import (SecurityInfoSerializer,
     UserCreationSerializer, ProfilePictureSerializer
 )
 
-# amazon email sending service
-import boto3
-from botocore.exceptions import BotoCoreError, ClientError
-
 # custom decorators
 from authentication.decorators import token_required
 from .decorators import founder_only
@@ -187,51 +183,16 @@ def create_principal(request, school_id):
     if serializer.is_valid():
       
         try:
-            client = boto3.client('ses', region_name='af-south-1')  # AWS region
-            # Read the email template from a file
-      
-            with open('authentication/templates/authentication/accountcreationnotification.html', 'r') as file:
-                email_body = file.read()
-      
-            # Replace the {{otp}} placeholder with the actual OTP
-            # email_body = email_body.replace('{{name}}', (user.name.title() + user.surname.title()))
-            response = client.send_email(
-                Destination={
-                    'ToAddresses': [data['email']],
-                },
-                Message={
-                    'Body': {
-                        'Html': {
-                            'Data': email_body,
-                        },
-                    },
-                    'Subject': {
-                        'Data': 'Account Creation Confirmation',
-                    },
-                },
-                Source='seeran grades <authorization@seeran-grades.com>',  # SES verified email address
-            )
-        
-            # Check the response to ensure the email was successfully sent
-            if response['ResponseMetadata']['HTTPStatusCode'] == 200:
              
-                created_user = serializer.save()
-           
-                # Create a new Balance instance for the user
-                Balance.objects.create(user=created_user)
-           
-                return Response({"message": "principal account created successfully"}, status=status.HTTP_201_CREATED)
-            
-            else:
-                return Response({"error": "email sent to users email address bounced"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-      
-        except (BotoCoreError, ClientError) as error:
+            created_user = serializer.save()
         
-            # Handle specific errors and return appropriate responses
-            return Response({"error": error}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-        except BadHeaderError:
-            return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
+            # Create a new Balance instance for the user
+            Balance.objects.create(user=created_user)
+        
+            return Response({"message": "principal account created successfully"}, status=status.HTTP_201_CREATED)
+            
+            # else:
+            #     return Response({"error": "email sent to users email address bounced"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
       
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)    
@@ -335,47 +296,13 @@ def create_user(request):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
         try:
-            client = boto3.client('ses', region_name='af-south-1')  # AWS region
-            # Read the email template from a file
-    
-            with open('authentication/templates/authentication/accountcreationnotification.html', 'r') as file:
-                email_body = file.read()
-    
-            # Replace the {{otp}} placeholder with the actual OTP
-            # email_body = email_body.replace('{{name}}', (user.name.title() + user.surname.title()))
-            response = client.send_email(
-                Destination={
-                    'ToAddresses': [user.email],
-                },
-                Message={
-                    'Body': {
-                        'Html': {
-                            'Data': email_body,
-                        },
-                    },
-                    'Subject': {
-                        'Data': 'Account Creation Confirmation',
-                    },
-                },
-                Source='seeran grades <authorization@seeran-grades.com>',  # SES verified email address
-            )
-        
-            # Check the response to ensure the email was successfully sent
-            if response['ResponseMetadata']['HTTPStatusCode'] == 200:
 
-                user.save()
-                return Response({"message": "{} account created successfully".format(role.title()) }, status=status.HTTP_201_CREATED)
+            user.save()
+            return Response({"message": "{} account created successfully".format(role.title()) }, status=status.HTTP_201_CREATED)
             
-            else:
-                return Response({"error": "email sent to users email address bounced"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # else:
+            #     return Response({"error": "email sent to users email address bounced"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-        except (BotoCoreError, ClientError) as error:
-        
-            # Handle specific errors and return appropriate responses
-            return Response({"error": error}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-        except BadHeaderError:
-            return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
     
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)    
