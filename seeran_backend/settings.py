@@ -11,11 +11,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
 
-
-# The AWS region to connect to.
-AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME')  
-
-
 # uplaod image max-size 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 26214400  # 25 MB
 
@@ -58,7 +53,6 @@ INSTALLED_APPS = [
     # third party apps
     'corsheaders', # handle cors 
     'django_redis', # redis caching
-    'storages', # allows for the application to read/write to s3 bucket
     'channels', # websockets
 ]
 
@@ -112,7 +106,6 @@ AUTH_USER_MODEL = 'users.CustomUser'
 AUTHENTICATION_BACKENDS = [
     'authentication.auth_backends.EmailOrIdNumberModelBackend',
     'django.contrib.auth.backends.ModelBackend',
-    # Add other authentication backends if needed
 ]
 
 
@@ -145,7 +138,6 @@ SIMPLE_JWT = {
 
 
 # redis caching config
-# applications caching configuration
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
@@ -162,7 +154,7 @@ CACHES = {
 # application database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'ENGINE': 'django.db.backends.postgresql',
         'NAME': config('DB_NAME'),
         'USER': config('DB_USER'),
         'PASSWORD': config('DB_PASSWORD'),
