@@ -12,10 +12,6 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 
-# amazon email sending service
-import boto3
-from botocore.exceptions import BotoCoreError, ClientError
-
 # models
 from .models import EmailBan
 from users.models import CustomUser
@@ -73,61 +69,29 @@ def send_otp(request, email_ban_id):
         email_ban.status = 'PENDING'
         email_ban.save()
             
-        otp, hashed_otp, salt = generate_otp()
+        # otp, hashed_otp, salt = generate_otp()
         
         # Send the OTP via email
         try:
-            client = boto3.client('ses', region_name='af-south-1')  # AWS region
-            # Read the email template from a file
-            with open('authentication/templates/authentication/emailotptemplate.html', 'r') as file:
-                email_body = file.read()
-            # Replace the {{otp}} placeholder with the actual OTP
-            email_body = email_body.replace('{{otp}}', otp)
-            response = client.send_email(
-                Destination={
-                    'ToAddresses': [email_ban.email],
-                },
-                Message={
-                    'Body': {
-                        'Html': {
-                            'Data': email_body,
-                        },
-                    },
-                    'Subject': {
-                        'Data': 'Email Revalidate Passcode',
-                    },
-                },
-                Source='seeran grades <authorization@seeran-grades.com>',  # SES verified email address
-            )
-            # Check the response to ensure the email was successfully sent
-            if response['ResponseMetadata']['HTTPStatusCode'] == 200:
                 
-                # generate authorization cookies needed to revalidate email
-                authorization_otp, hashed_authorization_otp, authorization_otp_salt = generate_otp()
-                
-                # save both otps
-                cache.set(email_ban.email+'authorization_otp', (hashed_authorization_otp, authorization_otp_salt), timeout=300)  # 300 seconds = 5 mins
-                cache.set(email_ban.email + 'email_revalidation_otp', (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
-                
-                # Generate a random 6-digit number
-                # this will invalidate the cache on the frontend
-                profile_section = random.randint(100000, 999999)
-                response = Response({"message": "OTP created and sent to your email", 'profile_section' : profile_section, 'otp_send' : email_ban.otp_send, 'status' : email_ban.status.title()}, status=status.HTTP_200_OK)
-                
-                # store authorization otp in cookies
-                response.set_cookie('authorization_otp', authorization_otp, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
-
-                return response
+            # generate authorization cookies needed to revalidate email
+            # authorization_otp, hashed_authorization_otp, authorization_otp_salt = generate_otp()
             
-            else:
-                return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        except (BotoCoreError, ClientError) as error:
-            # Handle specific errors and return appropriate responses
-            return Response({"error": str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        except BadHeaderError:
-            return Response({"error": "invalid header found"}, status=status.HTTP_400_BAD_REQUEST)
+            # save both otps
+            # cache.set(email_ban.email+'authorization_otp', (hashed_authorization_otp, authorization_otp_salt), timeout=300)  # 300 seconds = 5 mins
+            # cache.set(email_ban.email + 'email_revalidation_otp', (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
+            
+            # Generate a random 6-digit number
+            # this will invalidate the cache on the frontend
+            response = Response({"message": "OTP created and sent to your email", 'otp_send' : email_ban.otp_send, 'status' : email_ban.status.title()}, status=status.HTTP_200_OK)
+            
+            # store authorization otp in cookies
+            # response.set_cookie('authorization_otp', authorization_otp, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
+
+            return response
+            
+            # else:
+            #     return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
