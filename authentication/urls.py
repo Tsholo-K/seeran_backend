@@ -46,7 +46,4 @@ urlpatterns = [
     # logout
     path('log-out/', views.logout, name='user logout'),
     
-    # aws sns endpoint
-    path('sns/notifications', views.sns_endpoint, name="sns notifications endpoint"),
-
 ]
