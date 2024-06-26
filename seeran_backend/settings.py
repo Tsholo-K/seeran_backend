@@ -170,40 +170,31 @@ DATABASES = {
 # }
 
 
-AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
-STATIC_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/project_static_files/'
-
-
 # s3 bucket
 # s3 bucket configuration
-STORAGES = {
-    "default": {
-        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-        "OPTIONS": {
-            "bucket_name": AWS_STORAGE_BUCKET_NAME,
-            "object_parameters": {
-                'CacheControl': 'max-age=86400',
-            },
-            'file_overwrite': False
-        },
-    },
-    "staticfiles": {
-        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-        "OPTIONS": {
-            "bucket_name": AWS_STORAGE_BUCKET_NAME,
-            "object_parameters": {
-                'CacheControl': 'max-age=86400',
-            },
-            'file_overwrite': False,
-            'location': 'project_static_files/',
-        },
-    },
-}
-
-
-
-# Email sending config
-EMAIL_BACKEND = 'django_ses.SESBackend'
+# STORAGES = {
+#     "default": {
+#         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+#         "OPTIONS": {
+#             "bucket_name": AWS_STORAGE_BUCKET_NAME,
+#             "object_parameters": {
+#                 'CacheControl': 'max-age=86400',
+#             },
+#             'file_overwrite': False
+#         },
+#     },
+#     "staticfiles": {
+#         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+#         "OPTIONS": {
+#             "bucket_name": AWS_STORAGE_BUCKET_NAME,
+#             "object_parameters": {
+#                 'CacheControl': 'max-age=86400',
+#             },
+#             'file_overwrite': False,
+#             'location': 'project_static_files/',
+#         },
+#     },
+# }
 
 
 # ssl config
