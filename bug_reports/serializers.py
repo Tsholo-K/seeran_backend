@@ -1,6 +1,4 @@
 # python 
-import datetime
-import os
 
 # rest framework
 from rest_framework import serializers
@@ -10,8 +8,6 @@ from django.core.cache import cache
 
 # models
 from .models import BugReport
-from users.models import CustomUser
-
 
 
 ### users balance serilizers ###
