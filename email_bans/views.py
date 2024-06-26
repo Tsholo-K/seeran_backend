@@ -5,7 +5,6 @@ import random
 from django.views.decorators.cache import cache_control
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
-from django.core.mail import BadHeaderError
 
 # rest framework
 from rest_framework.decorators import api_view
