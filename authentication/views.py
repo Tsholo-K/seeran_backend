@@ -16,6 +16,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
+from django.core.mail import EmailMessage
 
 # models
 from email_bans.models import EmailBan
@@ -26,11 +27,6 @@ from .utils import validate_access_token, generate_access_token, generate_token,
 
 # custom decorators
 from .decorators import token_required
-
-# mailjet
-from mailjet_rest import Client
-MAILJET_API_KEY= config('MAILJET_API_KEY')
-MAILJET_SECRET_KEY= config('MAILJET_SECRET_KEY')
 
 
 ####################################################### login and authentication views #############################################
@@ -336,41 +332,31 @@ def signin(request):
     if user.email_banned:
         # if their email address is banned return an error and let the user know and how they can appeal( if they even can )
         return Response({"alert" : "your email address has been blacklisted" })
-
-
+   
     # if everything checks out without an error 
     # create an otp for the user
     otp, hashed_otp, salt = generate_otp()
 
-    data = {
-        'Messages': [
-            {
-                "From": {
-                    "Email": "authorization@seeran-grades.com",
-                    "Name": "seeran grades"
-                },
-                "To": [
-                    {
-                        "Email": user.email,
-                        "Name": user.surname.title() + ' ' + user.name.title()
-                    }
-                ],
-                "TemplateID": 6096781,
-                "TemplateLanguage": True,
-                "Subject": "One Time Password",
-                "Variables": {
-                    'onetimecode': otp,
-                    'otpcodereason' : 'This OTP was generated in response to your account activation request..'
-                }
-            }
-        ]
+
+    message = EmailMessage(
+        to=[user.email]
+    )
+    message.template_id = "6096781"  # Mailjet numeric template id
+    message.from_email = None  # Use the From address stored with the template
+    message.merge_data = {
+        user.email : {
+            'onetimecode': otp,
+            'otpcodereason' : 'This OTP was generated in response to your account activation request..'
+        },
+
     }
+    # message.merge_global_data = {  # sets variable to all emails
+    #     'ship_date': "May 15",
+    # }
 
     # try to send the otp to thier email address
     try:
-    
-        mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version='v3.1')
-        result = mailjet.send.create(data=data)
+        result = message.send()
 
         if result == 1:
 
