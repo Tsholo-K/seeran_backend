@@ -29,11 +29,8 @@ from .decorators import token_required
 
 # mailjet
 from mailjet_rest import Client
-
 MAILJET_API_KEY= config('MAILJET_API_KEY')
 MAILJET_SECRET_KEY= config('MAILJET_SECRET_KEY')
-
-mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version='v3.1')
 
 
 ####################################################### login and authentication views #############################################
@@ -339,7 +336,8 @@ def signin(request):
     if user.email_banned:
         # if their email address is banned return an error and let the user know and how they can appeal( if they even can )
         return Response({"alert" : "your email address has been blacklisted" })
-   
+
+
     # if everything checks out without an error 
     # create an otp for the user
     otp, hashed_otp, salt = generate_otp()
@@ -370,7 +368,8 @@ def signin(request):
 
     # try to send the otp to thier email address
     try:
-
+    
+        mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version='v3.1')
         result = mailjet.send.create(data=data)
 
         if result == 1:
