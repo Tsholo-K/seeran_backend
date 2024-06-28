@@ -170,31 +170,13 @@ DATABASES = {
 # }
 
 
-# s3 bucket
-# s3 bucket configuration
-# STORAGES = {
-#     "default": {
-#         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-#         "OPTIONS": {
-#             "bucket_name": AWS_STORAGE_BUCKET_NAME,
-#             "object_parameters": {
-#                 'CacheControl': 'max-age=86400',
-#             },
-#             'file_overwrite': False
-#         },
-#     },
-#     "staticfiles": {
-#         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-#         "OPTIONS": {
-#             "bucket_name": AWS_STORAGE_BUCKET_NAME,
-#             "object_parameters": {
-#                 'CacheControl': 'max-age=86400',
-#             },
-#             'file_overwrite': False,
-#             'location': 'project_static_files/',
-#         },
-#     },
-# }
+ANYMAIL = {
+  'MAILJET_API_KEY': config('MAILJET_API_KEY'),
+  'MAILJET_SECRET_KEY': config('MAILJET_SECRET_KEY'),
+}
+EMAIL_BACKEND = "anymail.backends.mailjet.EmailBackend"
+DEFAULT_FROM_EMAIL = "authorization@seeran-grades.cloud"
+
 
 
 # ssl config

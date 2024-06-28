@@ -13,7 +13,6 @@ from .serializers import CustomTokenObtainPairSerializer
 from django.contrib.auth.hashers import check_password
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
-from django.views.decorators.csrf import csrf_exempt
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 
@@ -26,6 +25,9 @@ from .utils import validate_access_token, generate_access_token, generate_token,
 
 # custom decorators
 from .decorators import token_required
+
+# anymail
+from anymail.message import AnymailMessage
 
 
 ####################################################### login and authentication views #############################################
@@ -334,23 +336,34 @@ def signin(request):
    
     # if everything checks out without an error 
     # create an otp for the user
-    # otp, hashed_otp, salt = generate_otp()
-    
+    otp, hashed_otp, salt = generate_otp()
+
+    email = AnymailMessage.from_template(
+        template_id="6096781", # otp code template id
+        to=[user.email],
+        merge_data={
+            user.email: {
+                'onetimecode': otp,
+                'otpcodereason': 'This OTP was generated in response to your account activation request..',
+            },
+        },
+    )
+
     # try to send the otp to thier email address
     try:
 
-            
-        # if the email was successfully sent cache the otp then return the response
-        # cache.set(user.email, (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
-        return Response({"message": "OTP created and sent to your email", "email" : user.email}, status=status.HTTP_200_OK)
-        
-        # else:
+        result = email.send(fail_silently=False)
 
-        #     # if there was an error sending the email respond accordingly
-        #     # this will kick off our sns service and their email will get banned 
-        #     # regardless of wether it was a soft of hard bounce
-        #     return Response({"error": "failed to send OTP to your email address"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+        if result == 1:
+
+            # if the email was successfully sent cache the otp then return the response
+            cache.set(user.email, (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
+            return Response({"message": "OTP created and sent to your email", "email" : user.email}, status=status.HTTP_200_OK)
+        
+        else:
+
+            # if there was an error sending the email respond accordingly
+            return Response({"error": "failed to send OTP to your email address"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)    
     
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
