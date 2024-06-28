@@ -1,5 +1,6 @@
 # python
 import json
+from decouple import config
 
 # rest framework
 from rest_framework.decorators import api_view
@@ -26,8 +27,13 @@ from .utils import validate_access_token, generate_access_token, generate_token,
 # custom decorators
 from .decorators import token_required
 
-# anymail
-from anymail.message import AnymailMessage
+# mailjet
+from mailjet_rest import Client
+
+MAILJET_API_KEY= config('MAILJET_API_KEY')
+MAILJET_SECRET_KEY= config('MAILJET_SECRET_KEY')
+
+mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_SECRET_KEY), version='v3.1')
 
 
 ####################################################### login and authentication views #############################################
@@ -338,27 +344,40 @@ def signin(request):
     # create an otp for the user
     otp, hashed_otp, salt = generate_otp()
 
-    email = AnymailMessage.from_template(
-        template_id="6096781", # otp code template id
-        to=[user.email],
-        merge_data={
-            user.email: {
-                'onetimecode': otp,
-                'otpcodereason': 'This OTP was generated in response to your account activation request..',
-            },
-        },
-    )
+    data = {
+        'Messages': [
+            {
+                "From": {
+                    "Email": "authorization@seeran-grades.com",
+                    "Name": "seeran grades"
+                },
+                "To": [
+                    {
+                        "Email": user.email,
+                        "Name": user.surname.title() + ' ' + user.name.title()
+                    }
+                ],
+                "TemplateID": 6096781,
+                "TemplateLanguage": True,
+                "Subject": "One Time Password",
+                "Variables": {
+                    'onetimecode': otp,
+                    'otpcodereason' : 'This OTP was generated in response to your account activation request..'
+                }
+            }
+        ]
+    }
 
     # try to send the otp to thier email address
     try:
 
-        result = email.send(fail_silently=False)
+        result = mailjet.send.create(data=data)
 
         if result == 1:
 
             # if the email was successfully sent cache the otp then return the response
             cache.set(user.email, (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
-            return Response({"message": "OTP created and sent to your email", "email" : user.email}, status=status.HTTP_200_OK)
+            return Response({"message": "OTP created and sent to your email", 'response': result, "email" : user.email}, status=status.HTTP_200_OK)
         
         else:
 
@@ -442,7 +461,6 @@ def set_password(request):
     except Exception as e:
         # if any exceptions rise during return the response return it as the response
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 
 @api_view(["GET"])
