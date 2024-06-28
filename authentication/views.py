@@ -444,6 +444,7 @@ def set_password(request):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
 @api_view(["GET"])
 @token_required
 def authenticate(request):
