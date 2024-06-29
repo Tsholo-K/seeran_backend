@@ -345,7 +345,7 @@ def signin(request):
     try:
         
         # Define your Mailgun API URL
-        mailgun_api_url = f"https://api.mailgun.net/v3/{mailgun_domain}/messages"
+        mailgun_api_url = f"https://api.eu.mailgun.net/v3/{mailgun_domain}/messages"
 
         # Define your email data
         email_data = {
