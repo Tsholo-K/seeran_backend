@@ -2,6 +2,8 @@
 import json
 from decouple import config
 import requests
+import base64
+import json
 
 # rest framework
 from rest_framework.decorators import api_view
@@ -345,22 +347,28 @@ def signin(request):
     try:
         
         # Define your Mailgun API URL
-        mailgun_api_url = f"https://api.eu.mailgun.net/v3/{mailgun_domain}/messages"
+        mailgun_api_url = "https://api.eu.mailgun.net/v3/" + mailgun_domain + "/messages"
 
         # Define your email data
         email_data = {
-            "from": f"seeran grades <authorization@{mailgun_domain}>",
-            "to": f"{user.surname.title()} {user.name.title()} <{user.email}>",
+            "from": "seeran grades <authorization@" + mailgun_domain + ">",
+            "to": user.surname.title() + " " + user.name.title() + "<" + user.email + ">",
             "subject": "One Time Passcode",
-            "template": "otp authentication",
+            "template": "one-time passcode",
             "v:onetimecode": otp,
             "v:otpcodereason": "This OTP was generated in response to your account activation request.."
+        }
+
+        # Define your headers
+        headers = {
+            "Authorization": "Basic " + base64.b64encode(f"api:{mailgun_api_key}".encode()).decode(),
+            "Content-Type": "application/x-www-form-urlencoded"
         }
 
         # Send the email via Mailgun
         response = requests.post(
             mailgun_api_url,
-            auth=("api", mailgun_api_key),
+            headers=headers,
             data=email_data
         )
 
