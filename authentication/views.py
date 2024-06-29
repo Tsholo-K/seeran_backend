@@ -353,8 +353,8 @@ def signin(request):
             "to": f"{user.surname.title()} {user.name.title()} <{user.email}>",
             "subject": "One Time Passcode",
             "template": "otp authentication",
-            "var:onetimecode": otp,
-            "var:otpcodereason": "This OTP was generated in response to your account activation request.."
+            "v:onetimecode": otp,
+            "v:otpcodereason": "This OTP was generated in response to your account activation request.."
         }
 
         # Send the email via Mailgun
