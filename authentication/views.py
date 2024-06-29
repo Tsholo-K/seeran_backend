@@ -1,6 +1,7 @@
 # python
 import json
 from decouple import config
+import requests
 
 # rest framework
 from rest_framework.decorators import api_view
@@ -16,7 +17,6 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
-from django.core.mail import EmailMessage
 
 # models
 from email_bans.models import EmailBan
@@ -27,6 +27,10 @@ from .utils import validate_access_token, generate_access_token, generate_token,
 
 # custom decorators
 from .decorators import token_required
+
+# Mailgun domain and API key
+mailgun_domain = config('MAILGUN_DOMAIN')
+mailgun_api_key = config('MAILGUN_API_KEY')
 
 
 ####################################################### login and authentication views #############################################
@@ -337,32 +341,35 @@ def signin(request):
     # create an otp for the user
     otp, hashed_otp, salt = generate_otp()
 
-
-    message = EmailMessage(
-        to=[user.email]
-    )
-    message.template_id = "6096781"  # Mailjet numeric template id
-    message.from_email = None  # Use the From address stored with the template
-    message.merge_data = {
-        user.email : {
-            'onetimecode': otp,
-            'otpcodereason' : 'This OTP was generated in response to your account activation request..'
-        },
-
-    }
-    # message.merge_global_data = {  # sets variable to all emails
-    #     'ship_date': "May 15",
-    # }
-
     # try to send the otp to thier email address
     try:
-        result = message.send()
+        
 
-        if result == 1:
+        # Define your Mailgun API URL
+        mailgun_api_url = f"https://api.mailgun.net/v3/{mailgun_domain}/messages"
+
+        # Define your email data
+        email_data = {
+            "from": f"seeran grades <authorization@{mailgun_domain}>",
+            "to": [user.email],
+            "subject": "Hello",
+            "template": "your-template-name",
+            "v:onetimecode": otp,
+            "v:otpcodereason": "This OTP was generated in response to your account activation request.."
+        }
+
+        # Send the email via Mailgun
+        response = requests.post(
+            mailgun_api_url,
+            auth=("api", mailgun_api_key),
+            data=email_data
+        )
+
+        if response.status_code == 200:
 
             # if the email was successfully sent cache the otp then return the response
             cache.set(user.email, (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
-            return Response({"message": "OTP created and sent to your email", 'response': result, "email" : user.email}, status=status.HTTP_200_OK)
+            return Response({"message": "OTP created and sent to your email", 'response': response, "email" : user.email}, status=status.HTTP_200_OK)
         
         else:
 

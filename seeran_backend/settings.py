@@ -54,7 +54,6 @@ INSTALLED_APPS = [
     'corsheaders', # handle cors 
     'django_redis', # redis caching
     'channels', # websockets
-    'anymail',
 ]
 
 
@@ -169,15 +168,6 @@ DATABASES = {
 #         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
 #     }
 # }
-
-
-ANYMAIL = {
-  'MAILJET_API_KEY': config('MAILJET_API_KEY'),
-  'MAILJET_SECRET_KEY': config('MAILJET_SECRET_KEY'),
-}
-EMAIL_BACKEND = "anymail.backends.mailjet.EmailBackend"
-DEFAULT_FROM_EMAIL = "authorization@seeran-grades.cloud"
-SERVER_EMAIL='tsholo.koketso@icloud.com'
 
 
 # ssl config
