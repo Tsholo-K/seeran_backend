@@ -348,18 +348,13 @@ def signin(request):
         mailgun_api_url = f"https://api.eu.mailgun.net/v3/{mailgun_domain}/messages"
 
         # Define your email data
-        # email_data = {
-        #     "from": f"seeran grades <authorization@{mailgun_domain}>",
-        #     "to": f"{user.surname.title()} {user.name.title()} <{user.email}>",
-        #     "subject": "One Time Passcode",
-        #     "template": "otp authentication",
-        #     "h:X-Mailgun-Variables": "{'test': 'test'}"
-        # }
-        email_data={"from": "Mailgun Sandbox <postmaster@seeran-grades.cloud>",
-			"to": "tsholo koketso <tsholo.koketso@icloud.com>",
-			"subject": "Hello tsholo koketso",
-			"template": "otp authentication",
-			"h:X-Mailgun-Variables": "{'test': 'test'}"
+        email_data = {
+            "from": f"seeran grades <authorization@{mailgun_domain}>",
+            "to": f"{user.surname.title()} {user.name.title()} <{user.email}>",
+            "subject": "One Time Passcode",
+            "template": "otp authentication",
+            "v:onetimecode": otp,
+            "v:otpcodereason": "This OTP was generated in response to your account activation request.."
         }
 
         # Send the email via Mailgun
