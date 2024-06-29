@@ -350,7 +350,7 @@ def signin(request):
         # Define your email data
         email_data = {
             "from": f"seeran grades <authorization@{mailgun_domain}>",
-            "to": [user.email],
+            "to": f"{user.surname.title()} {user.name.title()} <{user.email}>",
             "subject": "One Time Passcode",
             "template": "otp authentication",
             "var:onetimecode": otp,
