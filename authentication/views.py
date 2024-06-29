@@ -344,7 +344,6 @@ def signin(request):
     # try to send the otp to thier email address
     try:
         
-
         # Define your Mailgun API URL
         mailgun_api_url = f"https://api.mailgun.net/v3/{mailgun_domain}/messages"
 
@@ -352,10 +351,10 @@ def signin(request):
         email_data = {
             "from": f"seeran grades <authorization@{mailgun_domain}>",
             "to": [user.email],
-            "subject": "Hello",
-            "template": "your-template-name",
-            "v:onetimecode": otp,
-            "v:otpcodereason": "This OTP was generated in response to your account activation request.."
+            "subject": "One Time Passcode",
+            "template": "otp authentication",
+            "var:onetimecode": otp,
+            "var:otpcodereason": "This OTP was generated in response to your account activation request.."
         }
 
         # Send the email via Mailgun
