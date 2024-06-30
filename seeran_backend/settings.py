@@ -148,7 +148,7 @@ CACHES = {
             'PASSWORD': config('REDIS_PASSWORD'),
             'SSL': True,
             'SSL_CERT_REQS': 'CERT_REQUIRED',
-            'SSL_CA_CERTS': os.path.join(BASE_DIR, 'server-ca.pem'),
+            'SSL_CA_CERTS': '/home/seeran_grades2/seeran_backend/seeran_backend/server-ca.pem',
         }
     }
 }
