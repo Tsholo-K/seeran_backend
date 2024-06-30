@@ -299,53 +299,39 @@ def signin(request):
     if not full_names or not email:
         return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
     
-    # validate email format
     try:
+        # validate email format
         validate_email(email)
 
-    except ValidationError:
-        return Response({"error": "Invalid email format."}, status=status.HTTP_400_BAD_REQUEST)
-    
-    if not validate_names(full_names):
-        return Response({"error": "only provide your first name and surname"}, status=status.HTTP_400_BAD_REQUEST)
+        if not validate_names(full_names):
+            return Response({"error": "only provide your first name and surname"}, status=status.HTTP_400_BAD_REQUEST)
 
-    # try to validate the credentials by getting a user with the provided credentials 
-    try:
+        # try to validate the credentials by getting a user with the provided credentials 
         user = CustomUser.objects.get(email=email)
+
         if not user.role == "FOUNDER":
             if user.school.none_compliant:
                 return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
                 
-    except ObjectDoesNotExist:
-        # if there's no user with the provided credentials return an error 
-        return Response({"error": "provided credentials are invalid"}, status=status.HTTP_404_NOT_FOUND)
-    
-    # check if the provided name and surname are correct
-    try:
+        # check if the provided name and surname are correct
         name, surname = full_names.split(' ', 1)
+
         if not ((user.name.casefold() == name.casefold() and user.surname.casefold() == surname.casefold()) or (user.name.casefold() == surname.casefold() and user.surname.casefold() == name.casefold())):
             return Response({"error": "provided credentials are invalid"}, status=status.HTTP_400_BAD_REQUEST)
         
-    except ValueError:
-        return Response({"error": "please enter your first name followed by your surname."}, status=status.HTTP_400_BAD_REQUEST)
-    
-    # if there is a user with the provided credentials check if their account has already been activated 
-    # if it has been indeed activated return an error 
-    if user.activated == True:
-        return Response({"error": "invalid request, access denied"}, status=status.HTTP_403_FORBIDDEN)
-    
-    # if the users account has'nt been activated yet check if their email address is banned
-    if user.email_banned:
-        # if their email address is banned return an error and let the user know and how they can appeal( if they even can )
-        return Response({"alert" : "your email address has been blacklisted" })
-   
-    # if everything checks out without an error 
-    # create an otp for the user
-    otp, hashed_otp, salt = generate_otp()
-
-    # try to send the otp to thier email address
-    try:
+        # if there is a user with the provided credentials check if their account has already been activated 
+        if user.activated == True:
+            return Response({"error": "invalid request, access denied"}, status=status.HTTP_403_FORBIDDEN)
         
+        # if the users account has'nt been activated yet check if their email address is banned
+        if user.email_banned:
+            # if their email address is banned return an error and let the user know and how they can appeal( if they even can )
+            return Response({"alert" : "your email address has been blacklisted" })
+    
+        # if everything checks out without an error 
+        # create an otp for the user
+        otp, hashed_otp, salt = generate_otp()
+
         # Define your Mailgun API URL
         mailgun_api_url = "https://api.eu.mailgun.net/v3/" + mailgun_domain + "/messages"
 
@@ -378,11 +364,19 @@ def signin(request):
             cache.set(user.email, (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
             return Response({"message": "OTP created and sent to your email", 'response': response, "email" : user.email}, status=status.HTTP_200_OK)
         
-        else:
-
-            # if there was an error sending the email respond accordingly
-            return Response({"error": "failed to send OTP to your email address"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)    
+        # if there was an error sending the email respond accordingly
+        return Response({"error": "failed to send OTP to your email address"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)    
     
+    except ObjectDoesNotExist:
+        # if there's no user with the provided credentials return an error 
+        return Response({"error": "provided credentials are invalid"}, status=status.HTTP_404_NOT_FOUND)
+    
+    except ValidationError:
+        return Response({"error": "Invalid email format."}, status=status.HTTP_400_BAD_REQUEST)
+    
+    except ValueError:
+        return Response({"error": "please enter your first name followed by your surname."}, status=status.HTTP_400_BAD_REQUEST)
+
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 

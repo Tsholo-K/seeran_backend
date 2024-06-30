@@ -137,15 +137,22 @@ SIMPLE_JWT = {
 }
 
 
+
 # redis caching config
 CACHES = {
+    """
+        If your Redis server is using a self-signed certificate or a certificate from an internal CA, 
+        ensure that the CA certificate chain is correctly configured on the Django application server. 
+        You may need to specify the path to the CA certificate or the entire certificate chain in your Django settings.
+    """
+
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
         'LOCATION': config('CACHE_LOCATION'),
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
             'PARSER_CLASS': 'redis.connection._HiredisParser',
-            'CONNECTION_POOL_KWARGS': {'ssl_ca_certs': '/home/seeran_grades2/seeran_backend/seeran_backend/server-ca.pem'},
+            'CONNECTION_POOL_KWARGS': {'ssl_ca_certs': '/home/seeran_grades2/seeran_backend/seeran_backend/server-ca.pem'}, # as done here
         }
     }
 }
