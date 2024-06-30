@@ -406,14 +406,14 @@ def set_password(request):
     otp = request.COOKIES.get('authorization_otp')
 
     if not otp:
-        return Response({"error": "permission denied"}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({"denied": "permission denied, request missing authorization OTP"}, status=status.HTTP_401_UNAUTHORIZED)
     
     email = request.data.get('email')
     new_password = request.data.get('password')
     confirm_password = request.data.get('confirmpassword')
 
     if not email or not new_password or not confirm_password:
-        return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "missing credentials, all fields are required"}, status=status.HTTP_400_BAD_REQUEST)
     
     if new_password != confirm_password:
         return Response({"error": "passwords do not match"}, status=status.HTTP_400_BAD_REQUEST)
@@ -423,10 +423,10 @@ def set_password(request):
         hashed_authorization_otp_and_salt = cache.get(email + 'authorization_otp')
 
         if not hashed_authorization_otp_and_salt:
-            return Response({"error": "OTP expired, please reload the page to request a new one"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"denied": "authorization OTP expired, request unauthorized"}, status=status.HTTP_400_BAD_REQUEST)
         
         if not verify_user_otp(otp, hashed_authorization_otp_and_salt):
-            return Response({"error": "incorrect OTP, permission denied"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"denied": "incorrect authorization OTP, request denied"}, status=status.HTTP_400_BAD_REQUEST)
         
         # activate users account
         user = CustomUser.objects.activate_user(email=email, password=new_password)
@@ -444,7 +444,7 @@ def set_password(request):
     
     except ObjectDoesNotExist:
         # if theres no user with the provided email return an error
-        return Response({"error": "user with the provided credentials does not exist."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"denied": "user with the provided credentials does not exist."}, status=status.HTTP_404_NOT_FOUND)
   
     except Exception as e:
         # if any exceptions rise during return the response return it as the response
@@ -581,13 +581,13 @@ def verify_otp(request):
     otp = request.data.get('otp')
 
     if not email or not otp:
-        return Response({"error": "email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"denied": "email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
     
     try:
         stored_hashed_otp_and_salt = cache.get(email)
 
         if not stored_hashed_otp_and_salt:
-            return Response({"error": "OTP expired.. please generate a new one"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"denied": "OTP expired.. please generate a new one"}, status=status.HTTP_400_BAD_REQUEST)
     
         if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
             
@@ -608,7 +608,7 @@ def verify_otp(request):
             if attempts <= 0:
                 cache.delete(email)
                 cache.delete(email + 'attempts')
-                return Response({"error": "maximum OTP verification attempts exceeded.."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"denied": "maximum OTP verification attempts exceeded.."}, status=status.HTTP_400_BAD_REQUEST)
             
             # Incorrect OTP, decrement attempts and handle expiration
             attempts -= 1
