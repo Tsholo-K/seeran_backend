@@ -1,4 +1,4 @@
-import os
+import ssl
 
 from pathlib import Path
 from datetime import timedelta
@@ -137,7 +137,12 @@ SIMPLE_JWT = {
 }
 
 
-# redis caching config
+# Create a SSL context object with the required settings
+ssl_context = ssl.create_default_context(cafile="/home/seeran_grades2/seeran_backend/server-ca.pem")
+ssl_context.check_hostname = False
+ssl_context.verify_mode = ssl.CERT_NONE
+
+# Configure the Redis connection settings
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
@@ -145,6 +150,7 @@ CACHES = {
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
             'PARSER_CLASS': 'redis.connection._HiredisParser',
+            'CONNECTION_POOL_KWARGS': {'ssl_context': ssl_context}
         }
     }
 }
