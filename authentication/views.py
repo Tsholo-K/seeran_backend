@@ -346,42 +346,42 @@ def signin(request):
     # try to send the otp to thier email address
     try:
         
-        # # Define your Mailgun API URL
-        # mailgun_api_url = "https://api.eu.mailgun.net/v3/" + mailgun_domain + "/messages"
+        # Define your Mailgun API URL
+        mailgun_api_url = "https://api.eu.mailgun.net/v3/" + mailgun_domain + "/messages"
 
-        # # Define your email data
-        # email_data = {
-        #     "from": "seeran grades <authorization@" + mailgun_domain + ">",
-        #     "to": user.surname.title() + " " + user.name.title() + "<" + user.email + ">",
-        #     "subject": "One Time Passcode",
-        #     "template": "one-time passcode",
-        #     "v:onetimecode": otp,
-        #     "v:otpcodereason": "This OTP was generated in response to your account activation request.."
-        # }
+        # Define your email data
+        email_data = {
+            "from": "seeran grades <authorization@" + mailgun_domain + ">",
+            "to": user.surname.title() + " " + user.name.title() + "<" + user.email + ">",
+            "subject": "One Time Passcode",
+            "template": "one-time passcode",
+            "v:onetimecode": otp,
+            "v:otpcodereason": "This OTP was generated in response to your account activation request.."
+        }
 
-        # # Define your headers
-        # headers = {
-        #     "Authorization": "Basic " + base64.b64encode(f"api:{mailgun_api_key}".encode()).decode(),
-        #     "Content-Type": "application/x-www-form-urlencoded"
-        # }
+        # Define your headers
+        headers = {
+            "Authorization": "Basic " + base64.b64encode(f"api:{mailgun_api_key}".encode()).decode(),
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
 
-        # # Send the email via Mailgun
-        # response = requests.post(
-        #     mailgun_api_url,
-        #     headers=headers,
-        #     data=email_data
-        # )
+        # Send the email via Mailgun
+        response = requests.post(
+            mailgun_api_url,
+            headers=headers,
+            data=email_data
+        )
 
-        # if response.status_code == 200:
+        if response.status_code == 200:
 
-        # if the email was successfully sent cache the otp then return the response
-        cache.set(user.email, (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
-        return Response({"message": "OTP created and sent to your email", 'response': otp, "email" : user.email}, status=status.HTTP_200_OK)
+            # if the email was successfully sent cache the otp then return the response
+            cache.set(user.email, (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
+            return Response({"message": "OTP created and sent to your email", 'response': response, "email" : user.email}, status=status.HTTP_200_OK)
         
-        # else:
+        else:
 
-        #     # if there was an error sending the email respond accordingly
-        #     return Response({"error": "failed to send OTP to your email address"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)    
+            # if there was an error sending the email respond accordingly
+            return Response({"error": "failed to send OTP to your email address"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)    
     
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
