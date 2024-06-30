@@ -2,9 +2,6 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    
-    # user info
-    path('account-status/', views.account_status, name='checks if account is activated'),
 
     # authentication
     path('authenticate/', views.authenticate, name='get name and surname'),
