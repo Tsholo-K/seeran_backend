@@ -138,7 +138,7 @@ SIMPLE_JWT = {
 
 
 # Create a SSL context object with the required settings
-ssl_context = ssl.create_default_context(cafile="/home/seeran_grades2/seeran_backend/server-ca.pem")
+ssl_context = ssl.create_default_context(cafile="/home/seeran_grades2/seeran_backend/seeran_backend/server-ca.pem")
 ssl_context.check_hostname = False
 ssl_context.verify_mode = ssl.CERT_NONE
 
