@@ -147,6 +147,8 @@ CACHES = {
             'PARSER_CLASS': 'redis.connection._HiredisParser',
             'PASSWORD': config('REDIS_PASSWORD'),
             'SSL': True,
+            'SSL_CERT_REQS': 'CERT_REQUIRED',
+            'SSL_CA_CERTS': os.path.join(BASE_DIR, 'server-ca.pem'),
         }
     }
 }
