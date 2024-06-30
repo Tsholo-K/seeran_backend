@@ -145,9 +145,6 @@ CACHES = {
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
             'PARSER_CLASS': 'redis.connection._HiredisParser',
-            # 'SSL': True,
-            # 'SSL_CERT_REQS': 'CERT_REQUIRED',
-            # 'SSL_CA_CERTS': '/home/seeran_grades2/seeran_backend/seeran_backend/server-ca.pem',
         }
     }
 }
