@@ -419,17 +419,15 @@ def set_password(request):
         return Response({"error": "passwords do not match"}, status=status.HTTP_400_BAD_REQUEST)
     
     try:
+
         hashed_authorization_otp_and_salt = cache.get(email + 'authorization_otp')
+
         if not hashed_authorization_otp_and_salt:
             return Response({"error": "OTP expired, please reload the page to request a new one"}, status=status.HTTP_400_BAD_REQUEST)
-    
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    if not verify_user_otp(otp, hashed_authorization_otp_and_salt):
-        return Response({"error": "incorrect OTP, permission denied"}, status=status.HTTP_400_BAD_REQUEST)
-    
-    try:
+        
+        if not verify_user_otp(otp, hashed_authorization_otp_and_salt):
+            return Response({"error": "incorrect OTP, permission denied"}, status=status.HTTP_400_BAD_REQUEST)
+        
         # activate users account
         user = CustomUser.objects.activate_user(email=email, password=new_password)
 
@@ -438,13 +436,10 @@ def set_password(request):
         # generate an access and refresh token for the user 
         token = generate_token(user)
 
-        # set access token cookie with custom expiration (5 mins)
-        response.set_cookie('access_token', token['access_token'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
-       
-        # set refresh token cookie with custom expiration (86400 seconds = 24 hours)
-        response.set_cookie('refresh_token', token['refresh_token'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=86400)
+        # set access/refresh token cookies
+        response.set_cookie('access_token', token['access_token'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)
+        response.set_cookie('refresh_token', token['refresh_token'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
         
-        # return response
         return response
     
     except ObjectDoesNotExist:
@@ -590,25 +585,39 @@ def verify_otp(request):
     
     try:
         stored_hashed_otp_and_salt = cache.get(email)
+
         if not stored_hashed_otp_and_salt:
-            return Response({"error": "OTP expired. Please generate a new one"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "OTP expired.. please generate a new one"}, status=status.HTTP_400_BAD_REQUEST)
+    
+        if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
+            
+            # OTP is verified, prompt the user to set their password
+            cache.delete(email)
+            authorization_otp, hashed_authorization_otp, salt = generate_otp()
+            cache.set(email+'authorization_otp', (hashed_authorization_otp, salt), timeout=300)  # 300 seconds = 5 mins
+            
+            response = Response({"message": "OTP verified successfully"}, status=status.HTTP_200_OK)
+            response.set_cookie('authorization_otp', authorization_otp, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
+            
+            return response
+        
+        else:
+
+            attempts = cache.get(email + 'attempts', 3)
+            
+            if attempts <= 0:
+                cache.delete(email)
+                cache.delete(email + 'attempts')
+                return Response({"error": "maximum OTP verification attempts exceeded.."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Incorrect OTP, decrement attempts and handle expiration
+            attempts -= 1
+            cache.set(email + 'attempts', attempts, timeout=300)  # Update attempts with expiration
+
+            return Response({"error": f"incorrect OTP.. {attempts} remaining"}, status=status.HTTP_400_BAD_REQUEST)
     
     except Exception as e:
-        return Response({"error": f"error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
-        
-        # OTP is verified, prompt the user to set their password
-        cache.delete(email)
-        authorization_otp, hashed_authorization_otp, salt = generate_otp()
-        cache.set(email+'authorization_otp', (hashed_authorization_otp, salt), timeout=300)  # 300 seconds = 5 mins
-        
-        response = Response({"message": "OTP verified successfully"}, status=status.HTTP_200_OK)
-        response.set_cookie('authorization_otp', authorization_otp, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
-        return response
-    
-    else:
-        return Response({"error": "incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # verify otp 
@@ -648,8 +657,9 @@ def otp_verification(request):
         access_token = generate_access_token(user)
 
         response = Response({"message": "OTP verified successfully"}, status=status.HTTP_200_OK)
-        response.set_cookie('access_token', access_token, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
-        response.set_cookie('authorization_otp', authorization_otp, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
+
+        response.set_cookie('access_token', access_token, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)
+        response.set_cookie('authorization_otp', authorization_otp, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
         
         return response
     
@@ -664,6 +674,7 @@ def validate_password(request):
     
     # make sure an password was sent
     sent_password = request.data.get('password')
+
     if not sent_password:
         return Response({"error": "password is required"})
     
@@ -675,17 +686,44 @@ def validate_password(request):
     if request.user.email_banned:
         return Response({ "error" : "your email address has been banned"})
     
-    # Create an OTP for the user
-    # otp, hashed_otp, salt = generate_otp()
-    
-    # Send the OTP via email
     try:
-            
-        # cache.set(request.user.email, (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
-        return Response({"message": "password verified, OTP created and sent to your email", "users_email" : request.user.email}, status=status.HTTP_200_OK)
+                
+        # Create an OTP for the user
+        otp, hashed_otp, salt = generate_otp()
+    
+        cache.set(request.user.email, (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
         
-        # else:
-        #     return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # Define your Mailgun API URL
+        mailgun_api_url = "https://api.eu.mailgun.net/v3/" + mailgun_domain + "/messages"
+
+        # Define your email data
+        email_data = {
+            "from": "seeran grades <authorization@" + mailgun_domain + ">",
+            "to": request.user.surname.title() + " " + request.user.name.title() + "<" + request.user.email + ">",
+            "subject": "One Time Passcode",
+            "template": "one-time passcode",
+            "v:onetimecode": otp,
+            "v:otpcodereason": "This OTP was generated in response to your request to update your password.."
+        }
+
+        # Define your headers
+        headers = {
+            "Authorization": "Basic " + base64.b64encode(f"api:{mailgun_api_key}".encode()).decode(),
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+
+        # Send the email via Mailgun
+        response = requests.post(
+            mailgun_api_url,
+            headers=headers,
+            data=email_data
+        )
+
+        if response.status_code == 200:
+            return Response({"message": "password verified, OTP created and sent to your email", "users_email" : request.user.email}, status=status.HTTP_200_OK)
+
+        else:
+            return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -1006,88 +1044,11 @@ def mfa_status(request):
     return Response({"mfa_status" : request.user.multifactor_authentication},status=200)
 
 
-# account activation check
-# checks if the account is activated by checking if the account has the password attr
-@api_view(["POST"]) 
-def account_status(request):
-
-    email = request.data.get("email")
-
-    # try to get the user
-    try:
-        user = CustomUser.objects.get(email=email)
- 
-    except CustomUser.DoesNotExist:
-        return Response({"error": "user with the provided email does not exist."})
-  
-    if user.password != '' and user.has_usable_password() and user.activated == True:
-        return Response({"error": "account already activated"})
-  
-    return Response({"message":"account not activated"})
-
-
 ####################################################################################################################################
+
 
 ################################################## email endpoints views #############################################################
 
-
-
-    if request.method == 'POST':
-        message = json.loads(request.body)
-        if message['Type'] == 'Notification':
-            notification = json.loads(message['Message'])
-            if notification['notificationType'] == 'Bounce':
-                bounce = notification['bounce']
-                for recipient in bounce['bouncedRecipients']:
-                    email_address = recipient['emailAddress']
-                    # Check if the bounce is permanent
-                    if bounce['bounceType'] == 'Permanent':
-                        
-                        # Add the email to your bounce table
-                        EmailBan.objects.create(email=email_address, reason="email bounced permanently", can_appeal=False)
-                        
-                        # Look up the user and tag them
-                        try:
-                            user = CustomUser.objects.get(email=email_address)
-                            user.email_banned = True
-                            user.email_ban_amount = 3
-                            user.save()
-                        except CustomUser.DoesNotExist:
-                            pass
-                    else:
-                        try:
-                            user = CustomUser.objects.get(email=email_address)
-                            if user.email_ban_amount > 2:
-                                EmailBan.objects.create(email=email_address, reason="more than 3 emails sent to your email address soft bounced", can_appeal=False)
-                            else:
-                                # Add the email to bounce table
-                                EmailBan.objects.create(email=email_address, reason="an email sent to your email address soft bounced") # the user can appeal to get thier email unbanned 
-                                user.email_banned = True
-                                user.email_ban_amount = user.email_ban_amount + 1
-                                user.save()
-                        except CustomUser.DoesNotExist:
-                            pass
-            elif notification['notificationType'] == 'Complaint':
-                complaint = notification['complaint']
-                for recipient in complaint['complainedRecipients']:
-                    email_address = recipient['emailAddress']
-                    try:
-                        user = CustomUser.objects.get(email=email_address)
-                        if user.email_ban_amount > 2:
-                            EmailBan.objects.create(email=email_address, reason="marked three of our emails as spam, this badly harms our companys email sender reputation.", can_appeal=False)
-                        else:
-                            # Handle complaints here
-                            EmailBan.objects.create(email=email_address, reason='marked one of our emails as spam this badly harms our companys email sender reputation.') # the user can appeal to get thier email unbanned 
-                            user.email_banned = True
-                            user.email_ban_amount = user.email_ban_amount + 1
-                            user.save()
-                    except CustomUser.DoesNotExist:
-                        pass
-            elif notification['notificationType'] == 'Delivery':
-                pass
-        return Response({'status':'OK'})
-    else:
-        return Response({'status':'Invalid request'})
 
 
 ####################################################################################################################################
