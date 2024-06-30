@@ -138,14 +138,12 @@ SIMPLE_JWT = {
 
 
 
-# redis caching config
+"""
+    If your Redis server is using a self-signed certificate or a certificate from an internal CA, 
+    ensure that the CA certificate chain is correctly configured on the Django application server. 
+    You may need to specify the path to the CA certificate or the entire certificate chain in your Django settings.
+"""
 CACHES = {
-    """
-        If your Redis server is using a self-signed certificate or a certificate from an internal CA, 
-        ensure that the CA certificate chain is correctly configured on the Django application server. 
-        You may need to specify the path to the CA certificate or the entire certificate chain in your Django settings.
-    """
-
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
         'LOCATION': config('CACHE_LOCATION'),
