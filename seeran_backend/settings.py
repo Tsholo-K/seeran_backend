@@ -145,9 +145,12 @@ CACHES = {
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
             'PARSER_CLASS': 'redis.connection._HiredisParser',
+            'PASSWORD': config('REDIS_PASSWORD'),
+            'SSL': True,
         }
     }
 }
+
 
 
 # postfres database
