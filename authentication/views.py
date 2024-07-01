@@ -558,7 +558,7 @@ def logout(request):
             response = Response({"message": "logged you out successful"}, status=status.HTTP_200_OK)
         
             # delete token from database
-            RefreshToken.objects.filter(user=request.user, token=token).delete()
+            RefreshToken.objects.filter(user=request.user.pk, token=token).delete()
             
             # Clear the refresh token cookie
             response.delete_cookie('access_token', domain='.seeran-grades.cloud')
