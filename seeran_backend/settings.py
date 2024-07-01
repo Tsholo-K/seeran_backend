@@ -9,15 +9,11 @@ from google.cloud.storage import Client
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
-from google.auth import default
-from google.cloud.storage import Client
-
 credentials, project_id = default()
 storage_client = Client(credentials=credentials)
 
-# MEDIA_URL = f'https://storage.googleapis.com/{config('GS_BUCKET_NAME')}/userimages/'
-# STATIC_URL = f'https://storage.googleapis.com/{config('GS_BUCKET_NAME')}/defaults/'
+MEDIA_URL = f'https://storage.googleapis.com/{config('GS_BUCKET_NAME')}/userimages/'
+STATIC_URL = f'https://storage.googleapis.com/{config('GS_BUCKET_NAME')}/defaults/'
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -174,22 +170,22 @@ CACHES = {
 
 # postfres database
 # application database
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': config('DB_NAME'),
-#         'USER': config('DB_USER'),
-#         'PASSWORD': config('DB_PASSWORD'),
-#         'HOST': config('DB_ENDPOINT'),
-#         'PORT': '5432',
-#     }
-# }
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': config('DB_NAME'),
+        'USER': config('DB_USER'),
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_ENDPOINT'),
+        'PORT': '5432',
     }
 }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+#     }
+# }
 
 
 # ssl config
