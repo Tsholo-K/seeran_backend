@@ -2,10 +2,19 @@
 from pathlib import Path
 from datetime import timedelta
 from decouple import config
+import os
 
+from google.auth import default
+from google.cloud.storage import Client
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = config('GS_CREDENTIALS')
+
+credentials, project_id = default()
+storage_client = Client(credentials=credentials)
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
