@@ -5,33 +5,16 @@ from decouple import config
 
 from google.auth import default
 from google.cloud.storage import Client
-from google.cloud import storage
-
-from storages.backends.gcloud import GoogleCloudStorage
-
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Google Storages Settings
-GS_BUCKET_NAME = config('GS_BUCKET_NAME')
-GS_CREDENTIALS = config('GS_CREDENTIALS')  # Path to your service account key JSON file
+from google.auth import default
+from google.cloud.storage import Client
 
-DEFAULT_FILE_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
-STATICFILES_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
-
-STATIC_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
-
-# Configure the Google Cloud Storage client
-client = storage.Client.from_service_account_json(GS_CREDENTIALS)
-
-# Provide the client to the storage backend
-GoogleCloudStorage = lambda: GoogleCloudStorage(
-    project_id=client.project,
-    bucket_name=GS_BUCKET_NAME,
-    credentials=client._credentials,
-)
+credentials, project_id = default()
+storage_client = Client(credentials=credentials)
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
