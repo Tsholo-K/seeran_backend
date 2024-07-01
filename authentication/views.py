@@ -282,7 +282,7 @@ def multi_factor_authentication_login(request):
             # then generate an access and refresh token for the user 
             token = generate_token(user)
             
-            if 'refresh' in token:
+            if 'refresh_token' in token:
                 # Calculate cutoff time for expired tokens
                 cutoff_time = timezone.now() - timedelta(hours=24)
                 
