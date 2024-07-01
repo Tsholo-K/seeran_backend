@@ -179,9 +179,9 @@ DATABASES = {
 
 
 # Google Storages Settings
-GS_ACCESS_KEY_ID = config('GS_ACCESS_KEY_ID')
-GS_SECRET_ACCESS_KEY = config('GS_SECRET_ACCESS_KEY')
 GS_BUCKET_NAME = config('GS_BUCKET_NAME')
+GS_CREDENTIALS = config('GS_CREDENTIALS')  # Path to your service account key JSON file
+
 DEFAULT_FILE_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
 STATICFILES_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
 
