@@ -11,34 +11,30 @@ urlpatterns = [
     path('change-email/', views.change_email, name='change users email'),
     
     # password change
-    path('validate-password/', views.validate_password, name='validate users password before password change'),
-    path('validate-password-reset/', views.validate_password_reset, name='validate users password before password change'),
+    path('validate-password/', views.validate_password, name='verifies users password before password change'),
     path('change-password/', views.change_password, name='change users password'),   
-    path('set-password/', views.set_password, name='set account password( account activation )'),
     
     # password reset
-    path('otp-verification/', views.otp_verification, name='validate user before password reset'),
-    path('reset-password/', views.reset_password, name='reset users password'),
-    
-    # multi-factor authentication
-    path('mfa-login/', views.multi_factor_authentication, name='change users multi-factor authentication prefferance'),
-    path('mfa-change/', views.mfa_change, name='change users multi-factor authentication prefferance'),
-    path('mfa-status/', views.mfa_status, name='checks the multi-factor authentication status'),
+    path('validate-password-reset/', views.validate_password_reset, name='verifies users email before password reset'),
+    path('otp-verification/', views.otp_verification, name='verifies users otp before password reset'),
+    path('reset-password/', views.reset_password, name='resets users password'),
     
     # verification
     path('verify-otp/', views.verify_otp, name='otp authentication'),
     
-    # otp
+    # otp generation
     path('resend-otp/', views.resend_otp, name='request new otp'),
-    
-    # event emails subscription
-    path('event-emails-subscription/', views.event_emails_subscription, name="event emails subscription"),
     
     # login
     path('login/', views.login, name='token obtain pair'),
     
+    # multi-factor authentication
+    path('mfa-login/', views.multi_factor_authentication_login, name='change users multi-factor authentication prefferance'),
+    path('mfa-change/', views.mfa_change, name='change users multi-factor authentication prefferance'),
+    
     # sign in
     path('sign-in/', views.signin, name='first time sign in'),
+    path('activate-account/', views.activate_account, name='set account password( account activation )'),
     
     # logout
     path('log-out/', views.logout, name='user logout'),

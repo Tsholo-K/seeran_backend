@@ -1,9 +1,8 @@
 # python
-import json
+from datetime import timedelta
 from decouple import config
 import requests
 import base64
-import json
 
 # rest framework
 from rest_framework.decorators import api_view
@@ -19,6 +18,8 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.utils import timezone
 
 # models
 from email_bans.models import EmailBan
@@ -118,16 +119,16 @@ def login(request):
         
             # then try to send the OTP to their email address
             # Define your Mailgun API URL
-            mailgun_api_url = "https://api.eu.mailgun.net/v3/" + mailgun_domain + "/messages"
+            mailgun_api_url = "https://api.eu.mailgun.net/v3/" + config('MAILGUN_DOMAIN') + "/messages"
 
             # Define your email data
             email_data = {
-                "from": "seeran grades <authorization@" + mailgun_domain + ">",
+                "from": "seeran grades <authorization@" + config('MAILGUN_DOMAIN') + ">",
                 "to": user.surname.title() + " " + user.name.title() + "<" + user.email + ">",
                 "subject": "One Time Passcode",
                 "template": "one-time passcode",
                 "v:onetimecode": otp,
-                "v:otpcodereason": "This OTP was generated in response to your account activation request.."
+                "v:otpcodereason": "Your account has mutil-factor authentication toggled on, this OTP was generated in response to your login request.."
             }
 
             # Define your headers
@@ -178,7 +179,7 @@ def login(request):
         
             with transaction.atomic():
                 # Delete expired tokens and count active tokens in one database query
-                expired_tokens_count = RefreshToken.objects.filter(user=user, is_active=True, created_at__lt=cutoff_time).delete()[0]
+                RefreshToken.objects.filter(user=user, is_active=True, created_at__lt=cutoff_time).delete()[0]
                 refresh_tokens_count = RefreshToken.objects.filter(user=user, is_active=True).count()
             
             if refresh_tokens_count >= 3:
@@ -194,7 +195,7 @@ def login(request):
             response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)
         
         else:
-            response = Response({"error": "couldn't generating authentication token"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            response = Response({"error": "couldn't generating authentication tokens"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return response
     
@@ -213,7 +214,7 @@ def login(request):
 
 
 @api_view(['POST'])
-def multi_factor_authentication(request):
+def multi_factor_authentication_login(request):
 
     """
         This view handles the multi-factor authentication (MFA) process. It expects a POST request with the user's email and OTP.
@@ -306,7 +307,7 @@ def multi_factor_authentication(request):
                 response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)
             
             else:
-                response = Response({"error": "couldn't generating authentication token"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                response = Response({"error": "couldn't generating authentication tokens"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
             return response
         
@@ -405,7 +406,7 @@ def signin(request):
             "subject": "One Time Passcode",
             "template": "one-time passcode",
             "v:onetimecode": otp,
-            "v:otpcodereason": "This OTP was generated in response to your account activation request.."
+            "v:otpcodereason": "We are pleased to have you trying out our service, this OTP was generated in response to your account activation request.."
         }
 
         # Define your headers
@@ -445,7 +446,7 @@ def signin(request):
 
 
 @api_view(['POST'])
-def set_password(request):
+def activate_account(request):
 
     """
         This view handles the account activation process for first-time sign-in. It expects a POST request with the user's email and new password.
@@ -464,18 +465,12 @@ def set_password(request):
 
         Note: All exceptions are handled and appropriate HTTP status codes are returned.
     """
-
-    # get authorization otp 
-    otp = request.COOKIES.get('authorization_otp')
-
-    if not otp:
-        return Response({"denied": "permission denied, request missing authorization OTP"}, status=status.HTTP_401_UNAUTHORIZED)
     
     email = request.data.get('email')
     new_password = request.data.get('password')
     confirm_password = request.data.get('confirmpassword')
 
-    if not email or not new_password or not confirm_password:
+    if not (email or new_password or confirm_password):
         return Response({"error": "missing credentials, all fields are required"}, status=status.HTTP_400_BAD_REQUEST)
     
     if new_password != confirm_password:
@@ -483,18 +478,26 @@ def set_password(request):
     
     try:
 
+        # get authorization otp 
+        otp = request.COOKIES.get('authorization_otp')
         hashed_authorization_otp_and_salt = cache.get(email + 'authorization_otp')
 
-        if not hashed_authorization_otp_and_salt:
-            return Response({"denied": "authorization OTP expired, request unauthorized"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        if not verify_user_otp(otp, hashed_authorization_otp_and_salt):
-            return Response({"denied": "incorrect authorization OTP, request denied"}, status=status.HTTP_400_BAD_REQUEST)
+        if not (hashed_authorization_otp_and_salt or otp or verify_user_otp(otp, hashed_authorization_otp_and_salt)):
+            # if the authorization otp does'nt match the one stored for the user return an error 
+            response = Response({"denied": "invalid authorization OTP, action forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
+                        
+            cache.delete(user.email + 'authorization_otp')
+
+            if otp:
+                response.delete_cookie('authorization_otp', domain='.seeran-grades.cloud')
+                
+            return response
         
         # activate users account
-        user = CustomUser.objects.activate_user(email=email, password=new_password)
+        with transaction.atomic():
+            user = CustomUser.objects.activate_user(email=email, password=new_password)
 
-        response = Response({"message": "login successful", "role": user.role.title()}, status=status.HTTP_200_OK)
+        response = Response({"message": "account activation successful", "role": user.role.title()}, status=status.HTTP_200_OK)
                 
         # generate an access and refresh token for the user 
         token = generate_token(user)
@@ -546,18 +549,21 @@ def authenticate(request):
 @api_view(['POST'])
 def logout(request):
   
-    refresh_token = request.COOKIES.get('refresh_token')
+    token = request.COOKIES.get('refresh_token')
   
-    if refresh_token:
+    if token:
        
         try:
             # Add the refresh token to the blacklist
             response = Response({"message": "logged you out successful"}, status=status.HTTP_200_OK)
         
+            # delete token from database
+            RefreshToken.objects.filter(user=request.user, token=token).delete()
+            
             # Clear the refresh token cookie
             response.delete_cookie('access_token', domain='.seeran-grades.cloud')
             response.delete_cookie('refresh_token', domain='.seeran-grades.cloud')
-            cache.set(refresh_token, 'blacklisted', timeout=86400)
+            cache.set(token, 'blacklisted', timeout=86400)
          
             return response
    
@@ -1099,12 +1105,6 @@ def resend_otp(request):
 
 ###################################################### account status check views ##################################################
 
-
-# checks the accounts multi-factor authentication status
-@api_view(["GET"])
-@token_required
-def mfa_status(request):
-    return Response({"mfa_status" : request.user.multifactor_authentication},status=200)
 
 
 ####################################################################################################################################
