@@ -182,8 +182,8 @@ DATABASES = {
 GS_ACCESS_KEY_ID = config('GS_ACCESS_KEY_ID')
 GS_SECRET_ACCESS_KEY = config('GS_SECRET_ACCESS_KEY')
 GS_BUCKET_NAME = config('GS_BUCKET_NAME')
-DEFAULT_FILE_STORAGE = 'storages.backends.gs.GSBotoStorage'
-STATICFILES_STORAGE = 'storages.backends.gs.GSBotoStorage'
+DEFAULT_FILE_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
+STATICFILES_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
 
 STATIC_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
 
