@@ -11,6 +11,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
 
+
 # uplaod image max-size 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 26214400  # 25 MB
 
@@ -177,11 +178,13 @@ DATABASES = {
 
 
 # Google Storages Settings
+GS_ACCESS_KEY_ID = config('GS_ACCESS_KEY_ID')
+GS_SECRET_ACCESS_KEY = config('GS_SECRET_ACCESS_KEY')
+GS_BUCKET_NAME = config('GS_BUCKET_NAME')
 DEFAULT_FILE_STORAGE = 'storages.backends.gs.GSBotoStorage'
-GS_ACCESS_KEY_ID = 'YourID'
-GS_SECRET_ACCESS_KEY = 'YourKEY'
-GS_BUCKET_NAME = 'YourBucket'
 STATICFILES_STORAGE = 'storages.backends.gs.GSBotoStorage'
+
+STATIC_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
 
 
 # ssl config

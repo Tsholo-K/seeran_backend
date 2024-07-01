@@ -32,6 +32,9 @@ from .serializers import (SecurityInfoSerializer,
 from authentication.decorators import token_required
 from .decorators import founder_only
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 ###################################### general views ###########################################
 
@@ -423,6 +426,7 @@ def update_profile_picture(request):
         return Response({"error" : "user with the provided credentials does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
     except Exception as e:
+        logger.exception("An error occurred when updating the profile picture")
         # if any exceptions rise during return the response return it as the response
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
