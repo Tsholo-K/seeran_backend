@@ -27,7 +27,7 @@ def token_required(view_func):
         if not refresh_token:
             return JsonResponse({'error': 'request not authenticated.. access denied'}, status=status.HTTP_401_UNAUTHORIZED)
    
-        if cache.get(refresh_token) == 'blacklisted':
+        if cache.get(refresh_token):
             return JsonResponse({'error': 'invalid security credentials.. request revoked'}, status=status.HTTP_401_UNAUTHORIZED)
     
         if not access_token:
