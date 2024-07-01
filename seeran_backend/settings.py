@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'corsheaders', # handle cors 
     'django_redis', # redis caching
     'channels', # websockets
+    'storages', # allows communication with google storage bucket
 ]
 
 
