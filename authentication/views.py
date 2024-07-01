@@ -291,8 +291,8 @@ def multi_factor_authentication_login(request):
             
                 with transaction.atomic():
                     # Delete expired tokens and count active tokens in one database query
-                    expired_tokens_count = RefreshToken.objects.filter(user=user, is_active=True, created_at__lt=cutoff_time).delete()[0]
-                    refresh_tokens_count = RefreshToken.objects.filter(user=user, is_active=True).count()
+                    expired_tokens_count = RefreshToken.objects.filter(user=user, created_at__lt=cutoff_time).delete()[0]
+                    refresh_tokens_count = RefreshToken.objects.filter(user=user).count()
                 
                 if refresh_tokens_count >= 3:
                     return Response({"error": "maximum number of connected devices reached"}, status=status.HTTP_403_FORBIDDEN)
