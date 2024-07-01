@@ -16,6 +16,8 @@ from google.cloud.storage import Client
 credentials, project_id = default()
 storage_client = Client(credentials=credentials)
 
+STATIC_URL = f'https://storage.googleapis.com/{config('GS_BUCKET_NAME')}/'
+
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
