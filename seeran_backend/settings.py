@@ -17,6 +17,8 @@ credentials, project_id = default()
 storage_client = Client(credentials=credentials)
 
 MEDIA_URL = f'https://storage.googleapis.com/{config('GS_BUCKET_NAME')}/userimages/'
+STATIC_URL = f'https://storage.googleapis.com/{config('GS_BUCKET_NAME')}/defaults/'
+
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
@@ -104,8 +106,8 @@ CORS_ALLOW_METHODS = config('CORS_ALLOW_METHODS').split(',')
 # cors credentials
 # allows credentials (cookies, authorization headers, or TLS client certificates) to be sent in cross-origin requests.
 CORS_ALLOW_CREDENTIALS = True 
-SESSION_COOKIE_DOMAIN = '.seeran-grades.com'
-CSRF_COOKIE_DOMAIN = '.seeran-grades.com'
+SESSION_COOKIE_DOMAIN = '.seeran-grades.cloud'
+CSRF_COOKIE_DOMAIN = '.seeran-grades.cloud'
 
 
 # applications default user model
@@ -186,8 +188,6 @@ DATABASES = {
 #         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
 #     }
 # }
-
-
 
 
 # ssl config
