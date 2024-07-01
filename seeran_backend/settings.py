@@ -162,6 +162,7 @@ CACHES = {
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
             'PARSER_CLASS': 'redis.connection._HiredisParser',
+            'CONNECTION_POOL_CLASS': 'redis.connection.BlockingConnectionPool',  # Use BlockingConnectionPool for SSL
             'CONNECTION_POOL_KWARGS': {'ssl_ca_certs': '/home/seeran_grades2/seeran_backend/seeran_backend/server-ca.pem'}, # as done here
         }
     }
