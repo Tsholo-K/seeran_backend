@@ -1,8 +1,8 @@
-import os
-
+# python
 from pathlib import Path
 from datetime import timedelta
 from decouple import config
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -156,7 +156,6 @@ CACHES = {
 }
 
 
-
 # postfres database
 # application database
 DATABASES = {
@@ -175,6 +174,14 @@ DATABASES = {
 #         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
 #     }
 # }
+
+
+# Google Storages Settings
+DEFAULT_FILE_STORAGE = 'storages.backends.gs.GSBotoStorage'
+GS_ACCESS_KEY_ID = 'YourID'
+GS_SECRET_ACCESS_KEY = 'YourKEY'
+GS_BUCKET_NAME = 'YourBucket'
+STATICFILES_STORAGE = 'storages.backends.gs.GSBotoStorage'
 
 
 # ssl config

@@ -362,7 +362,7 @@ def signin(request):
 
             # if the email was successfully sent cache the otp then return the response
             cache.set(user.email, (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
-            return Response({"message": "OTP created and sent to your email", 'response': response, "email" : user.email}, status=status.HTTP_200_OK)
+            return Response({"message": "OTP created and sent to your email",}, status=status.HTTP_200_OK)
         
         # if there was an error sending the email respond accordingly
         return Response({"error": "failed to send OTP to your email address"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)    

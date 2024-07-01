@@ -9,9 +9,9 @@ from rest_framework.response import Response
 from rest_framework import status
 
 # django
-from django.core.mail import BadHeaderError
 from django.db.models import Q
 from django.core.cache import cache
+from django.db import transaction
 
 # custom decorators
 from authentication.decorators import token_required
@@ -31,7 +31,6 @@ from .serializers import (SecurityInfoSerializer,
 # custom decorators
 from authentication.decorators import token_required
 from .decorators import founder_only
-
 
 
 ###################################### general views ###########################################
@@ -392,16 +391,13 @@ def update_profile_picture(request):
    
     profile_picture = request.FILES.get('profile_picture', None)
  
-    if profile_picture:
-     
-        try:
-            user = CustomUser.objects.get(account_id=request.user.account_id)  # get the current user
-    
-        except CustomUser.DoesNotExist:
-            return Response({"error" : "user with the provided credentials does not exist"}, status=status.HTTP_404_NOT_FOUND)
-        
-        try:
-        
+    if not profile_picture:
+        return Response({"error" : "No file was uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = CustomUser.objects.get(account_id=request.user.account_id)  # get the current user
+
+        with transaction.atomic():
             user.profile_picture.delete()  # delete the old profile picture if it exists
 
             # Generate a new filename
@@ -414,28 +410,21 @@ def update_profile_picture(request):
             user.profile_picture.save(filename, profile_picture)  # save the new profile picture
             user.save()
 
-            for _ in range(10):
-                if not cache.get(str(user.account_id) + 'profile_picture'):
-                    break  # Exit the loop if the cached URL has been deleted
-
-                cache.delete(str(user.account_id) + 'profile_picture')
-                
-            else:
-                # Return an error response if the cached URL couldn't be deleted after 10 attempts
-                return Response({"error": "there was an error overwriting existing image url"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
+        if cache.get(user.account_id + 'profile_picture'):
+            cache.delete(user.account_id + 'profile_picture')
+        
+        else:
             user.refresh_from_db()  # Refresh the user instance from the database
 
             serializer = ProfilePictureSerializer(instance=user)
             return Response({"profile_picture" : serializer.data}, status=status.HTTP_200_OK)
         
-        except Exception as e:
-    
-            # if any exceptions rise during return the response return it as the response
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    except CustomUser.DoesNotExist:
+        return Response({"error" : "user with the provided credentials does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
-    else:
-        return Response({"error" : "No file was uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        # if any exceptions rise during return the response return it as the response
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # remove users picture
