@@ -103,7 +103,7 @@ def login(request):
                     RefreshToken.objects.create(user=user, token=refresh_token)
                 
                     # set access token cookie with custom expiration (5 mins)
-                    response.set_cookie('access_token', token['access'], domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)
+                    response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)
                     
                     # set refresh token cookie with custom expiration (86400 seconds = 24 hours)
                     response.set_cookie('refresh_token', token['refresh'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
@@ -160,7 +160,7 @@ def login(request):
                 response = Response({"multifactor_authentication": "a new OTP has been sent to your email address"}, status=status.HTTP_200_OK)
             
                 # set the authorization cookie then return the response
-                response.set_cookie('authorization_otp', authorization_otp, domain='.seeran-grades.com', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
+                response.set_cookie('authorization_otp', authorization_otp, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
                 
                 return response
                 
