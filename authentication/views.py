@@ -178,9 +178,11 @@ def login(request):
             response = Response({"message": "login successful", "role" : user.role.title()}, status=status.HTTP_200_OK)
         
             with transaction.atomic():
-                # Delete expired tokens and count active tokens in one database query
-                RefreshToken.objects.filter(user=user, is_active=True, created_at__lt=cutoff_time).delete()[0]
-                refresh_tokens_count = RefreshToken.objects.filter(user=user, is_active=True).count()
+                # Delete all RefreshToken objects for the user that were created before the cutoff_time
+                RefreshToken.objects.filter(user=user, created_at__lt=cutoff_time).delete()
+
+                # Count the remaining RefreshToken objects for the user
+                refresh_tokens_count = RefreshToken.objects.filter(user=user).count()
             
             if refresh_tokens_count >= 3:
                 return Response({"error": "maximum number of connected devices reached"}, status=status.HTTP_403_FORBIDDEN)
@@ -290,8 +292,10 @@ def multi_factor_authentication_login(request):
                 response = Response({"message": "login successful", "role" : user.role.title()}, status=status.HTTP_200_OK)
             
                 with transaction.atomic():
-                    # Delete expired tokens and count active tokens in one database query
-                    expired_tokens_count = RefreshToken.objects.filter(user=user, created_at__lt=cutoff_time).delete()[0]
+                    # Delete all RefreshToken objects for the user that were created before the cutoff_time
+                    RefreshToken.objects.filter(user=user, created_at__lt=cutoff_time).delete()
+
+                    # Count the remaining RefreshToken objects for the user
                     refresh_tokens_count = RefreshToken.objects.filter(user=user).count()
                 
                 if refresh_tokens_count >= 3:
