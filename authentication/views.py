@@ -301,8 +301,7 @@ def multi_factor_authentication_login(request):
                 if refresh_tokens_count >= 3:
                     return Response({"error": "maximum number of connected devices reached"}, status=status.HTTP_403_FORBIDDEN)
     
-                refresh_token = token['refresh_token']
-                RefreshToken.objects.create(user=user, token=refresh_token)
+                RefreshToken.objects.create(user=user, token=token['refresh_token'])
                 
                 # set refresh token cookie with custom expiration (86400 seconds = 24 hours)
                 response.set_cookie('refresh_token', token['refresh_token'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
@@ -505,6 +504,8 @@ def activate_account(request):
                 
         # generate an access and refresh token for the user 
         token = generate_token(user)
+        
+        RefreshToken.objects.create(user=user, token=token['refresh_token'])
 
         # set access/refresh token cookies
         response.set_cookie('access_token', token['access_token'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)
