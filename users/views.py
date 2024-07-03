@@ -376,20 +376,17 @@ def delete_user(request):
     try:
         user = CustomUser.objects.get(account_id=account_id)
  
+        if (user.role == 'PRINCIPAL' or (user.role == 'ADMIN' and request.user.role != 'PRINCIPAL') or request.user.school != user.school):
+            return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
+
+        # try to delete the user instance
+        user.delete()
+        return Response({"message" : "user account successfully removed from system",}, status=status.HTTP_200_OK)
+    
     except CustomUser.DoesNotExist:
         return Response({"error" : "user with the provided credentials can not be found"}, status=status.HTTP_404_NOT_FOUND)
  
-    if user.role == 'PRINCIPAL' or (user.role == 'ADMIN' and request.user.role != 'PRINCIPAL') or request.user.school != user.school:
-        return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
-
-    # try to delete the user instance
-    try:
-        
-        user.delete()
-        return Response({"message" : "user account successfully removed from system",}, status=status.HTTP_200_OK)
- 
     except Exception as e:
-       
         # if any exceptions rise during return the response return it as the response
         return Response({"error": {str(e)}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
