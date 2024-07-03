@@ -7,6 +7,6 @@ from . import views
 urlpatterns = [
     
     # principal account urls
-    path('principal-invoices/<str:user_id>/', views.principal_invoices, name="create school account"),
+    path('principal-invoices/<str:account_id>/', views.principal_invoices, name="create school account"),
     
 ]
