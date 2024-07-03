@@ -1,6 +1,9 @@
 # python 
 import uuid
 import urllib.parse
+from decouple import config
+import requests
+import base64
 
 # rest framework
 from rest_framework.decorators import api_view, parser_classes
@@ -11,6 +14,7 @@ from rest_framework import status
 # django
 from django.db.models import Q
 from django.core.cache import cache
+from django.db import transaction
 from django.db import transaction
 
 # custom decorators
@@ -33,8 +37,6 @@ from authentication.decorators import token_required
 from .decorators import founder_only
 
 import logging
-
-logger = logging.getLogger(__name__)
 
 ###################################### general views ###########################################
 
@@ -164,42 +166,70 @@ def user_profile(request, account_id):
 @founder_only
 def create_principal(request, school_id):
           
-    # try to get the school instance
     try:
+        # try to get the school instance
         school = School.objects.get(school_id=school_id)
   
+        # Check if the school already has a principal
+        if CustomUser.objects.filter(school=school, role="PRINCIPAL").exists():
+            return Response({"error" : "school already has a principal account linked to it"}, status=status.HTTP_400_BAD_REQUEST)
+    
+        # Add the school instance to the request data
+        data = request.data.copy()
+        data['school'] = school.id
+        data['role'] = "PRINCIPAL"
+    
+        serializer = PrincipalCreationSerializer(data=data)
+    
+        if serializer.is_valid():
+            
+            with transaction.atomic():
+                user = serializer.save()
+        
+                # Create a new Balance instance for the user
+                Balance.objects.create(user=user)
+                
+            # then try to send the OTP to their email address
+            # Define your Mailgun API URL
+            mailgun_api_url = "https://api.eu.mailgun.net/v3/" + config('MAILGUN_DOMAIN') + "/messages"
+
+            # Define your email data
+            email_data = {
+                "from": "seeran grades <authorization@" + config('MAILGUN_DOMAIN') + ">",
+                "to": user.surname.title() + " " + user.name.title() + "<" + user.email + ">",
+                "subject": "Account Creation Confirmation",
+                "template": "account creation confirmation",
+            }
+
+            # Define your headers
+            headers = {
+                "Authorization": "Basic " + base64.b64encode(f"api:{config('MAILGUN_API_KEY')}".encode()).decode(),
+                "Content-Type": "application/x-www-form-urlencoded"
+            }
+
+            # Send the email via Mailgun
+            response = requests.post(
+                mailgun_api_url,
+                headers=headers,
+                data=email_data
+            )
+
+            if response.status_code == 200:
+        
+                return Response({"message": "principal account created successfully"}, status=status.HTTP_201_CREATED)
+                    
+            else:
+                # if there was an error sending the email respond accordingly
+                return Response({"error": "failed to send OTP to users email address"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        return Response({"error" : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        
     except School.DoesNotExist:
         return Response({"error" : "school with the provided credentials can not be found"}, status=status.HTTP_404_NOT_FOUND)
-  
-    # Check if the school already has a principal
-    if CustomUser.objects.filter(school=school, role="PRINCIPAL").exists():
-        return Response({"error" : "school already has a principal account linked to it"}, status=status.HTTP_400_BAD_REQUEST)
-   
-    # Add the school instance to the request data
-    data = request.data.copy()
-    data['school'] = school.id
-    data['role'] = "PRINCIPAL"
-  
-    serializer = PrincipalCreationSerializer(data=data)
-   
-    if serializer.is_valid():
-      
-        try:
-             
-            created_user = serializer.save()
-        
-            # Create a new Balance instance for the user
-            Balance.objects.create(user=created_user)
-        
-            return Response({"message": "principal account created successfully"}, status=status.HTTP_201_CREATED)
-            
-            # else:
-            #     return Response({"error": "email sent to users email address bounced"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-      
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)    
- 
-    return Response({"error" : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)    
+
 
 
 # delete principal account
@@ -211,18 +241,14 @@ def delete_principal(request):
     try:
         # Get the school instance
         user = CustomUser.objects.get(account_id=request.data['account_id'])
- 
+        user.delete()
+      
+        return Response({"message" : "user account deleted successfully",}, status=status.HTTP_200_OK)
+    
     except CustomUser.DoesNotExist:
         return Response({"error" : "user with the provided credentials can not be found"}, status=status.HTTP_404_NOT_FOUND)
  
-    try:
-        # Add the school instance to the request data
-        user.delete()
-      
-        return Response({"message" : "user account successfully deleted",}, status=status.HTTP_200_OK)
- 
     except Exception as e:
-       
         # if any exceptions rise during return the response return it as the response
         return Response({"error": {str(e)}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -251,65 +277,88 @@ def create_user(request):
     # try to get the school instance
     try:
         school = School.objects.get(school_id=request.user.school.school_id)
+    
+        # retrieve the provided information
+        name = request.data.get('name')
+        surname = request.data.get('surname')
+        id_number = request.data.get('id_number')
+        email = request.data.get('email')
+        child_id = request.data.get('child_id')
+
+        # if anyone of these is missing return a 400 error
+        if not name or not surname:
+            return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if role == 'PARENT':
+            if not child_id:
+                return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if role in ['ADMIN', 'PARENT', 'TEACHER'] and not email:
+            return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if role == 'STUDENT':
+            if not id_number:
+                return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # copy the request data to a data variable and add school
+        data = request.data.copy()
+        data['school'] = school.id
+        
+        serializer = UserCreationSerializer(data=data)
+        
+        if serializer.is_valid():
+
+            # Extract validated data
+            validated_data = serializer.validated_data
+            
+            with transaction.atomic():
+                # Try to create the user using the manager's method
+                user = CustomUser.objects.create_user(**validated_data)      
+                user.save()
+                
+            # then try to send the OTP to their email address
+            # Define your Mailgun API URL
+            mailgun_api_url = "https://api.eu.mailgun.net/v3/" + config('MAILGUN_DOMAIN') + "/messages"
+
+            # Define your email data
+            email_data = {
+                "from": "seeran grades <authorization@" + config('MAILGUN_DOMAIN') + ">",
+                "to": user.surname.title() + " " + user.name.title() + "<" + user.email + ">",
+                "subject": "Account Creation Confirmation",
+                "template": "account creation confirmation",
+            }
+
+            # Define your headers
+            headers = {
+                "Authorization": "Basic " + base64.b64encode(f"api:{config('MAILGUN_API_KEY')}".encode()).decode(),
+                "Content-Type": "application/x-www-form-urlencoded"
+            }
+
+            # Send the email via Mailgun
+            response = requests.post(
+                mailgun_api_url,
+                headers=headers,
+                data=email_data
+            )
+
+            if response.status_code == 200:
+                return Response({"message": "{} account created successfully".format(role.title()) }, status=status.HTTP_201_CREATED)
+                
+            else:
+                # if there was an error sending the email respond accordingly
+                return Response({"error": "failed to send OTP to users email address"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+        return Response({"error" : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
   
     except School.DoesNotExist:
         return Response({"error" : "school with the provided credentials can not be found"}, status=status.HTTP_404_NOT_FOUND)
-    
-    # retrieve the provided information
-    name = request.data.get('name')
-    surname = request.data.get('surname')
-    id_number = request.data.get('id_number')
-    email = request.data.get('email')
-    child_id = request.data.get('child_id')
-
-    # if anyone of these is missing return a 400 error
-    if not name or not surname:
-        return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
-
-    if role == 'ADMIN' or  role == 'PARENT' or  role == 'TEACHER':
-
-        # if anyone of these is missing return a 400 error
-        if not email:
-            return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
-
-    if role == 'STUDENT':
-
-        # if anyone of these is missing return a 400 error
-        if not id_number:
-            return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
         
-    # copy the request data to a data variable and add school
-    data = request.data.copy()
-    data['school'] = school.id
+    except ValueError as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
-    serializer = UserCreationSerializer(data=data)
-    
-    if serializer.is_valid():
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)    
 
-        # Extract validated data
-        validated_data = serializer.validated_data
-        
-        # Try to create the user using the manager's method
-        try:
-            user = CustomUser.objects.create_user(**validated_data)
-            
-        except ValueError as e:
-            # Handle the ValueError raised from create_user method
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    
-        try:
-
-            user.save()
-            return Response({"message": "{} account created successfully".format(role.title()) }, status=status.HTTP_201_CREATED)
-            
-            # else:
-            #     return Response({"error": "email sent to users email address bounced"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)    
-
-    return Response({"error" : serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # delete user account
@@ -426,7 +475,6 @@ def update_profile_picture(request):
         return Response({"error" : "user with the provided credentials does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
     except Exception as e:
-        logger.exception("An error occurred when updating the profile picture")
         # if any exceptions rise during return the response return it as the response
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
