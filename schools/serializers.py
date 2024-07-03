@@ -4,7 +4,6 @@
 from rest_framework import serializers
 
 # django
-from django.core.cache import cache
 from django.db.models import Q
 
 # models
@@ -58,7 +57,7 @@ class SchoolSerializer(serializers.ModelSerializer):
             return {
                 "name" : principal.name,
                 "surname" : principal.surname,
-                "id" : principal.user_id,
+                "id" : principal.account_id,
                 'image': '/default-user-image.svg',
                 # add any other fields you want to include
             }
