@@ -40,7 +40,7 @@ class BillSerializer(serializers.ModelSerializer):
                 'name': user.name,
                 'surname': user.surname,
                 'email': user.email,
-                'picture': user.picture.url if user.picture else None,
+                'picture': user.profile_picture.url if user.picture else None,
             }
         
         else:
