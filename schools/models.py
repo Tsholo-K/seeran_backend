@@ -9,7 +9,7 @@ from django.utils.translation import gettext_lazy as _
 class School(models.Model):
     
     
-    ########################################### required fields #############################################
+############################################## required fields ###################################################
     
     
     name = models.CharField(_('school name'), max_length=100)
@@ -61,7 +61,7 @@ class School(models.Model):
     school_id = models.CharField(max_length=15, unique=True)   
 
 
-    ##################################### fields set by school( not important ) ################################
+########################################### fields set by school( not important ) ################################
     
     
     grading_system = models.TextField(blank=True, null=True)  # Grading System Details
@@ -81,7 +81,7 @@ class School(models.Model):
     school_motto = models.CharField(max_length=255, blank=True, null=True)  # School Motto or Mission Statement
     
 
-    ############################################### model extra details ###########################################
+#################################################### model extra details ###########################################
 
 
     class Meta:
@@ -108,4 +108,5 @@ class School(models.Model):
             id = f"{prefix}{unique_part}"
             if not School.objects.filter(school_id=id).exists():
                 return id
+            
         raise ValueError('failed to generate a unique account ID after 10 attempts, please try again later.')

@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     'django_redis', # redis caching
     'channels', # websockets
     'storages', # allows communication with google storage bucket
+    'django_celery_beat',
 ]
 
 
