@@ -32,14 +32,14 @@ def principal_invoices(request, account_id):
         principal_bills = Bill.objects.filter(user=principal).order_by('-date_billed')
         
         if not principal_bills:
-            return Response({"invoices" : None}, status=status.HTTP_200_OK)
+            return Response({"invoices" : None, 'in_arrears': principal.school.in_arrears}, status=status.HTTP_200_OK)
         
         # Serialize the bills
         serializer = BillsSerializer(principal_bills, many=True)
-        return Response({ "invoices" : serializer.data }, status=status.HTTP_200_OK)
+        return Response({ "invoices" : serializer.data, 'in_arrears': principal.school.in_arrears }, status=status.HTTP_200_OK)
     
     except CustomUser.DoesNotExist:
-        return Response({"error" : "user not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error" : "user with the provided credentials can not be found"}, status=status.HTTP_404_NOT_FOUND)
     
     except Exception as e:
         # if any exceptions rise during return the response return it as the response

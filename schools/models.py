@@ -16,8 +16,8 @@ class School(models.Model):
     email = models.EmailField(_('school email address'), max_length=255)
     contact_number = models.CharField(_('school contact number'), max_length=15)
     
-    in_arears = models.BooleanField(_('school bill'), default=False)
-    none_compliant = models.BooleanField(_('school bill'), default=False)
+    in_arrears = models.BooleanField(_('school bill'), default=False)
+    none_compliant = models.BooleanField(_('school denied access'), default=False)
 
     # school type choices
     SCHOOL_TYPE_CHOICES = [
