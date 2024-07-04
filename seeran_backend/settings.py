@@ -3,8 +3,12 @@ from pathlib import Path
 from datetime import timedelta
 from decouple import config
 
+# google
 from google.auth import default
 from google.cloud.storage import Client
+
+# celery
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -147,6 +151,15 @@ SIMPLE_JWT = {
     'TOKEN_BLACKLIST_ENABLED': True,
     'TOKEN_BLACKLIST_MODEL': 'rest_framework_simplejwt.token_blacklist.BlacklistedToken',
     # Other settings (e.g., ALGORITHM, SIGNING_KEY, etc.) can be customized as well
+}
+
+
+# celery beat scheduler
+CELERY_BEAT_SCHEDULE = {
+    'bill_users': {
+        'task': 'balances.tasks.bill_users',  # Replace with the actual path to your task
+        'schedule': crontab(hour='0,8,16'), # to run task at midnight, 8 AM, and 4 PM
+    },
 }
 
 
