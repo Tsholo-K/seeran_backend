@@ -49,7 +49,7 @@ class Bill(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
 
     date_billed = models.DateField()
-    date_settled = models.DateField()
+    date_settled = models.DateField(null=True, blank=True)
 
     paid_by = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, null=True, blank=True, related_name='bills_paid')
     is_paid = models.BooleanField(default=False)
