@@ -36,7 +36,6 @@ from .serializers import (SecurityInfoSerializer,
 from authentication.decorators import token_required
 from .decorators import founder_only
 
-import logging
 
 ###################################### general views ###########################################
 

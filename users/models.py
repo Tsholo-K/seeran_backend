@@ -34,6 +34,9 @@ class CustomUserManager(BaseUserManager):
         
         if role in ['STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL'] and school is None:
             raise ValueError(_('user must be part of a school'))
+        
+        if role == 'PARENT':  # a parent shouldnt be associated with a school
+            school = None
 
         if role == 'STUDENT':
            
@@ -43,8 +46,7 @@ class CustomUserManager(BaseUserManager):
             if not grade:
                 raise ValueError(_('student needs to be in an allocated grade'))
 
-        if email:
-            email = self.normalize_email(email)
+        email = self.normalize_email(email)
         
         if role == 'PRINCIPAL':
         
@@ -107,7 +109,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='grade_students', blank=True, null=True)
 
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='users', null=True)
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='users', null=True, blank=True)
     
     activated = models.BooleanField(_('account active or not'), default=False)
     
