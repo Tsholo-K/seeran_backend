@@ -68,7 +68,7 @@ def login(request):
         # after successful authentication try to get the user object from the database
         user = CustomUser.objects.get(email=request.data.get('email'))
         
-        if not user.role not in  ["FOUNDER", "PARENT"]:
+        if user.role not in  ["FOUNDER", "PARENT"]:
             if user.school.none_compliant:
                 return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
      
@@ -376,7 +376,7 @@ def signin(request):
         # try to validate the credentials by getting a user with the provided credentials 
         user = CustomUser.objects.get(email=email)
 
-        if not user.role not in  ["FOUNDER", "PARENT"]:
+        if user.role not in  ["FOUNDER", "PARENT"]:
             if user.school.none_compliant:
                 return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
                 

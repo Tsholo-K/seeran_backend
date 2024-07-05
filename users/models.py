@@ -35,7 +35,7 @@ class CustomUserManager(BaseUserManager):
         if role in ['STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL'] and school is None:
             raise ValueError(_('user must be part of a school'))
         
-        if role == 'PARENT':  # a parent shouldnt be associated with a school
+        if role in ['FOUNDER', 'PARENT']:  # a parent/founder shouldnt be associated with a school
             school = None
 
         if role == 'STUDENT':
