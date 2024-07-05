@@ -5,6 +5,7 @@ from rest_framework import serializers
 
 # django
 from django.db.models import Q
+from django.utils.text import capfirst
 
 # models
 from .models import School
@@ -39,10 +40,11 @@ class SchoolSerializer(serializers.ModelSerializer):
         
     principal = serializers.SerializerMethodField()
     balance = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
 
     class Meta:
         model = School
-        fields = ['principal', 'balance' ]
+        fields = ['principal', 'balance', 'name' ]
                 
     def get_principal(self, obj):
     
@@ -83,6 +85,9 @@ class SchoolSerializer(serializers.ModelSerializer):
     
         else:
             return None
+    
+    def get_name(self, obj):
+        return capfirst(obj.name)
     
     
 class SchoolDetailsSerializer(serializers.ModelSerializer):

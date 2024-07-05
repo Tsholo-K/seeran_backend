@@ -30,7 +30,7 @@ class BillSerializer(serializers.ModelSerializer):
  
     class Meta:
         model = Bill
-        fields = ['user', 'amount', 'date_billed', 'is_paid', 'bill_id']
+        fields = ['user', 'amount', 'date_billed', 'is_paid']
 
     def get_user(self, obj):
         user = obj.user
