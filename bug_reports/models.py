@@ -11,7 +11,7 @@ from users.models import CustomUser
 class BugReport(models.Model):
 
     # User who reported the bug
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='my_bug_reports')
     section = models.CharField(max_length=124)
 
     DASHBOARD_CHOICES = [ ('STUDENT', 'Student'), ('TEACHER', 'Teacher'), ('ADMIN', 'Admin'), ('PRINCIPAL', 'Principal') ]

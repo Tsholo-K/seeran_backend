@@ -181,9 +181,12 @@ def create_principal(request, school_id):
         serializer = PrincipalCreationSerializer(data=data)
     
         if serializer.is_valid():
+
+            # Extract validated data
+            validated_data = serializer.validated_data
             
             with transaction.atomic():
-                user = serializer.save()
+                user = CustomUser.objects.create_user(**validated_data) 
         
                 # Create a new Balance instance for the user
                 Balance.objects.create(user=user)
@@ -271,10 +274,10 @@ def create_user(request):
         return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
 
     if role not in ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT']:
-        return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
+        return Response({ "error" : 'invlaid information, request denied' }, status=status.HTTP_400_BAD_REQUEST)
 
-    # try to get the school instance
     try:
+        # try to get the school instance
         school = School.objects.get(school_id=request.user.school.school_id)
     
         # retrieve the provided information
@@ -288,11 +291,7 @@ def create_user(request):
         if not name or not surname:
             return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
         
-        if role == 'PARENT':
-            if not child_id:
-                return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
-
-        if role in ['ADMIN', 'PARENT', 'TEACHER'] and not email:
+        if (role == 'PARENT' and not child_id) or (role in ['ADMIN', 'PARENT', 'TEACHER'] and not email):
             return Response({"error": "missing information"}, status=status.HTTP_400_BAD_REQUEST)
 
         if role == 'STUDENT':
@@ -312,8 +311,12 @@ def create_user(request):
             
             with transaction.atomic():
                 # Try to create the user using the manager's method
-                user = CustomUser.objects.create_user(**validated_data)      
-                user.save()
+                user = CustomUser.objects.create_user(**validated_data)
+
+                if role == 'STUDENT':
+                    # Create a new Balance instance for the user
+                    Balance.objects.create(user=user)
+
                 
             # then try to send the OTP to their email address
             # Define your Mailgun API URL

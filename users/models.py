@@ -19,24 +19,44 @@ from authentication.utils import get_upload_path, is_phone_number_valid
 class CustomUserManager(BaseUserManager):
     
     # user creation 
-    def create_user(self, email=None, id_number=None, name=None, surname=None, phone_number=None, role=None, school=None, grade=None, **extra_fields):
+    def create_user(self, email=None, id_number=None, name=None, surname=None, phone_number=None, role=None, children=None, school=None, grade=None, **extra_fields):
           
         if not email and not id_number:
-            raise ValueError(_('either email or ID number must be set'))
+            raise ValueError(_('either email or ID number must be provided'))
      
         # Check if the email already exists in the system
         if email and self.model.objects.filter(email=email).exists():
-            raise ValueError(_('A user with the provided email already exists'))
+            raise ValueError(_('An account with the provided email already exists'))
 
         # Check if the ID number already exists in the system
         if id_number and self.model.objects.filter(id_number=id_number).exists():
-            raise ValueError(_('A user with the provided ID number already exists'))
+            raise ValueError(_('An account with the provided ID number already exists'))
         
-        if role in ['STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL'] and school is None:
-            raise ValueError(_('user must be part of a school'))
+        if role in ['STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL']:
+            if school is None:
+                raise ValueError(_('Account must be associated with a school'))
         
-        if role in ['FOUNDER', 'PARENT']:  # a parent/founder shouldnt be associated with a school
-            school = None
+        else:
+            school = None # a parent/founder shouldnt be associated with a school
+        
+        if role == 'PRINCIPAL':
+        
+            if phone_number is None:      
+                raise ValueError(_('Account must have a contact number'))
+          
+            if not is_phone_number_valid(phone_number):
+                raise ValueError(_('invalid phone number format'))
+        
+        else:
+            phone_number = None
+
+        if role == 'PARENT':
+
+            if children == None:
+                raise ValueError(_('Account must be linked with a student account'))
+        
+        else:
+            children = None
 
         if role == 'STUDENT':
            
@@ -45,18 +65,17 @@ class CustomUserManager(BaseUserManager):
           
             if not grade:
                 raise ValueError(_('student needs to be in an allocated grade'))
-
-        email = self.normalize_email(email)
         
-        if role == 'PRINCIPAL':
-        
-            if phone_number is None:      
-                raise ValueError(_('user must have a contact number'))
-          
-            if not is_phone_number_valid(phone_number):
-                raise ValueError(_('invalid phone number format'))
+        else:
+            grade = None
+            id_number = None
 
-        user = self.model(email=email, id_number=id_number, name=name, surname=surname, phone_number=phone_number, role=role, school=school, **extra_fields)
+        if email:
+            email = self.normalize_email(email)
+
+        user = self.model(email=email, id_number=id_number, name=name, surname=surname, children=children, phone_number=phone_number, role=role, school=school, **extra_fields)
+        user.save(using=self._db)
+
         return user
         
     
@@ -66,35 +85,34 @@ class CustomUserManager(BaseUserManager):
         # try finding the user using the provided email 
         try:
             user = self.get(email=email)
-    
-        except self.model.DoesNotExist:
-            return "User not found"
 
-        # Validate the password
-        try:
+            # Validate the password
             validate_password(password)
-     
+
+            # Hash and salt the password
+            user.set_password(password)
+            user.activated = True
+        
+            # save the updated user to the database
+            user.save(using=self._db)
+            return user
+        
+        except self.model.DoesNotExist:
+            return "Account with the provided credentials does not exist"
+        
         except ValidationError as e:
-            return str(e)
-
-        # Hash and salt the password
-        user.set_password(password)
-        user.activated = True
-      
-        # save the updated user to the database
-        user.save(using=self._db)
-        return user
-
-
-    # super user 
-    def create_superuser(self, email, password=None, **extra_fields):
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
+                return str(e)
         
-        if not email:
-            raise ValueError(_('The Email field must be set'))
+    # # super user 
+    # def create_superuser(self, email, password=None, **extra_fields):
+
+    #     extra_fields.setdefault('is_staff', True)
+    #     extra_fields.setdefault('is_superuser', True)
         
-        return self.create_user(email, password=password, **extra_fields)
+    #     if not email:
+    #         raise ValueError(_('The Email field must be set'))
+        
+    #     return self.create_user(email, password=password, **extra_fields)
 
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
@@ -102,12 +120,14 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     # needed feilds 
     email = models.EmailField(_('email address'), unique=True, blank=True, null=True)
     id_number = models.CharField(_('ID number'), max_length=13, unique=True, blank=True, null=True)
+
     name = models.CharField(_('name'), max_length=32)
     surname = models.CharField(_('surname'), max_length=32)
     phone_number = models.CharField(_('phone number'), max_length=9, unique=True, blank=True, null=True)
+
     account_id = models.CharField(max_length=15, unique=True)
 
-    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='grade_students', blank=True, null=True)
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='students', blank=True, null=True)
 
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='users', null=True, blank=True)
     
@@ -118,15 +138,10 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     
     # choices for the role field
     ROLE_CHOICES = [ ('STUDENT', 'Student'), ('TEACHER', 'Teacher'), ('ADMIN', 'Admin'), ('PRINCIPAL', 'Principal'), ('FOUNDER', 'Founder'), ]
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="STUDENT")
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     
     # children field
     children = models.ManyToManyField('self', blank=True)
-    
-    # permissions needed by django do not change( unless you have a valid reason to )
-    is_active = models.BooleanField(_('active'), default=True)
-    is_staff = models.BooleanField(_('staff status'), default=False)
-    is_superuser = models.BooleanField(_('superuser status'), default=False)
     
     # email communication preferance
     event_emails = models.BooleanField(_('email subscription'), default=False)
@@ -137,11 +152,16 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     email_banned = models.BooleanField(_('email banned'), default=False)
     email_ban_amount = models.SmallIntegerField(_('amount of times email has been banned'), default=0)
     
+    # permissions needed by django do not change( unless you have a valid reason to )
+    is_active = models.BooleanField(_('active'), default=True)
+    is_staff = models.BooleanField(_('staff status'), default=False)
+    is_superuser = models.BooleanField(_('superuser status'), default=False)
+    
     # field for authentication
     USERNAME_FIELD = 'email' 
     
     # all required fields
-    REQUIRED_FIELDS = ['name', 'surname', 'school', 'role']
+    REQUIRED_FIELDS = ['name', 'surname', 'role']
 
     objects = CustomUserManager()
 
