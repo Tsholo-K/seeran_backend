@@ -16,7 +16,9 @@ class BugReport(models.Model):
     
     # Detailed description of the bug
     section = models.CharField(max_length=124)
-    dashboard = models.CharField(max_length=124)
+
+    DASHBOARD_CHOICES = [ ('STUDENT', 'Student'), ('TEACHER', 'Teacher'), ('ADMIN', 'Admin'), ('PRINCIPAL', 'Principal'), ('FOUNDER', 'Founder') ]
+    dashboard = models.CharField( choices=DASHBOARD_CHOICES, max_length=124)
 
     # Detailed description of the bug
     description = models.TextField()

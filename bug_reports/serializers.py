@@ -31,13 +31,17 @@ class UpdateBugReportStatusSerializer(serializers.ModelSerializer):
 class BugReportsSerializer(serializers.ModelSerializer):
 
     status = serializers.SerializerMethodField()
-    
+    dashboard = serializers.SerializerMethodField()
+
     class Meta:
         model = BugReport
         fields = [ 'dashboard', 'created_at', 'updated_at', 'status', 'bugreport_id' ]
         
     def get_status(self, obj):
         return obj.status.replace("_", " ").title()
+    
+    def get_dashboard(self, obj):
+        return obj.dashboard.title()
         
         
 class BugReportSerializer(serializers.ModelSerializer):
