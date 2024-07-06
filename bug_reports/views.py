@@ -25,22 +25,24 @@ from .serializers import CreateBugReportSerializer, BugReportsSerializer, BugRep
 @token_required
 def create_bug_report(request):
 
-    if request.user.role == "FOUNDER":
-        return Response({"denied" : "come on dude"})
-    
-    data = request.data.copy()
-    data['user'] = request.user.id
-    serializer = CreateBugReportSerializer(data=data)
-    
-    if serializer.is_valid():
-        try:
+    try:
+        if request.user.role == "FOUNDER":
+            return Response({"denied" : "come on dude"})
+        
+        data = request.data.copy()
+        data['user'] = request.user.id
+        serializer = CreateBugReportSerializer(data=data)
+
+        if serializer.is_valid():
             serializer.save()
             return Response({"message" : "bug report submitted successfully"}, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            # if any exceptions rise during return the response, return it as the response
-            return Response({"error": f"{str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    else:
-        return Response({"error" : serializer.errors})
+        
+        else:
+            return Response({"error" : serializer.errors})
+        
+    except Exception as e:
+        # if any exceptions rise during return the response, return it as the response
+        return Response({"error": f"{str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # get users id info

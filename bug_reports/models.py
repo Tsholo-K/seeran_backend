@@ -38,7 +38,7 @@ class BugReport(models.Model):
         if not self.bugreport_id:
             self.bugreport_id = self.generate_unique_id('BR')
 
-        super(CustomUser, self).save(*args, **kwargs)
+        super(BugReport, self).save(*args, **kwargs)
 
     @staticmethod
     def generate_unique_id(prefix=''):
