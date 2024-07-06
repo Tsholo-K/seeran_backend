@@ -61,6 +61,7 @@ class BugReportSerializer(serializers.ModelSerializer):
                 'surname': user.surname,
                 'email': user.email,
                 'picture': user.profile_picture.url if user.profile_picture else None,
+                'id' : user.account_id,
             }
         
         else:
