@@ -24,11 +24,14 @@ from .serializers import CreateBugReportSerializer, BugReportsSerializer, BugRep
 @api_view(['POST'])
 @token_required
 def create_bug_report(request):
+
     if request.user.role == "FOUNDER":
         return Response({"denied" : "come on dude"})
+    
     data = request.data.copy()
     data['user'] = request.user.id
     serializer = CreateBugReportSerializer(data=data)
+    
     if serializer.is_valid():
         try:
             serializer.save()

@@ -16,6 +16,7 @@ class BugReport(models.Model):
     
     # Detailed description of the bug
     section = models.CharField(max_length=124)
+    dashboard = models.CharField(max_length=124)
 
     # Detailed description of the bug
     description = models.TextField()

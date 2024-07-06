@@ -18,7 +18,7 @@ class CreateBugReportSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BugReport
-        fields = [ 'user', 'section', 'description' ]
+        fields = [ 'user', 'section', 'description', 'dashboard' ]
         
         
 class UpdateBugReportStatusSerializer(serializers.ModelSerializer):
@@ -47,12 +47,22 @@ class BugReportSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BugReport
-        fields = [ 'section', 'created_at', 'updated_at', 'status', 'description', 'user' ]
+        fields = [ 'section', 'created_at', 'updated_at', 'status', 'description', 'dashboard', 'user' ]
         
     def get_status(self, obj):
         return obj.status.replace("_", " ").title()
     
     def get_user(self, obj):
-      
-        return '/default-user-image.svg'
+        user = obj.user
+
+        if user is not None:
+            return {
+                'name': user.name,
+                'surname': user.surname,
+                'email': user.email,
+                'picture': user.profile_picture.url if user.profile_picture else None,
+            }
+        
+        else:
+            return None
         

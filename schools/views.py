@@ -66,7 +66,10 @@ def school(request, school_id):
         serializer = SchoolSerializer(instance=school)
       
         return Response({"school" : serializer.data}, status=200)
- 
+    
+    except School.DoesNotExist:
+        return Response({"error" : "school with the provided credentials can not be found"}, status=status.HTTP_404_NOT_FOUND)
+    
     except Exception as e:
         return Response({"error" : str(e)}, status=500)
 
@@ -81,7 +84,10 @@ def school_details(request, school_id):
         serializer = SchoolDetailsSerializer(instance=school)
     
         return Response({"school" : serializer.data}, status=200)
- 
+    
+    except School.DoesNotExist:
+        return Response({"error" : "school with the provided credentials can not be found"}, status=status.HTTP_404_NOT_FOUND)
+    
     except Exception as e:
         return Response({"error" : str(e)}, status=500)
 
