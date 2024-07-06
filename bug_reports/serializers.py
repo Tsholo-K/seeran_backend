@@ -34,7 +34,7 @@ class BugReportsSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = BugReport
-        fields = [ 'section', 'created_at', 'updated_at', 'status', 'bugreport_id' ]
+        fields = [ 'dashboard', 'created_at', 'updated_at', 'status', 'bugreport_id' ]
         
     def get_status(self, obj):
         return obj.status.replace("_", " ").title()
