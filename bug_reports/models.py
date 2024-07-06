@@ -3,7 +3,6 @@ import uuid
 
 # django
 from django.db import models
-from django.db import IntegrityError
 
 # models
 from users.models import CustomUser
@@ -13,22 +12,16 @@ class BugReport(models.Model):
 
     # User who reported the bug
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    
-    # Detailed description of the bug
     section = models.CharField(max_length=124)
 
-    DASHBOARD_CHOICES = [ ('STUDENT', 'Student'), ('TEACHER', 'Teacher'), ('ADMIN', 'Admin'), ('PRINCIPAL', 'Principal'), ('FOUNDER', 'Founder') ]
-    dashboard = models.CharField( choices=DASHBOARD_CHOICES, max_length=124)
+    DASHBOARD_CHOICES = [ ('STUDENT', 'Student'), ('TEACHER', 'Teacher'), ('ADMIN', 'Admin'), ('PRINCIPAL', 'Principal') ]
+    dashboard = models.CharField(choices=DASHBOARD_CHOICES, max_length=10)
 
     # Detailed description of the bug
     description = models.TextField()
 
     # Status of the bug report
-    STATUS_CHOICES = [
-        ('NEW', 'New'),
-        ('IN_PROGRESS', 'In Progress'),
-        ('RESOLVED', 'Resolved'),
-    ]
+    STATUS_CHOICES = [ ('NEW', 'New'), ('IN_PROGRESS', 'In Progress'), ('RESOLVED', 'Resolved') ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='NEW')
     
     bugreport_id = models.CharField(max_length=15, unique=True)
@@ -43,28 +36,16 @@ class BugReport(models.Model):
     # overwrite save method 
     def save(self, *args, **kwargs):
         if not self.bugreport_id:
-            self.bugreport_id = self.generate_unique_account_id('BR')
+            self.bugreport_id = self.generate_unique_id('BR')
 
-        attempts = 0
-        while attempts < 5:
-            try:
-                super().save(*args, **kwargs)
-                break
-            except IntegrityError:
-                # If an IntegrityError is raised, it means the bugreport_id was not unique.
-                # Generate a new bugreport_id and try again.
-                self.bugreport_id = self.generate_unique_account_id('BR')
-                attempts += 1
-        if attempts >= 5:
-            raise ValueError('Could not create bug report with unique report ID after 5 attempts. Please try again later.')
-
+        super(CustomUser, self).save(*args, **kwargs)
 
     @staticmethod
-    def generate_unique_account_id(prefix=''):
-        while True:
-            unique_part = uuid.uuid4().hex
-            account_id = prefix + unique_part
-            account_id = account_id[:15].ljust(15, '0')
-
-            if not BugReport.objects.filter(bugreport_id=account_id).exists():
-                return account_id
+    def generate_unique_id(prefix=''):
+        max_attempts = 10
+        for _ in range(max_attempts):
+            unique_part = uuid.uuid4().hex[:13]  # Take only the first 13 characters
+            id = f"{prefix}{unique_part}"
+            if not BugReport.objects.filter(bugreport_id=id).exists():
+                return id
+        raise ValueError('failed to generate a unique bug report ID after 10 attempts, please try again later.')
