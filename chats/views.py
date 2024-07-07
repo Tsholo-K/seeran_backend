@@ -5,15 +5,6 @@ from rest_framework import status
 
 # custom decorators
 from authentication.decorators import token_required
-from users.decorators import admins_only
-
-# serilializers
-from .serializers import ClassesSerializer
-
-# models
-from users.models import CustomUser
-from grades.models import Grade
-
 
 
 ###################################### admindashboard views ###########################################
