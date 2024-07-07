@@ -50,7 +50,6 @@ def create_bug_report(request):
 # get users bug reports
 @api_view(["GET"])
 @token_required
-@founder_only
 def my_bug_reports(request):
    
     report = BugReport.objects.get(user=request.user)
