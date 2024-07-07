@@ -12,19 +12,18 @@
     further route those requests/connections based on their path.
 """
 import os
+from channels.routing import ProtocolTypeRouter, URLRouter
+from channels.auth import AuthMiddlewareStack
 from django.core.asgi import get_asgi_application
-from channels.routing import ProtocolTypeRouter
 
+from .routing import websocket_urlpatterns  # Import routing configuration
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'seeran_backend.settings')
 
-from .routing import application  # Import the ASGI app from routing.py
-
-# This will serve the Django ASGI application at the root routing configuration
-django_asgi_app = get_asgi_application()
-
 # Apply the Django ASGI application as a base for the other protocols like Websockets
 application = ProtocolTypeRouter({
-    "http": django_asgi_app,
-    "websocket": application,
+    "http": get_asgi_application(),
+    "websocket": AuthMiddlewareStack(
+        URLRouter(websocket_urlpatterns)
+    ),
 })
