@@ -171,7 +171,7 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [config('CACHE_LOCATION'), 6378],
+            'hosts': [config('CACHE_LOCATION')],
         },
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
