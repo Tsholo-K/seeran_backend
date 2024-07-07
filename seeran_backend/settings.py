@@ -68,7 +68,7 @@ INSTALLED_APPS = [
     # third party apps
     'corsheaders', # handle cors 
     'django_redis', # redis caching
-    'channels', # websockets
+    'channels', # django channels 
     'storages', # allows communication with google storage bucket
     'django_celery_beat',
 ]
@@ -163,6 +163,20 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 
+"""
+    is necessary for Django Channels to know where and how to send/receive messages over the network. 
+    It's separate from Django's cache framework, which is why it needs its own configuration
+"""
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [config('CACHE_LOCATION')],
+        },
+    },
+}
+
+
 
 """
     If your Redis server is using a self-signed certificate or a certificate from an internal CA, 
@@ -236,7 +250,7 @@ TEMPLATES = [
 
 # seeran_backend/settings.py
 # WSGI_APPLICATION = 'seeran_backend.wsgi.application'
-ASGI_APPLICATION = "seeran_backend.asgi.application"
+ASGI_APPLICATION = "seeran_backend.routing.application"
 
 
 # Password validation
