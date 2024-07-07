@@ -15,7 +15,7 @@ urlpatterns = [
     path('resolved-bug-reports/', views.resolved_bug_reports, name="get all resolved bug reports"),
 
     path('resolved-bug-report/<str:bug_report_id>/', views.resolved_bug_report, name="get a resolved bug report"),
-    path('resolved-bug-report/<str:bug_report_id>/', views.unresolved_bug_report, name="get a unresolved bug report"),
+    path('unresolved-bug-report/<str:bug_report_id>/', views.unresolved_bug_report, name="get a unresolved bug report"),
 
     path('update-bug-report-status/<str:bug_report_id>/', views.update_bug_report_status, name="update bug report status"),
     
