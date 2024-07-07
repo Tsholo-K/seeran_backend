@@ -171,14 +171,10 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [config('CACHE_LOCATION')],
+            'hosts': [(config('CACHE_LOCATION'), 6379)],
+            'ssl_cert_reqs': 'required',
+            'ssl_ca_certs': config('SERVER_CA_CERT'),
         },
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            'PARSER_CLASS': 'redis.connection._HiredisParser',
-            'CONNECTION_POOL_CLASS': 'redis.connection.BlockingConnectionPool',  # Use BlockingConnectionPool for SSL
-            'CONNECTION_POOL_KWARGS': {'ssl_ca_certs': '/home/seeran_grades2/seeran_backend/seeran_backend/server-ca.pem'}, # as done here
-        }
     },
 }
 
@@ -192,12 +188,12 @@ CHANNEL_LAYERS = {
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': config('CACHE_LOCATION'),
+        'LOCATION': config('CACHE_LOCATION') + ':6378',
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
             'PARSER_CLASS': 'redis.connection._HiredisParser',
             'CONNECTION_POOL_CLASS': 'redis.connection.BlockingConnectionPool',  # Use BlockingConnectionPool for SSL
-            'CONNECTION_POOL_KWARGS': {'ssl_ca_certs': '/home/seeran_grades2/seeran_backend/seeran_backend/server-ca.pem'}, # as done here
+            'CONNECTION_POOL_KWARGS': {'ssl_ca_certs': config('SERVER_CA_CERT')}, # as done here
         }
     }
 }
