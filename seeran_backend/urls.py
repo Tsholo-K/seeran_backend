@@ -12,5 +12,4 @@ urlpatterns = [
     path('api/ebap/', include('email_bans.urls') ),
     path('api/clss/', include('classes.urls') ),
     path('api/tmtb/', include('timetables.urls') ),
-    path('ws/', include('chats.urls') ),
 ]

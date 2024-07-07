@@ -6,6 +6,5 @@ from . import views
 
 urlpatterns = [
     # admindashboard urls
-    path('', views.hi, name='hi'),
 
 ]
