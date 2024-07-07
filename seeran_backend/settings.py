@@ -250,7 +250,7 @@ TEMPLATES = [
 
 # seeran_backend/settings.py
 # WSGI_APPLICATION = 'seeran_backend.wsgi.application'
-ASGI_APPLICATION = "seeran_backend.routing.application"
+ASGI_APPLICATION = "seeran_backend.asgi.application"
 
 
 # Password validation
