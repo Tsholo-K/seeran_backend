@@ -1,8 +1,11 @@
-from django.urls import re_path
+from channels.routing import ProtocolTypeRouter, URLRouter
+
+from django.urls import path
 
 from chats import consumers
 
-websocket_urlpatterns = [
-    re_path('ws/users', consumers.MainConsumer.as_asgi()),
-    # Add more websocket routes as needed
-]
+application = ProtocolTypeRouter({
+    'websocket': URLRouter([
+        path('ws/', consumers.ChatConsumer.as_asgi()),
+    ]),
+})
