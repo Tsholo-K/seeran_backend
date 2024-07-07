@@ -13,15 +13,15 @@
 """
 import os
 from django.core.asgi import get_asgi_application
-from channels.routing import ProtocolTypeRouter
-
+from channels.routing import ProtocolTypeRouter, URLRouter
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'seeran_backend.settings')
 
-from .routing import application as websocket_application
 
-# Apply the Django ASGI application as a base for the other protocols like Websockets
+from .routing import websocket_urlpatterns  # Import the websocket_urlpatterns
+
+# Define application as ProtocolTypeRouter
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),
-    "websocket": websocket_application,
+    "websocket": URLRouter(websocket_urlpatterns),
 })
