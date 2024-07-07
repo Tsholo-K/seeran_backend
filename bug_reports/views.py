@@ -52,8 +52,8 @@ def create_bug_report(request):
 @token_required
 def my_bug_reports(request):
    
-    report = BugReport.objects.get(user=request.user)
-    serializer = BugReportsSerializer(instance=report)
+    reports = BugReport.objects.get(user=request.user)
+    serializer = BugReportsSerializer(reports, many=True)
     
     return Response({ "reports" : serializer.data},status=200)
  
