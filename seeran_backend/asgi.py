@@ -18,10 +18,10 @@ from channels.routing import ProtocolTypeRouter
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'seeran_backend.settings')
 
-from .routing import application  # Import the ASGI app from routing.py
+from .routing import application as websocket_application
 
 # Apply the Django ASGI application as a base for the other protocols like Websockets
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),
-    "websocket": application,
+    "websocket": websocket_application,
 })
