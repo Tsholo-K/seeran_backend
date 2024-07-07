@@ -173,6 +173,9 @@ CHANNEL_LAYERS = {
         'CONFIG': {
             'hosts': [config('CACHE_LOCATION')],
         },
+        'OPTIONS': {
+            'CONNECTION_POOL_KWARGS': {'ssl_ca_certs': '/home/seeran_grades2/seeran_backend/seeran_backend/server-ca.pem'}, # as done here
+        }
     },
 }
 
