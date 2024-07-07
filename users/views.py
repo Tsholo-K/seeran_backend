@@ -27,17 +27,14 @@ from schools.models import School
 from balances.models import Balance
 
 # serilializers
-from .serializers import (SecurityInfoSerializer,
-    PrincipalCreationSerializer, ProfileSerializer, UsersSerializer,
-    UserCreationSerializer, ProfilePictureSerializer
-)
+from .serializers import (SecurityInfoSerializer, PrincipalCreationSerializer, ProfileSerializer, UsersSerializer, UserCreationSerializer, ProfilePictureSerializer)
 
 # custom decorators
 from authentication.decorators import token_required
 from .decorators import founder_only
 
 
-###################################### general views ###########################################
+################################################## general views ###########################################################
 
 
 # get users security info
@@ -152,11 +149,11 @@ def user_profile(request, account_id):
     return Response({ "user" : serializer.data }, status=201)
 
 
-################################################################################################
+############################################################################################################################
 
 
 
-############################## founderdashboard view functions #################################
+######################################### founderdashboard view functions ###################################################
 
 
 # create principal account
@@ -255,11 +252,11 @@ def delete_principal(request):
         return Response({"error": {str(e)}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-################################################################################################
+###########################################################################################################################
 
 
 
-#################################### admindashboard views ######################################
+################################################# admindashboard views #####################################################
 
 
 # create ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT'] user accounts

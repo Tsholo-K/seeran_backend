@@ -19,7 +19,19 @@ class CreateBugReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = BugReport
         fields = [ 'user', 'section', 'description', 'dashboard' ]
+
+
+class MyBugReportSerializer(serializers.ModelSerializer):
+    
+    status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BugReport
+        fields = [ 'section', 'created_at', 'updated_at', 'status', 'description', 'dashboard' ]
         
+    def get_status(self, obj):
+        return obj.status.replace("_", " ").title()
+     
         
 class UpdateBugReportStatusSerializer(serializers.ModelSerializer):
 
@@ -44,7 +56,7 @@ class BugReportsSerializer(serializers.ModelSerializer):
         return obj.dashboard.title()
         
         
-class BugReportSerializer(serializers.ModelSerializer):
+class UnresolvedBugReportSerializer(serializers.ModelSerializer):
     
     user = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
@@ -71,3 +83,26 @@ class BugReportSerializer(serializers.ModelSerializer):
         else:
             return None
         
+
+class ResolvedBugReportSerializer(serializers.ModelSerializer):
+    
+    user = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BugReport
+        fields = [ 'section', 'created_at', 'updated_at', 'description', 'dashboard', 'user' ]
+    
+    def get_user(self, obj):
+        user = obj.user
+
+        if user is not None:
+            return {
+                'name': user.name,
+                'surname': user.surname,
+                'email': user.email,
+                'picture': user.profile_picture.url if user.profile_picture else None,
+                'id' : user.account_id,
+            }
+        
+        else:
+            return None

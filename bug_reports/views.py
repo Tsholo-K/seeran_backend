@@ -1,5 +1,4 @@
 # python 
-import random
 
 # django
 from django.shortcuts import get_object_or_404
@@ -17,7 +16,10 @@ from users.decorators import founder_only
 from .models import BugReport
 
 # serializers
-from .serializers import CreateBugReportSerializer, BugReportsSerializer, BugReportSerializer, UpdateBugReportStatusSerializer
+from .serializers import CreateBugReportSerializer, BugReportsSerializer, UnresolvedBugReportSerializer, ResolvedBugReportSerializer, UpdateBugReportStatusSerializer, MyBugReportSerializer
+
+
+################################################## general views ##########################################################
 
 
 # create bug report
@@ -45,14 +47,59 @@ def create_bug_report(request):
         return Response({"error": f"{str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+# get users bug reports
+@api_view(["GET"])
+@token_required
+@founder_only
+def my_bug_reports(request):
+   
+    report = BugReport.objects.get(user=request.user)
+    serializer = BugReportsSerializer(instance=report)
+    
+    return Response({ "reports" : serializer.data},status=200)
+ 
+
+# get users bug report
+@api_view(["GET"])
+@token_required
+def my_bug_report(request, bug_report_id):
+   
+    report = BugReport.objects.get(bugreport_id=bug_report_id)
+
+    if report.user != request.user:
+        return Response({"error": "missing permissions, request denied"}, status=status.HTTP_403_FORBIDDEN)
+    
+    serializer = MyBugReportSerializer(instance=report)
+    return Response({ "report" : serializer.data},status=200)
+
+   
+
+###########################################################################################################################
+
+
+################################################## founderdashboard views #################################################
+
+
+# get resolved bug reports
+@api_view(["GET"])
+@token_required
+@founder_only
+def resolved_bug_reports(request):
+ 
+    reports = BugReport.objects.filter(status="RESOLVED").order_by('-created_at')   
+    serializer = BugReportsSerializer(reports, many=True)
+    
+    return Response({ "reports" : serializer.data },status=200)
+
+
 # get users id info
 @api_view(["GET"])
 @token_required
 @founder_only
-def bug_report(request, bug_report_id):
+def resolved_bug_report(request, bug_report_id):
    
     report = BugReport.objects.get(bugreport_id=bug_report_id)
-    serializer = BugReportSerializer(instance=report)
+    serializer = ResolvedBugReportSerializer(instance=report)
     
     return Response({ "report" : serializer.data},status=200)
 
@@ -68,16 +115,16 @@ def unresolved_bug_reports(request):
     return Response({ "reports" : serializer.data },status=200)
 
 
-# get resolved bug reports
+# get users id info
 @api_view(["GET"])
 @token_required
 @founder_only
-def resolved_bug_reports(request):
- 
-    reports = BugReport.objects.filter(status="RESOLVED").order_by('-created_at')   
-    serializer = BugReportsSerializer(reports, many=True)
+def unresolved_bug_report(request, bug_report_id):
+   
+    report = BugReport.objects.get(bugreport_id=bug_report_id)
+    serializer = UnresolvedBugReportSerializer(instance=report)
     
-    return Response({ "reports" : serializer.data },status=200)
+    return Response({ "report" : serializer.data},status=200)
 
 
 # change bug report status
@@ -91,12 +138,11 @@ def update_bug_report_status(request, bug_report_id):
    
     if serializer.is_valid():
         serializer.save()
-        
-        # Generate a random 6-digit number
-        # this will invalidate the cache on the frontend
-        bug_reports_section = random.randint(100000, 999999)
       
-        return Response({ "message" : "bug report status successfully changed", "bug_reports_section" : bug_reports_section  }, status=200)
+        return Response({ "message" : "bug report status successfully changed"}, status=200)
   
     else:
         return Response({ "error" : serializer.errors }, status=status.HTTP_400_BAD_REQUEST)
+    
+
+###########################################################################################################################
