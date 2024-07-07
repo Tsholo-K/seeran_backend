@@ -1,3 +1,28 @@
-from django.shortcuts import render
+# rest framework
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
 
-# Create your views here.
+# custom decorators
+from authentication.decorators import token_required
+from users.decorators import admins_only
+
+# serilializers
+from .serializers import ClassesSerializer
+
+# models
+from users.models import CustomUser
+from grades.models import Grade
+
+
+
+###################################### admindashboard views ###########################################
+
+
+# get teachers classes
+@api_view(['GET'])
+@token_required
+def hi(request):
+    
+    # Return the response
+    return Response({ "message" : 'hi' }, status=status.HTTP_201_CREATED)
