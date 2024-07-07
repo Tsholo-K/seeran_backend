@@ -172,6 +172,7 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
             'hosts': [(config('CACHE_LOCATION'), 6379)],
+            'ssl_ca_certs': config('SERVER_CA_CERT'),
         },
     },
 }
