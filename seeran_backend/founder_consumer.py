@@ -4,6 +4,7 @@ import json
 # django
 from django.db.models import Count
 from django.db import models
+from django.forms.models import model_to_dict
 
 from users.models import CustomUser
 from schools.models import School
@@ -124,12 +125,14 @@ class FounderConsumer(AsyncWebsocketConsumer):
     def fetch_schools(self):
 
         try:
-            schools = list(School.objects.all().annotate(
+            schools = School.objects.all().annotate(
                 students=Count('users', filter=models.Q(users__role='STUDENT')),
                 parents=Count('users', filter=models.Q(users__role='PARENT')),
                 teachers=Count('users', filter=models.Q(users__role='TEACHER'))
-            ))
-            return schools
+            )
+            # Convert each School instance to a dictionary
+            school_dicts = [model_to_dict(school) for school in schools]
+            return school_dicts
         
         # if any exception occurs during the proccess return an error
         except Exception as e:
