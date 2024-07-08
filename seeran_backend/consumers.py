@@ -33,8 +33,9 @@ class MainConsumer(AsyncWebsocketConsumer):
                 security_info = await self.fetch_security_info(user)
                 if security_info is not None:
                     serializer = SecurityInfoSerializer(data=security_info)  # Serialize fetched data
+                    
                     if serializer.is_valid():  # Validate serialized data
-                        await self.send(text_data=json.dumps({ 'action': 'your_security_information', 'data': serializer.data }))
+                        await self.send(text_data=json.dumps({ serializer.data }))
                     else:
                         await self.send(text_data=json.dumps({ 'error': 'failed to serialize data' }))
                 
@@ -43,10 +44,8 @@ class MainConsumer(AsyncWebsocketConsumer):
     @sync_to_async
     def fetch_security_info(self, user):
         # Example: Fetch security information asynchronously from CustomUser model
-        # Replace with your actual data fetching logic
         try:
             user = CustomUser.objects.get(id=user.id)
-            
             return {
                 'multifactor_authentication': user.multifactor_authentication,
                 'event_emails': user.event_emails,
