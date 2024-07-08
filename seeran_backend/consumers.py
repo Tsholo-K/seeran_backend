@@ -17,24 +17,33 @@ class MainConsumer(AsyncWebsocketConsumer):
         pass
 
     async def receive(self, text_data):
-        data = json.loads(text_data)
-        action = data.get('action')
-
-        if action == 'my_security_information':
-            # Example: Fetch security information based on user context
-            user = self.scope.get('user')
+        
+        user = self.scope.get('user')
+        
+        if user:
+            action = json.loads(text_data).get('action')
+            description = json.loads(text_data).get('description')
+            details = json.loads(text_data).get('details')
             
-            if user:
-                security_info = await self.fetch_security_info(user)
-                if security_info is not None:
-                    serializer = SecurityInfoSerializer(data=security_info)  # Serialize fetched data
-                    
-                    if serializer.is_valid():  # Validate serialized data
-                        return await self.send(text_data=json.dumps({'user_data': serializer.data }))
-                    else:
-                        return await self.send(text_data=json.dumps({ 'error': 'failed to serialize data' }))
+            if not ( action or description ):
+                return await self.send(text_data=json.dumps({ 'error': 'invalid request.. permission denied' }))
+
+            if action == 'GET':
                 
-            return await self.send(text_data=json.dumps({ 'error': 'request not authenticated.. access denied' }))
+                if description == 'my_security_information':
+                    security_info = await self.fetch_security_info(user)
+                    
+                    if security_info is not None:
+                        serializer = SecurityInfoSerializer(data=security_info)  # Serialize fetched data
+                        
+                        if serializer.is_valid():  # Validate serialized data
+                            return await self.send(text_data=json.dumps({'user_data': serializer.data }))
+                        
+                        return await self.send(text_data=json.dumps({ 'error': 'failed to serialize data' }))
+                        
+                    return await self.send(text_data=json.dumps({ 'error': 'user with the provided credentials does not exist' }))
+                
+        return await self.send(text_data=json.dumps({ 'error': 'request not authenticated.. access denied' }))
 
     @sync_to_async
     def fetch_security_info(self, user):
