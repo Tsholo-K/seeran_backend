@@ -1,6 +1,6 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
 import json
-from channels.db import database_sync_to_async
+
 from users.models import CustomUser
 from users.serializers import SecurityInfoSerializer
 from asgiref.sync import sync_to_async  # Import sync_to_async for database_sync_to_async
@@ -30,11 +30,11 @@ class MainConsumer(AsyncWebsocketConsumer):
                     serializer = SecurityInfoSerializer(data=security_info)  # Serialize fetched data
                     
                     if serializer.is_valid():  # Validate serialized data
-                        await self.send(text_data=json.dumps({'user_data': serializer.data }))
+                        return await self.send(text_data=json.dumps({'user_data': serializer.data }))
                     else:
-                        await self.send(text_data=json.dumps({ 'error': 'failed to serialize data' }))
+                        return await self.send(text_data=json.dumps({ 'error': 'failed to serialize data' }))
                 
-            await self.send(text_data=json.dumps({ 'error': 'request not authenticated.. access denied' }))
+            return await self.send(text_data=json.dumps({ 'error': 'request not authenticated.. access denied' }))
 
     @sync_to_async
     def fetch_security_info(self, user):
