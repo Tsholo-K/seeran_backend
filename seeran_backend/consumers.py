@@ -35,7 +35,7 @@ class MainConsumer(AsyncWebsocketConsumer):
                     serializer = SecurityInfoSerializer(data=security_info)  # Serialize fetched data
                     
                     if serializer.is_valid():  # Validate serialized data
-                        await self.send(text_data=json.dumps({ serializer.data }))
+                        await self.send(text_data=json.dumps({'user_data': serializer.data }))
                     else:
                         await self.send(text_data=json.dumps({ 'error': 'failed to serialize data' }))
                 
