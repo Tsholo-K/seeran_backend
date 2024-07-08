@@ -85,7 +85,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
                     if toggle is not None:
                         response = await self.toggle_multi_factor_authentication(user, toggle)
                     
-            if response:
+            if response !=  None:
                 return await self.send(text_data=json.dumps(response))
             
             return await self.send(text_data=json.dumps({ 'error': 'provided information is invalid.. request revoked' }))
