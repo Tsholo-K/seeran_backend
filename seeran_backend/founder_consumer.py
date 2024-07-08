@@ -51,12 +51,12 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 # return users security information
                 if description == 'my_security_information':
                     response = await self.fetch_security_info(user)
-                    return await self.send(text_data=json.dumps(response))
                 
                 # return all school objects
                 if description == 'schools':
                     response = await self.fetch_schools()
-                    return await self.send(text_data=json.dumps(response))
+                    
+                return await self.send(text_data=json.dumps(response))
             
             details = json.loads(text_data).get('details')
             
@@ -67,23 +67,22 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 
                 # return school with the provided id
                 if description == 'school':
-                    school_id = str(details.get('school_id'))
-                    
+                    school_id = details.get('school_id')
                     if school_id is not None:
                         response = await self.fetch_school(school_id)
-                        return await self.send(text_data=json.dumps(response))
             
             if action == 'PUT':
                 
                 # toggle  multi-factor authentication option for user
                 if description == 'multi_factor_authentication':
                     toggle = details.get('toggle')
-                    
                     if toggle is not None:
                         response = await self.toggle_multi_factor_authentication(user, toggle)
-                        return await self.send(text_data=json.dumps(response))
                     
-            return await self.send(text_data=json.dumps({ 'error': 'invalid information.. provided information is invalid' }))
+            if response:
+                return await self.send(text_data=json.dumps(response))
+            
+            return await self.send(text_data=json.dumps({ 'error': 'provided information is invalid.. request revoked' }))
 
         return await self.send(text_data=json.dumps({ 'error': 'request not authenticated.. access denied' }))
 

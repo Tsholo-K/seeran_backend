@@ -77,9 +77,8 @@ class SchoolSerializer(serializers.ModelSerializer):
         if principal:
             balance = Balance.objects.get(user=principal)
             return {
-                "amount" : balance.amount,
+                "amount" : str(balance.amount),
                 "last_updated" : balance.last_updated,
-                # add any other fields you want to include
             }
     
         else:
