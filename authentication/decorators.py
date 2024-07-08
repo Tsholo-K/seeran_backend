@@ -25,11 +25,8 @@ def token_required(view_func):
         
             access_token = request.COOKIES.get('access_token')
 
-            if not access_token:
+            if not access_token or cache.get(access_token):
                 return JsonResponse({'error': 'request not authenticated.. access denied'}, status=status.HTTP_401_UNAUTHORIZED)
-    
-            if cache.get(access_token):
-                return JsonResponse({'error': 'invalid security credentials.. request revoked'}, status=status.HTTP_401_UNAUTHORIZED)
         
             new_access_token = validate_access_token(access_token)
         
