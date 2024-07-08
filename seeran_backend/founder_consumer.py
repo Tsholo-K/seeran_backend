@@ -1,19 +1,27 @@
+# python 
+from decouple import config
+import requests
+import base64
+
 from channels.generic.websocket import AsyncWebsocketConsumer
 import json
+from channels.db import database_sync_to_async
 
 # django
 from django.db.models import Count, Q
 from django.db import models
+from django.db import transaction
 
 from users.models import CustomUser
 from schools.models import School
+from balances.models import Balance
 
 # serializers
 from schools.serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSerializer, SchoolDetailsSerializer
-from users.serializers import ProfileSerializer
+from users.serializers import ProfileSerializer, PrincipalCreationSerializer
 
 from asgiref.sync import sync_to_async  # Import sync_to_async for database_sync_to_async
-
+import httpx
 
 class FounderConsumer(AsyncWebsocketConsumer):
 
@@ -40,6 +48,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         user = self.scope.get('user')
         
         if user:
+            response = None
             
             action = json.loads(text_data).get('action')
             description = json.loads(text_data).get('description')
@@ -130,6 +139,12 @@ class FounderConsumer(AsyncWebsocketConsumer):
                     if school_id is not None:
                         response = await self.delete_school_account(school_id)
                         
+                # create school account
+                if description == 'create_principal_account':
+                    school_id = details.get('school')
+                    if school_id is not None:
+                        response = await self.create_principal_account(details, school_id)
+                    
                 # delete principal account
                 if description == 'delete_principal_account':
                     principal_id = details.get('principal_id')
@@ -150,7 +165,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
 ########################################################## Aysnc Functions ########################################################
 
 
-    @sync_to_async
+    @database_sync_to_async
     def fetch_security_info(self, user):
 
         try:
@@ -163,7 +178,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             return { 'error': str(e) }
 
-    @sync_to_async
+    @database_sync_to_async
     def toggle_multi_factor_authentication(self, user, toggle):
         # Example: Fetch security information asynchronously from CustomUser model
         try:
@@ -179,7 +194,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             return { 'error': str(e) }
         
-    @sync_to_async
+    @database_sync_to_async
     def fetch_principal_profile(self, principal_id):
 
         try:
@@ -195,7 +210,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
             return { 'error': str(e) }
         
         
-    @sync_to_async
+    @database_sync_to_async
     def create_school_account(self, details):
 
         try:
@@ -209,9 +224,9 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
         except Exception as e:
             return {'error': str(e)}
+       
         
-        
-    @sync_to_async
+    @database_sync_to_async
     def delete_school_account(self, school_id):
 
         try:
@@ -225,8 +240,80 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
         except Exception as e:
             return {'error': str(e)}
+        
+
+    @database_sync_to_async
+    async def create_principal_account(self, details, school_id):
+
+        try:
+            # try to get the school instance
+            school = School.objects.get(school_id=school_id)
     
-    @sync_to_async
+            # Check if the school already has a principal
+            if CustomUser.objects.filter(school=school, role="PRINCIPAL").exists():
+                return {"error" : "school already has a principal account linked to it"}
+        
+            # Add the school instance to the request data
+            details['school'] = school.id
+            details['role'] = 'PRINCIPAL'
+            
+            serializer = PrincipalCreationSerializer(data=details)
+        
+            if serializer.is_valid():
+
+                # Extract validated data
+                validated_data = serializer.validated_data
+                
+                with transaction.atomic():
+                    user = CustomUser.objects.create_user(**validated_data) 
+                
+                    # Create a new Balance instance for the user
+                    Balance.objects.create(user=user)
+                    
+                # then try to send the OTP to their email address
+                # Define your Mailgun API URL
+                mailgun_api_url = "https://api.eu.mailgun.net/v3/" + config('MAILGUN_DOMAIN') + "/messages"
+
+                # Define your email data
+                email_data = {
+                    "from": "seeran grades <authorization@" + config('MAILGUN_DOMAIN') + ">",
+                    "to": user.surname.title() + " " + user.name.title() + "<" + user.email + ">",
+                    "subject": "Account Creation Confirmation",
+                    "template": "account creation confirmation",
+                }
+
+                # Define your headers
+                headers = {
+                    "Authorization": "Basic " + base64.b64encode(f"api:{config('MAILGUN_API_KEY')}".encode()).decode(),
+                    "Content-Type": "application/x-www-form-urlencoded"
+                }
+
+                # Send the email via Mailgun
+                async with httpx.AsyncClient() as client:
+                    response = await client.post(
+                        mailgun_api_url,
+                        headers=headers,
+                        data=email_data
+                    )
+
+                if response.status_code == 200:
+            
+                    return {"message": "principal account created successfully"}
+                        
+                else:
+                    # if there was an error sending the email respond accordingly
+                    return {"error": "failed to send OTP to users email address"}
+            
+            return {"error" : serializer.errors}
+            
+        except School.DoesNotExist:
+            return {"error" : "school with the provided credentials can not be found"}
+        
+        except Exception as e:
+            return {"error": str(e)}
+        
+        
+    @database_sync_to_async
     def delete_principal_account(self, principal_id):
 
         try:
@@ -241,7 +328,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             return {'error': str(e)}
 
-    @sync_to_async
+    @database_sync_to_async
     def fetch_schools(self):
 
         try:
@@ -257,7 +344,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             return { 'error': str(e) }
         
-    @sync_to_async
+    @database_sync_to_async
     def fetch_school(self, school_id):
         
         try:
@@ -272,7 +359,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             return {"error" : str(e)}
         
-    @sync_to_async
+    @database_sync_to_async
     def fetch_school_details(self, school_id):
         
         try:
