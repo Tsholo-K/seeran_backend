@@ -1,5 +1,6 @@
 # python 
 
+
 # rest framework
 from rest_framework import serializers
 
@@ -60,7 +61,6 @@ class SchoolSerializer(serializers.ModelSerializer):
                 "surname" : principal.surname,
                 "id" : principal.account_id,
                 'image': '/default-user-image.svg',
-                # add any other fields you want to include
             }
         
         else:
@@ -78,7 +78,7 @@ class SchoolSerializer(serializers.ModelSerializer):
             balance = Balance.objects.get(user=principal)
             return {
                 "amount" : str(balance.amount),
-                "last_updated" : balance.last_updated,
+                "last_updated" : balance.last_updated.isoformat(),
             }
     
         else:
