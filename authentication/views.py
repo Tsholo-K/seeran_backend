@@ -24,7 +24,7 @@ from django.utils import timezone
 # models
 from email_bans.models import EmailBan
 from users.models import CustomUser
-from auth_tokens.models import RefreshToken
+from auth_tokens.models import AccessToken
 
 # utility functions 
 from .utils import validate_access_token, generate_access_token, generate_token, generate_otp, verify_user_otp, validate_user_email, validate_names
@@ -88,26 +88,25 @@ def login(request):
                     # Calculate cutoff time for expired tokens
                     cutoff_time = timezone.now() - timedelta(hours=24)
                 
-                    # the alert key is used on the frontend to alert the user of their email being banned and what they can do to appeal(if they can)
-                    response = Response({"message": "login successful", "alert" : "your email address has been blacklisted", "role" : user.role.title()}, status=status.HTTP_200_OK)
-                
                     with transaction.atomic():
-                        # Delete expired tokens and count active tokens in one database query
-                        expired_tokens_count = RefreshToken.objects.filter(user=user, is_active=True, created_at__lt=cutoff_time).delete()[0]
-                        refresh_tokens_count = RefreshToken.objects.filter(user=user, is_active=True).count()
+                        # Delete all RefreshToken objects for the user that were created before the cutoff_time
+                        AccessToken.objects.filter(user=user, created_at__lt=cutoff_time).delete()
+
+                        # Count the remaining RefreshToken objects for the user
+                        refresh_tokens_count = AccessToken.objects.filter(user=user).count()
                     
                     if refresh_tokens_count >= 3:
                         return Response({"error": "maximum number of connected devices reached"}, status=status.HTTP_403_FORBIDDEN)
+                    
+                    # the alert key is used on the frontend to alert the user of their email being banned and what they can do to appeal(if they can)
+                    # the alert key is used on the frontend to alert the user of their email being banned and what they can do to appeal(if they can)
+                    response = Response({"message": "login successful", "alert" : "your email address has been blacklisted", "role" : user.role.title()}, status=status.HTTP_200_OK)
         
-                    refresh_token = token['refresh']
-                    RefreshToken.objects.create(user=user, token=refresh_token)
+                    access_token = token['access']
+                    AccessToken.objects.create(user=user, token=access_token)
                 
                     # set access token cookie with custom expiration (5 mins)
-                    response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)
-                    
-                    # set refresh token cookie with custom expiration (86400 seconds = 24 hours)
-                    response.set_cookie('refresh_token', token['refresh'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
-                    # the alert key is used on the frontend to alert the user of their email being banned and what they can do to appeal(if they can)
+                    response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
                 
                 else:
                     response = Response({"error": "couldn't generating authentication token"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -170,34 +169,31 @@ def login(request):
                 # regardless of wether it was a soft of hard bounce
                 return Response({"error": "failed to send OTP to your  email address"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        if 'refresh' in token:
+        if 'access' in token:
             # Calculate cutoff time for expired tokens
             cutoff_time = timezone.now() - timedelta(hours=24)
             
-            # if users multi-factor authentication is disabled do this..
-            response = Response({"message": "login successful", "role" : user.role.title()}, status=status.HTTP_200_OK)
-        
             with transaction.atomic():
                 # Delete all RefreshToken objects for the user that were created before the cutoff_time
-                RefreshToken.objects.filter(user=user, created_at__lt=cutoff_time).delete()
+                AccessToken.objects.filter(user=user, created_at__lt=cutoff_time).delete()
 
                 # Count the remaining RefreshToken objects for the user
-                refresh_tokens_count = RefreshToken.objects.filter(user=user).count()
+                refresh_tokens_count = AccessToken.objects.filter(user=user).count()
             
             if refresh_tokens_count >= 3:
                 return Response({"error": "maximum number of connected devices reached"}, status=status.HTTP_403_FORBIDDEN)
- 
-            refresh_token = token['refresh']
-            RefreshToken.objects.create(user=user, token=refresh_token)
             
-            # set refresh token cookie with custom expiration (86400 seconds = 24 hours)
-            response.set_cookie('refresh_token', token['refresh'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
+            # if users multi-factor authentication is disabled do this..
+            response = Response({"message": "login successful", "role" : user.role.title()}, status=status.HTTP_200_OK)
+ 
+            access_token = token['access']
+            AccessToken.objects.create(user=user, token=access_token)
         
             # set access token cookie with custom expiration (5 mins)
-            response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)
+            response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
         
         else:
-            response = Response({"error": "couldn't generating authentication tokens"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            response = Response({"error": "could not generating access token"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return response
     
@@ -284,30 +280,27 @@ def multi_factor_authentication_login(request):
             # then generate an access and refresh token for the user 
             token = generate_token(user)
             
-            if 'refresh_token' in token:
+            if 'access' in token:
                 # Calculate cutoff time for expired tokens
                 cutoff_time = timezone.now() - timedelta(hours=24)
-                
-                # if users multi-factor authentication is disabled do this..
-                response = Response({"message": "login successful", "role" : user.role.title()}, status=status.HTTP_200_OK)
             
                 with transaction.atomic():
                     # Delete all RefreshToken objects for the user that were created before the cutoff_time
-                    RefreshToken.objects.filter(user=user, created_at__lt=cutoff_time).delete()
+                    AccessToken.objects.filter(user=user, created_at__lt=cutoff_time).delete()
 
                     # Count the remaining RefreshToken objects for the user
-                    refresh_tokens_count = RefreshToken.objects.filter(user=user).count()
+                    refresh_tokens_count = AccessToken.objects.filter(user=user).count()
                 
                 if refresh_tokens_count >= 3:
                     return Response({"error": "maximum number of connected devices reached"}, status=status.HTTP_403_FORBIDDEN)
-    
-                RefreshToken.objects.create(user=user, token=token['refresh_token'])
                 
-                # set refresh token cookie with custom expiration (86400 seconds = 24 hours)
-                response.set_cookie('refresh_token', token['refresh_token'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
+                # if users multi-factor authentication is disabled do this..
+                response = Response({"message": "login successful", "role" : user.role.title()}, status=status.HTTP_200_OK)
+    
+                AccessToken.objects.create(user=user, token=token['access'])
             
                 # set access token cookie with custom expiration (5 mins)
-                response.set_cookie('access_token', token['access_token'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)
+                response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
             
             else:
                 response = Response({"error": "couldn't generating authentication tokens"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -505,11 +498,10 @@ def activate_account(request):
         # generate an access and refresh token for the user 
         token = generate_token(user)
         
-        RefreshToken.objects.create(user=user, token=token['refresh_token'])
+        AccessToken.objects.create(user=user, token=token['access'])
 
         # set access/refresh token cookies
-        response.set_cookie('access_token', token['access_token'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)
-        response.set_cookie('refresh_token', token['refresh_token'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
+        response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
         
         return response
     
@@ -554,7 +546,7 @@ def authenticate(request):
 @api_view(['POST'])
 def logout(request):
   
-    token = request.COOKIES.get('refresh_token')
+    token = request.COOKIES.get('access_token')
   
     if token:
        
@@ -563,11 +555,10 @@ def logout(request):
             response = Response({"message": "logged you out successful"}, status=status.HTTP_200_OK)
         
             # delete token from database
-            RefreshToken.objects.filter(token=str(token)).delete()
+            AccessToken.objects.filter(token=str(token)).delete()
             
             # Clear the refresh token cookie
             response.delete_cookie('access_token', domain='.seeran-grades.cloud')
-            response.delete_cookie('refresh_token', domain='.seeran-grades.cloud')
             cache.set(token, 'blacklisted', timeout=86400)
          
             return response
@@ -576,7 +567,7 @@ def logout(request):
             return Response({"error": str(e)})
   
     else:
-        return Response({"error": "No refresh token provided"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "no access token provided"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 ####################################################################################################################################

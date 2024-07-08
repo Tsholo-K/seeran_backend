@@ -146,13 +146,9 @@ JWT_AUTH_COOKIE = 'access_token'
 
 # simplejwt token settings
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),  # Short-lived access token (adjust as needed)
-    'REFRESH_TOKEN_LIFETIME': timedelta(hours=24),    # Longer-lived refresh token (adjust as needed)
-    'ROTATE_REFRESH_TOKENS': False,                  # Set to True if you want to rotate refresh tokens
-    
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=24),  # long-lived access token    
     'TOKEN_BLACKLIST_ENABLED': True,
     'TOKEN_BLACKLIST_MODEL': 'rest_framework_simplejwt.token_blacklist.BlacklistedToken',
-    # Other settings (e.g., ALGORITHM, SIGNING_KEY, etc.) can be customized as well
 }
 
 
