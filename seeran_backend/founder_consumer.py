@@ -10,6 +10,7 @@ from schools.models import School
 
 # serializers
 from schools.serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSerializer, SchoolDetailsSerializer
+from users.serializers import ProfileSerializer
 
 from asgiref.sync import sync_to_async  # Import sync_to_async for database_sync_to_async
 
@@ -90,6 +91,12 @@ class FounderConsumer(AsyncWebsocketConsumer):
                     school_id = details.get('school_id')
                     if school_id is not None:
                         response = await self.fetch_school_details(school_id)
+                        
+                # return profile for principal with the provided id
+                if description == 'principal_profile':
+                    principal_id = details.get('principal_id')
+                    if principal_id is not None:
+                        response = await self.fetch_principal_profile(principal_id)
 
 
             ##############################################################################################################
@@ -162,6 +169,21 @@ class FounderConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             return { 'error': str(e) }
         
+    @sync_to_async
+    def fetch_principal_profile(self, principal_id):
+
+        try:
+            principal = CustomUser.object.get(account_id=principal_id, role='PRINCIPAL')
+            
+            serializer = ProfileSerializer(instance=principal)
+            return { "user" : serializer.data }
+        
+        except CustomUser.DoesNotExist:
+            return { 'error': 'principal with the provided credentials does not exist' }
+        
+        except Exception as e:
+            return { 'error': str(e) }
+
     @sync_to_async
     def delete_school(self, school_id):
 
