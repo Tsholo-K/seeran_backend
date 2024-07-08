@@ -2,7 +2,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 import json
 
 # django
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.db import models
 
 from users.models import CustomUser
@@ -70,6 +70,12 @@ class FounderConsumer(AsyncWebsocketConsumer):
                     school_id = details.get('school_id')
                     if school_id is not None:
                         response = await self.fetch_school(school_id)
+                        
+                # return school details for school with the provided id
+                if description == 'school_details':
+                    school_id = details.get('school_id')
+                    if school_id is not None:
+                        response = await self.fetch_school_details(school_id)
             
             if action == 'PUT':
                 
@@ -136,8 +142,28 @@ class FounderConsumer(AsyncWebsocketConsumer):
     def fetch_school(self, school_id):
         
         try:
-            school = School.objects.get(school_id=school_id)
+            school = School.objects.get(school_id=school_id).select_related('principal__balance')
             serializer = SchoolSerializer(instance=school)
+        
+            return {"school" : serializer.data}
+        
+        except School.DoesNotExist:
+            return {"error" : "school with the provided credentials can not be found"}
+        
+        except Exception as e:
+            return {"error" : str(e)}
+        
+    @sync_to_async
+    def fetch_school_details(self, school_id):
+        
+        try:
+            school = School.objects.get(school_id=school_id).annotate(
+                students=Count('users', filter=Q(users__role='STUDENT')),
+                parents=Count('users', filter=Q(users__role='PARENT')),
+                teachers=Count('users', filter=Q(users__role='TEACHER')),
+                admins=Count('users', filter=Q(users__role='ADMIN') | Q(users__role='PRINCIPAL')),
+            )
+            serializer = SchoolDetailsSerializer(instance=school)
         
             return {"school" : serializer.data}
         
