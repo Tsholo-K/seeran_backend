@@ -157,7 +157,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
     def fetch_school_details(self, school_id):
         
         try:
-            school = School.objects.get(school_id=school_id).annotate(
+            school = School.objects.filter(school_id=school_id).annotate(
                 students=Count('users', filter=Q(users__role='STUDENT')),
                 parents=Count('users', filter=Q(users__role='PARENT')),
                 teachers=Count('users', filter=Q(users__role='TEACHER')),
