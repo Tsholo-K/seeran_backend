@@ -1,9 +1,19 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
 import json
 
+# django
+from django.db.models import Count
+from django.db import models
+
 from users.models import CustomUser
+from schools.models import School
+
+# serializers
+from schools.serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSerializer, SchoolDetailsSerializer
 from users.serializers import SecurityInfoSerializer
+
 from asgiref.sync import sync_to_async  # Import sync_to_async for database_sync_to_async
+
 
 class FounderConsumer(AsyncWebsocketConsumer):
 
@@ -20,8 +30,10 @@ class FounderConsumer(AsyncWebsocketConsumer):
         await self.accept()
         return await self.send(text_data=json.dumps({ 'message': 'WebSocket connection established' }))
 
+
     async def disconnect(self, close_code):
         pass
+
 
     async def receive(self, text_data):
         
@@ -46,9 +58,20 @@ class FounderConsumer(AsyncWebsocketConsumer):
                         if serializer.is_valid():  # Validate serialized data
                             return await self.send(text_data=json.dumps( serializer.data ))
                         
-                        return await self.send(text_data=json.dumps({ 'error': 'failed to serialize data' }))
+                        return await self.send(text_data=json.dumps({ 'error': serializer.errors }))
                         
                     return await self.send(text_data=json.dumps({ 'error': 'user with the provided credentials does not exist' }))
+                
+                # return all school objects
+                if description == 'schools':
+                    schools = await self.fetch_schools()
+                    
+                    serializer = SchoolsSerializer(schools, many=True)  # Serialize fetched data
+
+                    if serializer.is_valid():  # Validate serialized data
+                        return await self.send(text_data=json.dumps({ 'schools' : serializer.data }))
+                        
+                    return await self.send(text_data=json.dumps({ 'error': serializer.errors }))
             
             details = json.loads(text_data).get('details')
             
@@ -73,6 +96,17 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 
         return await self.send(text_data=json.dumps({ 'error': 'request not authenticated.. access denied' }))
 
+      
+    @sync_to_async
+    def fetch_security_info(self, user):
+
+        try:
+            user = CustomUser.objects.get(account_id=user)
+            return { 'multifactor_authentication': user.multifactor_authentication, 'event_emails': user.event_emails }
+            
+        except CustomUser.DoesNotExist:
+            return None
+        
     @sync_to_async
     def toggle_multi_factor_authentication(self, user, toggle):
         # Example: Fetch security information asynchronously from CustomUser model
@@ -85,17 +119,18 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
         except CustomUser.DoesNotExist:
             return None
-      
+        
     @sync_to_async
-    def fetch_security_info(self, user):
-        # Example: Fetch security information asynchronously from CustomUser model
+    def fetch_schools(self):
+
         try:
-            user = CustomUser.objects.get(account_id=user)
-            return {
-                'multifactor_authentication': user.multifactor_authentication,
-                'event_emails': user.event_emails,
-                # Add more fields as needed
-            }
-            
-        except CustomUser.DoesNotExist:
-            return None
+            schools = School.objects.all().annotate(
+                students=Count('users', filter=models.Q(users__role='STUDENT')),
+                parents=Count('users', filter=models.Q(users__role='PARENT')),
+                teachers=Count('users', filter=models.Q(users__role='TEACHER'))
+            )
+            return schools
+        
+        # if any exception occurs during the proccess return an error
+        except Exception as e:
+            return { 'error': str(e) }
