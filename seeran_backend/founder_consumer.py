@@ -120,6 +120,11 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
             if action == 'POST':
                 
+                # create school account
+                if description == 'create_school_account':
+                    if school_id is not None:
+                        response = await self.create_school_account(details)
+                
                 # delete school account
                 if description == 'delete_school_account':
                     school_id = details.get('school_id')
@@ -189,7 +194,24 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
         except Exception as e:
             return { 'error': str(e) }
+        
+        
+    @sync_to_async
+    def create_school_account(self, details):
 
+        try:
+            serializer = SchoolCreationSerializer(data=details)
+            if serializer.is_valid():
+                serializer.save()
+                
+                return { "message" : "school account created successfully" }
+        
+            return {"error" : serializer.errors}
+        
+        except Exception as e:
+            return {'error': str(e)}
+        
+        
     @sync_to_async
     def delete_school_account(self, school_id):
 
