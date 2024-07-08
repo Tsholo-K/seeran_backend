@@ -165,7 +165,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
             )
             serializer = SchoolDetailsSerializer(school, many=True)
         
-            return {"school" : serializer.data}
+            return {"school" : serializer.data[0]}
         
         except School.DoesNotExist:
             return {"error" : "school with the provided credentials can not be found"}
