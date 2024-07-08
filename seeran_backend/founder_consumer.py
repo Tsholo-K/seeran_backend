@@ -173,7 +173,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
     def fetch_principal_profile(self, principal_id):
 
         try:
-            principal = CustomUser.object.get(account_id=principal_id, role='PRINCIPAL')
+            principal = CustomUser.objects.get(account_id=principal_id, role='PRINCIPAL')
             
             serializer = ProfileSerializer(instance=principal)
             return { "user" : serializer.data }
