@@ -6,7 +6,6 @@ from decouple import config
 # google
 from google.auth import default
 from google.cloud.storage import Client
-from .redis_client import redis_client
 
 # celery
 from celery.schedules import crontab
@@ -166,7 +165,6 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 
-
 """
     is necessary for Django Channels to know where and how to send/receive messages over the network. 
     It's separate from Django's cache framework, which is why it needs its own configuration
@@ -176,9 +174,13 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
             'hosts': [('rediss://' + config('CACHE_LOCATION'), 6378)],
-            'expiry': 3600,  # optional, expiration time for channels
-            'capacity': 1000,  # optional, capacity of channel layer instance
         },
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'PARSER_CLASS': 'redis.connection._HiredisParser',
+            'CONNECTION_POOL_CLASS': 'redis.connection.BlockingConnectionPool',  # Use BlockingConnectionPool for SSL
+            'CONNECTION_POOL_KWARGS': {'ssl_ca_certs': config('SERVER_CA_CERT')}, # as done here
+        }
     },
 }
 
