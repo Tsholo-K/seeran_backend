@@ -127,7 +127,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
             # Convert each School instance to a dictionary
             school_dicts = [model_to_dict(school) for school in schools]
             
-            serializer = SchoolsSerializer(data=school_dicts, many=True)  # Serialize fetched data
+            serializer = SchoolsSerializer(school_dicts, many=True)  # Serialize fetched data
 
             if serializer.is_valid():  # Validate serialized data
                 return { 'schools' : serializer.data }
