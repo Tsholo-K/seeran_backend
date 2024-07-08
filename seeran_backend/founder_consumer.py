@@ -183,6 +183,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             return { 'error': str(e) }
 
+
     @database_sync_to_async
     def toggle_multi_factor_authentication(self, user, toggle):
         # Example: Fetch security information asynchronously from CustomUser model
@@ -198,6 +199,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
         except Exception as e:
             return { 'error': str(e) }
+        
         
     @database_sync_to_async
     def fetch_principal_profile(self, principal_id):
@@ -290,7 +292,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
     def delete_principal_account(self, principal_id):
 
         try:
-            principal = CustomUser.objects.get(school_id=principal_id, role='PRINCIPAL')
+            principal = CustomUser.objects.get(account_id=principal_id, role='PRINCIPAL')
             principal.delete()
             
             return {"message" : "principal account deleted successfully"}
@@ -300,6 +302,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
         except Exception as e:
             return {'error': str(e)}
+
 
     @database_sync_to_async
     def fetch_schools(self):
@@ -317,6 +320,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             return { 'error': str(e) }
         
+        
     @database_sync_to_async
     def fetch_school(self, school_id):
         
@@ -331,6 +335,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
         except Exception as e:
             return {"error" : str(e)}
+        
         
     @database_sync_to_async
     def fetch_school_details(self, school_id):
