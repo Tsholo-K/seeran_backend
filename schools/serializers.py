@@ -85,7 +85,12 @@ class SchoolDetailsSerializer(serializers.ModelSerializer):
     school_type = serializers.SerializerMethodField()
     school_district = serializers.SerializerMethodField()
     province = serializers.SerializerMethodField()
-
+    
+    students = serializers.IntegerField()
+    parents = serializers.IntegerField()
+    teachers = serializers.IntegerField()
+    admins = serializers.IntegerField()
+    
     class Meta:
         model = School
         fields = ['name', 'school_type', 'school_district',  'province', 'email', 'contact_number', 'school_id',  'students', 'parents', 'teachers', 'admins', ]
