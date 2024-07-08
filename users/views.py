@@ -37,15 +37,6 @@ from .decorators import founder_only
 ################################################## general views ###########################################################
 
 
-# get users security info
-@api_view(["GET"])
-@token_required
-def my_security_info(request):
-
-    serializer = SecurityInfoSerializer(instance=request.user)
-    return Response({ "users_security_info" : serializer.data },status=200)
-
-
 @api_view(["GET"])
 @token_required
 def my_profile(request):

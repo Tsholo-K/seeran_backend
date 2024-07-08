@@ -23,13 +23,14 @@ class MainConsumer(AsyncWebsocketConsumer):
         if user:
             action = json.loads(text_data).get('action')
             description = json.loads(text_data).get('description')
-            details = json.loads(text_data).get('details')
+            
             
             if not ( action or description ):
                 return await self.send(text_data=json.dumps({ 'error': 'invalid request.. permission denied' }))
 
             if action == 'GET':
                 
+                # return users security information
                 if description == 'my_security_information':
                     security_info = await self.fetch_security_info(user)
                     
@@ -42,9 +43,38 @@ class MainConsumer(AsyncWebsocketConsumer):
                         return await self.send(text_data=json.dumps({ 'error': 'failed to serialize data' }))
                         
                     return await self.send(text_data=json.dumps({ 'error': 'user with the provided credentials does not exist' }))
+            
+            details = json.loads(text_data).get('details')
+            
+            if not details:
+                return await self.send(text_data=json.dumps({ 'error': 'invalid request.. permission denied' }))
+
+            if action == 'PUT':
+                
+                # toggle  multi-factor authentication option for user
+                if description == 'multi_factor_authentication':
+                    message = await self.toggle_multi_factor_authentication(user)
+                    
+                    if message is not None:
+                        return await self.send(text_data=json.dumps({ 'message': message }))
+                        
+                    return await self.send(text_data=json.dumps({ 'error': 'user with the provided credentials does not exist' }))
                 
         return await self.send(text_data=json.dumps({ 'error': 'request not authenticated.. access denied' }))
 
+    @sync_to_async
+    def toggle_multi_factor_authentication(self, user, toggle):
+        # Example: Fetch security information asynchronously from CustomUser model
+        try:
+            user = CustomUser.objects.get(id=user.id)
+            user.multifactor_authentication = toggle
+            user.save()
+            
+            return {'message': 'Multifactor authentication {} successfully'.format('enabled' if toggle else 'disabled')}
+        
+        except CustomUser.DoesNotExist:
+            return None
+        
     @sync_to_async
     def fetch_security_info(self, user):
         # Example: Fetch security information asynchronously from CustomUser model
