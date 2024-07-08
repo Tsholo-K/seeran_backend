@@ -66,7 +66,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 if description == 'schools':
                     schools = await self.fetch_schools()
                     
-                    serializer = SchoolsSerializer(schools, many=True)  # Serialize fetched data
+                    serializer = SchoolsSerializer(data=schools, many=True)  # Serialize fetched data
 
                     if serializer.is_valid():  # Validate serialized data
                         return await self.send(text_data=json.dumps({ 'schools' : serializer.data }))
