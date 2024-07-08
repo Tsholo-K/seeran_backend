@@ -165,6 +165,10 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 
+REDIS_TLS = {
+    'ssl_ca_certs': config('SERVER_CA_CERT'),  # path to CA certificate
+}
+
 """
     is necessary for Django Channels to know where and how to send/receive messages over the network. 
     It's separate from Django's cache framework, which is why it needs its own configuration
@@ -174,6 +178,9 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
             'hosts': [('rediss://' + config('CACHE_LOCATION') + ':6378')],
+            'expiry': 3600,  # optional, expiration time for channels
+            'capacity': 1000,  # optional, capacity of channel layer instance
+            'ssl_context': REDIS_TLS,
         },
     },
 }
