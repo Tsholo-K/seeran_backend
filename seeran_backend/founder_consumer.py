@@ -122,8 +122,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 
                 # create school account
                 if description == 'create_school_account':
-                    if school_id is not None:
-                        response = await self.create_school_account(details)
+                    response = await self.create_school_account(details)
                 
                 # delete school account
                 if description == 'delete_school_account':
