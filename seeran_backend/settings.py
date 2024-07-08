@@ -40,6 +40,8 @@ ALLOWED_HOSTS = ["*"]
 # Application definition
 # a list of all installed apps
 INSTALLED_APPS = [
+
+    "daphne",
     
     # django apps
     'django.contrib.admin',
@@ -172,8 +174,13 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
             'hosts': [(config('CACHE_LOCATION'), 6379)],
-            'ssl_ca_certs': config('SERVER_CA_CERT'),
         },
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'PARSER_CLASS': 'redis.connection._HiredisParser',
+            'CONNECTION_POOL_CLASS': 'redis.connection.BlockingConnectionPool',  # Use BlockingConnectionPool for SSL
+            'CONNECTION_POOL_KWARGS': {'ssl_ca_certs': config('SERVER_CA_CERT')}, # as done here
+        }
     },
 }
 
