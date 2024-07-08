@@ -142,7 +142,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
     def fetch_school(self, school_id):
         
         try:
-            school = School.objects.get(school_id=school_id).select_related('principal__balance')
+            school = School.objects.get(school_id=school_id)
             serializer = SchoolSerializer(instance=school)
         
             return {"school" : serializer.data}
