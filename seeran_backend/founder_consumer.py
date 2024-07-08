@@ -374,4 +374,9 @@ class FounderConsumer(AsyncWebsocketConsumer):
         async with httpx.AsyncClient() as client:
             response = await client.post( mailgun_api_url, headers=headers, data=email_data )
             
-        return response
+        if response.status_code == 200:
+            return {"message": "{} account created successfully".format(role.title()) }
+            
+        else:
+            # if there was an error sending the email respond accordingly
+            return {"error": "failed to send OTP to users email address"}
