@@ -32,7 +32,7 @@ class MainConsumer(AsyncWebsocketConsumer):
             if user:
                 security_info = await self.fetch_security_info(user)
                 if security_info is not None:
-                    serializer = SecurityInfoSerializer(security_info)  # Serialize fetched data
+                    serializer = SecurityInfoSerializer(data=security_info)  # Serialize fetched data
                     if serializer.is_valid():  # Validate serialized data
                         await self.send(text_data=json.dumps({ 'action': 'your_security_information', 'data': serializer.data }))
                     else:
