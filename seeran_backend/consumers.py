@@ -38,7 +38,7 @@ class MainConsumer(AsyncWebsocketConsumer):
                         serializer = SecurityInfoSerializer(data=security_info)  # Serialize fetched data
                         
                         if serializer.is_valid():  # Validate serialized data
-                            return await self.send(text_data=json.dumps({'user_data': serializer.data }))
+                            return await self.send(text_data=json.dumps( serializer.data ))
                         
                         return await self.send(text_data=json.dumps({ 'error': 'failed to serialize data' }))
                         
@@ -56,10 +56,10 @@ class MainConsumer(AsyncWebsocketConsumer):
                     toggle = details.get('toggle')
                     
                     if toggle is not None:
-                        message = await self.toggle_multi_factor_authentication(user, toggle)
+                        response = await self.toggle_multi_factor_authentication(user, toggle)
                                             
-                        if message is not None:
-                            return await self.send(text_data=json.dumps({ 'message': message }))
+                        if response is not None:
+                            return await self.send(text_data=json.dumps( response ))
                             
                         return await self.send(text_data=json.dumps({ 'error': 'user with the provided credentials does not exist' }))
                     
