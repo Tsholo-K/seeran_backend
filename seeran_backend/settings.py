@@ -176,7 +176,6 @@ CHANNEL_LAYERS = {
             'hosts': [('rediss://' + config('CACHE_LOCATION') + ':6378')],
         },
         'OPTIONS': {
-            'ssl' :True,
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
             'PARSER_CLASS': 'redis.connection._HiredisParser',
             'CONNECTION_POOL_CLASS': 'redis.connection.BlockingConnectionPool',  # Use BlockingConnectionPool for SSL
