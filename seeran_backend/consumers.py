@@ -6,11 +6,6 @@ from users.serializers import SecurityInfoSerializer
 from asgiref.sync import sync_to_async  # Import sync_to_async for database_sync_to_async
 
 class MainConsumer(AsyncWebsocketConsumer):
-    
-    @database_sync_to_async
-    def fetch_security_info(self, user_id):
-        return CustomUser.objects.get(pk=user_id)
-
 
     async def connect(self):
         await self.accept()
