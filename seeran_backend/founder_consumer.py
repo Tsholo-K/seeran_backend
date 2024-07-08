@@ -143,7 +143,11 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 if description == 'create_principal_account':
                     school_id = details.get('school')
                     if school_id is not None:
-                        response = await self.create_principal_account(details, school_id)
+                        status = await self.create_principal_account(details, school_id)
+                        if status.get('message'):
+                            response = await self.send_email(status.get('user'))
+                        else:
+                            response = status.get('error')
                     
                 # delete principal account
                 if description == 'delete_principal_account':
@@ -163,6 +167,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
 
 ########################################################## Aysnc Functions ########################################################
+
 
 
     @database_sync_to_async
@@ -243,7 +248,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
 
     @database_sync_to_async
-    async def create_principal_account(self, details, school_id):
+    def create_principal_account(self, details, school_id):
 
         try:
             # try to get the school instance
@@ -269,40 +274,8 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 
                     # Create a new Balance instance for the user
                     Balance.objects.create(user=user)
-                    
-                # then try to send the OTP to their email address
-                # Define your Mailgun API URL
-                mailgun_api_url = "https://api.eu.mailgun.net/v3/" + config('MAILGUN_DOMAIN') + "/messages"
-
-                # Define your email data
-                email_data = {
-                    "from": "seeran grades <authorization@" + config('MAILGUN_DOMAIN') + ">",
-                    "to": user.surname.title() + " " + user.name.title() + "<" + user.email + ">",
-                    "subject": "Account Creation Confirmation",
-                    "template": "account creation confirmation",
-                }
-
-                # Define your headers
-                headers = {
-                    "Authorization": "Basic " + base64.b64encode(f"api:{config('MAILGUN_API_KEY')}".encode()).decode(),
-                    "Content-Type": "application/x-www-form-urlencoded"
-                }
-
-                # Send the email via Mailgun
-                async with httpx.AsyncClient() as client:
-                    response = await client.post(
-                        mailgun_api_url,
-                        headers=headers,
-                        data=email_data
-                    )
-
-                if response.status_code == 200:
             
-                    return {"message": "principal account created successfully"}
-                        
-                else:
-                    # if there was an error sending the email respond accordingly
-                    return {"error": "failed to send OTP to users email address"}
+                return {"message": "principal account created successfully", "user" : user}
             
             return {"error" : serializer.errors}
             
@@ -378,3 +351,22 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
         except Exception as e:
             return {"error" : str(e)}
+        
+        
+    async def send_email(self, user):
+        mailgun_api_url = "https://api.eu.mailgun.net/v3/" + config('MAILGUN_DOMAIN') + "/messages"
+        email_data = {
+            "from": "seeran grades <accounts@" + config('MAILGUN_DOMAIN') + ">",
+            "to": user.surname.title() + " " + user.name.title() + "<" + user.email + ">",
+            "subject": "Account Creation Confirmation",
+            "template": "account creation confirmation",
+        }
+        headers = {
+            "Authorization": "Basic " + base64.b64encode(f"api:{config('MAILGUN_API_KEY')}".encode()).decode(),
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post( mailgun_api_url, headers=headers, data=email_data )
+            
+        return response
