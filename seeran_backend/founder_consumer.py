@@ -65,14 +65,8 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 
                 # return all school objects
                 if description == 'schools':
-                    schools = await self.fetch_schools()
-                    
-                    serializer = SchoolsSerializer(schools, many=True)  # Serialize fetched data
-
-                    if serializer.is_valid():  # Validate serialized data
-                        return await self.send(text_data=json.dumps({ 'schools' : serializer.data }))
-                        
-                    return await self.send(text_data=json.dumps({ 'error': serializer.errors }))
+                    response = await self.fetch_schools()
+                    return await self.send(text_data=json.dumps( response ))
             
             details = json.loads(text_data).get('details')
             
@@ -132,7 +126,13 @@ class FounderConsumer(AsyncWebsocketConsumer):
             )
             # Convert each School instance to a dictionary
             school_dicts = [model_to_dict(school) for school in schools]
-            return school_dicts
+            
+            serializer = SchoolsSerializer(data=school_dicts, many=True)  # Serialize fetched data
+
+            if serializer.is_valid():  # Validate serialized data
+                return { 'schools' : serializer.data }
+                
+            return { 'error': serializer.errors }
         
         # if any exception occurs during the proccess return an error
         except Exception as e:
