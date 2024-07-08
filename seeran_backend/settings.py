@@ -2,7 +2,6 @@
 from pathlib import Path
 from datetime import timedelta
 from decouple import config
-import ssl
 
 # google
 from google.auth import default
@@ -176,12 +175,9 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [(config('CACHE_LOCATION'), 6378)],
+            'hosts': [('rediss://' + config('CACHE_LOCATION'), 6378)],
             'expiry': 3600,  # optional, expiration time for channels
             'capacity': 1000,  # optional, capacity of channel layer instance
-            "ssl": True,
-            "ssl_cert_reqs": ssl.CERT_REQUIRED,
-            "ssl_ca_certs": config('SERVER_CA_CERT')
         },
     },
 }
