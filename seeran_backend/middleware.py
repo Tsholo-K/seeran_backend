@@ -20,7 +20,13 @@ class TokenAuthMiddleware:
             
             try:
                 cookies = headers[b'cookie'].decode()
-                access_token = cookies.get('access_token')
+                
+                cookie_dict = {}
+                for cookie in cookies.split('; '):
+                    cookie_parts = cookie.split('=')
+                    cookie_dict[cookie_parts[0]] = cookie_parts[1] if len(cookie_parts) > 1 else ''
+
+                access_token = cookie_dict.get('access_token')
 
                 if not access_token or cache.get(access_token):
                     await send({ 'type': 'websocket.close', 'code': 1000, 'text': 'Request not authenticated.. access denied' })
