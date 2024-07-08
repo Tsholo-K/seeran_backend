@@ -14,6 +14,7 @@
 import os
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
+from .middleware import TokenAuthMiddleware
 from django.urls import path
 from . import consumers
 
@@ -21,7 +22,9 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'seeran_backend.settings')
 
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),
-    "websocket": URLRouter([
-        path('ws/', consumers.MainConsumer.as_asgi()),
-    ]),
+    "websocket": TokenAuthMiddleware(
+        URLRouter([
+            path('ws/', consumers.MainConsumer.as_asgi()),
+        ])
+    ),
 })

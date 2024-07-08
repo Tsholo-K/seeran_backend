@@ -174,7 +174,7 @@ CHANNEL_LAYERS = {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
             "hosts":[{
-                "address": 'rediss://' + config('CACHE_LOCATION') + ':6378',  # "REDIS_TLS_URL"
+                "address": 'rediss://' + config('CACHE_LOCATION') + ':6378',
                 "ssl_cert_reqs": None,
             }]
         },
