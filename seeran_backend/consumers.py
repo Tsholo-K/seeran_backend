@@ -53,12 +53,17 @@ class MainConsumer(AsyncWebsocketConsumer):
                 
                 # toggle  multi-factor authentication option for user
                 if description == 'multi_factor_authentication':
-                    message = await self.toggle_multi_factor_authentication(user, details.toggle)
+                    toggle = details.get('toggle')
                     
-                    if message is not None:
-                        return await self.send(text_data=json.dumps({ 'message': message }))
-                        
-                    return await self.send(text_data=json.dumps({ 'error': 'user with the provided credentials does not exist' }))
+                    if toggle is not None:
+                        message = await self.toggle_multi_factor_authentication(user, toggle)
+                                            
+                        if message is not None:
+                            return await self.send(text_data=json.dumps({ 'message': message }))
+                            
+                        return await self.send(text_data=json.dumps({ 'error': 'user with the provided credentials does not exist' }))
+                    
+                    return await self.send(text_data=json.dumps({ 'error': 'invalid information.. provided information is invalid' }))
                 
         return await self.send(text_data=json.dumps({ 'error': 'request not authenticated.. access denied' }))
 
