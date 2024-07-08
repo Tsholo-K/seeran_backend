@@ -67,7 +67,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 
                 # return school with the provided id
                 if description == 'school':
-                    school_id = details.get('school_id')
+                    school_id = str(details.get('school_id'))
                     
                     if school_id is not None:
                         response = await self.fetch_school(school_id)
