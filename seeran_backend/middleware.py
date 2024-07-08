@@ -11,7 +11,8 @@ class TokenAuthMiddleware:
 
     @database_sync_to_async
     def get_user(self, user_id):
-        return CustomUser.objects.get(pk=user_id)
+        user =  CustomUser.objects.get(pk=user_id)
+        return ( user.account_id, user.role )
 
     async def __call__(self, scope, receive, send):
 
@@ -29,26 +30,22 @@ class TokenAuthMiddleware:
                 access_token = cookie_dict.get('access_token')
 
                 if not access_token or cache.get(access_token):
-                    await send({ 'type': 'websocket.close', 'code': 1000, 'text': 'Request not authenticated.. access denied' })
-                    return
+                    return await send({ 'type': 'websocket.close', 'code': 1000, 'error': 'Request not authenticated.. access denied' })
 
                 authorized = validate_access_token(access_token)
                 
                 if authorized is None:
-                    await send({ 'type': 'websocket.close', 'code': 1000, 'text': 'Invalid security credentials.. request revoked' })
-                    return
+                    return await send({ 'type': 'websocket.close', 'code': 1000, 'error': 'Invalid security credentials.. request revoked' })
 
                 decoded_token = AccessToken(access_token)
                 
-                scope['user'] = await self.get_user(decoded_token['user_id'])
+                scope['user'], scope['role'] = await self.get_user(decoded_token['user_id'])
                 
             except ObjectDoesNotExist:
-                await send({ 'type': 'websocket.close', 'code': 1000, 'text': 'Invalid credentials.. no such user exists' })
-                return
+                return await send({ 'type': 'websocket.close', 'code': 1000, 'error': 'Invalid credentials.. no such user exists' })
             
             # if any exception occurs during the proccess return an error
             except Exception as e:
-                await send({ 'type': 'websocket.close', 'code': 1000, 'text': str(e) })
-                return
+                return await send({ 'type': 'websocket.close', 'code': 1000, 'error': str(e) })
 
         return await self.app(scope, receive, send)
