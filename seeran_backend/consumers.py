@@ -53,7 +53,7 @@ class MainConsumer(AsyncWebsocketConsumer):
                 
                 # toggle  multi-factor authentication option for user
                 if description == 'multi_factor_authentication':
-                    message = await self.toggle_multi_factor_authentication(user)
+                    message = await self.toggle_multi_factor_authentication(user, details.toggle)
                     
                     if message is not None:
                         return await self.send(text_data=json.dumps({ 'message': message }))
