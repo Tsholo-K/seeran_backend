@@ -121,10 +121,16 @@ class FounderConsumer(AsyncWebsocketConsumer):
             if action == 'POST':
                 
                 # delete school account
-                if description == 'delete_school':
+                if description == 'delete_school_account':
                     school_id = details.get('school_id')
                     if school_id is not None:
-                        response = await self.delete_school(school_id)
+                        response = await self.delete_school_account(school_id)
+                        
+                # delete principal account
+                if description == 'delete_principal_account':
+                    principal_id = details.get('principal_id')
+                    if principal_id is not None:
+                        response = await self.delete_principal_account(principal_id)
 
 
             ###############################################################################################################
@@ -185,7 +191,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
             return { 'error': str(e) }
 
     @sync_to_async
-    def delete_school(self, school_id):
+    def delete_school_account(self, school_id):
 
         try:
             school = School.objects.get(school_id=school_id)
@@ -195,6 +201,21 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
         except School.DoesNotExist:
             return {"error" : "school with the provided credentials can not be found"}
+        
+        except Exception as e:
+            return {'error': str(e)}
+    
+    @sync_to_async
+    def delete_principal_account(self, principal_id):
+
+        try:
+            principal = CustomUser.objects.get(school_id=principal_id, role='PRINCIPAL')
+            principal.delete()
+            
+            return {"message" : "principal account deleted successfully"}
+        
+        except CustomUser.DoesNotExist:
+            return {"error" : "principal with the provided credentials does not exist"}
         
         except Exception as e:
             return {'error': str(e)}
