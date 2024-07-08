@@ -40,43 +40,6 @@ def create_school(request):
 @api_view(['GET'])
 @token_required
 @founder_only
-def schools(request):
-   
-    try:
-        schools = School.objects.all().annotate(
-            students=Count('users', filter=models.Q(users__role='STUDENT')),
-            parents=Count('users', filter=models.Q(users__role='PARENT')),
-            teachers=Count('users', filter=models.Q(users__role='TEACHER'))
-        )
- 
-        serializer = SchoolsSerializer(schools, many=True)
-        return Response({"schools" : serializer.data}, status=200)
- 
-    except Exception as e:
-        return Response({"error" : str(e)}, status=500)
-
-
-@api_view(['GET'])
-@token_required
-@founder_only
-def school(request, school_id):
-
-    try:
-        school = School.objects.get(school_id=school_id)
-        serializer = SchoolSerializer(instance=school)
-      
-        return Response({"school" : serializer.data}, status=200)
-    
-    except School.DoesNotExist:
-        return Response({"error" : "school with the provided credentials can not be found"}, status=status.HTTP_404_NOT_FOUND)
-    
-    except Exception as e:
-        return Response({"error" : str(e)}, status=500)
-
-
-@api_view(['GET'])
-@token_required
-@founder_only
 def school_details(request, school_id):
  
     try:

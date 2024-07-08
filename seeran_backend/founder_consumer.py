@@ -4,14 +4,12 @@ import json
 # django
 from django.db.models import Count
 from django.db import models
-from django.forms.models import model_to_dict
 
 from users.models import CustomUser
 from schools.models import School
 
 # serializers
 from schools.serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSerializer, SchoolDetailsSerializer
-from users.serializers import SecurityInfoSerializer
 
 from asgiref.sync import sync_to_async  # Import sync_to_async for database_sync_to_async
 
@@ -41,6 +39,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         user = self.scope.get('user')
         
         if user:
+            
             action = json.loads(text_data).get('action')
             description = json.loads(text_data).get('description')
             
@@ -51,28 +50,29 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 
                 # return users security information
                 if description == 'my_security_information':
-                    security_info = await self.fetch_security_info(user)
-                    
-                    if security_info is not None:
-                        serializer = SecurityInfoSerializer(data=security_info)  # Serialize fetched data
-                        
-                        if serializer.is_valid():  # Validate serialized data
-                            return await self.send(text_data=json.dumps( serializer.data ))
-                        
-                        return await self.send(text_data=json.dumps({ 'error': serializer.errors }))
-                        
-                    return await self.send(text_data=json.dumps({ 'error': 'user with the provided credentials does not exist' }))
+                    response = await self.fetch_security_info(user)
+                    return await self.send(text_data=json.dumps(response))
                 
                 # return all school objects
                 if description == 'schools':
                     response = await self.fetch_schools()
-                    return await self.send(text_data=json.dumps( response ))
+                    return await self.send(text_data=json.dumps(response))
             
             details = json.loads(text_data).get('details')
             
             if not details:
                 return await self.send(text_data=json.dumps({ 'error': 'invalid request.. permission denied' }))
 
+            if action == 'SEARCH':
+                
+                # return school with the provided id
+                if description == 'school':
+                    school_id = details.get('school_id')
+                    
+                    if school_id is not None:
+                        response = await self.fetch_school(school_id)
+                        return await self.send(text_data=json.dumps(response))
+            
             if action == 'PUT':
                 
                 # toggle  multi-factor authentication option for user
@@ -81,14 +81,10 @@ class FounderConsumer(AsyncWebsocketConsumer):
                     
                     if toggle is not None:
                         response = await self.toggle_multi_factor_authentication(user, toggle)
-                                            
-                        if response is not None:
-                            return await self.send(text_data=json.dumps( response ))
-                            
-                        return await self.send(text_data=json.dumps({ 'error': 'user with the provided credentials does not exist' }))
+                        return await self.send(text_data=json.dumps(response))
                     
-                    return await self.send(text_data=json.dumps({ 'error': 'invalid information.. provided information is invalid' }))
-                
+            return await self.send(text_data=json.dumps({ 'error': 'invalid information.. provided information is invalid' }))
+
         return await self.send(text_data=json.dumps({ 'error': 'request not authenticated.. access denied' }))
 
       
@@ -100,8 +96,11 @@ class FounderConsumer(AsyncWebsocketConsumer):
             return { 'multifactor_authentication': user.multifactor_authentication, 'event_emails': user.event_emails }
             
         except CustomUser.DoesNotExist:
-            return None
+            return { 'error': 'user with the provided credentials does not exist' }
         
+        except Exception as e:
+            return { 'error': str(e) }
+
     @sync_to_async
     def toggle_multi_factor_authentication(self, user, toggle):
         # Example: Fetch security information asynchronously from CustomUser model
@@ -113,8 +112,11 @@ class FounderConsumer(AsyncWebsocketConsumer):
             return {'message': 'Multifactor authentication {} successfully'.format('enabled' if toggle else 'disabled')}
         
         except CustomUser.DoesNotExist:
-            return None
+            return { 'error': 'user with the provided credentials does not exist' }
         
+        except Exception as e:
+            return { 'error': str(e) }
+
     @sync_to_async
     def fetch_schools(self):
 
@@ -124,12 +126,24 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 parents=Count('users', filter=models.Q(users__role='PARENT')),
                 teachers=Count('users', filter=models.Q(users__role='TEACHER'))
             )
-            # Convert each School instance to a dictionary
-            school_dicts = [model_to_dict(school) for school in schools]
             
             serializer = SchoolsSerializer(schools, many=True)
             return { 'schools' : serializer.data }
         
-        # if any exception occurs during the proccess return an error
         except Exception as e:
             return { 'error': str(e) }
+        
+    @sync_to_async
+    def fetch_school(self, school_id):
+        
+        try:
+            school = School.objects.get(school_id=school_id)
+            serializer = SchoolSerializer(instance=school)
+        
+            return {"school" : serializer.data}
+        
+        except School.DoesNotExist:
+            return {"error" : "school with the provided credentials can not be found"}
+        
+        except Exception as e:
+            return {"error" : str(e)}
