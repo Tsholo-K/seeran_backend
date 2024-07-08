@@ -37,24 +37,6 @@ def create_school(request):
     return Response({"error" : serializer.errors})
 
 
-@api_view(['GET'])
-@token_required
-@founder_only
-def school_details(request, school_id):
- 
-    try:
-        school = School.objects.get(school_id=school_id)
-        serializer = SchoolDetailsSerializer(instance=school)
-    
-        return Response({"school" : serializer.data}, status=200)
-    
-    except School.DoesNotExist:
-        return Response({"error" : "school with the provided credentials can not be found"}, status=status.HTTP_404_NOT_FOUND)
-    
-    except Exception as e:
-        return Response({"error" : str(e)}, status=500)
-
-
 # delete school account
 @api_view(['POST'])
 @token_required

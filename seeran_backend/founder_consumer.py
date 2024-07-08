@@ -84,8 +84,16 @@ class FounderConsumer(AsyncWebsocketConsumer):
                     toggle = details.get('toggle')
                     if toggle is not None:
                         response = await self.toggle_multi_factor_authentication(user, toggle)
-                    
-            if response !=  None:
+            
+            if action == 'POST':
+                
+                # toggle  multi-factor authentication option for user
+                if description == 'delete_school':
+                    school_id = details.get('school_id')
+                    if school_id is not None:
+                        response = await self.delete_school(school_id)
+                        
+            if response is not None:
                 return await self.send(text_data=json.dumps(response))
             
             return await self.send(text_data=json.dumps({ 'error': 'provided information is invalid.. request revoked' }))
@@ -121,6 +129,21 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
         except Exception as e:
             return { 'error': str(e) }
+        
+    @sync_to_async
+    def delete_school(self, school_id):
+
+        try:
+            school = School.objects.get(school_id=school_id)
+            school.delete()
+            
+            return {"message" : "school account deleted successfully"}
+        
+        except School.DoesNotExist:
+            return {"error" : "school with the provided credentials can not be found"}
+        
+        except Exception as e:
+            return {'error': str(e)}
 
     @sync_to_async
     def fetch_schools(self):
