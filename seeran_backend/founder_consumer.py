@@ -46,6 +46,10 @@ class FounderConsumer(AsyncWebsocketConsumer):
             if not ( action or description ):
                 return await self.send(text_data=json.dumps({ 'error': 'invalid request.. permission denied' }))
 
+
+            ################################################ GET #######################################################
+
+
             if action == 'GET':
                 
                 # return users security information
@@ -55,13 +59,23 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 # return all school objects
                 if description == 'schools':
                     response = await self.fetch_schools()
-                    
-                return await self.send(text_data=json.dumps(response))
+
+
+            ##############################################################################################################
+
+
+                if response is not None:
+                    return await self.send(text_data=json.dumps(response))
+                return await self.send(text_data=json.dumps({ 'error': 'provided information is invalid.. request revoked' }))
             
             details = json.loads(text_data).get('details')
             
             if not details:
                 return await self.send(text_data=json.dumps({ 'error': 'invalid request.. permission denied' }))
+
+
+            ############################################## SEARCH ########################################################
+
 
             if action == 'SEARCH':
                 
@@ -76,7 +90,13 @@ class FounderConsumer(AsyncWebsocketConsumer):
                     school_id = details.get('school_id')
                     if school_id is not None:
                         response = await self.fetch_school_details(school_id)
-            
+
+
+            ##############################################################################################################
+
+            ################################################ PUT ##########################################################
+
+
             if action == 'PUT':
                 
                 # toggle  multi-factor authentication option for user
@@ -84,23 +104,35 @@ class FounderConsumer(AsyncWebsocketConsumer):
                     toggle = details.get('toggle')
                     if toggle is not None:
                         response = await self.toggle_multi_factor_authentication(user, toggle)
-            
+
+
+            ################################################################################################################                
+                        
+            ################################################# POST ##########################################################
+
+
             if action == 'POST':
                 
-                # toggle  multi-factor authentication option for user
+                # delete school account
                 if description == 'delete_school':
                     school_id = details.get('school_id')
                     if school_id is not None:
                         response = await self.delete_school(school_id)
+
+
+            ###############################################################################################################
+        
                         
             if response is not None:
                 return await self.send(text_data=json.dumps(response))
-            
             return await self.send(text_data=json.dumps({ 'error': 'provided information is invalid.. request revoked' }))
-
+        
         return await self.send(text_data=json.dumps({ 'error': 'request not authenticated.. access denied' }))
 
-      
+
+########################################################## Aysnc Functions ########################################################
+
+
     @sync_to_async
     def fetch_security_info(self, user):
 

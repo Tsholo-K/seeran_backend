@@ -19,7 +19,7 @@ from authentication.utils import get_upload_path, is_phone_number_valid
 class CustomUserManager(BaseUserManager):
     
     # user creation 
-    def create_user(self, email=None, id_number=None, name=None, surname=None, phone_number=None, role=None, children=None, school=None, grade=None, **extra_fields):
+    def create_user(self, email=None, id_number=None, name=None, surname=None, phone_number=None, role=None, school=None, grade=None, **extra_fields):
           
         if not email and not id_number:
             raise ValueError(_('either email or ID number must be provided'))
@@ -50,14 +50,6 @@ class CustomUserManager(BaseUserManager):
         else:
             phone_number = None
 
-        if role == 'PARENT':
-
-            if children == None:
-                raise ValueError(_('Account must be linked with a student account'))
-        
-        else:
-            children = None
-
         if role == 'STUDENT':
            
             if not id_number:
@@ -73,7 +65,7 @@ class CustomUserManager(BaseUserManager):
         if email:
             email = self.normalize_email(email)
 
-        user = self.model(email=email, id_number=id_number, name=name, surname=surname, children=children, phone_number=phone_number, role=role, school=school, **extra_fields)
+        user = self.model(email=email, id_number=id_number, name=name, surname=surname, phone_number=phone_number, role=role, school=school, **extra_fields)
         user.save(using=self._db)
 
         return user
