@@ -2,10 +2,12 @@
 from pathlib import Path
 from datetime import timedelta
 from decouple import config
+import ssl
 
 # google
 from google.auth import default
 from google.cloud.storage import Client
+from .redis_client import redis_client
 
 # celery
 from celery.schedules import crontab
@@ -165,9 +167,6 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 
-REDIS_TLS = {
-    'ssl_ca_certs': config('SERVER_CA_CERT'),  # path to CA certificate
-}
 
 """
     is necessary for Django Channels to know where and how to send/receive messages over the network. 
@@ -177,10 +176,12 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [('rediss://' + config('CACHE_LOCATION') + ':6378')],
+            'hosts': [(config('CACHE_LOCATION'), 6378)],
             'expiry': 3600,  # optional, expiration time for channels
             'capacity': 1000,  # optional, capacity of channel layer instance
-            'ssl_context': REDIS_TLS,
+            "ssl": True,
+            "ssl_cert_reqs": ssl.CERT_REQUIRED,
+            "ssl_ca_certs": config('SERVER_CA_CERT')
         },
     },
 }
