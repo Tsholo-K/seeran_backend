@@ -62,6 +62,7 @@ class MainConsumer(AsyncWebsocketConsumer):
                 
         return await self.send(text_data=json.dumps({ 'error': 'request not authenticated.. access denied' }))
 
+
     @sync_to_async
     def toggle_multi_factor_authentication(self, user, toggle):
         # Example: Fetch security information asynchronously from CustomUser model
@@ -74,6 +75,7 @@ class MainConsumer(AsyncWebsocketConsumer):
         
         except CustomUser.DoesNotExist:
             return None
+      
         
     @sync_to_async
     def fetch_security_info(self, user):
