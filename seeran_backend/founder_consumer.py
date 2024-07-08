@@ -163,7 +163,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 teachers=Count('users', filter=Q(users__role='TEACHER')),
                 admins=Count('users', filter=Q(users__role='ADMIN') | Q(users__role='PRINCIPAL')),
             )
-            serializer = SchoolDetailsSerializer(instance=school)
+            serializer = SchoolDetailsSerializer(school, many=True)
         
             return {"school" : serializer.data}
         
