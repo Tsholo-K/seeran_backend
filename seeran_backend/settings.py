@@ -165,6 +165,11 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 
+# Redis configuration
+REDIS_HOST = config('CACHE_LOCATION')
+REDIS_PORT = 6379
+
+
 """
     is necessary for Django Channels to know where and how to send/receive messages over the network. 
     It's separate from Django's cache framework, which is why it needs its own configuration
@@ -173,14 +178,8 @@ CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [(config('CACHE_LOCATION'), 6379)],
+            'hosts': [(REDIS_HOST, REDIS_PORT)],
         },
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-            'PARSER_CLASS': 'redis.connection._HiredisParser',
-            'CONNECTION_POOL_CLASS': 'redis.connection.BlockingConnectionPool',  # Use BlockingConnectionPool for SSL
-            'CONNECTION_POOL_KWARGS': {'ssl_ca_certs': config('SERVER_CA_CERT')}, # as done here
-        }
     },
 }
 
@@ -194,12 +193,12 @@ CHANNEL_LAYERS = {
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': config('CACHE_LOCATION') + ':6378',
+        'LOCATION': f'rediss://{REDIS_HOST}:{REDIS_PORT}',
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
             'PARSER_CLASS': 'redis.connection._HiredisParser',
-            'CONNECTION_POOL_CLASS': 'redis.connection.BlockingConnectionPool',  # Use BlockingConnectionPool for SSL
-            'CONNECTION_POOL_KWARGS': {'ssl_ca_certs': config('SERVER_CA_CERT')}, # as done here
+            # 'CONNECTION_POOL_CLASS': 'redis.connection.BlockingConnectionPool',  # Use BlockingConnectionPool for SSL
+            # 'CONNECTION_POOL_KWARGS': {'ssl_ca_certs': config('SERVER_CA_CERT')}, # as done here
         }
     }
 }
