@@ -124,11 +124,11 @@ class FounderConsumer(AsyncWebsocketConsumer):
     def fetch_schools(self):
 
         try:
-            schools = School.objects.all().annotate(
+            schools = list(School.objects.all().annotate(
                 students=Count('users', filter=models.Q(users__role='STUDENT')),
                 parents=Count('users', filter=models.Q(users__role='PARENT')),
                 teachers=Count('users', filter=models.Q(users__role='TEACHER'))
-            )
+            ))
             return schools
         
         # if any exception occurs during the proccess return an error
