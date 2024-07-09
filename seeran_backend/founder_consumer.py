@@ -151,6 +151,14 @@ class FounderConsumer(AsyncWebsocketConsumer):
                     toggle = details.get('toggle')
                     if toggle is not None:
                         response = await self.update_multi_factor_authentication(user, toggle)
+                
+                # update bug report status
+                if description == 'update_bug_report':
+                    status = details.get('status')
+                    bug_report_id = details.get('bug_report_id')
+                    if (toggle and bug_report_id) is not None:
+                        response = await self.update_bug_report(status, bug_report_id)
+
 
 
             ################################################################################################################                
@@ -217,7 +225,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def update_multi_factor_authentication(self, user, toggle):
-        # Example: Fetch security information asynchronously from CustomUser model
+
         try:
             user = CustomUser.objects.get(account_id=user)
             user.multifactor_authentication = toggle
@@ -227,6 +235,27 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
         except CustomUser.DoesNotExist:
             return { 'error': 'user with the provided credentials does not exist' }
+        
+        except Exception as e:
+            return { 'error': str(e) }
+    
+    
+    @database_sync_to_async
+    def update_bug_report(self, status, bug_report_id):
+        
+        try:
+            bug_report = BugReport.objects.get(bugreport_id=bug_report_id)
+            serializer = UpdateBugReportStatusSerializer(bug_report, data=status)
+        
+            if serializer.is_valid():
+                serializer.save()
+                return { "message" : "bug report status successfully changed"}
+        
+            else:
+                return { "error" : serializer.errors }
+        
+        except BugReport.DoesNotExist:
+            return { 'error': 'bug report with the provided ID does not exist' }
         
         except Exception as e:
             return { 'error': str(e) }
