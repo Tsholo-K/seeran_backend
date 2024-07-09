@@ -112,11 +112,17 @@ class FounderConsumer(AsyncWebsocketConsumer):
                     if principal_id is not None:
                         response = await self.fetch_principal_profile(principal_id)
                         
-                # return profile for principal with the provided id
+                # return all principal invoices
                 if description == 'principal_invoices':
                     principal_id = details.get('principal_id')
                     if principal_id is not None:
                         response = await self.fetch_principal_invoices(principal_id)
+                        
+                # return principal invoice with provided id
+                if description == 'principal_invoice':
+                    invoice_id = details.get('invoice_id')
+                    if invoice_id is not None:
+                        response = await self.fetch_principal_invoice(invoice_id)
 
 
             ##############################################################################################################
@@ -227,6 +233,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             return { 'error': str(e) }
 
+
     @database_sync_to_async
     def fetch_principal_invoices(self, principal_id):
 
@@ -246,6 +253,25 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
         except CustomUser.DoesNotExist:
             return {"error" : "user with the provided credentials can not be found"}
+        
+        except Exception as e:
+            # if any exceptions rise during return the response return it as the response
+            return {"error": str(e)}
+        
+        
+    @database_sync_to_async
+    def fetch_principal_invoice(self, invoice_id):
+
+        try:
+            # Get the bill instance
+            bill = Bill.objects.get(bill_id=invoice_id)
+            
+            # Serialize the bill
+            serializer = BillSerializer(instance=bill)
+            return { "invoice" : serializer.data }
+        
+        except Bill.DoesNotExist:
+            return {"error" : "a bill with the provided ID does not exist"}
         
         except Exception as e:
             # if any exceptions rise during return the response return it as the response
