@@ -78,12 +78,13 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
                 if response is not None:
                     return await self.send(text_data=json.dumps(response))
-                return await self.send(text_data=json.dumps({ 'error': 'provided information is invalid.. request revoked' }))
+                
+                return await self.send(text_data=json.dumps({ 'error': 'provided information is invalid.. request revoked'}))
             
             details = json.loads(text_data).get('details')
             
             if not details:
-                return await self.send(text_data=json.dumps({ 'error': 'invalid request.. permission denied' }))
+                return await self.send(text_data=json.dumps({ 'error': 'invalid request.. request denied' }))
 
 
             ############################################## SEARCH ########################################################

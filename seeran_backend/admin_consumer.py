@@ -18,8 +18,10 @@ class AdminConsumer(AsyncWebsocketConsumer):
         await self.accept()
         return await self.send(text_data=json.dumps({ 'message': 'WebSocket connection established' }))
 
+
     async def disconnect(self, close_code):
         pass
+
 
     async def receive(self, text_data):
         
@@ -56,7 +58,45 @@ class AdminConsumer(AsyncWebsocketConsumer):
             details = json.loads(text_data).get('details')
             
             if not details:
-                return await self.send(text_data=json.dumps({ 'error': 'invalid request.. permission denied' }))
+                return await self.send(text_data=json.dumps({ 'error': 'invalid request.. request denied' }))
+
+
+            ############################################## SEARCH ########################################################
+
+
+            if action == 'SEARCH':
+                ...
+
+
+            ##############################################################################################################
+
+            ################################################ PUT ##########################################################
+
+
+            if action == 'PUT':
+                
+                # toggle  multi-factor authentication option for user
+                if description == 'multi_factor_authentication':
+                    toggle = details.get('toggle')
+                    if toggle is not None:
+                        response = await self.update_multi_factor_authentication(user, toggle)
+
+
+            ################################################################################################################                
+                        
+            ################################################# POST ##########################################################
+
+
+            if action == 'POST':
+                ...
+                
+
+            ###############################################################################################################
+        
+                        
+            if response is not None:
+                return await self.send(text_data=json.dumps(response))
+            
             
             return await self.send(text_data=json.dumps({ 'error': 'provided information is invalid.. request revoked' }))
         
@@ -73,6 +113,23 @@ class AdminConsumer(AsyncWebsocketConsumer):
             user = CustomUser.objects.get(account_id=user)
             return { 'multifactor_authentication': user.multifactor_authentication, 'event_emails': user.event_emails }
             
+        except CustomUser.DoesNotExist:
+            return { 'error': 'user with the provided credentials does not exist' }
+        
+        except Exception as e:
+            return { 'error': str(e) }
+        
+
+    @database_sync_to_async
+    def update_multi_factor_authentication(self, user, toggle):
+
+        try:
+            user = CustomUser.objects.get(account_id=user)
+            user.multifactor_authentication = toggle
+            user.save()
+            
+            return {'message': 'Multifactor authentication {} successfully'.format('enabled' if toggle else 'disabled')}
+        
         except CustomUser.DoesNotExist:
             return { 'error': 'user with the provided credentials does not exist' }
         
