@@ -3,6 +3,7 @@ from decouple import config
 import base64
 import json
 
+# channels
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 
@@ -26,19 +27,24 @@ from schools.serializers import SchoolCreationSerializer, SchoolsSerializer, Sch
 from balances.serializers import BillsSerializer, BillSerializer
 from bug_reports.serializers import BugReportsSerializer, UnresolvedBugReportSerializer, ResolvedBugReportSerializer, UpdateBugReportStatusSerializer
 
+# utility functions
+from authentication.utils import validate_access_token
+
 
 class FounderConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
-        # Get the user's role from the scope
-        role = self.scope.get('role')
-
-        # Check if the user has the required role
-        if role != 'FOUNDER':
-            return await self.close()
+        return await self.close()
         
-        await self.accept()
-        return await self.send(text_data=json.dumps({ 'message': 'WebSocket connection established' }))
+        # # Get the user's role from the scope
+        # role = self.scope.get('role')
+
+        # # Check if the user has the required role
+        # if role != 'FOUNDER':
+        #     return await self.close()
+        
+        # await self.accept()
+        # return await self.send(text_data=json.dumps({ 'message': 'WebSocket connection established' }))
 
 
     async def disconnect(self, close_code):
@@ -48,8 +54,10 @@ class FounderConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         
         user = self.scope.get('user')
+        access_token = self.scope.get('access_token')
         
-        if user:
+        if user and access_token and (validate_access_token(access_token) is not None):
+            
             response = None
             
             action = json.loads(text_data).get('action')

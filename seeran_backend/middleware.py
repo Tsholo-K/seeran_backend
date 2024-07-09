@@ -40,6 +40,7 @@ class TokenAuthMiddleware:
                 decoded_token = AccessToken(access_token)
                 
                 scope['user'], scope['role'] = await self.get_user(decoded_token['user_id'])
+                scope['access_token'] = access_token
                 
             except ObjectDoesNotExist:
                 return await send({ 'type': 'websocket.close', 'code': 1000, 'error': 'Invalid credentials.. no such user exists' })

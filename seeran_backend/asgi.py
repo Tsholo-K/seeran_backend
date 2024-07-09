@@ -24,8 +24,8 @@ from django.urls import path
 from channels.routing import ProtocolTypeRouter, URLRouter
 
 # consumers
-from .founder_consumer import FounderConsumer
-from .admin_consumer import AdminConsumer
+from users.consumers.founder_consumer import FounderConsumer
+from users.consumers.admin_consumer import AdminConsumer
 
 # middleware
 from .middleware import TokenAuthMiddleware
