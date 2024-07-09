@@ -34,17 +34,16 @@ from authentication.utils import validate_access_token
 class FounderConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
-        return await self.close()
         
-        # # Get the user's role from the scope
-        # role = self.scope.get('role')
+        # Get the user's role from the scope
+        role = self.scope.get('role')
 
-        # # Check if the user has the required role
-        # if role != 'FOUNDER':
-        #     return await self.close()
+        # Check if the user has the required role
+        if role != 'FOUNDER':
+            return await self.close()
         
-        # await self.accept()
-        # return await self.send(text_data=json.dumps({ 'message': 'WebSocket connection established' }))
+        await self.accept()
+        return await self.send(text_data=json.dumps({ 'message': 'WebSocket connection established' }))
 
 
     async def disconnect(self, close_code):
