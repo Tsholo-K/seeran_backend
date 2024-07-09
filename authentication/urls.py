@@ -30,7 +30,6 @@ urlpatterns = [
     
     # multi-factor authentication
     path('mfa-login/', views.multi_factor_authentication_login, name='change users multi-factor authentication prefferance'),
-    path('mfa-change/', views.mfa_change, name='change users multi-factor authentication prefferance'),
     
     # sign in
     path('sign-in/', views.signin, name='first time sign in'),

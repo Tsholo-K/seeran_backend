@@ -60,6 +60,10 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 if description == 'schools':
                     response = await founder_async_functions.fetch_schools()
 
+                # log user out of the system
+                if description == 'log_me_out':
+                    response = await general_async_functions.log_user_out(access_token)
+
 
             ##############################################################################################################
 
@@ -129,7 +133,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
 
             if action == 'PUT':
-                
+                        
                 # toggle  multi-factor authentication option for user
                 if description == 'multi_factor_authentication':
                     toggle = details.get('toggle')

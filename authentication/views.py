@@ -576,33 +576,6 @@ def logout(request):
 ######################################################## toggle features views #####################################################
 
 
-# activate multi-factor authentication
-@api_view(['POST'])
-@token_required
-def mfa_change(request):
- 
-    if request.user.email_banned:
-        return Response({ "error" : "your email has been banned"})
-
-    sent_email = request.data.get('email')
-    toggle = request.data.get('toggle')
-  
-    if not sent_email or toggle == None:
-        return Response({"error": "supplied credentials are invalid"})
-
-    if not validate_user_email(sent_email):
-        return Response({"error": " invalid email address"})
- 
-    # Validate the email
-    if sent_email != request.user.email:
-        return Response({"error" : "invalid email address for account"})
-  
-    # Validate toggle value
-    request.user.multifactor_authentication = toggle
-    request.user.save()
-   
-    return Response({'message': 'Multifactor authentication {} successfully'.format('enabled' if toggle else 'disabled')}, status=status.HTTP_200_OK)
-
 
 # subscribe to activity emails 
 @api_view(['POST'])

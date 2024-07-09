@@ -1,6 +1,7 @@
 # python 
 from decouple import config
 import base64
+import time
 
 # httpx
 import httpx
@@ -9,9 +10,15 @@ import httpx
 from channels.db import database_sync_to_async
 
 # django
+from django.core.cache import cache
+
+# simple jwt
+from rest_framework_simplejwt.tokens import Token
+from rest_framework_simplejwt.exceptions import TokenError
 
 # models 
 from users.models import CustomUser
+from auth_tokens.models import AccessToken
 
 
 @database_sync_to_async
@@ -33,6 +40,10 @@ def update_multi_factor_authentication(user, toggle):
 
     try:
         user = CustomUser.objects.get(account_id=user)
+        
+        if user.email_banned:
+            return { "error" : "your email has been banned"}
+    
         user.multifactor_authentication = toggle
         user.save()
         
@@ -44,6 +55,31 @@ def update_multi_factor_authentication(user, toggle):
     except Exception as e:
         return { 'error': str(e) }
     
+    
+@database_sync_to_async
+def log_user_out(access_token):
+         
+    try:
+        # Decode the token
+        token = Token(access_token)
+        
+        # Calculate the remaining time for the token to expire
+        expiration_time = token.payload['exp'] - int(time.time())
+        
+        if expiration_time > 0:
+            cache.set(access_token, 'blacklisted', timeout=expiration_time)
+    
+        # delete token from database
+        AccessToken.objects.filter(token=str(access_token)).delete()
+        
+        return {"message": "logged you out successful"}
+    
+    except TokenError as e:
+        return {"error": str(e)}
+
+    except Exception as e:
+        return {"error": str(e)}
+
 
 async def send_account_confirmation_email(user):
     
