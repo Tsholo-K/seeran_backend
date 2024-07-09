@@ -54,7 +54,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 
                 # return users security information
                 if description == 'my_security_information':
-                    response = await founder_async_functions.fetch_security_info(user)
+                    response = await general_async_functions.fetch_security_info(user)
                 
                 # return all school objects
                 if description == 'schools':
@@ -134,7 +134,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 if description == 'multi_factor_authentication':
                     toggle = details.get('toggle')
                     if toggle is not None:
-                        response = await founder_async_functions.update_multi_factor_authentication(user, toggle)
+                        response = await general_async_functions.update_multi_factor_authentication(user, toggle)
                 
                 # update bug report status
                 if description == 'update_bug_report':
@@ -142,7 +142,6 @@ class FounderConsumer(AsyncWebsocketConsumer):
                     bug_report_id = details.get('bug_report_id')
                     if (status and bug_report_id) is not None:
                         response = await founder_async_functions.update_bug_report(status, bug_report_id)
-
 
 
             ################################################################################################################                
