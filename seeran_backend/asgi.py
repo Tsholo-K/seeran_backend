@@ -11,6 +11,9 @@
     places based on their type, and then the URL configuration (urls.py file) and the routing.py file 
     further route those requests/connections based on their path.
 """
+import django
+django.setup()
+
 import os
 
 # django
