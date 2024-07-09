@@ -156,7 +156,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 if description == 'update_bug_report':
                     status = details.get('status')
                     bug_report_id = details.get('bug_report_id')
-                    if (toggle and bug_report_id) is not None:
+                    if (status and bug_report_id) is not None:
                         response = await self.update_bug_report(status, bug_report_id)
 
 
