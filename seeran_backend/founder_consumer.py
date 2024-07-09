@@ -17,7 +17,6 @@ import httpx
 # models 
 from balances.models import Bill
 from users.models import CustomUser
-from users.models import CustomUser
 from schools.models import School
 from balances.models import Balance
 from bug_reports.models import BugReport
