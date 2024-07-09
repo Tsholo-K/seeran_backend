@@ -79,18 +79,6 @@ def my_bug_report(request, bug_report_id):
 ################################################## founderdashboard views #################################################
 
 
-# get resolved bug reports
-@api_view(["GET"])
-@token_required
-@founder_only
-def resolved_bug_reports(request):
- 
-    reports = BugReport.objects.filter(status="RESOLVED").order_by('-created_at')   
-    serializer = BugReportsSerializer(reports, many=True)
-    
-    return Response({ "reports" : serializer.data },status=200)
-
-
 # get users id info
 @api_view(["GET"])
 @token_required
@@ -101,17 +89,6 @@ def resolved_bug_report(request, bug_report_id):
     serializer = ResolvedBugReportSerializer(instance=report)
     
     return Response({ "report" : serializer.data},status=200)
-
-
-# get unresolved bug reports
-@api_view(["GET"])
-@token_required
-@founder_only
-def unresolved_bug_reports(request):
-    reports = BugReport.objects.exclude(status="RESOLVED").order_by('-created_at')
-    serializer = BugReportsSerializer(reports, many=True)
-    
-    return Response({ "reports" : serializer.data },status=200)
 
 
 # get users id info

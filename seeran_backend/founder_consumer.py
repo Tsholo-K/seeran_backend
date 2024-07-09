@@ -76,14 +76,6 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 # return all school objects
                 if description == 'schools':
                     response = await self.fetch_schools()
-                    
-                # return all unreloved bug reports
-                if description == 'unresolved_bug_reports':
-                    response = await self.fetch_unresolved_bug_reports()
-                    
-                # return all reloved bug reports
-                if description == 'resolved_bug_reports':
-                    response = await self.fetch_resolved_bug_reports()
 
 
             ##############################################################################################################
@@ -108,31 +100,43 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 if description == 'school':
                     school_id = details.get('school_id')
                     if school_id is not None:
-                        response = await self.fetch_school(school_id)
+                        response = await self.search_school(school_id)
                         
                 # return school details for school with the provided id
                 if description == 'school_details':
                     school_id = details.get('school_id')
                     if school_id is not None:
-                        response = await self.fetch_school_details(school_id)
+                        response = await self.search_school_details(school_id)
                         
                 # return profile for principal with the provided id
                 if description == 'principal_profile':
                     principal_id = details.get('principal_id')
                     if principal_id is not None:
-                        response = await self.fetch_principal_profile(principal_id)
+                        response = await self.search_principal_profile(principal_id)
                         
                 # return all principal invoices
                 if description == 'principal_invoices':
-                    principal_id = details.get('principal_id')
-                    if principal_id is not None:
-                        response = await self.fetch_principal_invoices(principal_id)
+                    bug_report_id = details.get('bug_report_id')
+                    if bug_report_id is not None:
+                        response = await self.search_principal_invoices(bug_report_id)
                         
                 # return principal invoice with provided id
                 if description == 'principal_invoice':
                     invoice_id = details.get('invoice_id')
                     if invoice_id is not None:
-                        response = await self.fetch_principal_invoice(invoice_id)
+                        response = await self.search_principal_invoice(invoice_id)
+                        
+                # return bug reports
+                if description == 'bug_reports':
+                    resolved = details.get('resolved')
+                    if resolved is not None:
+                        response = await self.search_bug_reports(resolved)
+                                        
+                # return bug report with provided id
+                if description == 'bug_report':
+                    bug_report_id = details.get('bug_report_id')
+                    if bug_report_id is not None:
+                        response = await self.search_bug_report(bug_report_id)
 
 
             ##############################################################################################################
@@ -146,7 +150,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 if description == 'multi_factor_authentication':
                     toggle = details.get('toggle')
                     if toggle is not None:
-                        response = await self.toggle_multi_factor_authentication(user, toggle)
+                        response = await self.update_multi_factor_authentication(user, toggle)
 
 
             ################################################################################################################                
@@ -212,7 +216,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
 
     @database_sync_to_async
-    def toggle_multi_factor_authentication(self, user, toggle):
+    def update_multi_factor_authentication(self, user, toggle):
         # Example: Fetch security information asynchronously from CustomUser model
         try:
             user = CustomUser.objects.get(account_id=user)
@@ -229,7 +233,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
         
     @database_sync_to_async
-    def fetch_principal_profile(self, principal_id):
+    def search_principal_profile(self, principal_id):
 
         try:
             principal = CustomUser.objects.get(account_id=principal_id, role='PRINCIPAL')
@@ -245,7 +249,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
 
     @database_sync_to_async
-    def fetch_principal_invoices(self, principal_id):
+    def search_principal_invoices(self, principal_id):
 
         try:
             # Get the principal instance
@@ -267,10 +271,32 @@ class FounderConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             # if any exceptions rise during return the response return it as the response
             return {"error": str(e)}
+       
+       
+    @database_sync_to_async
+    def search_bug_report(self, bug_report_id):
+
+        try:
+            report = BugReport.objects.get(bugreport_id=bug_report_id)
+            
+            if report.status == "RESOLVED":
+                serializer = ResolvedBugReportSerializer(instance=report)
+                
+            else:
+                serializer = UnresolvedBugReportSerializer(instance=report)
+            
+            return { "report" : serializer.data}
+        
+        except BugReport.DoesNotExist:
+            return {"error" : "bug report with the provided credentials can not be found"}
+        
+        except Exception as e:
+            # if any exceptions rise during return the response return it as the response
+            return {"error": str(e)} 
         
         
     @database_sync_to_async
-    def fetch_principal_invoice(self, invoice_id):
+    def search_principal_invoice(self, invoice_id):
 
         try:
             # Get the bill instance
@@ -393,7 +419,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
         
     @database_sync_to_async
-    def fetch_school(self, school_id):
+    def search_school(self, school_id):
         
         try:
             school = School.objects.get(school_id=school_id)
@@ -409,7 +435,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
         
     @database_sync_to_async
-    def fetch_school_details(self, school_id):
+    def search_school_details(self, school_id):
         
         try:
             school = School.objects.filter(school_id=school_id).annotate(
@@ -430,23 +456,14 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
 
     @database_sync_to_async
-    def fetch_unresolved_bug_reports(self):
+    def search_bug_reports(self, resolved):
 
         try:
-            reports = BugReport.objects.exclude(status="RESOLVED").order_by('-created_at')
-            serializer = BugReportsSerializer(reports, many=True)
-            
-            return { "reports" : serializer.data }
-        
-        except Exception as e:
-            return { 'error': str(e) }
-        
-        
-    @database_sync_to_async
-    def fetch_resolved_bug_reports(self):
-
-        try:
-            reports = BugReport.objects.filter(status="RESOLVED").order_by('-created_at')   
+            if resolved == True:
+                reports = BugReport.objects.filter(status="RESOLVED").order_by('-created_at')
+            else:
+                reports = BugReport.objects.exclude(status="RESOLVED").order_by('-created_at')
+                 
             serializer = BugReportsSerializer(reports, many=True)
             
             return { "reports" : serializer.data }
