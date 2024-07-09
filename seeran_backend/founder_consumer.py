@@ -12,16 +12,21 @@ from django.db.models import Count, Q
 from django.db import models
 from django.db import transaction
 
+# httpx
+import httpx
+
+# models 
+from balances.models import Bill
+from users.models import CustomUser
 from users.models import CustomUser
 from schools.models import School
 from balances.models import Balance
 
 # serializers
+from balances.serializers import BillsSerializer, BillSerializer
 from schools.serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSerializer, SchoolDetailsSerializer
 from users.serializers import ProfileSerializer, PrincipalCreationSerializer
 
-from asgiref.sync import sync_to_async  # Import sync_to_async for database_sync_to_async
-import httpx
 
 class FounderConsumer(AsyncWebsocketConsumer):
 
@@ -106,6 +111,12 @@ class FounderConsumer(AsyncWebsocketConsumer):
                     principal_id = details.get('principal_id')
                     if principal_id is not None:
                         response = await self.fetch_principal_profile(principal_id)
+                        
+                # return profile for principal with the provided id
+                if description == 'principal_invoices':
+                    principal_id = details.get('principal_id')
+                    if principal_id is not None:
+                        response = await self.fetch_principal_invoices(principal_id)
 
 
             ##############################################################################################################
@@ -215,6 +226,30 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
         except Exception as e:
             return { 'error': str(e) }
+
+    @database_sync_to_async
+    def fetch_principal_invoices(self, principal_id):
+
+        try:
+            # Get the principal instance
+            principal = CustomUser.objects.get(account_id=principal_id)
+            
+            # Get the principal's bills
+            principal_bills = Bill.objects.filter(user=principal).order_by('-date_billed')
+            
+            if not principal_bills:
+                return { 'message' : 'success', "invoices" : None, 'in_arrears': principal.school.in_arrears}
+            
+            # Serialize the bills
+            serializer = BillsSerializer(principal_bills, many=True)
+            return { 'message' : 'success', "invoices" : serializer.data, 'in_arrears': principal.school.in_arrears }
+        
+        except CustomUser.DoesNotExist:
+            return {"error" : "user with the provided credentials can not be found"}
+        
+        except Exception as e:
+            # if any exceptions rise during return the response return it as the response
+            return {"error": str(e)}
         
         
     @database_sync_to_async
@@ -375,8 +410,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
             response = await client.post( mailgun_api_url, headers=headers, data=email_data )
             
         if response.status_code == 200:
-            return {"message": "{} account created successfully".format(role.title()) }
+            return {"message": "principal account created successfully"}
             
         else:
-            # if there was an error sending the email respond accordingly
             return {"error": "failed to send OTP to users email address"}
