@@ -245,7 +245,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
         try:
             bug_report = BugReport.objects.get(bugreport_id=bug_report_id)
-            serializer = UpdateBugReportStatusSerializer(bug_report, data=status)
+            serializer = UpdateBugReportStatusSerializer(bug_report, data={status:status})
         
             if serializer.is_valid():
                 serializer.save()
