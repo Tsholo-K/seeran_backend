@@ -116,9 +116,9 @@ class FounderConsumer(AsyncWebsocketConsumer):
                         
                 # return all principal invoices
                 if description == 'principal_invoices':
-                    bug_report_id = details.get('bug_report_id')
-                    if bug_report_id is not None:
-                        response = await self.search_principal_invoices(bug_report_id)
+                    principal_id = details.get('principal_id')
+                    if principal_id is not None:
+                        response = await self.search_principal_invoices(principal_id)
                         
                 # return principal invoice with provided id
                 if description == 'principal_invoice':
