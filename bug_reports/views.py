@@ -16,7 +16,7 @@ from users.decorators import founder_only
 from .models import BugReport
 
 # serializers
-from .serializers import CreateBugReportSerializer, BugReportsSerializer, UnresolvedBugReportSerializer, ResolvedBugReportSerializer, UpdateBugReportStatusSerializer, MyBugReportSerializer
+from .serializers import CreateBugReportSerializer, BugReportsSerializer, UpdateBugReportStatusSerializer, MyBugReportSerializer
 
 
 ################################################## general views ##########################################################
@@ -75,26 +75,3 @@ def my_bug_report(request, bug_report_id):
 
 ###########################################################################################################################
 
-
-################################################## founderdashboard views #################################################
-
-
-# change bug report status
-@api_view(["POST"])
-@token_required
-@founder_only
-def update_bug_report_status(request, bug_report_id):
-   
-    bug_report = get_object_or_404(BugReport, bugreport_id=bug_report_id)
-    serializer = UpdateBugReportStatusSerializer(bug_report, data=request.data)
-   
-    if serializer.is_valid():
-        serializer.save()
-      
-        return Response({ "message" : "bug report status successfully changed"}, status=200)
-  
-    else:
-        return Response({ "error" : serializer.errors }, status=status.HTTP_400_BAD_REQUEST)
-    
-
-###########################################################################################################################

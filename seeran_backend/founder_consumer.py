@@ -1,15 +1,14 @@
 # python 
 from decouple import config
 import base64
+import json
 
 from channels.generic.websocket import AsyncWebsocketConsumer
-import json
 from channels.db import database_sync_to_async
 
 # django
 from django.db.models import Count, Q
-from django.db import models
-from django.db import transaction
+from django.db import models, transaction
 
 # httpx
 import httpx
@@ -22,9 +21,9 @@ from balances.models import Balance
 from bug_reports.models import BugReport
 
 # serializers
-from balances.serializers import BillsSerializer, BillSerializer
-from schools.serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSerializer, SchoolDetailsSerializer
 from users.serializers import ProfileSerializer, PrincipalCreationSerializer
+from schools.serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSerializer, SchoolDetailsSerializer
+from balances.serializers import BillsSerializer, BillSerializer
 from bug_reports.serializers import BugReportsSerializer, UnresolvedBugReportSerializer, ResolvedBugReportSerializer, UpdateBugReportStatusSerializer
 
 
