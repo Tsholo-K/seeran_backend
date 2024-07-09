@@ -248,7 +248,8 @@ class FounderConsumer(AsyncWebsocketConsumer):
             serializer = UpdateBugReportStatusSerializer(bug_report, data={status:status})
         
             if serializer.is_valid():
-                serializer.save()
+                bug_report.status = status
+                bug_report.save()
                 return { "message" : "bug report status successfully changed"}
         
             else:
