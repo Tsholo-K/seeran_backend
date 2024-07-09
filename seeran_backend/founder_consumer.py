@@ -1,6 +1,5 @@
 # python 
 from decouple import config
-import requests
 import base64
 
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -27,7 +26,7 @@ from bug_reports.models import BugReport
 from balances.serializers import BillsSerializer, BillSerializer
 from schools.serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSerializer, SchoolDetailsSerializer
 from users.serializers import ProfileSerializer, PrincipalCreationSerializer
-from bug_reports.serializers import CreateBugReportSerializer, BugReportsSerializer, UnresolvedBugReportSerializer, ResolvedBugReportSerializer, UpdateBugReportStatusSerializer, MyBugReportSerializer
+from bug_reports.serializers import BugReportsSerializer, UnresolvedBugReportSerializer, ResolvedBugReportSerializer, UpdateBugReportStatusSerializer
 
 
 class FounderConsumer(AsyncWebsocketConsumer):
@@ -38,8 +37,6 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
         # Check if the user has the required role
         if role != 'FOUNDER':
-            # Optionally, send a message to the client before closing the connection
-            await self.send(text_data=json.dumps({ 'error': 'insufficient permissions' }))
             return await self.close()
         
         await self.accept()
@@ -61,7 +58,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
             description = json.loads(text_data).get('description')
             
             if not ( action or description ):
-                return await self.send(text_data=json.dumps({ 'error': 'invalid request.. permission denied' }))
+                return await self.send(text_data=json.dumps({ 'error': 'invalid request..' }))
 
 
             ################################################ GET #######################################################
@@ -206,7 +203,6 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
 
 ########################################################## Aysnc Functions ########################################################
-
 
 
     @database_sync_to_async
