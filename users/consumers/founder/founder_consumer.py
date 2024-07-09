@@ -114,7 +114,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 if description == 'bug_reports':
                     resolved = details.get('resolved')
                     if resolved is not None:
-                        response = await founder_async_functions.search_bug_reports(resolved=resolved)
+                        response = await founder_async_functions.search_bug_reports(resolved)
                                         
                 # return bug report with provided id
                 if description == 'bug_report':

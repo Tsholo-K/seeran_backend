@@ -18,11 +18,8 @@ from balances.serializers import BillsSerializer, BillSerializer
 from bug_reports.serializers import BugReportsSerializer, UnresolvedBugReportSerializer, ResolvedBugReportSerializer, UpdateBugReportStatusSerializer
 
 
-########################################################## Aysnc Functions ########################################################
-
-
 @database_sync_to_async
-def fetch_security_info(self, user):
+def fetch_security_info(user):
 
     try:
         user = CustomUser.objects.get(account_id=user)
@@ -36,7 +33,7 @@ def fetch_security_info(self, user):
 
 
 @database_sync_to_async
-def update_multi_factor_authentication(self, user, toggle):
+def update_multi_factor_authentication(user, toggle):
 
     try:
         user = CustomUser.objects.get(account_id=user)
@@ -53,7 +50,7 @@ def update_multi_factor_authentication(self, user, toggle):
 
 
 @database_sync_to_async
-def update_bug_report(self, status, bug_report_id):
+def update_bug_report(status, bug_report_id):
     
     try:
         bug_report = BugReport.objects.get(bugreport_id=bug_report_id)
@@ -75,7 +72,7 @@ def update_bug_report(self, status, bug_report_id):
     
     
 @database_sync_to_async
-def search_principal_profile(self, principal_id):
+def search_principal_profile(principal_id):
 
     try:
         principal = CustomUser.objects.get(account_id=principal_id, role='PRINCIPAL')
@@ -91,7 +88,7 @@ def search_principal_profile(self, principal_id):
 
 
 @database_sync_to_async
-def search_principal_invoices(self, principal_id):
+def search_principal_invoices(principal_id):
 
     try:
         # Get the principal instance
@@ -116,7 +113,7 @@ def search_principal_invoices(self, principal_id):
     
 
 @database_sync_to_async
-def search_bug_reports(self, resolved):
+def search_bug_reports(resolved):
 
     try:
         if resolved == True:
@@ -133,7 +130,7 @@ def search_bug_reports(self, resolved):
     
     
 @database_sync_to_async
-def search_bug_report(self, bug_report_id):
+def search_bug_report(bug_report_id):
 
     try:
         report = BugReport.objects.get(bugreport_id=bug_report_id)
@@ -155,7 +152,7 @@ def search_bug_report(self, bug_report_id):
     
     
 @database_sync_to_async
-def search_principal_invoice(self, invoice_id):
+def search_principal_invoice(invoice_id):
 
     try:
         # Get the bill instance
@@ -174,7 +171,7 @@ def search_principal_invoice(self, invoice_id):
     
     
 @database_sync_to_async
-def create_school_account(self, details):
+def create_school_account(details):
 
     try:
         serializer = SchoolCreationSerializer(data=details)
@@ -190,7 +187,7 @@ def create_school_account(self, details):
     
     
 @database_sync_to_async
-def delete_school_account(self, school_id):
+def delete_school_account(school_id):
 
     try:
         school = School.objects.get(school_id=school_id)
@@ -206,7 +203,7 @@ def delete_school_account(self, school_id):
     
 
 @database_sync_to_async
-def create_principal_account(self, details, school_id):
+def create_principal_account(details, school_id):
 
     try:
         # try to get the school instance
@@ -245,7 +242,7 @@ def create_principal_account(self, details, school_id):
     
     
 @database_sync_to_async
-def delete_principal_account(self, principal_id):
+def delete_principal_account(principal_id):
 
     try:
         principal = CustomUser.objects.get(account_id=principal_id, role='PRINCIPAL')
@@ -261,7 +258,7 @@ def delete_principal_account(self, principal_id):
 
 
 @database_sync_to_async
-def fetch_schools(self):
+def fetch_schools():
 
     try:
         schools = School.objects.all().annotate(
@@ -278,7 +275,7 @@ def fetch_schools(self):
     
     
 @database_sync_to_async
-def search_school(self, school_id):
+def search_school(school_id):
     
     try:
         school = School.objects.get(school_id=school_id)
@@ -294,7 +291,7 @@ def search_school(self, school_id):
     
     
 @database_sync_to_async
-def search_school_details(self, school_id):
+def search_school_details(school_id):
     
     try:
         school = School.objects.filter(school_id=school_id).annotate(
