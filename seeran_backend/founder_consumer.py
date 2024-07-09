@@ -21,11 +21,13 @@ from users.models import CustomUser
 from users.models import CustomUser
 from schools.models import School
 from balances.models import Balance
+from bug_reports.models import BugReport
 
 # serializers
 from balances.serializers import BillsSerializer, BillSerializer
 from schools.serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSerializer, SchoolDetailsSerializer
 from users.serializers import ProfileSerializer, PrincipalCreationSerializer
+from bug_reports.serializers import CreateBugReportSerializer, BugReportsSerializer, UnresolvedBugReportSerializer, ResolvedBugReportSerializer, UpdateBugReportStatusSerializer, MyBugReportSerializer
 
 
 class FounderConsumer(AsyncWebsocketConsumer):
@@ -74,6 +76,14 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 # return all school objects
                 if description == 'schools':
                     response = await self.fetch_schools()
+                    
+                # return all unreloved bug reports
+                if description == 'unresolved_bug_reports':
+                    response = await self.fetch_unresolved_bug_reports()
+                    
+                # return all reloved bug reports
+                if description == 'resolved_bug_reports':
+                    response = await self.fetch_resolved_bug_reports()
 
 
             ##############################################################################################################
@@ -417,6 +427,32 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
         except Exception as e:
             return {"error" : str(e)}
+
+
+    @database_sync_to_async
+    def fetch_unresolved_bug_reports(self):
+
+        try:
+            reports = BugReport.objects.exclude(status="RESOLVED").order_by('-created_at')
+            serializer = BugReportsSerializer(reports, many=True)
+            
+            return { "reports" : serializer.data }
+        
+        except Exception as e:
+            return { 'error': str(e) }
+        
+        
+    @database_sync_to_async
+    def fetch_resolved_bug_reports(self):
+
+        try:
+            reports = BugReport.objects.filter(status="RESOLVED").order_by('-created_at')   
+            serializer = BugReportsSerializer(reports, many=True)
+            
+            return { "reports" : serializer.data }
+        
+        except Exception as e:
+            return { 'error': str(e) }
         
         
     async def send_email(self, user):
