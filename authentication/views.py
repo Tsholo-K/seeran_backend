@@ -538,82 +538,7 @@ def authenticate(request):
 
 ####################################################################################################################################
 
-
-############################################################ logout view ###########################################################
-
-
-# user logout view
-@api_view(['POST'])
-def logout(request):
-  
-    token = request.COOKIES.get('access_token')
-  
-    if token:
-       
-        try:
-            # Add the refresh token to the blacklist
-            response = Response({"message": "logged you out successful"}, status=status.HTTP_200_OK)
-        
-            # delete token from database
-            AccessToken.objects.filter(token=str(token)).delete()
-            
-            # Clear the refresh token cookie
-            response.delete_cookie('access_token', domain='.seeran-grades.cloud')
-            cache.set(token, 'blacklisted', timeout=86400)
-         
-            return response
-   
-        except Exception as e:
-            return Response({"error": str(e)})
-  
-    else:
-        return Response({"error": "no access token provided"}, status=status.HTTP_400_BAD_REQUEST)
-
-
-####################################################################################################################################
-
-
-######################################################## toggle features views #####################################################
-
-
-
-# subscribe to activity emails 
-@api_view(['POST'])
-@token_required
-def event_emails_subscription(request):
-   
-    if request.user.email_banned:
-        return Response({ "error" : "your email has been banned"})
-  
-    sent_email = request.data.get('email')
-    toggle = request.data.get('toggle')
-  
-    if not sent_email or toggle == None:
-        return Response({"error": "supplied credentials are invalid"})
- 
-    if not validate_user_email(sent_email):
-        return Response({"error": " invalid email address"})
- 
-    # Validate the email
-    if sent_email != request.user.email:
-        return Response({"error" : "invalid email address for account"})
- 
-    # Validate toggle value
-    request.user.event_emails = toggle
-    request.user.save()
- 
-    return Response({'message': '{}'.format('subscribed to event emails' if toggle else 'unsubscribed from event emails')}, status=status.HTTP_200_OK)
-
-
-####################################################################################################################################
-
-
 ##################################################### validation and verification views ############################################
-
-
-# Verify otp
-@api_view(['POST'])
-def verify_otp(request):
     
     email = request.data.get('email')
     otp = request.data.get('otp')
@@ -762,49 +687,6 @@ def validate_password(request):
 
         else:
             return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-
-# validate email before email change
-@api_view(['POST'])
-@token_required
-def validate_email_change(request):
-    
-    # check for sent email
-    sent_email = request.data.get('email')
-
-    if not sent_email:
-        return Response({"error": "email address is required"}, status=status.HTTP_400_BAD_REQUEST)
-    
-        # validate email format
-    try:
-        validate_email(sent_email)
-
-    except ValidationError:
-        return Response({"error": "invalid email format."}, status=status.HTTP_400_BAD_REQUEST)
-    
-    # Validate the email
-    if sent_email != request.user.email:
-        return Response({"error" : "invalid email address for account, request denied"}, status=status.HTTP_403_FORBIDDEN)
-    
-    # check if users email is banned
-    if request.user.email_banned:
-        return Response({ "error" : "your email address has been banned, request denied"}, status=status.HTTP_403_FORBIDDEN)
-    
-    # Create an OTP for the user
-    # otp, hashed_otp, salt = generate_otp()
-    
-    # Send the OTP via email
-    try:
-            
-        # cache hashed otp and return reponse
-        # cache.set(sent_email, (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
-        return Response({"message": "email verified, OTP created and sent to your email"}, status=status.HTTP_200_OK)
-        
-        # else:
-        #     return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -1067,20 +949,6 @@ def resend_otp(request):
   
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-
-####################################################################################################################################
-
-
-###################################################### account status check views ##################################################
-
-
-
-####################################################################################################################################
-
-
-################################################## email endpoints views #############################################################
-
 
 
 ####################################################################################################################################

@@ -129,11 +129,42 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
             ##############################################################################################################
 
+            ############################################## VERIFY ########################################################
+
+
+            if action == 'VERIFY':
+                        
+                # verify email before email update
+                if description == 'verify_email':
+                    email = details.get('email')
+                    if email is not None:
+                        status = await general_async_functions.verify_email(email)
+                        if status.get('user'):
+                            response = await general_async_functions.send_one_time_pin_email(status.get('user'), reason='This OTP was generated in reponse to your email update request..')
+                        else:
+                            response = status
+                                 
+                # verify otp
+                if description == 'verify_otp':
+                    otp = details.get('otp')
+                    if otp is not None:
+                        response = await general_async_functions.verify_otp(user, otp)
+                   
+
+            ################################################################################################################                
+                        
             ################################################ PUT ##########################################################
 
 
             if action == 'PUT':
-                        
+                
+                # update users email
+                if description == 'update_email':
+                    new_email = details.get('new_email')
+                    authorization_otp = details.get('authorization_otp')
+                    if (new_email and authorization_otp) is not None:
+                        response = await general_async_functions.update_email(user, new_email, authorization_otp, access_token)
+                                         
                 # toggle  multi-factor authentication option for user
                 if description == 'multi_factor_authentication':
                     toggle = details.get('toggle')
@@ -170,10 +201,10 @@ class FounderConsumer(AsyncWebsocketConsumer):
                     school_id = details.get('school')
                     if school_id is not None:
                         status = await founder_async_functions.create_principal_account(details, school_id)
-                        if status.get('message'):
+                        if status.get('user'):
                             response = await general_async_functions.send_account_confirmation_email(status.get('user'))
                         else:
-                            response = status.get('error')
+                            response = status
                     
                 # delete principal account
                 if description == 'delete_principal_account':

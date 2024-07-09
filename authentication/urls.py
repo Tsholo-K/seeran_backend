@@ -7,7 +7,6 @@ urlpatterns = [
     path('authenticate/', views.authenticate, name='get name and surname'),
     
     # email change
-    path('validate-email/', views.validate_email_change, name='validate users email before email change'),
     path('change-email/', views.change_email, name='change users email'),
     
     # password change
@@ -18,9 +17,6 @@ urlpatterns = [
     path('validate-password-reset/', views.validate_password_reset, name='verifies users email before password reset'),
     path('otp-verification/', views.otp_verification, name='verifies users otp before password reset'),
     path('reset-password/', views.reset_password, name='resets users password'),
-    
-    # verification
-    path('verify-otp/', views.verify_otp, name='otp authentication'),
     
     # otp generation
     path('resend-otp/', views.resend_otp, name='request new otp'),
@@ -34,8 +30,5 @@ urlpatterns = [
     # sign in
     path('sign-in/', views.signin, name='first time sign in'),
     path('activate-account/', views.activate_account, name='set account password( account activation )'),
-    
-    # logout
-    path('log-out/', views.logout, name='user logout'),
     
 ]

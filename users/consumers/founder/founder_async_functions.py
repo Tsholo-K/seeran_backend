@@ -47,7 +47,7 @@ def create_principal_account(details, school_id):
                 # Create a new Balance instance for the user
                 Balance.objects.create(user=user)
         
-            return {"message": "principal account created successfully", "user" : user}
+            return {"user" : user}
         
         return {"error" : serializer.errors}
         
