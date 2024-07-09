@@ -5,7 +5,7 @@ from channels.db import database_sync_to_async
 
 from users.models import CustomUser
 
-class FounderConsumer(AsyncWebsocketConsumer):
+class AdminConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
         # Get the user's role from the scope

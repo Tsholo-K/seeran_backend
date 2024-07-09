@@ -12,11 +12,21 @@
     further route those requests/connections based on their path.
 """
 import os
+
+# django
 from django.core.asgi import get_asgi_application
-from channels.routing import ProtocolTypeRouter, URLRouter
-from .middleware import TokenAuthMiddleware
 from django.urls import path
+
+# channels
+from channels.routing import ProtocolTypeRouter, URLRouter
+
+# consumers
 from .founder_consumer import FounderConsumer
+from .admin_consumer import AdminConsumer
+
+# middleware
+from .middleware import TokenAuthMiddleware
+
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'seeran_backend.settings')
 
@@ -25,7 +35,7 @@ application = ProtocolTypeRouter({
     "websocket": TokenAuthMiddleware(
         URLRouter([
             path('ws/founder/', FounderConsumer.as_asgi()),
-            path('ws/admin/', FounderConsumer.as_asgi()),
+            path('ws/admin/', AdminConsumer.as_asgi()),
             path('ws/parent/', FounderConsumer.as_asgi()),
             path('ws/student/', FounderConsumer.as_asgi()),
         ])
