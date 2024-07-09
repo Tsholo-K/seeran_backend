@@ -197,6 +197,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
                         
             if response is not None:
                 return await self.send(text_data=json.dumps(response))
+            
             return await self.send(text_data=json.dumps({ 'error': 'provided information is invalid.. request revoked' }))
         
         return await self.send(text_data=json.dumps({ 'error': 'request not authenticated.. access denied' }))
