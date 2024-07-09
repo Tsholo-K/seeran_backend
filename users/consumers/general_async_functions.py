@@ -13,7 +13,7 @@ from channels.db import database_sync_to_async
 from django.core.cache import cache
 
 # simple jwt
-from rest_framework_simplejwt.tokens import Token
+from rest_framework_simplejwt.tokens import AccessToken as decode, TokenError
 from rest_framework_simplejwt.exceptions import TokenError
 
 # models 
@@ -61,7 +61,7 @@ def log_user_out(access_token):
          
     try:
         # Decode the token
-        token = Token(access_token)
+        token = decode(access_token)
         
         # Calculate the remaining time for the token to expire
         expiration_time = token.payload['exp'] - int(time.time())
