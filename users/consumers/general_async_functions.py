@@ -67,7 +67,7 @@ def search_email_ban(email, email_ban_id):
     try:
         email_ban = EmailBan.objects.get(ban_id=email_ban_id)
         
-        if cache.get(email + 'email_revalidation'):
+        if cache.get(email + 'email_revalidation_otp'):
             can_request = False
         else:
             can_request = True
