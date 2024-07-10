@@ -1,9 +1,14 @@
-from channels.generic.websocket import AsyncWebsocketConsumer
+# python
 import json
 
-from channels.db import database_sync_to_async
+# channels
+from channels.generic.websocket import AsyncWebsocketConsumer
 
-from users.models import CustomUser
+# utility functions
+from authentication.utils import validate_access_token
+
+# async functions 
+from users.consumers import general_async_functions
 
 class AdminConsumer(AsyncWebsocketConsumer):
 
@@ -16,7 +21,6 @@ class AdminConsumer(AsyncWebsocketConsumer):
             return await self.close()
         
         await self.accept()
-        return await self.send(text_data=json.dumps({ 'message': 'WebSocket connection established' }))
 
 
     async def disconnect(self, close_code):
@@ -26,8 +30,10 @@ class AdminConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         
         user = self.scope.get('user')
+        access_token = self.scope.get('access_token')
         
-        if user:
+        if user and access_token and (validate_access_token(access_token) is not None):
+            
             response = None
 
             action = json.loads(text_data).get('action')
@@ -44,7 +50,11 @@ class AdminConsumer(AsyncWebsocketConsumer):
                 
                 # return users security information
                 if description == 'my_security_information':
-                    response = await self.fetch_security_info(user)
+                    response = await general_async_functions.fetch_security_info(user)
+
+                # log user out of the system
+                if description == 'log_me_out':
+                    response = await general_async_functions.log_user_out(access_token)
 
 
             ##############################################################################################################
@@ -70,13 +80,61 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             ##############################################################################################################
 
+            ############################################## VERIFY ########################################################
+
+
+            if action == 'VERIFY':
+                        
+                # verify email before email update
+                if description == 'verify_email':
+                    email = details.get('email')
+                    if email is not None:
+                        status = await general_async_functions.verify_email(email)
+                        if status.get('user'):
+                            response = await general_async_functions.send_one_time_pin_email(status.get('user'), reason='This OTP was generated in response to your email update request..')
+                        else:
+                            response = status
+                
+                # verify password before password update
+                if description == 'verify_password':
+                    password = details.get('password')
+                    if password is not None:
+                        status = await general_async_functions.verify_password(user, password)
+                        if status.get('user'):
+                            response = await general_async_functions.send_one_time_pin_email(status.get('user'), reason='This OTP was generated in response to your password update request..')
+                        else:
+                            response = status
+                
+                # verify otp
+                if description == 'verify_otp':
+                    otp = details.get('otp')
+                    if otp is not None:
+                        response = await general_async_functions.verify_otp(user, otp)
+                   
+
+            ################################################################################################################                
+                        
             ################################################ PUT ##########################################################
 
 
             if action == 'PUT':
                 
+                # update users email
+                if description == 'update_email':
+                    new_email = details.get('new_email')
+                    authorization_otp = details.get('authorization_otp')
+                    if (new_email and authorization_otp) is not None:
+                        response = await general_async_functions.update_email(user, new_email, authorization_otp, access_token)
+                
+                # update users password
+                if description == 'update_password':
+                    new_password = details.get('new_password')
+                    authorization_otp = details.get('authorization_otp')
+                    if (new_password and authorization_otp) is not None:
+                        response = await general_async_functions.update_password(user, new_password, authorization_otp, access_token)
+
                 # toggle  multi-factor authentication option for user
-                if description == 'multi_factor_authentication':
+                if description == 'update_multi_factor_authentication':
                     toggle = details.get('toggle')
                     if toggle is not None:
                         response = await self.update_multi_factor_authentication(user, toggle)
@@ -97,41 +155,6 @@ class AdminConsumer(AsyncWebsocketConsumer):
             if response is not None:
                 return await self.send(text_data=json.dumps(response))
             
-            
             return await self.send(text_data=json.dumps({ 'error': 'provided information is invalid.. request revoked' }))
         
         return await self.send(text_data=json.dumps({ 'error': 'request not authenticated.. access denied' }))
-
-
-########################################################## Aysnc Functions ########################################################
-
-
-    @database_sync_to_async
-    def fetch_security_info(self, user):
-
-        try:
-            user = CustomUser.objects.get(account_id=user)
-            return { 'multifactor_authentication': user.multifactor_authentication, 'event_emails': user.event_emails }
-            
-        except CustomUser.DoesNotExist:
-            return { 'error': 'user with the provided credentials does not exist' }
-        
-        except Exception as e:
-            return { 'error': str(e) }
-        
-
-    @database_sync_to_async
-    def update_multi_factor_authentication(self, user, toggle):
-
-        try:
-            user = CustomUser.objects.get(account_id=user)
-            user.multifactor_authentication = toggle
-            user.save()
-            
-            return {'message': 'Multifactor authentication {} successfully'.format('enabled' if toggle else 'disabled')}
-        
-        except CustomUser.DoesNotExist:
-            return { 'error': 'user with the provided credentials does not exist' }
-        
-        except Exception as e:
-            return { 'error': str(e) }

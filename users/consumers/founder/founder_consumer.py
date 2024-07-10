@@ -24,7 +24,6 @@ class FounderConsumer(AsyncWebsocketConsumer):
             return await self.close()
         
         await self.accept()
-        return await self.send(text_data=json.dumps({ 'message': 'WebSocket connection established' }))
 
 
     async def disconnect(self, close_code):
@@ -183,7 +182,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
                         response = await general_async_functions.update_password(user, new_password, authorization_otp, access_token)
                   
                 # toggle  multi-factor authentication option for user
-                if description == 'multi_factor_authentication':
+                if description == 'update_multi_factor_authentication':
                     toggle = details.get('toggle')
                     if toggle is not None:
                         response = await general_async_functions.update_multi_factor_authentication(user, toggle)
