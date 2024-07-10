@@ -164,7 +164,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     if email_ban_id is not None:
                         status = await general_async_functions.validate_email_revalidation(user, email_ban_id)
                         if status.get('user'):
-                            status = await general_async_functions.send_email_revalidation_one_time_pin_email(status.get('user'), email_ban_id)
+                            status = await general_async_functions.send_email_revalidation_one_time_pin_email(status.get('user'))
                             if status.get('message'):
                                 response = await general_async_functions.update_email_ban(email_ban_id)
                             else:
