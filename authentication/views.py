@@ -13,7 +13,6 @@ from rest_framework_simplejwt.tokens import AccessToken
 from .serializers import CustomTokenObtainPairSerializer
 
 # django
-from django.contrib.auth.hashers import check_password
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
 from django.core.validators import validate_email
@@ -587,68 +586,6 @@ def otp_verification(request):
         return Response({"error": "incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# validate password before password change
-@api_view(['POST'])
-@token_required
-def validate_password(request):
-    
-    # make sure an password was sent
-    sent_password = request.data.get('password')
-
-    if not sent_password:
-        return Response({"error": "password is required"})
-    
-    # Validate the password
-    if not check_password(sent_password, request.user.password):
-        return Response({"error": "invalid password, please try again"}, status=status.HTTP_400_BAD_REQUEST)
-    
-    # check if the users email is banned
-    if request.user.email_banned:
-        return Response({ "error" : "your email address has been banned"})
-    
-    try:
-                
-        # Create an OTP for the user
-        otp, hashed_otp, salt = generate_otp()
-    
-        cache.set(request.user.email, (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
-        
-        # Define your Mailgun API URL
-        mailgun_api_url = "https://api.eu.mailgun.net/v3/" + config('MAILGUN_DOMAIN') + "/messages"
-
-        # Define your email data
-        email_data = {
-            "from": "seeran grades <authorization@" + config('MAILGUN_DOMAIN') + ">",
-            "to": request.user.surname.title() + " " + request.user.name.title() + "<" + request.user.email + ">",
-            "subject": "One Time Passcode",
-            "template": "one-time passcode",
-            "v:onetimecode": otp,
-            "v:otpcodereason": "This OTP was generated in response to your request to update your password.."
-        }
-
-        # Define your headers
-        headers = {
-            "Authorization": "Basic " + base64.b64encode(f"api:{config('MAILGUN_API_KEY')}".encode()).decode(),
-            "Content-Type": "application/x-www-form-urlencoded"
-        }
-
-        # Send the email via Mailgun
-        response = requests.post(
-            mailgun_api_url,
-            headers=headers,
-            data=email_data
-        )
-
-        if response.status_code == 200:
-            return Response({"message": "password verified, OTP created and sent to your email", "users_email" : request.user.email}, status=status.HTTP_200_OK)
-
-        else:
-            return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-
 # validate email before password reset
 @api_view(['POST'])
 def validate_password_reset(request):
@@ -700,57 +637,7 @@ def validate_password_reset(request):
 ####################################################################################################################################
 
 
-################################################## email/password change views #####################################################
-
-
-# Password change view
-@api_view(['POST'])
-@token_required
-def change_password(request):
-
-    otp = request.COOKIES.get('authorization_otp')
-
-    # Get the new password and confirm password from the request data
-    new_password = request.data.get('new_password')
-    confirm_password = request.data.get('confirm_password')
-
-    if not new_password or not confirm_password or not otp:
-        return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
-    
-    try:
-        hashed_authorization_otp = cache.get(request.user.email + 'authorization_otp')
-        if not hashed_authorization_otp:
-            return Response({"error": "OTP expired, please reload the page to request a new OTP"}, status=status.HTTP_400_BAD_REQUEST)
-    
-    except Exception as e:
-        return Response({"error": f"error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    if not verify_user_otp(otp, hashed_authorization_otp):
-        return Response({"error": "incorrect OTP, action forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
-    
-    # Validate that the new password and confirm password match
-    if new_password != confirm_password:
-        return Response({"error": "new password and confirm password do not match"}, status=status.HTTP_400_BAD_REQUEST)
-    
-    # Update the user's password
-    request.user.set_password(new_password)
-    request.user.save()
-    
-    try:
-        # Return an appropriate response (e.g., success message)
-        response = Response({"message": "password changed successfully"}, status=200)
-       
-        # Remove access and refresh token cookies from the response
-        response.delete_cookie('access_token', domain='.seeran-grades.com')
-        response.delete_cookie('refresh_token', domain='.seeran-grades.com')
-     
-        # blacklist refresh token
-        refresh_token = request.COOKIES.get('refresh_token')
-        cache.set(refresh_token, 'blacklisted', timeout=86400)
-        return response
-    
-    except:
-        pass
+####################################################### password reset views #######################################################
  
 
 # reset password  used when user has forgotten their password

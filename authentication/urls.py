@@ -6,10 +6,6 @@ urlpatterns = [
     # authentication
     path('authenticate/', views.authenticate, name='get name and surname'),
     
-    # password change
-    path('validate-password/', views.validate_password, name='verifies users password before password change'),
-    path('change-password/', views.change_password, name='change users password'),   
-    
     # password reset
     path('validate-password-reset/', views.validate_password_reset, name='verifies users email before password reset'),
     path('otp-verification/', views.otp_verification, name='verifies users otp before password reset'),

@@ -10,6 +10,7 @@ from authentication.utils import validate_access_token
 # async functions 
 from users.consumers import general_async_functions
 
+
 class AdminConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
@@ -52,7 +53,11 @@ class AdminConsumer(AsyncWebsocketConsumer):
                 # return users security information
                 if description == 'my_security_information':
                     response = await general_async_functions.fetch_security_info(user)
-
+                    
+                # log user out of the system
+                if description == 'my_email_information':
+                    response = await general_async_functions.fetch_email_information(user)
+                    
                 # log user out of the system
                 if description == 'log_me_out':
                     response = await general_async_functions.log_user_out(access_token)

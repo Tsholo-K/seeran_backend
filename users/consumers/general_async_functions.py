@@ -22,9 +22,11 @@ from rest_framework_simplejwt.exceptions import TokenError
 # models 
 from users.models import CustomUser
 from auth_tokens.models import AccessToken
+from email_bans.models import EmailBan
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
+from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
 
 
 @database_sync_to_async
@@ -40,6 +42,24 @@ def fetch_security_info(user):
     except Exception as e:
         return { 'error': str(e) }
 
+
+@database_sync_to_async
+def fetch_email_information(user):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        
+        email_bans = EmailBan.objects.filter(email=account.email).order_by('-banned_at')
+        serializer = EmailBansSerializer(email_bans, many=True)
+    
+        return {'information' : { "email_bans" : serializer.data, 'strikes' : account.email_ban_amount, 'banned' : account.email_banned }}
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'user with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+    
 
 @database_sync_to_async
 def update_email(user, new_email, authorization_otp, access_token):
