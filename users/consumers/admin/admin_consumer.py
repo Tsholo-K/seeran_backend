@@ -121,7 +121,14 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     otp = details.get('otp')
                     if otp is not None:
                         response = await general_async_functions.verify_otp(user, otp)
-                   
+                
+                # verify email revalidation otp
+                if description == 'verify_email_revalidation_otp':
+                    otp = details.get('otp')
+                    email_ban_id = details.get('email_ban_id')
+                    if (otp and email_ban_id) is not None:
+                        response = await general_async_functions.verify_email_revalidate_otp(user, otp, email_ban_id)
+
 
             ################################################################################################################                
                         
@@ -149,6 +156,16 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     toggle = details.get('toggle')
                     if toggle is not None:
                         response = await general_async_functions.update_multi_factor_authentication(user, toggle)
+                        
+                # send email revalidation otp
+                if description == 'send_email_revalidation_otp':
+                    email_ban_id = details.get('email_ban_id')
+                    if email_ban_id is not None:
+                        status = await general_async_functions.email_revalidation(user, email_ban_id)
+                        if status.get('user'):
+                            response = await general_async_functions.send_email_revalidation_one_time_pin_email(status.get('user'), email_ban_id)
+                        else:
+                            response = status
 
 
             ################################################################################################################                
