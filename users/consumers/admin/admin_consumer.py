@@ -21,6 +21,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             return await self.close()
         
         await self.accept()
+        return await self.send(text_data=json.dumps({ 'message': 'Welcome' }))
 
 
     async def disconnect(self, close_code):
