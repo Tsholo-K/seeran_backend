@@ -143,7 +143,8 @@ def verify_email_revalidate_otp(user, otp, email_ban_id):
 
     try:
         account = CustomUser.objects.get(account_id=user)
-
+        email_ban = EmailBan.objects.get(ban_id=email_ban_id)
+        
         # try to get revalidation otp from cache
         hashed_otp = cache.get(account.email + 'email_revalidation_otp')
         if not hashed_otp:
@@ -152,14 +153,14 @@ def verify_email_revalidate_otp(user, otp, email_ban_id):
 
         # check if both otps are valid
         if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=hashed_otp):
-            ban = EmailBan.objects.get(ban_id=email_ban_id)
             
-            ban.status = 'APPEALED'
+            
+            email_ban.status = 'APPEALED'
             account.email_banned = False
             account.save()
-            ban.save()
+            email_ban.save()
 
-            return {"message": "email successfully revalidated email ban lifted", 'status' : ban.status.title()}
+            return {"message": "email successfully revalidated email ban lifted", 'status' : email_ban.status.title()}
 
         else:
             attempts = cache.get(account.email + 'email_revalidation_attempts', 3)
@@ -168,6 +169,11 @@ def verify_email_revalidate_otp(user, otp, email_ban_id):
             attempts -= 1
             
             if attempts <= 0:
+                
+                email_ban.can_appeal = False
+                email_ban.status = 'BANNED'
+                email_ban.save()
+
                 cache.delete(account.email + 'email_revalidation_otp')
                 cache.delete(account.email + 'email_revalidation_attempts')
                 
@@ -206,7 +212,9 @@ def update_email(user, new_email, authorization_otp, access_token):
         if not validate_user_email(new_email):
             return {'error': 'Invalid email format'}
     
-        account.email_ban_amount = new_email
+        EmailBan.objects.filter(email=account.email).delete()
+        
+        account.email = new_email
         account.email_ban_amount = 0
         account.save()
         
