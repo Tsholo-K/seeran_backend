@@ -74,8 +74,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
             ############################################## SEARCH ########################################################
 
 
-            # if action == 'SEARCH':
-            #     ...
+            if action == 'SEARCH':
+                ...
 
 
             ##############################################################################################################
@@ -137,7 +137,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
                 if description == 'update_multi_factor_authentication':
                     toggle = details.get('toggle')
                     if toggle is not None:
-                        response = await self.update_multi_factor_authentication(user, toggle)
+                        response = await general_async_functions.update_multi_factor_authentication(user, toggle)
 
 
             ################################################################################################################                
@@ -145,8 +145,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
             ################################################# POST ##########################################################
 
 
-            # if action == 'POST':
-            #     ...
+            if action == 'POST':
+                ...
                 
 
             ###############################################################################################################
