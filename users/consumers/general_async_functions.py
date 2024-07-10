@@ -83,7 +83,7 @@ def search_email_ban(email, email_ban_id):
 
 
 @database_sync_to_async
-def email_revalidation(user, email_ban_id):
+def validate_email_revalidation(user, email_ban_id):
 
     try:
         account = CustomUser.objects.get(account_id=user)
@@ -106,14 +106,30 @@ def email_revalidation(user, email_ban_id):
             
             return { "denied" : "maximum amount of OTP sends reached, email permanently banned",  }
         
-        email_ban.otp_send += 1
-        email_ban.status = 'PENDING'
-        email_ban.save()
-        
         return {'user' : account}
     
     except CustomUser.DoesNotExist:
         return {'error': 'user with the provided credentials does not exist'}
+
+    except EmailBan.DoesNotExist:
+        return {'error': 'ban with the provided credentials does not exist'}
+    
+    except Exception as e:
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def update_email_ban(email_ban_id):
+
+    try:
+        email_ban = EmailBan.objects.get(ban_id=email_ban_id)
+        
+        email_ban.otp_send += 1
+        if email_ban.status != 'PENDING':
+            email_ban.status = 'PENDING'
+        email_ban.save()
+        
+        return {"message": "a new OTP has been sent to your email address"}
 
     except EmailBan.DoesNotExist:
         return {'error': 'ban with the provided credentials does not exist'}
@@ -470,11 +486,9 @@ async def send_one_time_pin_email(user, reason):
         return {"error": str(e)}
 
 
-async def send_email_revalidation_one_time_pin_email(user, ban_id):
+async def send_email_revalidation_one_time_pin_email(user):
     
     try:
-        email_ban = EmailBan.objects.get(ban_id=ban_id)
-
         otp, hashed_otp, salt = generate_otp()
 
         # Define your Mailgun API URL
@@ -501,16 +515,12 @@ async def send_email_revalidation_one_time_pin_email(user, ban_id):
             response = await client.post( mailgun_api_url, headers=headers, data=email_data )
 
         if response.status_code == 200:
-                    
-            email_ban.otp_send += 1
-            email_ban.status = 'PENDING'
-            email_ban.save()
                 
             # if the email was successfully delivered cache the hashed otp against the users 'email' address for 5 mins( 300 seconds)
             # this is cached to our redis database for faster retrieval when we verify the otp
             cache.set(user.email + 'email_revalidation_otp', (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
             
-            return {"message": "a new email revalidation OTP has been sent to your email address"}
+            return {"message": "email sent"}
         
         if response.status_code in [ 400, 401, 402, 403, 404 ]:
             return {"error": f"there was an error sending the email, please open a new bug ticket with the issue. error code {response.status_code}"}
@@ -521,8 +531,6 @@ async def send_email_revalidation_one_time_pin_email(user, ban_id):
         else:
             return {"error": "failed to send OTP to your  email address"}
 
-    except EmailBan.DoesNotExist:
-        return {'error': 'ban with the provided credentials does not exist'}
-
     except Exception as e:
         return {"error": str(e)}
+            
