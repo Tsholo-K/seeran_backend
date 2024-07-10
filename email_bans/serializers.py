@@ -17,7 +17,7 @@ class EmailBansSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = EmailBan
-        fields = [ 'can_appeal', 'reason', 'ban_id', 'banned_at', 'status' ]
+        fields = [ 'can_appeal', 'ban_id', 'banned_at', 'status' ]
         
     def get_status(self, obj):
         return obj.status.title()

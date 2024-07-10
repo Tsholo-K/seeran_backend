@@ -54,7 +54,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
                 if description == 'my_security_information':
                     response = await general_async_functions.fetch_security_info(user)
                     
-                # log user out of the system
+                # return user email information
                 if description == 'my_email_information':
                     response = await general_async_functions.fetch_email_information(user)
                     
@@ -81,7 +81,12 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
 
             if action == 'SEARCH':
-                ...
+                
+                # return email ban with the provided id
+                if description == 'my_email_ban':
+                    email_ban_id = details.get('email_ban_id')
+                    if email_ban_id is not None:
+                        response = await general_async_functions.search_email_ban(email_ban_id)
 
 
             ##############################################################################################################

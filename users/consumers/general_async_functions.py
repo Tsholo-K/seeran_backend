@@ -62,6 +62,21 @@ def fetch_email_information(user):
     
 
 @database_sync_to_async
+def search_email_ban(email_ban_id):
+
+    try:
+        email_ban = EmailBan.objects.get(ban_id=email_ban_id)
+        serializer = EmailBanSerializer(email_ban)
+        return { "email_ban" : serializer.data }
+        
+    except EmailBan.DoesNotExist:
+        return { 'error': 'ban with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+    
+
+@database_sync_to_async
 def update_email(user, new_email, authorization_otp, access_token):
     
     try:
