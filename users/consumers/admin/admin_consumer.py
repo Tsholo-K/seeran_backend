@@ -85,8 +85,9 @@ class AdminConsumer(AsyncWebsocketConsumer):
                 # return email ban with the provided id
                 if description == 'my_email_ban':
                     email_ban_id = details.get('email_ban_id')
-                    if email_ban_id is not None:
-                        response = await general_async_functions.search_email_ban(email_ban_id)
+                    email = details.get('email')
+                    if (email_ban_id and email) is not None:
+                        response = await general_async_functions.search_email_ban(email, email_ban_id)
 
 
             ##############################################################################################################
