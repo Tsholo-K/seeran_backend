@@ -140,10 +140,20 @@ class FounderConsumer(AsyncWebsocketConsumer):
                     if email is not None:
                         status = await general_async_functions.verify_email(email)
                         if status.get('user'):
-                            response = await general_async_functions.send_one_time_pin_email(status.get('user'), reason='This OTP was generated in reponse to your email update request..')
+                            response = await general_async_functions.send_one_time_pin_email(status.get('user'), reason='This OTP was generated in response to your email update request..')
                         else:
                             response = status
-                                 
+                
+                # verify password before password update
+                if description == 'verify_password':
+                    password = details.get('password')
+                    if password is not None:
+                        status = await general_async_functions.verify_password(user, password)
+                        if status.get('user'):
+                            response = await general_async_functions.send_one_time_pin_email(status.get('user'), reason='This OTP was generated in response to your password update request..')
+                        else:
+                            response = status
+                
                 # verify otp
                 if description == 'verify_otp':
                     otp = details.get('otp')
@@ -164,7 +174,14 @@ class FounderConsumer(AsyncWebsocketConsumer):
                     authorization_otp = details.get('authorization_otp')
                     if (new_email and authorization_otp) is not None:
                         response = await general_async_functions.update_email(user, new_email, authorization_otp, access_token)
-                                         
+                
+                # update users password
+                if description == 'update_password':
+                    new_password = details.get('new_password')
+                    authorization_otp = details.get('authorization_otp')
+                    if (new_password and authorization_otp) is not None:
+                        response = await general_async_functions.update_password(user, new_password, authorization_otp, access_token)
+                  
                 # toggle  multi-factor authentication option for user
                 if description == 'multi_factor_authentication':
                     toggle = details.get('toggle')

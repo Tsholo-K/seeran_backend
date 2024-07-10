@@ -22,7 +22,6 @@ from django.db import transaction
 from django.utils import timezone
 
 # models
-from email_bans.models import EmailBan
 from users.models import CustomUser
 from auth_tokens.models import AccessToken
 
@@ -540,48 +539,6 @@ def authenticate(request):
 
 ##################################################### validation and verification views ############################################
     
-    email = request.data.get('email')
-    otp = request.data.get('otp')
-
-    if not email or not otp:
-        return Response({"denied": "email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
-    
-    try:
-        stored_hashed_otp_and_salt = cache.get(email)
-
-        if not stored_hashed_otp_and_salt:
-            return Response({"denied": "OTP expired.. please generate a new one"}, status=status.HTTP_400_BAD_REQUEST)
-    
-        if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
-            
-            # OTP is verified, prompt the user to set their password
-            cache.delete(email)
-            authorization_otp, hashed_authorization_otp, salt = generate_otp()
-            cache.set(email+'authorization_otp', (hashed_authorization_otp, salt), timeout=300)  # 300 seconds = 5 mins
-            
-            response = Response({"message": "OTP verified successfully"}, status=status.HTTP_200_OK)
-            response.set_cookie('authorization_otp', authorization_otp, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
-            
-            return response
-        
-        else:
-
-            attempts = cache.get(email + 'attempts', 3)
-            
-            if attempts <= 0:
-                cache.delete(email)
-                cache.delete(email + 'attempts')
-                return Response({"denied": "maximum OTP verification attempts exceeded.."}, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Incorrect OTP, decrement attempts and handle expiration
-            attempts -= 1
-            cache.set(email + 'attempts', attempts, timeout=300)  # Update attempts with expiration
-
-            return Response({"error": f"incorrect OTP.. {attempts} remaining"}, status=status.HTTP_400_BAD_REQUEST)
-    
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 # verify otp 
 # verifies otp before password reset
@@ -857,65 +814,6 @@ def reset_password(request):
     
     except:
         pass
-
-
-# change email view
-@api_view(['POST'])
-@token_required
-def change_email(request):
-
-    otp = request.COOKIES.get('authorization_otp')
-    new_email = request.data.get('new_email')
-    confirm_email = request.data.get('confirm_email')
-   
-    # make sure all required fields are provided
-    if not new_email or not confirm_email or not otp:
-        return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
-   
-    # check if emails match 
-    if new_email != confirm_email:
-        return Response({"error": "emails do not match"}, status=status.HTTP_400_BAD_REQUEST)
- 
-    if new_email == request.user.email:
-        return Response({"error": "cannot set current email as new email"}, status=status.HTTP_400_BAD_REQUEST)
-  
-    try:
-        hashed_authorization_otp = cache.get(request.user.email + 'authorization_otp')
-        if not hashed_authorization_otp:
-            return Response({"error": "OTP expired, please reload the page to request a new OTP"}, status=status.HTTP_400_BAD_REQUEST)
-  
-    except Exception as e:
-        return Response({"error": f"error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-  
-    if not verify_user_otp(otp, hashed_authorization_otp):
-        return Response({"error": "incorrect OTP, action forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
- 
-    try:
-     
-        if not validate_user_email(new_email):
-            return Response({'error': 'Invalid email format'}, status=400)
-    
-        request.user.email = new_email
-        request.user.save()
-   
-        try:
-            # Add the refresh token to the blacklist
-            refresh_token = request.COOKIES.get('refresh_token')
-            cache.set(refresh_token, 'blacklisted', timeout=86400)
-           
-            response = Response({"message": "email changed successfully"})
-       
-            # Clear the refresh token cookie
-            response.delete_cookie('access_token', domain='.seeran-grades.com')
-            response.delete_cookie('refresh_token', domain='.seeran-grades.com')
-         
-            return response
-   
-        except Exception as e:
-            return Response({"error": e})
-  
-    except Exception as e:
-        return Response({"error": f"error setting email: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # Request otp view

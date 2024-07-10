@@ -13,6 +13,7 @@ from channels.db import database_sync_to_async
 from django.core.cache import cache
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
+from django.contrib.auth.hashers import check_password
 
 # simple jwt
 from rest_framework_simplejwt.tokens import AccessToken as decode, TokenError
@@ -23,7 +24,7 @@ from users.models import CustomUser
 from auth_tokens.models import AccessToken
 
 # utility functions 
-from authentication.utils import validate_access_token, generate_access_token, generate_token, generate_otp, verify_user_otp, validate_user_email, validate_names
+from authentication.utils import generate_otp, verify_user_otp, validate_user_email
 
 
 @database_sync_to_async
@@ -77,8 +78,42 @@ def update_email(user, new_email, authorization_otp, access_token):
         return {"message": "email changed successfully"}
       
     except Exception as e:
-        return {"error": f"error setting email: {str(e)}"}
+        return {"error": {str(e)}}
 
+
+@database_sync_to_async
+def update_password(user, new_password, authorization_otp, access_token):
+    
+    try:
+        account = CustomUser.objects.get(account_id=user)
+    
+        hashed_authorization_otp = cache.get(account.email + 'authorization_otp')
+        if not hashed_authorization_otp:
+            return {"denied": "OTP expired, taking you back to email verification.."}
+    
+        if not verify_user_otp(authorization_otp, hashed_authorization_otp):
+            return {"denied": "incorrect authorization OTP, action forrbiden"}
+    
+        account.set_password(new_password)
+        account.save()
+        
+        # Decode the token
+        token = decode(access_token)
+        
+        # Calculate the remaining time for the token to expire
+        expiration_time = token.payload['exp'] - int(time.time())
+        
+        if expiration_time > 0:
+            cache.set(access_token, 'blacklisted', timeout=expiration_time)
+    
+        # delete token from database
+        AccessToken.objects.filter(token=str(access_token)).delete()
+    
+        return {"message": "password changed successfully"}
+      
+    except Exception as e:
+        return {"error": {str(e)}}
+    
 
 @database_sync_to_async
 def verify_email(email):
@@ -100,6 +135,29 @@ def verify_email(email):
     except ValidationError:
         return {"error": "invalid email"}
         
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@database_sync_to_async
+def verify_password(user, password):
+    
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        
+        # check if the users email is banned
+        if account.email_banned:
+            return { "error" : "your email address has been banned, request denied"}
+            
+        # Validate the password
+        if not check_password(password, account.password):
+            return {"error": "invalid password, please try again"}
+        
+        return {"user" : account}
+       
+    except CustomUser.DoesNotExist:
+        return {'error': 'user with the provided credentials does not exist'}
+
     except Exception as e:
         return {"error": str(e)}
 
