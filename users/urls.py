@@ -15,9 +15,6 @@ urlpatterns = [
 
     # general urls
     path('profile/<str:account_id>/', views.user_profile, name="get users profile information"),
-
-    # urls for founderdashboard, 'FOUNDER' role required
-    path('delete-principal/', views.delete_principal, name="delete principal account"),
         
     # urls  for admindashboard, 'ADMIN' role required 
     path('delete-user/', views.delete_user, name="delete user account"),

@@ -25,7 +25,7 @@ from schools.models import School
 from balances.models import Balance
 
 # serilializers
-from .serializers import (SecurityInfoSerializer, PrincipalCreationSerializer, ProfileSerializer, UsersSerializer, UserCreationSerializer, ProfilePictureSerializer)
+from .serializers import (SecurityInfoSerializer, PrincipalCreationSerializer, ProfileSerializer, UsersSerializer, AccountCreationSerializer, ProfilePictureSerializer)
 
 # custom decorators
 from authentication.decorators import token_required
@@ -139,35 +139,6 @@ def user_profile(request, account_id):
 
 
 ############################################################################################################################
-
-
-
-######################################### founderdashboard view functions ################################################### 
-
-
-# delete principal account
-@api_view(['POST'])
-@token_required
-@founder_only
-def delete_principal(request):
-   
-    try:
-        # Get the school instance
-        user = CustomUser.objects.get(account_id=request.data['account_id'])
-        user.delete()
-      
-        return Response({"message" : "user account deleted successfully",}, status=status.HTTP_200_OK)
-    
-    except CustomUser.DoesNotExist:
-        return Response({"error" : "user with the provided credentials can not be found"}, status=status.HTTP_404_NOT_FOUND)
- 
-    except Exception as e:
-        # if any exceptions rise during return the response return it as the response
-        return Response({"error": {str(e)}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-###########################################################################################################################
-
 
 
 ################################################# admindashboard views #####################################################
