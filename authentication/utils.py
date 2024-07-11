@@ -174,10 +174,10 @@ def is_valid_human_name(name):
     # Check if the string contains more than one part when split by a space
     parts = name.strip().split(' ')
     if len(parts) > 1:
-        return "name should not be splittable. please provide a single full name/surname without spaces."
+        return "name should not be splittable. please provide a single full name/surname without spaces"
     
     # Check if the name contains only valid characters
     if not valid_characters.match(name):
-        return "name/surname contains invalid characters."
+        return "name/surname contains invalid characters"
     
     return True
