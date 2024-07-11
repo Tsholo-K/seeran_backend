@@ -108,22 +108,6 @@ def search_account_id(user, account_id):
 def create_account(user, details):
 
     try:
-        if details['role'] not in ['ADMIN', 'TEACHER']:
-            return { "error" : 'invlaid information provided.. request denied' }
-        
-        namevalidation = is_valid_human_name(details['name'])
-
-        if namevalidation != True:
-            return {'error' : namevalidation}
-
-        surnamevalidation = is_valid_human_name(details['surname'])
-        
-        if surnamevalidation != True:
-            return {'error' : surnamevalidation}
-        
-        details['name'] = details['name'].lower()
-        details['surname'] = details['surname'].lower()
-
         account = CustomUser.objects.get(account_id=user)
 
         details['school'] = account.school.id
@@ -153,15 +137,7 @@ def create_account(user, details):
 @database_sync_to_async
 def update_account(user, updates, account_id):
 
-    try:
-        if updates['name']:
-            namevalidation = is_valid_human_name(updates['name'])
-
-            if namevalidation != True:
-                return {'error' : namevalidation}
-            
-            updates['name'] = updates['name'].lower()
-        
+    try:        
         admin = CustomUser.objects.get(account_id=user)
         account  = CustomUser.objects.get(account_id=account_id)
 
