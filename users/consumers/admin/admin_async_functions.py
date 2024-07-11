@@ -69,8 +69,8 @@ def search_my_school_account(user, account_id):
         admin = CustomUser.objects.get(account_id=user)
         account  = CustomUser.objects.get(account_id=account_id)
 
-        if account.role == 'FOUNDER' or (account.role != 'PARENT' and admin.school != account.school):
-            return { "error" : 'permission denied' }
+        if account.role == 'FOUNDER' or (account.role != 'PARENT' and admin.school != account.school) or (account.role == 'PARENT' and not account.children.filter(school=admin.school).exists()):
+            return { "error" : 'unauthorized access.. permission denied' }
 
         # return the users profile
         serializer = ProfileSerializer(instance=account)

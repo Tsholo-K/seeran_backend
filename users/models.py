@@ -129,7 +129,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     profile_picture = models.ImageField(upload_to=get_upload_path, blank=True, null=True)
     
     # choices for the role field
-    ROLE_CHOICES = [ ('STUDENT', 'Student'), ('TEACHER', 'Teacher'), ('ADMIN', 'Admin'), ('PRINCIPAL', 'Principal'), ('FOUNDER', 'Founder'), ]
+    ROLE_CHOICES = [ ('STUDENT', 'Student'), ('TEACHER', 'Teacher'), ('ADMIN', 'Admin'), ('PRINCIPAL', 'Principal'), ('FOUNDER', 'Founder'), ('PARENT', 'Parent'), ]
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     
     # children field
