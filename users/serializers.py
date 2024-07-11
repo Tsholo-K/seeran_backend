@@ -106,6 +106,8 @@ class UsersSerializer(serializers.ModelSerializer):
 
     image = serializers.SerializerMethodField()
     id = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
+    surname = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
@@ -113,6 +115,12 @@ class UsersSerializer(serializers.ModelSerializer):
     
     def get_id(self, obj):
         return obj.account_id
+    
+    def get_name(self, obj):
+        return obj.name.title()
+    
+    def get_id(self, obj):
+        return obj.surname.title()
             
     def get_image(self, obj):
       
