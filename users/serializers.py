@@ -18,7 +18,34 @@ class SecurityInfoSerializer(serializers.ModelSerializer):
         fields = [ 'multifactor_authentication', 'event_emails' ]
 
 
-# user profile
+class MyProfileSerializer(serializers.ModelSerializer):
+
+    name = serializers.SerializerMethodField()
+    surname = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
+    id = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CustomUser
+        fields = [ 'email', 'name', 'surname', 'image', 'role', 'id' ]
+    
+    def get_name(self, obj):
+        return obj.name.title()
+    
+    def get_surname(self, obj):
+        return obj.surname.title()
+        
+    def get_role(self, obj):
+        return obj.surname.title()
+    
+    def get_id(self, obj):
+        return obj.account_id
+            
+    def get_image(self, obj):
+        return '/default-user-image.svg'
+
+
 class ProfileSerializer(serializers.ModelSerializer):
 
     name = serializers.SerializerMethodField()

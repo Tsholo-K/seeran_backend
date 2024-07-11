@@ -1,8 +1,6 @@
 # python 
 import uuid
 import urllib.parse
-from decouple import config
-import base64
 
 # rest framework
 from rest_framework.decorators import api_view, parser_classes
@@ -11,25 +9,18 @@ from rest_framework.response import Response
 from rest_framework import status
 
 # django
-from django.db.models import Q
 from django.core.cache import cache
 from django.db import transaction
 
 # custom decorators
 from authentication.decorators import token_required
-from users.decorators import founder_only, admins_only
+from users.decorators import  admins_only
 
 # models
 from users.models import CustomUser
-from schools.models import School
-from balances.models import Balance
 
 # serilializers
-from .serializers import (SecurityInfoSerializer, PrincipalCreationSerializer, ProfileSerializer, UsersSerializer, AccountCreationSerializer, ProfilePictureSerializer)
-
-# custom decorators
-from authentication.decorators import token_required
-from .decorators import founder_only
+from .serializers import (MyProfileSerializer, ProfileSerializer, UsersSerializer, ProfilePictureSerializer)
 
 
 ################################################## general views ###########################################################
@@ -41,7 +32,7 @@ def my_profile(request):
    
     # if the user is authenticated, return their profile information 
     if request.user:
-        serializer = ProfileSerializer(instance=request.user)
+        serializer = MyProfileSerializer(instance=request.user)
         return Response({"user" : serializer.data}, status=status.HTTP_200_OK)
 
     else:
