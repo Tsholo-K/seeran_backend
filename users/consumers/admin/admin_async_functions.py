@@ -160,11 +160,7 @@ def update_account(user, updates, account_id):
             if namevalidation != True:
                 return {'error' : namevalidation}
             
-        if updates['surname']:
-            surnamevalidation = is_valid_human_name(updates['surname'])
-            
-            if surnamevalidation != True:
-                return {'error' : surnamevalidation}
+            updates['name'] = updates['name'].lower()
         
         admin = CustomUser.objects.get(account_id=user)
         account  = CustomUser.objects.get(account_id=account_id)
