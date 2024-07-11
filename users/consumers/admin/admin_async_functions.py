@@ -154,19 +154,19 @@ def create_account(user, details):
 def update_account(user, updates, account_id):
 
     try:
-        if updates['name'] != '':
+        if updates['name']:
             namevalidation = is_valid_human_name(updates['name'])
 
-            if namevalidation != True:
-                return {'error' : f'{namevalidation}'}
+            if not namevalidation:
+                return {'error' : f'name should not be splittable or contains invalid characters, and please provide a single full name without spaces'}
             
             updates['name'] = updates['name'].lower()
             
         if updates['surname'] != '':
             namevalidation = is_valid_human_name(updates['surname'])
             
-            if namevalidation != True:
-                return {'error' : f'{namevalidation}'}
+            if not namevalidation:
+                return {'error' : f'surname should not be splittable or contains invalid characters, and please provide a single full surname without spaces'}
             
             updates['surname'] = updates['surname'].lower()
         
