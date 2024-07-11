@@ -15,6 +15,7 @@ from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.contrib.auth.hashers import check_password
 from django.db.models import Q
+from django.db import transaction
 
 # simple jwt
 from rest_framework_simplejwt.tokens import AccessToken as decode, TokenError
@@ -22,6 +23,8 @@ from rest_framework_simplejwt.exceptions import TokenError
 
 # models 
 from users.models import CustomUser
+from schools.models import School
+from balances.models import Balance
 from auth_tokens.models import AccessToken
 from email_bans.models import EmailBan
 
@@ -30,7 +33,7 @@ from authentication.utils import generate_otp, verify_user_otp, validate_user_em
 from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
 
 # serilializers
-from users.serializers import SecurityInfoSerializer, PrincipalCreationSerializer, ProfileSerializer, UsersSerializer, UserCreationSerializer, ProfilePictureSerializer
+from users.serializers import SecurityInfoSerializer, PrincipalCreationSerializer, ProfileSerializer, UsersSerializer, AccountCreationSerializer, ProfilePictureSerializer
 
 
 @database_sync_to_async
@@ -51,6 +54,39 @@ def search_my_school_accounts(user, role):
 
         serializer = UsersSerializer(accounts, many=True)
         return { "users" : serializer.data }
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'user with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+    
+    
+@database_sync_to_async
+def create_account(user, details):
+
+    try:
+        if details['role'] not in ['ADMIN', 'TEACHER']:
+            return { "error" : 'invlaid information provided.. request denied' }
+
+        account = CustomUser.objects.get(account_id=user)
+
+        details['school'] = account.school.id
+        
+        serializer = AccountCreationSerializer(data=details)
+        
+        if serializer.is_valid():
+
+            # Extract validated data
+            validated_data = serializer.validated_data
+            
+            with transaction.atomic():
+                # Try to create the user using the manager's method
+                user = CustomUser.objects.create_user(**validated_data)
+            
+            return {'user' : user}
+            
+        return {"error" : serializer.errors}
         
     except CustomUser.DoesNotExist:
         return { 'error': 'user with the provided credentials does not exist' }

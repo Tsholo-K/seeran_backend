@@ -185,7 +185,14 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
 
             if action == 'POST':
-                ...
+                
+                # create account with role in [ADMIN, TEACHER]
+                if description == 'create_account':
+                    status = await admin_async_functions.create_account(user, details)
+                    if status.get('user'):
+                        response = await general_async_functions.send_account_confirmation_email(status.get('user'))
+                    else:
+                        response = status
                 
 
             ###############################################################################################################

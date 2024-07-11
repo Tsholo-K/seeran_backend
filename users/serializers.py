@@ -90,7 +90,7 @@ class PrincipalCreationSerializer(serializers.ModelSerializer):
 
 
 # user account creation
-class UserCreationSerializer(serializers.ModelSerializer):
+class AccountCreationSerializer(serializers.ModelSerializer):
 
     email = serializers.EmailField(required=False)  # Make email optional
     id_number = serializers.CharField(required=False)  # Make id number optional
