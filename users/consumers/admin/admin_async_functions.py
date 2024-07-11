@@ -37,7 +37,7 @@ from users.serializers import SecurityInfoSerializer, PrincipalCreationSerialize
 
 
 @database_sync_to_async
-def search_my_school_accounts(user, role):
+def search_accounts(user, role):
 
     try:
         if role not in ['ADMIN', 'TEACHER']:

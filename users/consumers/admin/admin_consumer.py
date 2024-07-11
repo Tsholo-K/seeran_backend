@@ -90,10 +90,10 @@ class AdminConsumer(AsyncWebsocketConsumer):
                         response = await general_async_functions.search_email_ban(email, email_ban_id)
                         
                 # return school accounts with the provided role
-                if description == 'my_school_accounts':
+                if description == 'accounts':
                     role = details.get('role')
                     if role is not None:
-                        response = await admin_async_functions.search_my_school_accounts(user, role)
+                        response = await admin_async_functions.search_accounts(user, role)
                         
                 # return account profile with the provided id
                 if description == 'account_profile':
