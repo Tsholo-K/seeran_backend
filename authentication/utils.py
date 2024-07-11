@@ -166,3 +166,18 @@ def is_phone_number_valid(phone_number):
     pattern = r"^(1|6|7|8|9)\d{8}$"
   
     return bool(re.match(pattern, phone_number))
+
+def is_valid_human_name(name):
+    # Valid characters typically found in human names
+    valid_characters = re.compile(r'^[a-zA-Z\-\'\s]+$')
+    
+    # Check if the string contains more than one part when split by a space
+    parts = name.strip().split(' ')
+    if len(parts) > 1:
+        return "name should not be splittable. please provide a single full name/surname without spaces."
+    
+    # Check if the name contains only valid characters
+    if not valid_characters.match(name):
+        return "name/surname contains invalid characters."
+    
+    return True

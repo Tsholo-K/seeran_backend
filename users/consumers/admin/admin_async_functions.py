@@ -29,7 +29,7 @@ from auth_tokens.models import AccessToken
 from email_bans.models import EmailBan
 
 # utility functions 
-from authentication.utils import generate_otp, verify_user_otp, validate_user_email
+from authentication.utils import generate_otp, verify_user_otp, validate_user_email, is_valid_human_name
 from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
 
 # serilializers
@@ -110,6 +110,19 @@ def create_account(user, details):
     try:
         if details['role'] not in ['ADMIN', 'TEACHER']:
             return { "error" : 'invlaid information provided.. request denied' }
+        
+        namevalidation = is_valid_human_name(details['name'])
+
+        if namevalidation != True:
+            return {'error' : namevalidation}
+
+        surnamevalidation = is_valid_human_name(details['surname'])
+        
+        if surnamevalidation != True:
+            return {'error' : surnamevalidation}
+        
+        details['name'] = details['name'].lower()
+        details['surname'] = details['surname'].lower()
 
         account = CustomUser.objects.get(account_id=user)
 
@@ -141,6 +154,22 @@ def create_account(user, details):
 def update_account(user, updates, account_id):
 
     try:
+        if updates['name']:
+            namevalidation = is_valid_human_name(updates['name'])
+
+            if namevalidation != True:
+                return {'error' : namevalidation}
+            
+            updates['name'] = updates['name'].lower()
+            
+        if updates['surname']:
+            surnamevalidation = is_valid_human_name(updates['surname'])
+            
+            if surnamevalidation != True:
+                return {'error' : surnamevalidation}
+            
+            updates['surname'] = updates['surname'].lower()
+        
         admin = CustomUser.objects.get(account_id=user)
         account  = CustomUser.objects.get(account_id=account_id)
 
