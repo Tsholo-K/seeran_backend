@@ -157,18 +157,14 @@ def update_account(user, updates, account_id):
         if updates['name']:
             namevalidation = is_valid_human_name(updates['name'])
 
-            if not namevalidation:
-                return {'error' : f'name should not be splittable or contains invalid characters, and please provide a single full name without spaces'}
+            if namevalidation != True:
+                return {'error' : namevalidation}
             
-            updates['name'] = updates['name'].lower()
+        if updates['surname']:
+            surnamevalidation = is_valid_human_name(updates['surname'])
             
-        if updates['surname'] != '':
-            namevalidation = is_valid_human_name(updates['surname'])
-            
-            if not namevalidation:
-                return {'error' : f'surname should not be splittable or contains invalid characters, and please provide a single full surname without spaces'}
-            
-            updates['surname'] = updates['surname'].lower()
+            if surnamevalidation != True:
+                return {'error' : surnamevalidation}
         
         admin = CustomUser.objects.get(account_id=user)
         account  = CustomUser.objects.get(account_id=account_id)
