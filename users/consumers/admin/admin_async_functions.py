@@ -60,6 +60,27 @@ def search_my_school_accounts(user, role):
     
     except Exception as e:
         return { 'error': str(e) }
+
+
+@database_sync_to_async
+def search_my_school_account(user, account_id):
+
+    try:
+        admin = CustomUser.objects.get(account_id=user)
+        account  = CustomUser.objects.get(account_id=account_id)
+
+        if account.role == 'FOUNDER' or (account.role != 'PARENT' and admin.school != account.school):
+            return { "error" : 'permission denied' }
+
+        # return the users profile
+        serializer = ProfileSerializer(instance=account)
+        return { "user" : serializer.data }
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'user with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
     
     
 @database_sync_to_async
