@@ -154,7 +154,7 @@ def create_account(user, details):
 def update_account(user, updates, account_id):
 
     try:
-        if updates['name']:
+        if updates['name'] != '':
             namevalidation = is_valid_human_name(updates['name'])
 
             if namevalidation != True:
@@ -162,7 +162,7 @@ def update_account(user, updates, account_id):
             
             updates['name'] = updates['name'].lower()
             
-        if updates['surname']:
+        if updates['surname'] != '':
             surnamevalidation = is_valid_human_name(updates['surname'])
             
             if surnamevalidation != True:
