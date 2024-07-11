@@ -15,7 +15,7 @@ from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.contrib.auth.hashers import check_password
 from django.db.models import Q
-from django.db import transaction
+from django.db import IntegrityError, transaction
 
 # simple jwt
 from rest_framework_simplejwt.tokens import AccessToken as decode, TokenError
@@ -126,7 +126,10 @@ def create_account(user, details):
             return {'user' : user}
             
         return {"error" : serializer.errors}
-        
+    
+    except IntegrityError as e:
+        return {'error': 'account with the provided email address already exists'}
+           
     except CustomUser.DoesNotExist:
         return { 'error': 'user with the provided credentials does not exist' }
     
@@ -156,7 +159,10 @@ def update_account(user, updates, account_id):
             return { "user" : serializer.data }
             
         return {"error" : serializer.errors}
-        
+    
+    except IntegrityError as e:
+        return {'error': 'account with the provided email address already exists'}
+    
     except CustomUser.DoesNotExist:
         return { 'error': 'user with the provided credentials does not exist' }
     
