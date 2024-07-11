@@ -163,10 +163,10 @@ def update_account(user, updates, account_id):
             updates['name'] = updates['name'].lower()
             
         if updates['surname'] != '':
-            surnamevalidation = is_valid_human_name(updates['surname'])
+            namevalidation = is_valid_human_name(updates['surname'])
             
-            if surnamevalidation != True:
-                return {'error' : f'{surnamevalidation}'}
+            if namevalidation != True:
+                return {'error' : f'{namevalidation}'}
             
             updates['surname'] = updates['surname'].lower()
         
