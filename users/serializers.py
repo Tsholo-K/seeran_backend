@@ -11,11 +11,6 @@ from rest_framework import serializers
 from .models import CustomUser
 
 
-
-########################################## general ##############################################
-
-
-# user security information
 class SecurityInfoSerializer(serializers.ModelSerializer):
     
     class Meta:
@@ -26,15 +21,35 @@ class SecurityInfoSerializer(serializers.ModelSerializer):
 # user profile
 class ProfileSerializer(serializers.ModelSerializer):
 
-    role = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
-    name = serializers.SerializerMethodField()
-    surname = serializers.SerializerMethodField()
     id = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
-        fields = [ 'name', 'surname', 'email', 'id', 'role', 'image' ]
+        fields = [ 'email', 'name', 'surname', 'image' ]
+    
+    def get_name(self, obj):
+        return obj.name.title()
+    
+    def get_surname(self, obj):
+        return obj.surname.title()
+            
+    def get_image(self, obj):
+      
+        return '/default-user-image.svg'
+    
+    
+class IDSerializer(serializers.ModelSerializer):
+
+    id = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
+    surname = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CustomUser
+        fields = [ 'email', 'name', 'surname', 'role', 'id' ]
     
     def get_name(self, obj):
         return obj.name.title()
@@ -42,18 +57,13 @@ class ProfileSerializer(serializers.ModelSerializer):
     def get_surname(self, obj):
         return obj.surname.title()
     
+    def get_role(self, obj):
+        return obj.surname.title()
+    
     def get_id(self, obj):
         return obj.account_id
-    
-    def get_role(self, obj):
-        return obj.role.title()
-            
-    def get_image(self, obj):
-      
-        return '/default-user-image.svg'
-    
 
-# user profile
+
 class ProfilePictureSerializer(serializers.ModelSerializer):
 
     image = serializers.SerializerMethodField()
@@ -67,14 +77,6 @@ class ProfilePictureSerializer(serializers.ModelSerializer):
         return '/default-user-image.svg'
 
 
-###################################################################################################
-
-
-
-################################### founderdashboard serilizers ###################################
-
-
-# principal creation 
 class PrincipalCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -82,14 +84,6 @@ class PrincipalCreationSerializer(serializers.ModelSerializer):
         fields = [ 'name', 'surname', 'phone_number', 'email', 'school', 'role' ]
 
 
-###################################################################################################
-
-
-
-################################### admindashboard serilizers #####################################
-
-
-# user account creation
 class AccountCreationSerializer(serializers.ModelSerializer):
 
     email = serializers.EmailField(required=False)  # Make email optional
@@ -101,7 +95,6 @@ class AccountCreationSerializer(serializers.ModelSerializer):
         fields = [ 'name', 'surname', 'id_number', 'email', 'school', 'role', 'grade' ]
 
 
-# users serializers 
 class UsersSerializer(serializers.ModelSerializer):
 
     image = serializers.SerializerMethodField()

@@ -33,7 +33,7 @@ from authentication.utils import generate_otp, verify_user_otp, validate_user_em
 from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
 
 # serilializers
-from users.serializers import SecurityInfoSerializer, PrincipalCreationSerializer, ProfileSerializer, UsersSerializer, AccountCreationSerializer, ProfilePictureSerializer
+from users.serializers import SecurityInfoSerializer, PrincipalCreationSerializer, IDSerializer, ProfileSerializer, UsersSerializer, AccountCreationSerializer, ProfilePictureSerializer
 
 
 @database_sync_to_async
@@ -63,7 +63,7 @@ def search_my_school_accounts(user, role):
 
 
 @database_sync_to_async
-def search_my_school_account(user, account_id):
+def search_account_profile(user, account_id):
 
     try:
         admin = CustomUser.objects.get(account_id=user)
@@ -74,6 +74,27 @@ def search_my_school_account(user, account_id):
 
         # return the users profile
         serializer = ProfileSerializer(instance=account)
+        return { "user" : serializer.data }
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'user with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+    
+    
+@database_sync_to_async
+def search_account_id(user, account_id):
+
+    try:
+        admin = CustomUser.objects.get(account_id=user)
+        account  = CustomUser.objects.get(account_id=account_id)
+
+        if account.role == 'FOUNDER' or (account.role != 'PARENT' and admin.school != account.school) or (account.role == 'PARENT' and not account.children.filter(school=admin.school).exists()):
+            return { "error" : 'unauthorized access.. permission denied' }
+
+        # return the users profile
+        serializer = IDSerializer(instance=account)
         return { "user" : serializer.data }
         
     except CustomUser.DoesNotExist:
