@@ -21,9 +21,9 @@ class SecurityInfoSerializer(serializers.ModelSerializer):
 # user profile
 class ProfileSerializer(serializers.ModelSerializer):
 
+    name = serializers.SerializerMethodField()
+    surname = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
-    id = serializers.SerializerMethodField()
-    role = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
@@ -36,7 +36,6 @@ class ProfileSerializer(serializers.ModelSerializer):
         return obj.surname.title()
             
     def get_image(self, obj):
-      
         return '/default-user-image.svg'
     
     
