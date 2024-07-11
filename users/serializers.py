@@ -119,7 +119,7 @@ class UsersSerializer(serializers.ModelSerializer):
     def get_name(self, obj):
         return obj.name.title()
     
-    def get_id(self, obj):
+    def get_surname(self, obj):
         return obj.surname.title()
             
     def get_image(self, obj):
