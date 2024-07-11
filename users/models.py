@@ -174,10 +174,12 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     @staticmethod
     def generate_unique_id(prefix=''):
         max_attempts = 10
+        
         for _ in range(max_attempts):
             unique_part = uuid.uuid4().hex[:13]  # Take only the first 13 characters
             id = f"{prefix}{unique_part}"
             if not CustomUser.objects.filter(account_id=id).exists():
                 return id
+            
         raise ValueError('failed to generate a unique account ID after 10 attempts, please try again later.')
             

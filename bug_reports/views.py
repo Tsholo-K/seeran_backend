@@ -1,7 +1,6 @@
 # python 
 
 # django
-from django.shortcuts import get_object_or_404
 
 # rest framework
 from rest_framework.decorators import api_view
@@ -10,13 +9,12 @@ from rest_framework import status
 
 # custom decorators
 from authentication.decorators import token_required
-from users.decorators import founder_only
 
 # models 
 from .models import BugReport
 
 # serializers
-from .serializers import CreateBugReportSerializer, BugReportsSerializer, UpdateBugReportStatusSerializer, MyBugReportSerializer
+from .serializers import CreateBugReportSerializer, BugReportsSerializer, MyBugReportSerializer
 
 
 ################################################## general views ##########################################################

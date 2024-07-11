@@ -9,7 +9,7 @@ from authentication.utils import validate_access_token
 
 # async functions 
 from users.consumers import general_async_functions
-
+from users.consumers.admin import admin_async_functions
 
 class AdminConsumer(AsyncWebsocketConsumer):
 
@@ -88,6 +88,12 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     email = details.get('email')
                     if (email_ban_id and email) is not None:
                         response = await general_async_functions.search_email_ban(email, email_ban_id)
+                        
+                # return school accounts with the provided role
+                if description == 'my_school_accounts':
+                    role = details.get('role')
+                    if role is not None:
+                        response = await admin_async_functions.search_my_school_accounts(user, role)
 
 
             ##############################################################################################################

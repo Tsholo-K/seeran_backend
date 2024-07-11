@@ -60,6 +60,24 @@ def fetch_email_information(user):
     except Exception as e:
         return { 'error': str(e) }
     
+    
+@database_sync_to_async
+def fetch_email_information(user):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        
+        email_bans = EmailBan.objects.filter(email=account.email).order_by('-banned_at')
+        serializer = EmailBansSerializer(email_bans, many=True)
+    
+        return {'information' : { "email_bans" : serializer.data, 'strikes' : account.email_ban_amount, 'banned' : account.email_banned }}
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'user with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+    
 
 @database_sync_to_async
 def search_email_ban(email, email_ban_id):
@@ -169,13 +187,14 @@ def verify_email_revalidate_otp(user, otp, email_ban_id):
             attempts -= 1
             
             if attempts <= 0:
-                
-                email_ban.can_appeal = False
-                email_ban.status = 'BANNED'
-                email_ban.save()
 
                 cache.delete(account.email + 'email_revalidation_otp')
                 cache.delete(account.email + 'email_revalidation_attempts')
+                
+                if email_ban.otp_send >= 3 :
+                    email_ban.can_appeal = False
+                    email_ban.status = 'BANNED'
+                    email_ban.save()
                 
                 return {"denied": "maximum OTP verification attempts exceeded.."}
             

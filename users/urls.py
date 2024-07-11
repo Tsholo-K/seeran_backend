@@ -21,7 +21,6 @@ urlpatterns = [
         
     # urls  for admindashboard, 'ADMIN' role required 
     path('delete-user/', views.delete_user, name="delete user account"),
-    path('users/<str:role>/', views.users, name="get school admin or teacher accounts"),
     path('students/<str:grade>/', views.students, name="get student accounts in provided grade"),
 
 ]

@@ -304,27 +304,6 @@ def delete_user(request):
         return Response({"error": {str(e)}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# get ['ADMIN', 'TEACHER', 'PRINCIPAL'] roled accounts in the school
-@api_view(['GET'])
-@token_required
-@admins_only
-def users(request, role):
-
-    if role not in ['ADMIN', 'TEACHER']:
-        return Response({ "error" : 'invalid role request' }, status=status.HTTP_400_BAD_REQUEST)
-
-    # Get the school admin users
-    if role == 'ADMIN':
-        accounts = CustomUser.objects.filter( Q(role='ADMIN') | Q(role='PRINCIPAL'), school=request.user.school).exclude(account_id=request.user.account_id)
-  
-    if role == 'TEACHER':
-        accounts = CustomUser.objects.filter(role=role, school=request.user.school)
-
-    # serialize query set
-    serializer = UsersSerializer(accounts, many=True)
-    return Response({ "users" : serializer.data }, status=201)
-
-
 # get all ['ADMIN', 'TEACHER', 'PRINCIPAL'] accounts in the school
 @api_view(['GET'])
 @token_required

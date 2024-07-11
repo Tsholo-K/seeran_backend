@@ -4,60 +4,29 @@ import uuid
 # django 
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from django.db import IntegrityError
 
 # models
 from users.models import CustomUser
 
 
-class Chat(models.Model):
-    
-    participants = models.ManyToManyField(CustomUser, related_name='direct_messages')
-
-    # class account id 
-    chat_id = models.CharField(max_length=15, unique=True)
-
-    class Meta:
-        verbose_name = _('chat')
-        verbose_name_plural = _('chats')
+class ChatRoom(models.Model):
+    user_one = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, related_name='user_one')
+    user_two = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, related_name='user_two')
 
     def __str__(self):
-        return self.name
+        return f"Chat between {self.user_one.surname + ' ' + self.user_one.name} and {self.user_two.surname + ' ' + self.user_two.name}"
 
-    # class account id creation handler
-    def save(self, *args, **kwargs):
-        if not self.chat_id:
-            self.chat_id = self.generate_unique_account_id('CH')
 
-        attempts = 0
-        while attempts < 5:
-            try:
-                super().save(*args, **kwargs)
-                break
-            except IntegrityError:
-                self.chat_id = self.generate_unique_account_id('CH') # Chat
-                attempts += 1
-        if attempts >= 5:
-            raise ValueError('Could not create class with unique account ID after 5 attempts. Please try again later.')
-
-    @staticmethod
-    def generate_unique_account_id(prefix=''):
-        while True:
-            unique_part = uuid.uuid4().hex
-            account_id = prefix + unique_part
-            account_id = account_id[:15].ljust(15, '0')
-
-            if not Chat.objects.filter(chat_id=account_id).exists():
-                return account_id
-            
-
-class Message(models.Model):
+class ChatRoomMessage(models.Model):
+    chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
     
-    chat = models.ForeignKey(Chat, on_delete=models.CASCADE, related_name='chat_messages')
+    sender = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING)
+    content = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    
+    read_receipt = models.BooleanField(default=False)
 
-    sent_by = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING)
+    def mark_as_read(self):
+        self.read_receipt = True
+        self.save()
 
-    Message = models.TextField(max_length=1024)
-    read = models.BooleanField(default=False)
-
-    sent_at = models.DateField(auto_now_add=True)
