@@ -37,7 +37,7 @@ class MyProfileSerializer(serializers.ModelSerializer):
         return obj.surname.title()
         
     def get_role(self, obj):
-        return obj.surname.title()
+        return obj.role.title()
     
     def get_id(self, obj):
         return obj.account_id
@@ -84,7 +84,7 @@ class IDSerializer(serializers.ModelSerializer):
         return obj.surname.title()
     
     def get_role(self, obj):
-        return obj.surname.title()
+        return obj.role.title()
     
     def get_id(self, obj):
         return obj.account_id
