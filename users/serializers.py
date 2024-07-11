@@ -121,6 +121,19 @@ class AccountCreationSerializer(serializers.ModelSerializer):
         fields = [ 'name', 'surname', 'id_number', 'email', 'school', 'role', 'grade' ]
 
 
+class AccountUpdateSerializer(serializers.ModelSerializer):
+
+    email = serializers.EmailField(required=False)  # Make email optional
+    id_number = serializers.CharField(required=False)  # Make id number optional
+    grade = serializers.IntegerField(required=False)  # Make grade number optional
+    name = serializers.CharField(required=False)  # Corrected to CharField
+    surname = serializers.CharField(required=False)  # Corrected to CharField
+
+    class Meta:
+        model = CustomUser
+        fields = ['name', 'surname', 'id_number', 'email', 'grade']
+        
+
 class UsersSerializer(serializers.ModelSerializer):
 
     image = serializers.SerializerMethodField()

@@ -33,7 +33,7 @@ from authentication.utils import generate_otp, verify_user_otp, validate_user_em
 from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
 
 # serilializers
-from users.serializers import SecurityInfoSerializer, PrincipalCreationSerializer, IDSerializer, ProfileSerializer, UsersSerializer, AccountCreationSerializer, ProfilePictureSerializer
+from users.serializers import SecurityInfoSerializer, PrincipalCreationSerializer, AccountUpdateSerializer, IDSerializer, ProfileSerializer, UsersSerializer, AccountCreationSerializer, ProfilePictureSerializer
 
 
 @database_sync_to_async
@@ -127,6 +127,36 @@ def create_account(user, details):
                 user = CustomUser.objects.create_user(**validated_data)
             
             return {'user' : user}
+            
+        return {"error" : serializer.errors}
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'user with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+
+
+@database_sync_to_async
+def update_account(user, updates, account_id):
+
+    try:
+        admin = CustomUser.objects.get(account_id=user)
+        account  = CustomUser.objects.get(account_id=account_id)
+
+        if account.role == 'FOUNDER' or (account.role in ['PRINCIPAL', 'ADMIN'] and admin.role != 'PRINCIPAL') or (account.role != 'PARENT' and admin.school != account.school) or account.role == 'PARENT':
+            return { "error" : 'unauthorized access.. permission denied' }
+        
+        serializer = AccountUpdateSerializer(instance=account, data=updates)
+        
+        if serializer.is_valid():
+            
+            with transaction.atomic():
+                serializer.save()
+                account.refresh_from_db()  # Refresh the user instance from the database
+            
+            serializer = IDSerializer(instance=account)
+            return { "user" : serializer.data }
             
         return {"error" : serializer.errors}
         

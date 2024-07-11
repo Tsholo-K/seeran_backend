@@ -169,7 +169,14 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     authorization_otp = details.get('authorization_otp')
                     if (new_password and authorization_otp) is not None:
                         response = await general_async_functions.update_password(user, new_password, authorization_otp, access_token)
-
+                
+                # update users account details
+                if description == 'update_account':
+                    updates = details.get('updates')
+                    account_id = details.get('account_id')
+                    if (updates and account_id) is not None:
+                        response = await admin_async_functions.update_account(user, updates, account_id)
+                        
                 # toggle  multi-factor authentication option for user
                 if description == 'update_multi_factor_authentication':
                     toggle = details.get('toggle')
