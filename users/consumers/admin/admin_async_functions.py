@@ -16,6 +16,7 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth.hashers import check_password
 from django.db.models import Q
 from django.db import IntegrityError, transaction
+from django.utils.dateparse import parse_time
 
 # simple jwt
 from rest_framework_simplejwt.tokens import AccessToken as decode, TokenError
@@ -65,6 +66,116 @@ def search_accounts(user, role):
 
 
 @database_sync_to_async
+def create_teacher_schedule(user, details):
+
+    try:
+        sessions = details['sessions']
+        day_of_week = details['day'].upper()
+        account_id = details['account_id']
+
+        if not sessions or not day_of_week or not account_id:
+            return { "error" : 'missing information' }
+
+        if day_of_week not in [ 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']:
+            return { "error" : 'invalid schedule day' }
+
+        admin = CustomUser.objects.get(account_id=user)
+        account = CustomUser.objects.get(account_id=account_id, role='TEACHER')
+
+        if account.school != admin.school:
+            return { "error" : 'unauthorized access.. permission denied' }
+
+        with transaction.atomic():
+            
+            schedule = Schedule(day=day_of_week)
+            schedule.save()  # Save to generate a unique schedule_id
+            
+            # Iterate over the sessions in the provided data
+            for session_info in sessions:
+                
+                # Convert the start and end times to Time objects
+                start_time = parse_time(f"{session_info['startTime']['hour']}:{session_info['startTime']['minute']}:{session_info['startTime']['second']}")
+                end_time = parse_time(f"{session_info['endTime']['hour']}:{session_info['endTime']['minute']}:{session_info['endTime']['second']}")
+                
+                # Create a new Session object
+                session = Session(
+                    type=session_info['class'],
+                    classroom=session_info.get('classroom'),  # Using .get() in case 'classroom' is not provided
+                    session_from=start_time,
+                    session_till=end_time
+                )
+                session.save()
+                
+                # Add the session to the schedule's sessions
+                schedule.sessions.add(session)
+            
+            # Save the schedule again to commit the added sessions
+            schedule.save()
+
+            # Check if the teacher already has a schedule for the provided day
+            existing_teacher_schedule = TeacherSchedule.objects.filter(teacher=account, schedules__day=day_of_week)
+
+            for schedules in existing_teacher_schedule:
+                # Remove the specific schedules for that day
+                schedules.schedules.filter(day=day_of_week).delete()
+
+            # Check if the teacher already has a TeacherSchedule object
+            teacher_schedule, created = TeacherSchedule.objects.get_or_create(teacher=account)
+
+            # If the object was created, a new unique teacher_schedule_id will be generated
+            if created:
+                teacher_schedule.save()
+
+            # Add the new schedule to the teacher's schedules
+            teacher_schedule.schedules.add(schedule)
+
+            # Save the TeacherSchedule object to commit any changes
+            teacher_schedule.save()
+
+        # Return a success response
+        return {'message': 'schedule successfully created'}
+        
+    except ValidationError as e:
+        # Handle specific known validation errors
+        return {'error': str(e)}
+    
+    except CustomUser.DoesNotExist:
+        return { 'error': 'user with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+
+
+@database_sync_to_async
+def delete_teacher_schedule(user, schedule_id):
+
+    try:
+        admin = CustomUser.objects.get(account_id=user)
+        
+        # Retrieve the schedule object
+        schedule = Schedule.objects.get(schedule_id=schedule_id)
+
+        # Retrieve the TeacherSchedule object linked to this schedule
+        teacher_schedule = schedule.teacher_linked_to.first()
+
+        # Check if the user has permission to delete the schedule
+        if admin.school != teacher_schedule.teacher.school:
+            return {"error": 'permission denied'}
+
+        # Delete the schedule
+        schedule.delete()
+        
+        # Return a success response
+        return {'message': 'Schedule deleted successfully'}
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'user with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+    
+
+@database_sync_to_async
 def search_teacher_schedules(user, account_id):
 
     try:
@@ -93,7 +204,7 @@ def search_teacher_schedules(user, account_id):
     
     except Exception as e:
         return { 'error': str(e) }
-      
+    
 
 @database_sync_to_async
 def search_account_profile(user, account_id):

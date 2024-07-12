@@ -154,6 +154,9 @@ def create_schedule(request):
 
             # Save the TeacherSchedule object to commit any changes
             teacher_schedule.save()
+
+            # Return a success response
+            return Response({'message': 'schedule successfully created'}, status=status.HTTP_201_CREATED)
         
     except CustomUser.DoesNotExist:
         return Response({"error": "account with the provided credentials does not exist"}, status=status.HTTP_404_NOT_FOUND)
@@ -166,8 +169,7 @@ def create_schedule(request):
         # Handle unexpected errors
         return Response({'error': 'An unexpected error occurred'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-    # Return a success response
-    return Response({'message': 'schedule successfully created'}, status=status.HTTP_201_CREATED)
+    
 
 
 # delete schedule 
@@ -196,6 +198,9 @@ def delete_schedule(request):
         # Delete the schedule
         schedule.delete()
         
+        # Return a success response
+        return Response({'message': 'Schedule deleted successfully'}, status=status.HTTP_200_OK)
+        
     except Schedule.DoesNotExist:
         return Response({"error": "Schedule with the provided ID does not exist"}, status=status.HTTP_404_NOT_FOUND)
   
@@ -206,9 +211,6 @@ def delete_schedule(request):
     except Exception as e:
         # Handle unexpected errors
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    # Return a success response
-    return Response({'message': 'Schedule deleted successfully'}, status=status.HTTP_200_OK)
 
 
 #############################################################################################################
