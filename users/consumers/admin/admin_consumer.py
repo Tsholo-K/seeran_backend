@@ -55,7 +55,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     response = await general_async_functions.fetch_security_info(user)
                     
                 # return user email information
-                if description == 'my_email_information':
+                if description == 'email_information':
                     response = await general_async_functions.fetch_email_information(user)
                     
                 # log user out of the system
@@ -83,7 +83,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             if action == 'SEARCH':
                 
                 # return email ban with the provided id
-                if description == 'my_email_ban':
+                if description == 'email_ban':
                     email_ban_id = details.get('email_ban_id')
                     email = details.get('email')
                     if (email_ban_id and email) is not None:
@@ -106,6 +106,18 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     account_id = details.get('account_id')
                     if account_id is not None:
                         response = await admin_async_functions.search_account_id(user, account_id)
+                
+                # return schedule sessions with the provided id
+                if description == 'teacher_schedules':
+                    account_id = details.get('account_id')
+                    if account_id is not None:
+                        response = await admin_async_functions.search_teacher_schedules(user, account_id)
+
+                # return schedule sessions with the provided id
+                if description == 'schedule':
+                    schedule_id = details.get('schedule_id')
+                    if schedule_id is not None:
+                        response = await general_async_functions.search_schedule(schedule_id)
 
 
             ##############################################################################################################

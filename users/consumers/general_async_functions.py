@@ -23,10 +23,14 @@ from rest_framework_simplejwt.exceptions import TokenError
 from users.models import CustomUser
 from auth_tokens.models import AccessToken
 from email_bans.models import EmailBan
+from timetables.models import Session, Schedule, TeacherSchedule
+
+# serializers
+from timetables.serializers import SchedulesSerializer, SessoinsSerializer
+from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
-from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
 
 
 @database_sync_to_async
@@ -42,6 +46,24 @@ def fetch_security_info(user):
     except Exception as e:
         return { 'error': str(e) }
 
+
+@database_sync_to_async
+def search_schedule(schedule_id):
+
+    try:
+        schedule = Schedule.objects.get(schedule_id=schedule_id)
+    
+        sessions = schedule.sessions.all()
+        serializer = SessoinsSerializer(sessions, many=True)
+        
+        return { "sessions" : serializer.data }
+    
+    except Schedule.DoesNotExist:
+        return {"error" : "schedule with the provided ID does not exist"}
+    
+    except Exception as e:
+        return { 'error': str(e) }
+    
 
 @database_sync_to_async
 def fetch_email_information(user):
