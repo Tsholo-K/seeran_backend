@@ -27,6 +27,7 @@ from schools.models import School
 from balances.models import Balance
 from auth_tokens.models import AccessToken
 from email_bans.models import EmailBan
+from timetables.models import Session, Schedule, TeacherSchedule
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email, is_valid_human_name
@@ -34,6 +35,7 @@ from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
 
 # serilializers
 from users.serializers import SecurityInfoSerializer, PrincipalCreationSerializer, AccountUpdateSerializer, IDSerializer, ProfileSerializer, UsersSerializer, AccountCreationSerializer, ProfilePictureSerializer
+from timetables.serializers import SchedulesSerializer, SessoinsSerializer
 
 
 @database_sync_to_async
@@ -61,6 +63,60 @@ def search_accounts(user, role):
     except Exception as e:
         return { 'error': str(e) }
 
+
+@database_sync_to_async
+def search_teacher_schedules(user, account_id):
+
+    try:
+        admin = CustomUser.objects.get(account_id=user)
+        account  = CustomUser.objects.get(account_id=account_id)
+
+        if account.role != 'TEACHER' or  admin.school != account.school:
+            return { "error" : 'unauthorized access.. permission denied' }
+        
+        if account.role == 'TEACHER':
+            if hasattr(account, 'teacher_schedule'):
+            
+                teacher_schedule = account.teacher_schedule
+                schedules = teacher_schedule.schedules.all()
+                serializer = SchedulesSerializer(schedules, many=True)
+                schedules_data = serializer.data
+            
+                # Return the serialized data
+                return {"schedules": schedules_data}
+        
+        else:
+            # If there is no associated TeacherSchedule, return an empty list
+            return {"schedules": []}
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'user with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+  
+  
+@database_sync_to_async
+def search_teacher_schedule(user, schedule_id):
+
+    try:
+        schedule = Schedule.objects.get(schedule_id=schedule_id)
+    
+        sessions = schedule.sessions.all()
+        serializer = SessoinsSerializer(sessions, many=True)
+        
+        # Return the response
+        return { "sessions" : serializer.data }
+    
+    except Schedule.DoesNotExist:
+        return {"error" : "schedule with the provided ID does not exist"}
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'user with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+      
 
 @database_sync_to_async
 def search_account_profile(user, account_id):

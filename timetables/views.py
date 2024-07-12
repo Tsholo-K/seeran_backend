@@ -56,11 +56,8 @@ def schedule(request, schedule_id):
 def teacher_schedules(request, account_id):
     
     # try to get the user instance
-    try:
-        teacher = CustomUser.objects.get(account_id=account_id)
+    teacher = CustomUser.objects.get(account_id=account_id)
  
-    except CustomUser.DoesNotExist:
-        return Response({"error" : "user with the provided account ID does not exist"}, status=status.HTTP_404_NOT_FOUND)
     
     if request.user.school != teacher.school or teacher.role != 'TEACHER':
         return Response({ "error" : 'permission denied' }, status=status.HTTP_400_BAD_REQUEST)
