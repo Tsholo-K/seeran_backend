@@ -133,7 +133,7 @@ def create_teacher_schedule(user, details):
             teacher_schedule.save()
 
         # Return a success response
-        return {'message': 'schedule successfully created'}
+        return {'message': 'teacher schedule successfully created'}
         
     except ValidationError as e:
         # Handle specific known validation errors
@@ -188,7 +188,7 @@ def search_teacher_schedules(user, account_id):
         if hasattr(account, 'teacher_schedule'):
         
             teacher_schedule = account.teacher_schedule
-            schedules = teacher_schedule.schedules.all()
+            schedules = teacher_schedule.schedules.all().order_by('day')
             serializer = SchedulesSerializer(schedules, many=True)
             schedules_data = serializer.data
         
