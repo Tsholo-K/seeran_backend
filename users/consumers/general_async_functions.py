@@ -455,7 +455,7 @@ async def send_account_confirmation_email(user):
             response = await client.post( mailgun_api_url, headers=headers, data=email_data )
             
         if response.status_code == 200:
-            return {"message": f"{user.role.lower()} account created successfully, an account confirmation email has been sent to the user email address"}
+            return {"message": f"an account confirmation email has been sent to the users email address"}
             
         else:
             return {"error": "failed to send OTP to users email address"}
