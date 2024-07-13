@@ -31,7 +31,7 @@ from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
-
+    
 
 @database_sync_to_async
 def fetch_security_info(user):

@@ -8,7 +8,6 @@ from django.utils.translation import gettext_lazy as _
 # models
 from schools.models import School
 
-
 class Grade(models.Model):
 
     # grade choices
@@ -29,7 +28,7 @@ class Grade(models.Model):
         ('11', 'Grade 11'),
         ('12', 'Grade 12') 
     ]
-    grade = models.CharField(_('school grade'), choices=SCHOOL_GRADES_CHOICES)
+    grade = models.CharField(_('school grade'), choices=SCHOOL_GRADES_CHOICES, default="8")
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='school_grades')
 
     # grade  id 
@@ -38,6 +37,7 @@ class Grade(models.Model):
     class Meta:
         verbose_name = _('grade')
         verbose_name_plural = _('grades')
+        unique_together = ('school', 'grade') # this will prevent the creation of duplicate grades within the same school
 
     def __str__(self):
         return self.name
@@ -83,7 +83,7 @@ class Subject(models.Model):
         ('SOCIAL SCIENCE', 'Social Science'),
         ('ARTS AND CULTURE', 'Arts And Culture'),
     ]
-    subject = models.CharField(_('grade subject'), max_length=100, choices=SCHOOL_SUBJECTS_CHOICES, default="")  # School subjects
+    subject = models.CharField(_('grade subject'), max_length=100, choices=SCHOOL_SUBJECTS_CHOICES, default="ENGLISH")
 
     # class account id 
     subject_id = models.CharField(max_length=15, unique=True)
@@ -91,6 +91,7 @@ class Subject(models.Model):
     class Meta:
         verbose_name = _('subject')
         verbose_name_plural = _('subjects')
+        unique_together = ('grade', 'subject') # this will prevent the creation of duplicate subjects within the same grade
 
     def __str__(self):
         return self.subject
