@@ -278,9 +278,10 @@ def create_grade(user, grade, subjects):
             level.save()
 
             if subjects:
-                for subject in subjects:
-                    item = Subject.objects.create(subject=subject, grade=level)
-                    item.save()
+                subject_list = subjects.split(', ')
+                for sub in subject_list:
+                    ject = Subject.objects.create(subject=sub, grade=level)
+                    ject.save()
             
         return { 'message': 'you can now add student accounts, subjects, classes and so much more..' }
                
