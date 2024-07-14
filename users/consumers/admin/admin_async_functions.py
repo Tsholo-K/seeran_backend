@@ -34,7 +34,7 @@ from grades.models import Grade, Subject
 # serilializers
 from users.serializers import SecurityInfoSerializer, PrincipalCreationSerializer, AccountUpdateSerializer, IDSerializer, ProfileSerializer, UsersSerializer, AccountCreationSerializer, ProfilePictureSerializer
 from timetables.serializers import SchedulesSerializer, SessoinsSerializer
-from grades.serializers import GradesSerializer
+from grades.serializers import GradesSerializer, GradeSerializer, SubjectsSerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email, is_valid_human_name
@@ -47,6 +47,7 @@ def fetch_grades(user):
     try:
         account = CustomUser.objects.get(account_id=user)
         grades = Grade.objects.filter(school=account.school)
+        
         serializer = GradesSerializer(grades, many=True)
 
         return { 'grades': serializer.data }
@@ -266,6 +267,27 @@ def search_account_id(user, account_id):
     except Exception as e:
         return { 'error': str(e) }
 
+
+@database_sync_to_async
+def search_grade(user, grade):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        
+        level  = Grade.objects.get(school=account.school, grade=grade)
+        serializer = GradeSerializer(instance=level)
+
+        return { "grade" : serializer.data }
+    
+    except Grade.DoesNotExist:
+        return { 'error': 'grade with the provided credentials does not exist' }
+
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+    
 
 @database_sync_to_async
 def create_grade(user, grade, subjects):
