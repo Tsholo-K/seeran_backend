@@ -277,7 +277,7 @@ def search_grade(user, grade):
         level  = Grade.objects.get(school=account.school, grade=grade)
         serializer = GradeSerializer(instance=level)
 
-        return { "grade" : serializer.data }
+        return serializer.data
     
     except Grade.DoesNotExist:
         return { 'error': 'grade with the provided credentials does not exist' }
