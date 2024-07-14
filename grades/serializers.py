@@ -54,13 +54,13 @@ class SubjectsSerializer(serializers.ModelSerializer):
     def get_groups(self, obj):
         return obj.subject_classes.count()
 
-    def get_teachers_count(self, obj):
+    def get_teachers(self, obj):
         teachers = set()
         for classroom in obj.subject_classes.all():
             teachers.add(classroom.teacher.account_id)
         return len(teachers)
 
-    def get_students_count(self, obj):
+    def get_students(self, obj):
         students = set()
         for classroom in obj.subject_classes.all():
             for student in classroom.students.all():
