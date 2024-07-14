@@ -234,7 +234,14 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     account_id = details.get('account_id')
                     if account_id is not None:
                         response = await admin_async_functions.delete_account(user, account_id)
-                
+
+                # create teacher schedule
+                if description == 'create_grade':
+                    grade = details.get('grade')
+                    subjects = details.get('subjects')
+                    if grade is not None:
+                        response = await admin_async_functions.create_grade(user, grade, subjects)
+
                 # create teacher schedule
                 if description == 'create_teacher_schedule':
                     response = await admin_async_functions.create_teacher_schedule(user, details)

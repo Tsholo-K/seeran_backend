@@ -78,6 +78,8 @@ class Subject(models.Model):
         ('BIOLOGY', 'Biology'),
         ('GEOGRAPHY', 'Geography'),
         ('ACCOUNTING', 'Accounting'),
+        ('BUSINESS STUDIES', 'Business Studies'),
+        ('AGRICULTURE', 'Agriculture'),
         ('TOURISM', 'Tourism'),
         ('LIFE ORIENTATION', 'Life Orientation'),
         ('SOCIAL SCIENCE', 'Social Science'),

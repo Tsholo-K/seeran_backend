@@ -29,7 +29,7 @@ from balances.models import Balance
 from auth_tokens.models import AccessToken
 from email_bans.models import EmailBan
 from timetables.models import Session, Schedule, TeacherSchedule
-from grades.models import Grade
+from grades.models import Grade, Subject
 
 # serilializers
 from users.serializers import SecurityInfoSerializer, PrincipalCreationSerializer, AccountUpdateSerializer, IDSerializer, ProfileSerializer, UsersSerializer, AccountCreationSerializer, ProfilePictureSerializer
@@ -52,7 +52,7 @@ def fetch_grades(user):
         return { 'grades': serializer.data }
         
     except CustomUser.DoesNotExist:
-        return { 'error': 'user with the provided credentials does not exist' }
+        return { 'error': 'account with the provided credentials does not exist' }
     
     except Exception as e:
         return { 'error': str(e) }
@@ -78,7 +78,7 @@ def search_accounts(user, role):
         return { "users" : serializer.data }
         
     except CustomUser.DoesNotExist:
-        return { 'error': 'user with the provided credentials does not exist' }
+        return { 'error': 'account with the provided credentials does not exist' }
     
     except Exception as e:
         return { 'error': str(e) }
@@ -159,7 +159,7 @@ def create_teacher_schedule(user, details):
         return {'error': str(e)}
     
     except CustomUser.DoesNotExist:
-        return { 'error': 'user with the provided credentials does not exist' }
+        return { 'error': 'account with the provided credentials does not exist' }
     
     except Exception as e:
         return { 'error': str(e) }
@@ -188,7 +188,7 @@ def delete_teacher_schedule(user, schedule_id):
         return {'message': 'Schedule deleted successfully'}
         
     except CustomUser.DoesNotExist:
-        return { 'error': 'user with the provided credentials does not exist' }
+        return { 'error': 'account with the provided credentials does not exist' }
     
     except Exception as e:
         return { 'error': str(e) }
@@ -219,7 +219,7 @@ def search_teacher_schedules(user, account_id):
             return {"schedules": []}
         
     except CustomUser.DoesNotExist:
-        return { 'error': 'user with the provided credentials does not exist' }
+        return { 'error': 'account with the provided credentials does not exist' }
     
     except Exception as e:
         return { 'error': str(e) }
@@ -240,7 +240,7 @@ def search_account_profile(user, account_id):
         return { "user" : serializer.data }
         
     except CustomUser.DoesNotExist:
-        return { 'error': 'user with the provided credentials does not exist' }
+        return { 'error': 'account with the provided credentials does not exist' }
     
     except Exception as e:
         return { 'error': str(e) }
@@ -261,11 +261,35 @@ def search_account_id(user, account_id):
         return { "user" : serializer.data }
         
     except CustomUser.DoesNotExist:
-        return { 'error': 'user with the provided credentials does not exist' }
+        return { 'error': 'account with the provided credentials does not exist' }
     
     except Exception as e:
         return { 'error': str(e) }
+
+
+@database_sync_to_async
+def create_grade(user, grade, subjects):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        
+        with transaction.atomic():
+            level = Grade.objects.create(grade=grade, school=account.school)
+            level.save()
+
+            if subjects:
+                for subject in subjects:
+                    item = Subject.objects.create(subject=subject, grade=level)
+                    item.save()
+            
+        return { 'message': 'grade successfully created. you can now add student accounts, subjects, classes and so much more..' }
+               
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
     
+    except Exception as e:
+        return { 'error': str(e) }
+
     
 @database_sync_to_async
 def create_account(user, details):
@@ -294,7 +318,7 @@ def create_account(user, details):
         return {'error': 'account with the provided email address already exists'}
            
     except CustomUser.DoesNotExist:
-        return { 'error': 'user with the provided credentials does not exist' }
+        return { 'error': 'account with the provided credentials does not exist' }
     
     except Exception as e:
         return { 'error': str(e) }
@@ -327,7 +351,7 @@ def update_account(user, updates, account_id):
         return {'error': 'account with the provided email address already exists'}
     
     except CustomUser.DoesNotExist:
-        return { 'error': 'user with the provided credentials does not exist' }
+        return { 'error': 'account with the provided credentials does not exist' }
     
     except Exception as e:
         return { 'error': str(e) }
@@ -348,7 +372,7 @@ def delete_account(user, account_id):
         return {"message" : 'account successfully deleted'}
         
     except CustomUser.DoesNotExist:
-        return { 'error': 'user with the provided credentials does not exist' }
+        return { 'error': 'account with the provided credentials does not exist' }
     
     except Exception as e:
         return { 'error': str(e) }
