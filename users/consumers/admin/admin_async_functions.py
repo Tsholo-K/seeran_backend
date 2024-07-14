@@ -118,12 +118,7 @@ def create_teacher_schedule(user, details):
                 end_time = parse_time(f"{session_info['endTime']['hour']}:{session_info['endTime']['minute']}:{session_info['endTime']['second']}")
                 
                 # Create a new Session object
-                session = Session(
-                    type=session_info['class'],
-                    classroom=session_info.get('classroom'),  # Using .get() in case 'classroom' is not provided
-                    session_from=start_time,
-                    session_till=end_time
-                )
+                session = Session( type=session_info['class'], classroom=session_info.get('classroom'), session_from=start_time, session_till=end_time )
                 session.save()
                 
                 # Add the session to the schedule's sessions
@@ -204,20 +199,13 @@ def search_teacher_schedules(user, account_id):
 
         if account.role != 'TEACHER' or  admin.school != account.school:
             return { "error" : 'unauthorized access.. permission denied' }
-        
-        if hasattr(account, 'teacher_schedule'):
-        
-            teacher_schedule = account.teacher_schedule
-            schedules = teacher_schedule.schedules.all().order_by('day')
-            serializer = SchedulesSerializer(schedules, many=True)
-            schedules_data = serializer.data
-        
-            # Return the serialized data
-            return {"schedules": schedules_data}
-        
-        else:
-            # If there is no associated TeacherSchedule, return an empty list
-            return {"schedules": []}
+                
+        teacher_schedule = account.teacher_schedule
+        schedules = teacher_schedule.schedules.all().order_by('day')
+        serializer = SchedulesSerializer(schedules, many=True)
+        schedules_data = serializer.data
+    
+        return {"schedules": schedules_data}
         
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }

@@ -26,7 +26,6 @@ class GradesSerializer(serializers.ModelSerializer):
 class GradeSerializer(serializers.ModelSerializer):
     
     subjects = serializers.SerializerMethodField()
-    id = serializers.SerializerMethodField()
 
     class Meta:
         model = Grade
@@ -36,9 +35,6 @@ class GradeSerializer(serializers.ModelSerializer):
         subjects = obj.grade_subjects.all()
         serializer = SubjectsSerializer(subjects, many=True)
         return serializer.data
-    
-    def get_id(self, obj):
-        return obj.grade_id
 
 
 class SubjectsSerializer(serializers.ModelSerializer):
