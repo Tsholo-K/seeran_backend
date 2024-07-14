@@ -282,7 +282,7 @@ def create_grade(user, grade, subjects):
                     item = Subject.objects.create(subject=subject, grade=level)
                     item.save()
             
-        return { 'message': 'grade successfully created. you can now add student accounts, subjects, classes and so much more..' }
+        return { 'message': 'you can now add student accounts, subjects, classes and so much more..' }
                
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
