@@ -269,15 +269,15 @@ def search_account_id(user, account_id):
 
 
 @database_sync_to_async
-def search_grade(user, grade):
+def search_grade(user, grade_id):
 
     try:
         account = CustomUser.objects.get(account_id=user)
         
-        level  = Grade.objects.get(school=account.school, grade=grade)
+        level  = Grade.objects.get(school=account.school, grade_id=grade_id)
         serializer = GradeSerializer(instance=level)
 
-        return serializer.data
+        return { 'grade' : serializer.data}
     
     except Grade.DoesNotExist:
         return { 'error': 'grade with the provided credentials does not exist' }
@@ -313,6 +313,36 @@ def create_grade(user, grade, subjects):
     except Exception as e:
         return { 'error': str(e) }
 
+
+@database_sync_to_async
+def create_subjects(user, grade_id, subjects):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        
+        with transaction.atomic():
+            level = Grade.objects.get(grade_id=grade_id, school=account.school)
+
+            if subjects:
+                subject_list = subjects.split(', ')
+                for sub in subject_list:
+                    ject = Subject.objects.create(subject=sub, grade=level)
+                    ject.save()
+
+        # Determine the correct word to use based on the number of subjects
+        subject_word = "subject" if len(subject_list) == 1 else "subjects"
+
+        return { 'message': f'{subject_word} for grade created successfully. you can now add classes, set assessments.. etc' }
+               
+    except Grade.DoesNotExist:
+        return { 'error': 'grade with the provided credentials does not exist' }
+    
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+    
     
 @database_sync_to_async
 def create_account(user, details):

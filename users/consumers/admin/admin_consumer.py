@@ -113,9 +113,9 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
                 # return schedule sessions with the provided id
                 if description == 'grade':
-                    grade = details.get('grade')
-                    if grade is not None:
-                        response = await admin_async_functions.search_grade(user, grade)
+                    grade_id = details.get('grade_id')
+                    if grade_id is not None:
+                        response = await admin_async_functions.search_grade(user, grade_id)
 
                 # return schedule sessions with the provided id
                 if description == 'teacher_schedules':
@@ -241,12 +241,19 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     if account_id is not None:
                         response = await admin_async_functions.delete_account(user, account_id)
 
-                # create teacher schedule
+                # create grade
                 if description == 'create_grade':
                     grade = details.get('grade')
                     subjects = details.get('subjects')
                     if grade is not None:
                         response = await admin_async_functions.create_grade(user, grade, subjects)
+
+                # create subjects for grade with the provided id
+                if description == 'create_subjects':
+                    grade = details.get('grade')
+                    subjects = details.get('subjects')
+                    if grade is not None:
+                        response = await admin_async_functions.create_subjects(user, grade, subjects)
 
                 # create teacher schedule
                 if description == 'create_teacher_schedule':
