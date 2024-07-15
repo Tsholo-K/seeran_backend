@@ -8,7 +8,7 @@ from authentication.decorators import token_required
 from users.decorators import admins_only
 
 # serilializers
-from .serializers import ClassesSerializer
+from .serializers import ClassSerializer
 
 # models
 from users.models import CustomUser
@@ -38,7 +38,7 @@ def teacher_classes(request, user_id):
     teachers_classes = user.taught_classes.all()
 
     # Serialize the data
-    serializer = ClassesSerializer(teachers_classes, many=True)
+    serializer = ClassSerializer(teachers_classes, many=True)
     
     # Return the response
     return Response({ "classes" : serializer.data }, status=status.HTTP_201_CREATED)
@@ -61,7 +61,7 @@ def register_classes(request, grade):
     classes = grade_level.grade_classes.filter(register_class=True)
 
     # Serialize the data
-    serializer = ClassesSerializer(classes, many=True)
+    serializer = ClassSerializer(classes, many=True)
     
     # Return the response
     return Response({ "classes" : serializer.data }, status=status.HTTP_201_CREATED)
