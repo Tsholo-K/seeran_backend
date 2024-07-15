@@ -313,7 +313,7 @@ def create_subject_class(user, grade_id, subject_id, group, classroom, classroom
             teacher = None
 
         grade = Grade.objects.get(grade_id=grade_id, school=account.school)
-        subject = Subject.objects.filter(subject_id=subject_id, grade=grade)
+        subject = Subject.objects.get(subject_id=subject_id, grade=grade)
 
         with transaction.atomic():
             new_class = Classroom.objects.create(classroom_identifier=classroom, group=group, grade=grade, teacher=teacher, school=account.school, subject=subject)
@@ -326,6 +326,9 @@ def create_subject_class(user, grade_id, subject_id, group, classroom, classroom
     
     except Grade.DoesNotExist:
         return { 'error': 'grade with the provided credentials does not exist' }
+    
+    except Subject.DoesNotExist:
+        return { 'error': 'subject with the provided credentials does not exist' }
 
     except Exception as e:
         return { 'error': str(e) }
