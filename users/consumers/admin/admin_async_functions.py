@@ -542,19 +542,18 @@ def form_class_update(user, class_id):
     try:
         account = CustomUser.objects.get(account_id=user)
         classroom = Classroom.objects.get(class_id=class_id, school=account.school)
-        
+
         if classroom.teacher:
-            current_teacher = CustomUser.objects.get(account_id=classroom.teacher.account_id)
-            teacher = TeachersSerializer(current_teacher)
             accounts = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(account_id=classroom.teacher.account_id).order_by('name', 'surname', 'account_id')
-            serializer = TeachersSerializer(accounts, many=True)
+            teacher = TeachersSerializer(classroom.teacher)
+            teachers = TeachersSerializer(accounts, many=True)
         
         else:
             teacher = None
             accounts = CustomUser.objects.filter(role='TEACHER', school=account.school).order_by('name', 'surname', 'account_id')
-            serializer = TeachersSerializer(accounts, many=True)
+            teachers = TeachersSerializer(accounts, many=True)
 
-        return { 'teacher' : teacher, "teachers" : serializer.data, 'group' : classroom.group, 'classroom_identifier' : classroom.classroom_identifier  }
+        return { 'teacher' : teacher.data, "teachers" : teachers.data, 'group' : classroom.group, 'classroom_identifier' : classroom.classroom_identifier  }
         
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
