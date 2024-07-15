@@ -299,7 +299,7 @@ def search_subject(user, grade_id, subject_id):
 
         subject = Subject.objects.get(subject_id=subject_id, grade=grade)
 
-        serializer = SubjectDetailSerializer(subject, many=True)
+        serializer = SubjectDetailSerializer(subject)
 
         return {"subject": serializer.data}
     
