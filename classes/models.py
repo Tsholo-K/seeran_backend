@@ -13,8 +13,8 @@ from grades.models import Grade, Subject
 
 class Classroom(models.Model):
 
-    classroom_identifier = models.CharField(_('classroom identifier'), max_length=16)
-    group = models.CharField(_('class group'), max_length=16)
+    classroom_identifier = models.CharField(_('classroom identifier'), max_length=16, default='1')
+    group = models.CharField(_('class group'), max_length=16, default='A')
 
     teacher = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, related_name='taught_classes', null=True, blank=True)
     students = models.ManyToManyField(CustomUser, related_name='enrolled_classes')
