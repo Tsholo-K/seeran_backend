@@ -73,7 +73,7 @@ class SubjectDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Subject
-        fields = [ 'classes']
+        fields = ['classes']
     
     def get_classes(self, obj):
         classes = obj.subject_classes.all()
@@ -91,7 +91,10 @@ class ClassSerializer(serializers.ModelSerializer):
         fields = ['classroom_identifier', 'teacher', 'students', 'group']
 
     def get_teacher(self, obj):
-        return obj.teacher.surname.title() + ' ' + obj.teacher.name.title()
+        if obj.teacher:
+            return obj.teacher.surname.title() + ' ' + obj.teacher.name.title()
+        else:
+            return None
 
     def get_students(self, obj):
         return obj.students.count()
