@@ -9,22 +9,27 @@ from rest_framework import serializers
 # models
 from .models import Classroom
 
+# serilializers
+from users.serializers import UsersSerializer
 
-####################################### admindashboard serializer ############################################
 
+class ClassSerializer(serializers.ModelSerializer):
 
-# user security information
-class ClassesSerializer(serializers.ModelSerializer):
-    
     teacher = serializers.SerializerMethodField()
     students = serializers.SerializerMethodField()
+    id = serializers.SerializerMethodField()
 
     class Meta:
         model = Classroom
-        fields = [ 'teacher', 'students', 'group', 'room_number', 'class_id' ]
+        fields = ['classroom_identifier', 'teacher', 'students', 'group']
 
     def get_teacher(self, obj):
-        return obj.teacher.name.title() + ' ' + obj.teacher.surname.title()
-    
+        if obj.teacher:
+            return f'{obj.teacher.surname} {obj.teacher.name}'.title()
+        else:
+            return None
+
     def get_students(self, obj):
-        return obj.students.count()
+        students = obj.students.all()
+        serializer = UsersSerializer(students, many=True)
+        return serializer.data

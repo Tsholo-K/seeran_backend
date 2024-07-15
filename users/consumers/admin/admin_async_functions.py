@@ -23,6 +23,7 @@ from classes.models import Classroom
 from users.serializers import AccountUpdateSerializer, IDSerializer, ProfileSerializer, UsersSerializer, AccountCreationSerializer, TeachersSerializer
 from timetables.serializers import SchedulesSerializer
 from grades.serializers import GradesSerializer, GradeSerializer, SubjectDetailSerializer
+from classes.serializers import ClassSerializer
 
 # utility functions 
     
@@ -330,6 +331,27 @@ def create_subject_class(user, grade_id, subject_id, group, classroom, classroom
     except Subject.DoesNotExist:
         return { 'error': 'subject with the provided credentials does not exist' }
 
+    except Exception as e:
+        return { 'error': str(e) }
+
+
+@database_sync_to_async
+def search_class(user, class_id):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        classroom = Classroom.objects.get(class_id=class_id, school=account.school)
+
+        serializer = ClassSerializer(classroom)
+
+        return {"class": serializer.data}
+    
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+           
+    except Classroom.DoesNotExist:
+        return { 'error': 'grade with the provided credentials does not exist' }
+    
     except Exception as e:
         return { 'error': str(e) }
     

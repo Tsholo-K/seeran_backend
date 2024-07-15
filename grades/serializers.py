@@ -78,11 +78,11 @@ class SubjectDetailSerializer(serializers.ModelSerializer):
     
     def get_classes(self, obj):
         classes = obj.subject_classes.all()
-        serializer = ClassSerializer(classes, many=True)
+        serializer = ClassesSerializer(classes, many=True)
         return serializer.data
 
 
-class ClassSerializer(serializers.ModelSerializer):
+class ClassesSerializer(serializers.ModelSerializer):
 
     teacher = serializers.SerializerMethodField()
     students = serializers.SerializerMethodField()
@@ -94,7 +94,7 @@ class ClassSerializer(serializers.ModelSerializer):
 
     def get_teacher(self, obj):
         if obj.teacher:
-            return obj.teacher.surname.title() + ' ' + obj.teacher.name.title()
+            return f'{obj.teacher.surname} {obj.teacher.name}'.title()
         else:
             return None
 
@@ -103,3 +103,4 @@ class ClassSerializer(serializers.ModelSerializer):
     
     def get_id(self, obj):
         return obj.class_id
+
