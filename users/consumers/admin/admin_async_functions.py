@@ -1,44 +1,29 @@
 # python 
-from decouple import config
-import base64
-import time
 
 # httpx
-import httpx
 
 # channels
 from channels.db import database_sync_to_async
 
 # django
-from django.core.cache import cache
-from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
-from django.contrib.auth.hashers import check_password
 from django.db.models import Q
 from django.db import IntegrityError, transaction
 from django.utils.dateparse import parse_time
 
 # simple jwt
-from rest_framework_simplejwt.tokens import AccessToken as decode, TokenError
-from rest_framework_simplejwt.exceptions import TokenError
 
 # models 
 from users.models import CustomUser
-from schools.models import School
-from balances.models import Balance
-from auth_tokens.models import AccessToken
-from email_bans.models import EmailBan
 from timetables.models import Session, Schedule, TeacherSchedule
 from grades.models import Grade, Subject
 
 # serilializers
-from users.serializers import SecurityInfoSerializer, PrincipalCreationSerializer, AccountUpdateSerializer, IDSerializer, ProfileSerializer, UsersSerializer, AccountCreationSerializer, ProfilePictureSerializer
-from timetables.serializers import SchedulesSerializer, SessoinsSerializer
-from grades.serializers import GradesSerializer, GradeSerializer, SubjectsSerializer, SubjectDetailSerializer
+from users.serializers import AccountUpdateSerializer, IDSerializer, ProfileSerializer, UsersSerializer, AccountCreationSerializer, TeachersSerializer
+from timetables.serializers import SchedulesSerializer
+from grades.serializers import GradesSerializer, GradeSerializer, SubjectDetailSerializer
 
 # utility functions 
-from authentication.utils import generate_otp, verify_user_otp, validate_user_email, is_valid_human_name
-from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
     
     
 @database_sync_to_async
@@ -453,7 +438,7 @@ def form_subject_class(user, grade_id, subject_id):
         grade  = Grade.objects.get(school=account.school, grade_id=grade_id)
         subject = Subject.objects.get(subject_id=subject_id, grade=grade)
     
-        serializer = UsersSerializer(accounts, many=True)
+        serializer = TeachersSerializer(accounts, many=True)
 
         return { "teachers" : serializer.data, 'grade' : grade.grade, 'subject' : subject.subject }
         
