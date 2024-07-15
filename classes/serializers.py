@@ -42,7 +42,7 @@ class ClassSerializer(serializers.ModelSerializer):
 class ClassUpdateSerializer(serializers.ModelSerializer):
 
     teacher = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all(), required=False)
-    classroom_identifier = serializers.EmailField(required=False)
+    classroom_identifier = serializers.CharField(required=False)
     group = serializers.CharField(required=False)
 
     class Meta:

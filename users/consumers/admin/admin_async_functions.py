@@ -66,7 +66,7 @@ def update_account(user, updates, account_id):
 
     try:        
         admin = CustomUser.objects.get(account_id=user)
-        account  = CustomUser.objects.get(account_id=account_id)
+        account  = CustomUser.objects.get(account_id=account_id, school=admin.school)
 
         if account.role == 'FOUNDER' or (account.role in ['PRINCIPAL', 'ADMIN'] and admin.role != 'PRINCIPAL') or (account.role != 'PARENT' and admin.school != account.school) or account.role == 'PARENT':
             return { "error" : 'unauthorized access.. permission denied' }
