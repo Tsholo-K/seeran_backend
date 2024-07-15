@@ -542,10 +542,11 @@ def form_class_update(user, class_id):
     try:
         account = CustomUser.objects.get(account_id=user)
         classroom = Classroom.objects.get(class_id=class_id, school=account.school)
-
+        
         if classroom.teacher:
+            current_teacher = CustomUser.objects.get(account_id=classroom.teacher.account_id)
+            teacher = TeachersSerializer(current_teacher)
             accounts = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(account_id=classroom.teacher.account_id).order_by('name', 'surname', 'account_id')
-            teacher = TeachersSerializer(classroom.teacher)
             serializer = TeachersSerializer(accounts, many=True)
         
         else:
