@@ -69,15 +69,11 @@ class SubjectsSerializer(serializers.ModelSerializer):
 
 class SubjectDetailSerializer(serializers.ModelSerializer):
 
-    grade = serializers.SerializerMethodField()
     classes = serializers.SerializerMethodField()
 
     class Meta:
         model = Subject
         fields = [ 'classes']
-    
-    def get_grade(self, obj):
-        return obj.grade.grade
     
     def get_classes(self, obj):
         classes = obj.subject_classes.all()
