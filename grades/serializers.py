@@ -40,12 +40,12 @@ class SubjectsSerializer(serializers.ModelSerializer):
     
     subject = serializers.SerializerMethodField()
     groups = serializers.SerializerMethodField()
-    teachers = serializers.SerializerMethodField()
-    students = serializers.SerializerMethodField()
+    teacher_count = serializers.SerializerMethodField()
+    student_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Subject
-        fields = [ 'subject', 'subject_id', 'groups', 'teachers', 'students' ]
+        fields = [ 'subject', 'subject_id', 'groups', 'teacher_count', 'student_count' ]
 
     def get_subject(self, obj):
         return obj.subject.title()
@@ -53,14 +53,14 @@ class SubjectsSerializer(serializers.ModelSerializer):
     def get_groups(self, obj):
         return obj.subject_classes.count()
 
-    def get_teachers(self, obj):
+    def get_teacher_count(self, obj):
         teachers = set()
         for classroom in obj.subject_classes.all():
             if classroom.teacher:
                 teachers.add(classroom.teacher.account_id)
         return len(teachers)
 
-    def get_students(self, obj):
+    def get_student_count(self, obj):
         students = set()
         for classroom in obj.subject_classes.all():
             for student in classroom.students.all():
@@ -85,12 +85,12 @@ class SubjectDetailSerializer(serializers.ModelSerializer):
 class ClassesSerializer(serializers.ModelSerializer):
 
     teacher = serializers.SerializerMethodField()
-    students = serializers.SerializerMethodField()
+    student_count = serializers.SerializerMethodField()
     id = serializers.SerializerMethodField()
 
     class Meta:
         model = Classroom
-        fields = ['classroom_identifier', 'teacher', 'students', 'group', 'id']
+        fields = ['classroom_identifier', 'teacher', 'student_count', 'group', 'id']
 
     def get_teacher(self, obj):
         if obj.teacher:
@@ -98,7 +98,7 @@ class ClassesSerializer(serializers.ModelSerializer):
         else:
             return None
 
-    def get_students(self, obj):
+    def get_student_count(self, obj):
         return obj.students.count()
     
     def get_id(self, obj):

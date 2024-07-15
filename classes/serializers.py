@@ -17,10 +17,11 @@ class ClassSerializer(serializers.ModelSerializer):
 
     teacher = serializers.SerializerMethodField()
     students = serializers.SerializerMethodField()
+    student_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Classroom
-        fields = ['classroom_identifier', 'teacher', 'students', 'group']
+        fields = ['classroom_identifier', 'teacher', 'student', 'student_count','group']
 
     def get_teacher(self, obj):
         if obj.teacher:
@@ -32,3 +33,6 @@ class ClassSerializer(serializers.ModelSerializer):
         students = obj.students.all()
         serializer = UsersSerializer(students, many=True)
         return serializer.data
+    
+    def get_student_count(self, obj):
+        return obj.students.count()
