@@ -275,11 +275,14 @@ class AdminConsumer(AsyncWebsocketConsumer):
                         response = await admin_async_functions.create_subjects(user, grade_id, subjects)
 
                 # create class for subject with the provided id
-                if description == 'create_subjects':
+                if description == 'create_subject_class':
                     grade_id = details.get('grade_id')
-                    subjects = details.get('subjects')
-                    if (grade_id and subjects) is not None:
-                        response = await admin_async_functions.create_subjects(user, grade_id, subjects)
+                    subject_id = details.get('subject_id')
+                    group = details.get('group')
+                    classroom = details.get('classroom')
+                    classroom_teacher = details.get('classroom_teacher')
+                    if (grade_id and subject_id and group and classroom) is not None:
+                        response = await admin_async_functions.create_subject_class(user, grade_id, subject_id, group, classroom, classroom_teacher)
 
                 # create teacher schedule
                 if description == 'create_teacher_schedule':

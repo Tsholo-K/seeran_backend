@@ -88,7 +88,7 @@ class ClassSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Classroom
-        fields = ['room_number', 'teacher', 'students', 'group']
+        fields = ['classroom_identifier', 'teacher', 'students', 'group']
 
     def get_teacher(self, obj):
         return obj.teacher.surname.title() + ' ' + obj.teacher.name.title()

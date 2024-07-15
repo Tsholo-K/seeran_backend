@@ -17,6 +17,7 @@ from django.utils.dateparse import parse_time
 from users.models import CustomUser
 from timetables.models import Session, Schedule, TeacherSchedule
 from grades.models import Grade, Subject
+from classes.models import Classroom
 
 # serilializers
 from users.serializers import AccountUpdateSerializer, IDSerializer, ProfileSerializer, UsersSerializer, AccountCreationSerializer, TeachersSerializer
@@ -299,6 +300,36 @@ def search_subject(user, grade_id, subject_id):
     except Exception as e:
         return { 'error': str(e) }
 
+
+@database_sync_to_async
+def create_subject_class(user, grade_id, subject_id, group, classroom, classroom_teacher):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+
+        if classroom_teacher:
+            teacher = CustomUser.objects.get(account_id=classroom_teacher, school=account.school)
+        else:
+            teacher = None
+
+        grade = Grade.objects.get(grade_id=grade_id, school=account.school)
+        subject = Subject.objects.filter(subject_id=subject_id, grade=grade)
+
+        with transaction.atomic():
+            new_class = Classroom.objects.create(classroom_identifier=classroom, group=group, grade=grade, teacher=teacher, school=account.school, subject=subject)
+            new_class.save()
+            
+        return { 'message': f'class for grade {grade.grade} {subject.subject.lower()} created successfully' }
+               
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Grade.DoesNotExist:
+        return { 'error': 'grade with the provided credentials does not exist' }
+
+    except Exception as e:
+        return { 'error': str(e) }
+    
 
 @database_sync_to_async
 def create_teacher_schedule(user, details):
