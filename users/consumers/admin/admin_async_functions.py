@@ -23,7 +23,7 @@ from classes.models import Classroom
 from users.serializers import AccountUpdateSerializer, IDSerializer, ProfileSerializer, UsersSerializer, AccountCreationSerializer, TeachersSerializer
 from timetables.serializers import SchedulesSerializer
 from grades.serializers import GradesSerializer, GradeSerializer, SubjectDetailSerializer
-from classes.serializers import ClassSerializer
+from classes.serializers import ClassSerializer, ClassUpdateSerializer
 
 # utility functions 
     
@@ -336,6 +336,40 @@ def create_subject_class(user, grade_id, subject_id, group, classroom, classroom
 
 
 @database_sync_to_async
+def update_class(user, class_id, updates):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        classroom = Classroom.objects.get(class_id=class_id, school=account.school)
+
+        if updates['teacher']:
+            teacher = CustomUser.objects.get(account_id=updates['teacher'], school=account.school)
+            updates['teacher'] = teacher
+
+        serializer = ClassUpdateSerializer(instance=classroom, data=updates)
+
+        if serializer.is_valid():
+            with transaction.atomic():
+                serializer.save()
+
+                return { "message" : 'class details successfully updated' }
+            
+        return {"error" : serializer.errors}
+               
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Grade.DoesNotExist:
+        return { 'error': 'grade with the provided credentials does not exist' }
+    
+    except Subject.DoesNotExist:
+        return { 'error': 'subject with the provided credentials does not exist' }
+
+    except Exception as e:
+        return { 'error': str(e) }
+    
+
+@database_sync_to_async
 def search_class(user, class_id):
 
     try:
@@ -498,5 +532,34 @@ def form_subject_class(user):
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
     
+    except Exception as e:
+        return { 'error': str(e) }
+    
+
+@database_sync_to_async
+def form_class_update(user, class_id):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        classroom = Classroom.objects.get(class_id=class_id, school=account.school)
+
+        if classroom.teacher:
+            accounts = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(account_id=classroom.teacher.account_id).order_by('name', 'surname', 'account_id')
+            teacher = TeachersSerializer(classroom.teacher)
+            serializer = TeachersSerializer(accounts, many=True)
+        
+        else:
+            teacher = None
+            accounts = CustomUser.objects.filter(role='TEACHER', school=account.school).order_by('name', 'surname', 'account_id')
+            serializer = TeachersSerializer(accounts, many=True)
+
+        return { 'teacher' : teacher, "teachers" : serializer.data, 'group' : classroom.group, 'classroom_identifier' : classroom.classroom_identifier  }
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+            
+    except Classroom.DoesNotExist:
+        return { 'error': 'class with the provided credentials does not exist' }
+
     except Exception as e:
         return { 'error': str(e) }

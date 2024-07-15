@@ -194,7 +194,12 @@ class AdminConsumer(AsyncWebsocketConsumer):
                 # return all teacher accounts in the school
                 if description == 'subject_class_creation':
                     response = await admin_async_functions.form_subject_class(user)
-
+                        
+                # return all teacher accounts in the school
+                if description == 'subject_class_update':
+                    class_id = details.get('class_id')
+                    if class_id is not None:
+                        response = await admin_async_functions.form_class_update(user, class_id)
 
             ################################################################################################################                
                         
@@ -223,7 +228,14 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     account_id = details.get('account_id')
                     if (updates and account_id) is not None:
                         response = await admin_async_functions.update_account(user, updates, account_id)
-                        
+                                        
+                # update class details
+                if description == 'update_class':
+                    class_id = details.get('class_id')
+                    updates = details.get('updates')
+                    if (class_id and updates) is not None:
+                        response = await admin_async_functions.update_class(user, class_id, updates)
+
                 # toggle  multi-factor authentication option for user
                 if description == 'update_multi_factor_authentication':
                     toggle = details.get('toggle')

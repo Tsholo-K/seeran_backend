@@ -36,3 +36,14 @@ class ClassSerializer(serializers.ModelSerializer):
     
     def get_student_count(self, obj):
         return obj.students.count()
+    
+
+class ClassUpdateSerializer(serializers.ModelSerializer):
+
+    teacher = serializers.EmailField(required=False)
+    classroom_identifier = serializers.EmailField(required=False)
+    group = serializers.EmailField(required=False)
+
+    class Meta:
+        model = Classroom
+        fields = ['classroom_identifier', 'teacher', 'group']
