@@ -86,10 +86,11 @@ class ClassSerializer(serializers.ModelSerializer):
 
     teacher = serializers.SerializerMethodField()
     students = serializers.SerializerMethodField()
+    id = serializers.SerializerMethodField()
 
     class Meta:
         model = Classroom
-        fields = ['classroom_identifier', 'teacher', 'students', 'group']
+        fields = ['classroom_identifier', 'teacher', 'students', 'group', 'id']
 
     def get_teacher(self, obj):
         if obj.teacher:
@@ -99,3 +100,6 @@ class ClassSerializer(serializers.ModelSerializer):
 
     def get_students(self, obj):
         return obj.students.count()
+    
+    def get_id(self, obj):
+        return obj.class_id
