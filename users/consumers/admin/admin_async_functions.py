@@ -342,9 +342,9 @@ def update_class(user, class_id, updates):
         account = CustomUser.objects.get(account_id=user)
         classroom = Classroom.objects.get(class_id=class_id, school=account.school)
 
-        if updates['teacher']:
+        if updates.get('teacher'):
             teacher = CustomUser.objects.get(account_id=updates['teacher'], school=account.school)
-            updates['teacher'] = teacher
+            updates['teacher'] = teacher.pk
 
         serializer = ClassUpdateSerializer(instance=classroom, data=updates)
 
