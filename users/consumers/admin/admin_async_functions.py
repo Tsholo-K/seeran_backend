@@ -429,18 +429,15 @@ def search_teacher_schedules(user, account_id):
 
 
 @database_sync_to_async
-def form_subject_class(user, grade_id, subject_id):
+def form_subject_class(user):
 
     try:
         account = CustomUser.objects.get(account_id=user)
 
         accounts = CustomUser.objects.filter(role='TEACHER', school=account.school).order_by('name', 'surname', 'account_id')
-        grade  = Grade.objects.get(school=account.school, grade_id=grade_id)
-        subject = Subject.objects.get(subject_id=subject_id, grade=grade)
-    
         serializer = TeachersSerializer(accounts, many=True)
 
-        return { "teachers" : serializer.data, 'grade' : grade.grade, 'subject' : subject.subject }
+        return { "teachers" : serializer.data }
         
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
