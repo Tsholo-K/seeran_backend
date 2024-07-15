@@ -1,14 +1,13 @@
 # python 
-from decouple import config
 
 # django
-from django.core.cache import cache
 
 # rest framework
 from rest_framework import serializers
 
 # models
 from .models import Grade, Subject
+from classes.models import Classroom
 
 
 class GradesSerializer(serializers.ModelSerializer):
@@ -66,3 +65,45 @@ class SubjectsSerializer(serializers.ModelSerializer):
             for student in classroom.students.all():
                 students.add(student.account_id)
         return len(students)
+
+
+class SubjectDetailSerializer(serializers.ModelSerializer):
+
+    grade = serializers.SerializerMethodField()
+    subject = serializers.SerializerMethodField()
+    id = serializers.SerializerMethodField()
+    classes = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Subject
+        fields = [ 'grade', 'subject', 'id', 'classes']
+    
+    def get_grade(self, obj):
+        return obj.grade.grade
+
+    def get_subject(self, obj):
+        return obj.subject.title()
+    
+    def get_id(self, obj):
+        return obj.subject_id
+    
+    def get_classes(self, obj):
+        classes = obj.subject_classes.all()
+        serializer = ClassSerializer(classes, many=True)
+        return serializer.data
+
+
+class ClassSerializer(serializers.ModelSerializer):
+
+    teacher = serializers.SerializerMethodField()
+    students = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Classroom
+        fields = ['room_number', 'teacher', 'students', 'group']
+
+    def get_teacher(self, obj):
+        return obj.teacher.surname.title() + ' ' + obj.teacher.name.title()
+
+    def get_students(self, obj):
+        return obj.students.count()

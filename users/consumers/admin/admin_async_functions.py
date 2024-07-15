@@ -34,23 +34,134 @@ from grades.models import Grade, Subject
 # serilializers
 from users.serializers import SecurityInfoSerializer, PrincipalCreationSerializer, AccountUpdateSerializer, IDSerializer, ProfileSerializer, UsersSerializer, AccountCreationSerializer, ProfilePictureSerializer
 from timetables.serializers import SchedulesSerializer, SessoinsSerializer
-from grades.serializers import GradesSerializer, GradeSerializer, SubjectsSerializer
+from grades.serializers import GradesSerializer, GradeSerializer, SubjectsSerializer, SubjectDetailSerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email, is_valid_human_name
 from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
-
-
+    
+    
 @database_sync_to_async
-def fetch_grades(user):
+def create_account(user, details):
 
     try:
         account = CustomUser.objects.get(account_id=user)
-        grades = Grade.objects.filter(school=account.school)
-        
-        serializer = GradesSerializer(grades, many=True)
 
-        return { 'grades': serializer.data }
+        details['school'] = account.school.id
+        
+        serializer = AccountCreationSerializer(data=details)
+        
+        if serializer.is_valid():
+
+            # Extract validated data
+            validated_data = serializer.validated_data
+            
+            with transaction.atomic():
+                # Try to create the user using the manager's method
+                user = CustomUser.objects.create_user(**validated_data)
+            
+            return {'user' : user}
+            
+        return {"error" : serializer.errors}
+    
+    except IntegrityError as e:
+        return {'error': 'account with the provided email address already exists'}
+           
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+
+
+@database_sync_to_async
+def update_account(user, updates, account_id):
+
+    try:        
+        admin = CustomUser.objects.get(account_id=user)
+        account  = CustomUser.objects.get(account_id=account_id)
+
+        if account.role == 'FOUNDER' or (account.role in ['PRINCIPAL', 'ADMIN'] and admin.role != 'PRINCIPAL') or (account.role != 'PARENT' and admin.school != account.school) or account.role == 'PARENT':
+            return { "error" : 'unauthorized access.. permission denied' }
+        
+        serializer = AccountUpdateSerializer(instance=account, data=updates)
+        
+        if serializer.is_valid():
+            
+            with transaction.atomic():
+                serializer.save()
+                account.refresh_from_db()  # Refresh the user instance from the database
+            
+            serializer = IDSerializer(instance=account)
+            return { "user" : serializer.data }
+            
+        return {"error" : serializer.errors}
+    
+    except IntegrityError as e:
+        return {'error': 'account with the provided email address already exists'}
+    
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+    
+    
+@database_sync_to_async
+def delete_account(user, account_id):
+
+    try:
+        admin = CustomUser.objects.get(account_id=user)
+        account  = CustomUser.objects.get(account_id=account_id)
+
+        if account.role == 'FOUNDER' or (account.role in ['PRINCIPAL', 'ADMIN'] and admin.role != 'PRINCIPAL') or (account.role != 'PARENT' and admin.school != account.school) or account.role == 'PARENT':
+            return { "error" : 'unauthorized access.. permission denied' }
+        
+        account.delete()
+                            
+        return {"message" : 'account successfully deleted'}
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+    
+
+@database_sync_to_async
+def search_account_profile(user, account_id):
+
+    try:
+        admin = CustomUser.objects.get(account_id=user)
+        account  = CustomUser.objects.get(account_id=account_id)
+
+        if account.role == 'FOUNDER' or (account.role != 'PARENT' and admin.school != account.school) or (account.role == 'PARENT' and not account.children.filter(school=admin.school).exists()):
+            return { "error" : 'unauthorized access.. permission denied' }
+
+        # return the users profile
+        serializer = ProfileSerializer(instance=account)
+        return { "user" : serializer.data }
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+    
+    
+@database_sync_to_async
+def search_account_id(user, account_id):
+
+    try:
+        admin = CustomUser.objects.get(account_id=user)
+        account  = CustomUser.objects.get(account_id=account_id)
+
+        if account.role == 'FOUNDER' or (account.role != 'PARENT' and admin.school != account.school) or (account.role == 'PARENT' and not account.children.filter(school=admin.school).exists()):
+            return { "error" : 'unauthorized access.. permission denied' }
+
+        # return the users profile
+        serializer = IDSerializer(instance=account)
+        return { "user" : serializer.data }
         
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
@@ -84,6 +195,121 @@ def search_accounts(user, role):
     except Exception as e:
         return { 'error': str(e) }
 
+
+@database_sync_to_async
+def create_grade(user, grade, subjects):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        
+        with transaction.atomic():
+            level = Grade.objects.create(grade=grade, school=account.school)
+            level.save()
+
+            if subjects:
+                subject_list = subjects.split(', ')
+                for sub in subject_list:
+                    ject = Subject.objects.create(subject=sub, grade=level)
+                    ject.save()
+            
+        return { 'message': 'you can now add student accounts, subjects, classes and so much more..' }
+               
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+
+
+@database_sync_to_async
+def fetch_grades(user):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        grades = Grade.objects.filter(school=account.school)
+        
+        serializer = GradesSerializer(grades, many=True)
+
+        return { 'grades': serializer.data }
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+
+
+@database_sync_to_async
+def search_grade(user, grade_id):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        
+        level  = Grade.objects.get(school=account.school, grade_id=grade_id)
+        serializer = GradeSerializer(instance=level)
+
+        return { 'grade' : serializer.data}
+    
+    except Grade.DoesNotExist:
+        return { 'error': 'grade with the provided credentials does not exist' }
+
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+
+
+@database_sync_to_async
+def create_subjects(user, grade_id, subjects):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        
+        with transaction.atomic():
+            level = Grade.objects.get(grade_id=grade_id, school=account.school)
+
+            if subjects:
+                subject_list = subjects.split(', ')
+                for sub in subject_list:
+                    ject = Subject.objects.create(subject=sub, grade=level)
+                    ject.save()
+
+        # Determine the correct word to use based on the number of subjects
+        subject_word = "subject" if len(subject_list) == 1 else "subjects"
+
+        return { 'message': f'{subject_word} for grade created successfully. you can now add classes, set assessments.. etc' }
+               
+    except Grade.DoesNotExist:
+        return { 'error': 'grade with the provided credentials does not exist' }
+    
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+
+
+@database_sync_to_async
+def search_subject(user, subject_id):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        
+        subject = Subject.objects.get(subject_id=subject_id, school=account.school)
+
+        serializer = SubjectDetailSerializer(subject, many=True)
+
+        return {"subject": serializer.data}
+               
+    except Subject.DoesNotExist:
+        return { 'error': 'grade with the provided credentials does not exist' }
+    
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
 
 @database_sync_to_async
 def create_teacher_schedule(user, details):
@@ -203,214 +429,8 @@ def search_teacher_schedules(user, account_id):
         teacher_schedule = account.teacher_schedule
         schedules = teacher_schedule.schedules.all().order_by('day')
         serializer = SchedulesSerializer(schedules, many=True)
-        schedules_data = serializer.data
     
-        return {"schedules": schedules_data}
-        
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-    
-    except Exception as e:
-        return { 'error': str(e) }
-    
-
-@database_sync_to_async
-def search_account_profile(user, account_id):
-
-    try:
-        admin = CustomUser.objects.get(account_id=user)
-        account  = CustomUser.objects.get(account_id=account_id)
-
-        if account.role == 'FOUNDER' or (account.role != 'PARENT' and admin.school != account.school) or (account.role == 'PARENT' and not account.children.filter(school=admin.school).exists()):
-            return { "error" : 'unauthorized access.. permission denied' }
-
-        # return the users profile
-        serializer = ProfileSerializer(instance=account)
-        return { "user" : serializer.data }
-        
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-    
-    except Exception as e:
-        return { 'error': str(e) }
-    
-    
-@database_sync_to_async
-def search_account_id(user, account_id):
-
-    try:
-        admin = CustomUser.objects.get(account_id=user)
-        account  = CustomUser.objects.get(account_id=account_id)
-
-        if account.role == 'FOUNDER' or (account.role != 'PARENT' and admin.school != account.school) or (account.role == 'PARENT' and not account.children.filter(school=admin.school).exists()):
-            return { "error" : 'unauthorized access.. permission denied' }
-
-        # return the users profile
-        serializer = IDSerializer(instance=account)
-        return { "user" : serializer.data }
-        
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-    
-    except Exception as e:
-        return { 'error': str(e) }
-
-
-@database_sync_to_async
-def search_grade(user, grade_id):
-
-    try:
-        account = CustomUser.objects.get(account_id=user)
-        
-        level  = Grade.objects.get(school=account.school, grade_id=grade_id)
-        serializer = GradeSerializer(instance=level)
-
-        return { 'grade' : serializer.data}
-    
-    except Grade.DoesNotExist:
-        return { 'error': 'grade with the provided credentials does not exist' }
-
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-    
-    except Exception as e:
-        return { 'error': str(e) }
-    
-
-@database_sync_to_async
-def create_grade(user, grade, subjects):
-
-    try:
-        account = CustomUser.objects.get(account_id=user)
-        
-        with transaction.atomic():
-            level = Grade.objects.create(grade=grade, school=account.school)
-            level.save()
-
-            if subjects:
-                subject_list = subjects.split(', ')
-                for sub in subject_list:
-                    ject = Subject.objects.create(subject=sub, grade=level)
-                    ject.save()
-            
-        return { 'message': 'you can now add student accounts, subjects, classes and so much more..' }
-               
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-    
-    except Exception as e:
-        return { 'error': str(e) }
-
-
-@database_sync_to_async
-def create_subjects(user, grade_id, subjects):
-
-    try:
-        account = CustomUser.objects.get(account_id=user)
-        
-        with transaction.atomic():
-            level = Grade.objects.get(grade_id=grade_id, school=account.school)
-
-            if subjects:
-                subject_list = subjects.split(', ')
-                for sub in subject_list:
-                    ject = Subject.objects.create(subject=sub, grade=level)
-                    ject.save()
-
-        # Determine the correct word to use based on the number of subjects
-        subject_word = "subject" if len(subject_list) == 1 else "subjects"
-
-        return { 'message': f'{subject_word} for grade created successfully. you can now add classes, set assessments.. etc' }
-               
-    except Grade.DoesNotExist:
-        return { 'error': 'grade with the provided credentials does not exist' }
-    
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-    
-    except Exception as e:
-        return { 'error': str(e) }
-    
-    
-@database_sync_to_async
-def create_account(user, details):
-
-    try:
-        account = CustomUser.objects.get(account_id=user)
-
-        details['school'] = account.school.id
-        
-        serializer = AccountCreationSerializer(data=details)
-        
-        if serializer.is_valid():
-
-            # Extract validated data
-            validated_data = serializer.validated_data
-            
-            with transaction.atomic():
-                # Try to create the user using the manager's method
-                user = CustomUser.objects.create_user(**validated_data)
-            
-            return {'user' : user}
-            
-        return {"error" : serializer.errors}
-    
-    except IntegrityError as e:
-        return {'error': 'account with the provided email address already exists'}
-           
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-    
-    except Exception as e:
-        return { 'error': str(e) }
-
-
-@database_sync_to_async
-def update_account(user, updates, account_id):
-
-    try:        
-        admin = CustomUser.objects.get(account_id=user)
-        account  = CustomUser.objects.get(account_id=account_id)
-
-        if account.role == 'FOUNDER' or (account.role in ['PRINCIPAL', 'ADMIN'] and admin.role != 'PRINCIPAL') or (account.role != 'PARENT' and admin.school != account.school) or account.role == 'PARENT':
-            return { "error" : 'unauthorized access.. permission denied' }
-        
-        serializer = AccountUpdateSerializer(instance=account, data=updates)
-        
-        if serializer.is_valid():
-            
-            with transaction.atomic():
-                serializer.save()
-                account.refresh_from_db()  # Refresh the user instance from the database
-            
-            serializer = IDSerializer(instance=account)
-            return { "user" : serializer.data }
-            
-        return {"error" : serializer.errors}
-    
-    except IntegrityError as e:
-        return {'error': 'account with the provided email address already exists'}
-    
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-    
-    except Exception as e:
-        return { 'error': str(e) }
-    
-    
-@database_sync_to_async
-def delete_account(user, account_id):
-
-    try:
-        admin = CustomUser.objects.get(account_id=user)
-        account  = CustomUser.objects.get(account_id=account_id)
-
-        if account.role == 'FOUNDER' or (account.role in ['PRINCIPAL', 'ADMIN'] and admin.role != 'PRINCIPAL') or (account.role != 'PARENT' and admin.school != account.school) or account.role == 'PARENT':
-            return { "error" : 'unauthorized access.. permission denied' }
-        
-        account.delete()
-                            
-        return {"message" : 'account successfully deleted'}
+        return {"schedules": serializer.data}
         
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
