@@ -17,7 +17,6 @@ class ClassSerializer(serializers.ModelSerializer):
 
     teacher = serializers.SerializerMethodField()
     students = serializers.SerializerMethodField()
-    id = serializers.SerializerMethodField()
 
     class Meta:
         model = Classroom
