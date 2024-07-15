@@ -14,9 +14,10 @@ from grades.models import Grade, Subject
 class Classroom(models.Model):
 
     room_number = models.CharField(_('classroom number'), max_length=6)
+    group = models.CharField(_('class group'), max_length=10)
 
-    teacher = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, related_name='taught_classes')
-    students = models.ManyToManyField(CustomUser, related_name='enrolled_classes')
+    teacher = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, related_name='taught_classes', null=True, blank=True)
+    students = models.ManyToManyField(CustomUser, related_name='enrolled_classes', null=True, blank=True)
     parents = models.ManyToManyField(CustomUser, related_name='children_classes')
 
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='grade_classes')
@@ -24,7 +25,6 @@ class Classroom(models.Model):
     register_class = models.BooleanField(_('is the class a register class'), default=False)
     
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='subject_classes', null=True, blank=True)
-    group = models.CharField(_('class group'), max_length=10)
 
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='classes')
 

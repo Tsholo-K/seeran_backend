@@ -179,12 +179,11 @@ def search_accounts(user, role):
         
         account = CustomUser.objects.get(account_id=user)
 
-        # Get the school admin users
         if role == 'ADMIN':
-            accounts = CustomUser.objects.filter( Q(role='ADMIN') | Q(role='PRINCIPAL'), school=account.school).exclude(account_id=user)
+            accounts = CustomUser.objects.filter( Q(role='ADMIN') | Q(role='PRINCIPAL'), school=account.school).exclude(account_id=user).order_by('name', 'surname', 'account_id')
     
         if role == 'TEACHER':
-            accounts = CustomUser.objects.filter(role=role, school=account.school)
+            accounts = CustomUser.objects.filter(role=role, school=account.school).order_by('name', 'surname', 'account_id')
 
         serializer = UsersSerializer(accounts, many=True)
         return { "users" : serializer.data }
@@ -226,7 +225,7 @@ def fetch_grades(user):
 
     try:
         account = CustomUser.objects.get(account_id=user)
-        grades = Grade.objects.filter(school=account.school)
+        grades = Grade.objects.filter(school=account.school).order_by('grade')
         
         serializer = GradesSerializer(grades, many=True)
 
@@ -436,6 +435,27 @@ def search_teacher_schedules(user, account_id):
         serializer = SchedulesSerializer(schedules, many=True)
     
         return {"schedules": serializer.data}
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+
+
+@database_sync_to_async
+def form_subject_class(user, grade_id, subject_id):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+
+        accounts = CustomUser.objects.filter(role='TEACHER', school=account.school).order_by('name', 'surname', 'account_id')
+        grade  = Grade.objects.get(school=account.school, grade_id=grade_id)
+        subject = Subject.objects.get(subject_id=subject_id, grade=grade)
+    
+        serializer = UsersSerializer(accounts, many=True)
+
+        return { "teachers" : serializer.data, 'grade' : grade.grade, 'subject' : subject.subject }
         
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
