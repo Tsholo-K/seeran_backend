@@ -56,7 +56,8 @@ class SubjectsSerializer(serializers.ModelSerializer):
     def get_teachers(self, obj):
         teachers = set()
         for classroom in obj.subject_classes.all():
-            teachers.add(classroom.teacher.account_id)
+            if classroom.teacher:
+                teachers.add(classroom.teacher.account_id)
         return len(teachers)
 
     def get_students(self, obj):
