@@ -245,8 +245,8 @@ def search_grade(user, grade_id):
     try:
         account = CustomUser.objects.get(account_id=user)
         
-        level  = Grade.objects.get(school=account.school, grade_id=grade_id)
-        serializer = GradeSerializer(instance=level)
+        grade  = Grade.objects.get(school=account.school, grade_id=grade_id)
+        serializer = GradeSerializer(instance=grade)
 
         return { 'grade' : serializer.data}
     
@@ -291,25 +291,30 @@ def create_subjects(user, grade_id, subjects):
 
 
 @database_sync_to_async
-def search_subject(user, subject_id):
+def search_subject(user, grade_id, subject_id):
 
     try:
         account = CustomUser.objects.get(account_id=user)
-        
-        subject = Subject.objects.get(subject_id=subject_id, school=account.school)
+        grade  = Grade.objects.get(school=account.school, grade_id=grade_id)
+
+        subject = Subject.objects.get(subject_id=subject_id, grade=grade)
 
         serializer = SubjectDetailSerializer(subject, many=True)
 
         return {"subject": serializer.data}
-               
-    except Subject.DoesNotExist:
-        return { 'error': 'grade with the provided credentials does not exist' }
     
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
+           
+    except Grade.DoesNotExist:
+        return { 'error': 'grade with the provided credentials does not exist' }
+        
+    except Subject.DoesNotExist:
+        return { 'error': 'grade with the provided credentials does not exist' }
     
     except Exception as e:
         return { 'error': str(e) }
+
 
 @database_sync_to_async
 def create_teacher_schedule(user, details):
