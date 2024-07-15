@@ -70,7 +70,7 @@ class SubjectsSerializer(serializers.ModelSerializer):
 class SubjectDetailSerializer(serializers.ModelSerializer):
 
     grade = serializers.SerializerMethodField()
-    subject = serializers.SerializerMethodField()
+    # subject = serializers.SerializerMethodField()
     classes = serializers.SerializerMethodField()
 
     class Meta:
