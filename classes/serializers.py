@@ -8,6 +8,7 @@ from rest_framework import serializers
 
 # models
 from .models import Classroom
+from users.models import CustomUser
 
 # serilializers
 from users.serializers import UsersSerializer
@@ -40,7 +41,7 @@ class ClassSerializer(serializers.ModelSerializer):
 
 class ClassUpdateSerializer(serializers.ModelSerializer):
 
-    teacher = serializers.ForeignKey(required=False)
+    teacher = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all(), required=False)
     classroom_identifier = serializers.EmailField(required=False)
     group = serializers.CharField(required=False)
 
