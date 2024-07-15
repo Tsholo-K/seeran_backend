@@ -17,7 +17,7 @@ class Classroom(models.Model):
     group = models.CharField(_('class group'), max_length=10)
 
     teacher = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, related_name='taught_classes', null=True, blank=True)
-    students = models.ManyToManyField(CustomUser, related_name='enrolled_classes', null=True, blank=True)
+    students = models.ManyToManyField(CustomUser, related_name='enrolled_classes')
     parents = models.ManyToManyField(CustomUser, related_name='children_classes')
 
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='grade_classes')
