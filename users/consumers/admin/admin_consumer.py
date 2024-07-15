@@ -128,7 +128,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
                 if description == 'class':
                     class_id = details.get('class_id')
                     if class_id is not None:
-                        response = await admin_async_functions.search_subject(user, class_id)
+                        response = await admin_async_functions.search_class(user, class_id)
 
                 # return schedule sessions with the provided id
                 if description == 'teacher_schedules':
