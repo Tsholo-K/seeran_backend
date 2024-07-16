@@ -72,7 +72,7 @@ def create_student_account(user, name, surname, email, grade_id, identification,
             if CustomUser.objects.filter(id_number=identification).exists():
                 return {"error": "a user with this ID number already exists."}
             
-            data = {'name': name, 'surname': surname, 'email': email, 'grade': grade, 'school': account, 'role': 'STUDENT', 'id_number': identification}
+            data = {'name': name, 'surname': surname, 'email': email, 'grade': grade, 'school': account.school, 'role': 'STUDENT', 'id_number': identification}
             serializer = StudentAccountCreationIDSerializer(data=data)
         
         else:
