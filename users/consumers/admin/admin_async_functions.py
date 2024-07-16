@@ -61,34 +61,19 @@ def create_account(user, details):
 def create_student_account(user, name, surname, email, grade_id, identification, citizen):
 
     try:
-        if CustomUser.objects.filter(email=email).exists():
-            return {"error": "A user with this email address already exists."}
+        if email != '':
+            if CustomUser.objects.filter(email=email).exists():
+                return {"error": "a user with this email address already exists."}
         
         account = CustomUser.objects.get(account_id=user)
         grade = Grade.objects.get(grade_id=grade_id, school=account.school)
         
         if citizen == 'yes':
-            data = {
-                'name': name,
-                'surname': surname,
-                'email': email,
-                'grade': grade.pk,
-                'school': account.school.pk,
-                'role': 'STUDENT',
-                'id_number': identification
-            }
+            data = {'name': name, 'surname': surname, 'email': email, 'grade': grade.pk, 'school': account.school.pk, 'role': 'STUDENT', 'id_number': identification}
             serializer = StudentAccountCreationIDSerializer(data=data)
         
         else:
-            data = {
-                'name': name,
-                'surname': surname,
-                'email': email,
-                'grade': grade.pk,
-                'school': account.school.pk,
-                'role': 'STUDENT',
-                'passport_number': identification
-            }
+            data = {'name': name, 'surname': surname, 'email': email, 'grade': grade.pk, 'school': account.school.pk, 'role': 'STUDENT', 'passport_number': identification}
             serializer = StudentAccountCreationPNSerializer(data=data)
         
         if serializer.is_valid():
@@ -96,8 +81,8 @@ def create_student_account(user, name, surname, email, grade_id, identification,
             with transaction.atomic():
                 user = CustomUser.objects.create_user(**serializer.validated_data)
             
-            if email is not None:
-                return {'user' : user}
+            if email != '':
+                return {'user' : user }
             
             else:
                 return {'message' : 'student account successfully created.. you can now link a parent, add to classes and much more'}
