@@ -343,8 +343,12 @@ def update_class(user, class_id, updates):
         classroom = Classroom.objects.get(class_id=class_id, school=account.school)
 
         if updates.get('teacher'):
-            teacher = CustomUser.objects.get(account_id=updates['teacher'], school=account.school)
-            updates['teacher'] = teacher.pk
+            new_teacher = updates.get('teacher')
+            if new_teacher == 'remove teacher':
+                updates['teacher'] = None  # remove the teacher
+            else:
+                teacher = CustomUser.objects.get(account_id=new_teacher, school=account.school)
+                updates['teacher'] = teacher.pk
 
         serializer = ClassUpdateSerializer(instance=classroom, data=updates)
 
