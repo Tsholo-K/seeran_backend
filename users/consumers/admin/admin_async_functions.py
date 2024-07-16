@@ -417,7 +417,7 @@ def update_class(user, class_id, updates):
         account = CustomUser.objects.get(account_id=user)
         classroom = Classroom.objects.get(class_id=class_id, school=account.school)
 
-        if updates.get('teacher'):
+        if updates.get('teacher') != (None or ''):
             new_teacher = updates.get('teacher')
             if new_teacher == 'remove teacher':
                 updates['teacher'] = None  # remove the teacher
