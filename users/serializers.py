@@ -123,7 +123,7 @@ class AccountCreationSerializer(serializers.ModelSerializer):
 
 class StudentAccountCreationIDSerializer(serializers.ModelSerializer):
 
-    email = serializers.EmailField(required=False)  # Make email optional
+    email = serializers.EmailField(required=False, allow_blank=True)  # Make email optional
 
     class Meta:
         model = CustomUser
@@ -132,7 +132,7 @@ class StudentAccountCreationIDSerializer(serializers.ModelSerializer):
 
 class StudentAccountCreationPNSerializer(serializers.ModelSerializer):
 
-    email = serializers.EmailField(required=False)  # Make email optional
+    email = serializers.EmailField(required=False, allow_blank=True)  # Make email optional
 
     class Meta:
         model = CustomUser

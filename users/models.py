@@ -22,7 +22,7 @@ class CustomUserManager(BaseUserManager):
     def create_user(self, email=None, id_number=None, passport_number=None, name=None, surname=None, phone_number=None, role=None, school=None, grade=None, **extra_fields):
           
         if not email and not id_number and not passport_number:
-            raise ValueError(_('either email or ID number must be provided'))
+            raise ValueError(_('either email, ID number or Passport number must be provided'))
      
         # Check if the email already exists in the system
         if email and self.model.objects.filter(email=email).exists():
