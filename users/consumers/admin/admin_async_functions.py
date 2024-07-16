@@ -569,12 +569,15 @@ def search_teacher_schedules(user, account_id):
 
         if account.role != 'TEACHER' or  admin.school != account.school:
             return { "error" : 'unauthorized access.. permission denied' }
-                
-        teacher_schedule = account.teacher_schedule
-        schedules = teacher_schedule.schedules.all().order_by('day')
-        serializer = SchedulesSerializer(schedules, many=True)
+        
+        if hasattr(account, 'teacher_schedule'):
+            teacher_schedule = account.teacher_schedule
+            schedules = teacher_schedule.schedules.all().order_by('day')
+            serializer = SchedulesSerializer(schedules, many=True)
     
-        return {"schedules": serializer.data}
+            return {"schedules": serializer.data}
+        else:
+            return {"schedules": []}
         
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
