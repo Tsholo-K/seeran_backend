@@ -69,10 +69,16 @@ def create_student_account(user, name, surname, email, grade_id, identification,
         grade = Grade.objects.get(grade_id=grade_id, school=account.school)
         
         if citizen == 'yes':
+            if CustomUser.objects.filter(id_number=identification).exists():
+                return {"error": "a user with this ID number already exists."}
+            
             data = {'name': name, 'surname': surname, 'email': email, 'grade': grade.pk, 'school': account.school.pk, 'role': 'STUDENT', 'id_number': identification}
             serializer = StudentAccountCreationIDSerializer(data=data)
         
         else:
+            if CustomUser.objects.filter(passport_number=identification).exists():
+                return {"error": "a user with this Passport Number already exists."}
+            
             data = {'name': name, 'surname': surname, 'email': email, 'grade': grade.pk, 'school': account.school.pk, 'role': 'STUDENT', 'passport_number': identification}
             serializer = StudentAccountCreationPNSerializer(data=data)
         
@@ -274,7 +280,7 @@ def fetch_student_grades(user):
         grades = Grade.objects.filter(school=account.school).order_by('grade')
 
         serializer = GradesSerializer(grades, many=True)
-        student_count = CustomUser.objects.filter(role='student', school=account.school).count()
+        student_count = CustomUser.objects.filter(role='STUDENT', school=account.school).count()
 
         return { 'grades': serializer.data, 'student_count' : student_count }
         
