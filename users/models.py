@@ -65,7 +65,7 @@ class CustomUserManager(BaseUserManager):
         if email:
             email = self.normalize_email(email)
 
-        user = self.model(email=email, id_number=id_number, passport_number=passport_number, name=name, surname=surname, phone_number=phone_number, role=role, school=school, **extra_fields)
+        user = self.model(email=email, id_number=id_number, passport_number=passport_number, name=name, surname=surname, grade=grade, phone_number=phone_number, role=role, school=school, **extra_fields)
         user.save(using=self._db)
 
         return user
