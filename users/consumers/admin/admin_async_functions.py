@@ -576,6 +576,7 @@ def search_teacher_schedules(user, account_id):
             serializer = SchedulesSerializer(schedules, many=True)
     
             return {"schedules": serializer.data}
+        
         else:
             return {"schedules": []}
         
