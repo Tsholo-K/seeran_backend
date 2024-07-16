@@ -112,13 +112,9 @@ class PrincipalCreationSerializer(serializers.ModelSerializer):
 
 class AccountCreationSerializer(serializers.ModelSerializer):
 
-    email = serializers.EmailField(required=False)  # Make email optional
-    id_number = serializers.CharField(required=False)  # Make id number optional
-    grade = serializers.IntegerField(required=False)  # Make id number optional
-
     class Meta:
         model = CustomUser
-        fields = [ 'name', 'surname', 'id_number', 'email', 'school', 'role', 'grade' ]
+        fields = [ 'name', 'surname' 'email', 'school', 'role', ]
 
 
 class StudentAccountCreationIDSerializer(serializers.ModelSerializer):

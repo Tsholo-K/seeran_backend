@@ -60,8 +60,9 @@ class CustomUserManager(BaseUserManager):
         
         else:
             grade = None
-            id_number = None
-
+            passport_number = None
+            passport_number = None
+            
         if email:
             email = self.normalize_email(email)
 
