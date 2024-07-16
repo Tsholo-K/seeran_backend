@@ -29,6 +29,8 @@ class Grade(models.Model):
         ('12', 'Grade 12') 
     ]
     grade = models.CharField(_('school grade'), choices=SCHOOL_GRADES_CHOICES, default="8")
+    grade_order = models.PositiveIntegerField()
+
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='school_grades')
 
     # grade  id 
@@ -38,7 +40,8 @@ class Grade(models.Model):
         verbose_name = _('grade')
         verbose_name_plural = _('grades')
         unique_together = ('school', 'grade') # this will prevent the creation of duplicate grades within the same school
-
+        ordering = ['grade_order']
+        
     def __str__(self):
         return self.name
 

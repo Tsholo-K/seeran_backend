@@ -214,10 +214,10 @@ def search_accounts(user, role):
         account = CustomUser.objects.get(account_id=user)
 
         if role == 'ADMIN':
-            accounts = CustomUser.objects.filter( Q(role='ADMIN') | Q(role='PRINCIPAL'), school=account.school).exclude(account_id=user).order_by('name', 'surname', 'account_id')
+            accounts = CustomUser.objects.filter( Q(role='ADMIN') | Q(role='PRINCIPAL'), school=account.school).exclude(account_id=user)
     
         if role == 'TEACHER':
-            accounts = CustomUser.objects.filter(role=role, school=account.school).order_by('name', 'surname', 'account_id')
+            accounts = CustomUser.objects.filter(role=role, school=account.school)
 
         serializer = UsersSerializer(accounts, many=True)
         return { "users" : serializer.data }
@@ -229,14 +229,23 @@ def search_accounts(user, role):
         return { 'error': str(e) }
 
 
+SCHOOL_GRADES_CHOICES = [('000', 'Grade 000'), ('00', 'Grade 00'), ('R', 'Grade R'), ('1', 'Grade 1'), ('2', 'Grade 2'), ('3', 'Grade 3'), ('4', 'Grade 4'), ('5', 'Grade 5'), ('6', 'Grade 6'), ('7', 'Grade 7'), ('8', 'Grade 8'), ('9', 'Grade 9'), ('10', 'Grade 10'), ('11', 'Grade 11'), ('12', 'Grade 12')]
+
 @database_sync_to_async
 def create_grade(user, grade, subjects):
 
     try:
         account = CustomUser.objects.get(account_id=user)
+
+        if Grade.objects.filter(grade=grade, school=account.school).exists():
+            return {"error": f"grade {grade} already exists for the school, duplicate grades is not allowed"}
         
+        # Calculate the grade order
+        grade_order = [choice[0] for choice in SCHOOL_GRADES_CHOICES].index(grade)
+
         with transaction.atomic():
-            level = Grade.objects.create(grade=grade, school=account.school)
+            # Include the grade_order when creating the Grade instance
+            level = Grade.objects.create(grade=grade, grade_order=grade_order, school=account.school)
             level.save()
 
             if subjects:
@@ -245,7 +254,7 @@ def create_grade(user, grade, subjects):
                     ject = Subject.objects.create(subject=sub, grade=level)
                     ject.save()
             
-        return { 'message': 'you can now add student accounts, subjects, classes and so much more..' }
+        return { 'message': 'you can now add student accounts, subjects, classes and much more..' }
                
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
@@ -259,7 +268,7 @@ def fetch_grades(user):
 
     try:
         account = CustomUser.objects.get(account_id=user)
-        grades = Grade.objects.filter(school=account.school.pk).order_by('+grade')
+        grades = Grade.objects.filter(school=account.school.pk)
         
         serializer = GradesSerializer(grades, many=True)
 
@@ -277,7 +286,7 @@ def fetch_student_grades(user):
 
     try:
         account = CustomUser.objects.get(account_id=user)
-        grades = Grade.objects.filter(school=account.school.pk).order_by('+grade')
+        grades = Grade.objects.filter(school=account.school.pk)
 
         serializer = GradesSerializer(grades, many=True)
         student_count = CustomUser.objects.filter(role='STUDENT', school=account.school).count()
