@@ -301,18 +301,18 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     citizen = details.get('citizen')
                     name = details.get('name')
                     surname = details.get('surname')
-                    grade = details.get('grade')
+                    grade_id = details.get('grade_id')
                     email = details.get('email')
 
-                    if (name and surname and grade) is not None and citizen in ['yes', 'no']:
+                    if (name and surname and grade_id) is not None and citizen in ['yes', 'no']:
 
                         if citizen == 'yes' and details.get('id_number') is not None:
                             identification = details.get('id_number')
-                            status = await admin_async_functions.create_student_account(user, name, surname, email, grade, identification, citizen)
+                            status = await admin_async_functions.create_student_account(user, name, surname, email, grade_id, identification, citizen)
 
                         if citizen == 'no' and details.get('passport_number') is not None:
                             identification = details.get('passport_number')
-                            status = await admin_async_functions.create_student_account(user, name, surname, email, grade, identification, citizen)
+                            status = await admin_async_functions.create_student_account(user, name, surname, email, grade_id, identification, citizen)
 
                         if status is not None:
                             if status.get('user'):

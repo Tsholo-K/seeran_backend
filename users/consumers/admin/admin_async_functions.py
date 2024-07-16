@@ -58,18 +58,22 @@ def create_account(user, details):
 
 
 @database_sync_to_async
-def create_student_account(user, name, surname, email, grade, identification, citizen):
+def create_student_account(user, name, surname, email, grade_id, identification, citizen):
 
     try:
+        if CustomUser.objects.filter(email=email).exists():
+            return {"error": "A user with this email address already exists."}
+        
         account = CustomUser.objects.get(account_id=user)
-
+        grade = Grade.objects.get(grade_id=grade_id, school=account.school)
+        
         if citizen == 'yes':
             data = {
                 'name': name,
                 'surname': surname,
                 'email': email,
-                'grade': grade,
-                'school': account.school,
+                'grade': grade.pk,
+                'school': account.school.pk,
                 'role': 'STUDENT',
                 'id_number': identification
             }
@@ -80,8 +84,8 @@ def create_student_account(user, name, surname, email, grade, identification, ci
                 'name': name,
                 'surname': surname,
                 'email': email,
-                'grade': grade,
-                'school': account.school,
+                'grade': grade.pk,
+                'school': account.school.pk,
                 'role': 'STUDENT',
                 'passport_number': identification
             }
@@ -106,6 +110,9 @@ def create_student_account(user, name, surname, email, grade, identification, ci
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
     
+    except Grade.DoesNotExist:
+        return { 'error': 'grade with the provided credentials does not exist' }
+
     except Exception as e:
         return { 'error': str(e) }
 
