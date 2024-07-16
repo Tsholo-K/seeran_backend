@@ -411,6 +411,27 @@ def search_class(user, class_id):
     
     except Exception as e:
         return { 'error': str(e) }
+
+
+@database_sync_to_async
+def search_students(user, grade_id):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        students = Grade.objects.get(grade_id=grade_id, school=account.school).students.all()
+
+        serializer = UsersSerializer(students, many=True)
+
+        return {"students": serializer.data}
+    
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+           
+    except Grade.DoesNotExist:
+        return { 'error': 'grade with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
     
 
 @database_sync_to_async

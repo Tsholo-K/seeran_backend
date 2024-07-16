@@ -103,6 +103,12 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     if role is not None:
                         response = await admin_async_functions.search_accounts(user, role)
                         
+                # return class details with the provided id
+                if description == 'students':
+                    grade_id = details.get('grade_id')
+                    if class_id is not None:
+                        response = await admin_async_functions.search_students(user, grade_id)
+
                 # return account profile with the provided id
                 if description == 'account_profile':
                     account_id = details.get('account_id')
