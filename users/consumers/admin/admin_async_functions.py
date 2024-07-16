@@ -553,7 +553,7 @@ def form_class_update(user, class_id):
             teachers = TeachersSerializer(accounts, many=True)
         
         else:
-            teacher = None
+            teacher.data = None
             accounts = CustomUser.objects.filter(role='TEACHER', school=account.school).order_by('name', 'surname', 'account_id')
             teachers = TeachersSerializer(accounts, many=True)
 
