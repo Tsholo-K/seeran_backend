@@ -259,7 +259,7 @@ def fetch_grades(user):
 
     try:
         account = CustomUser.objects.get(account_id=user)
-        grades = Grade.objects.filter(school=account.school).order_by('grade')
+        grades = Grade.objects.filter(school=account.school.pk).order_by('+grade')
         
         serializer = GradesSerializer(grades, many=True)
 
@@ -277,7 +277,7 @@ def fetch_student_grades(user):
 
     try:
         account = CustomUser.objects.get(account_id=user)
-        grades = Grade.objects.filter(school=account.school).order_by('grade')
+        grades = Grade.objects.filter(school=account.school.pk).order_by('+grade')
 
         serializer = GradesSerializer(grades, many=True)
         student_count = CustomUser.objects.filter(role='STUDENT', school=account.school).count()
