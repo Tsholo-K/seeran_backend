@@ -277,7 +277,7 @@ def update_email(user, new_email, authorization_otp, access_token):
         return {'error': 'user with the provided credentials does not exist'}
 
     except Exception as e:
-        return {"error": {str(e)}}
+        return {"error": str(e)}
 
 
 @database_sync_to_async
