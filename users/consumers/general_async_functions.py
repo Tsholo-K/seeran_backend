@@ -238,8 +238,11 @@ def verify_email_revalidate_otp(user, otp, email_ban_id):
 def update_email(user, new_email, authorization_otp, access_token):
     
     try:
+        if CustomUser.objects.filter(email=new_email).exists():
+            return {"error": "A user with this email address already exists."}
+        
         account = CustomUser.objects.get(account_id=user)
-    
+        
         if new_email == account.email:
             return {"error": "cannot set current email as new email"}
     
@@ -332,10 +335,10 @@ def verify_email(email):
         return {'user' : account}
     
     except CustomUser.DoesNotExist:
-        return {'error': 'user with the provided credentials does not exist'}
+        return {'error': 'invalid email address'}
 
     except ValidationError:
-        return {"error": "invalid email"}
+        return {"error": "invalid email address"}
         
     except Exception as e:
         return {"error": str(e)}

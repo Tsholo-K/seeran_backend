@@ -121,6 +121,24 @@ class AccountCreationSerializer(serializers.ModelSerializer):
         fields = [ 'name', 'surname', 'id_number', 'email', 'school', 'role', 'grade' ]
 
 
+class StudentAccountCreationIDSerializer(serializers.ModelSerializer):
+
+    email = serializers.EmailField(required=False)  # Make email optional
+
+    class Meta:
+        model = CustomUser
+        fields = [ 'name', 'surname', 'id_number', 'email', 'school', 'role', 'grade' ]
+
+
+class StudentAccountCreationPNSerializer(serializers.ModelSerializer):
+
+    email = serializers.EmailField(required=False)  # Make email optional
+
+    class Meta:
+        model = CustomUser
+        fields = [ 'name', 'surname', 'passport_number', 'email', 'school', 'role', 'grade' ]
+
+
 class AccountUpdateSerializer(serializers.ModelSerializer):
 
     email = serializers.EmailField(required=False)  # Make email optional

@@ -19,9 +19,9 @@ from authentication.utils import get_upload_path, is_phone_number_valid
 class CustomUserManager(BaseUserManager):
     
     # user creation 
-    def create_user(self, email=None, id_number=None, name=None, surname=None, phone_number=None, role=None, school=None, grade=None, **extra_fields):
+    def create_user(self, email=None, id_number=None, passport_number=None, name=None, surname=None, phone_number=None, role=None, school=None, grade=None, **extra_fields):
           
-        if not email and not id_number:
+        if not email and not id_number and not passport_number:
             raise ValueError(_('either email or ID number must be provided'))
      
         # Check if the email already exists in the system
@@ -52,8 +52,8 @@ class CustomUserManager(BaseUserManager):
 
         if role == 'STUDENT':
            
-            if not id_number:
-                raise ValueError(_('ID number is required for a student account'))
+            if not id_number or not passport_number:
+                raise ValueError(_('either a ID/Passport number is required for a student account'))
           
             if not grade:
                 raise ValueError(_('student needs to be in an allocated grade'))
@@ -65,7 +65,7 @@ class CustomUserManager(BaseUserManager):
         if email:
             email = self.normalize_email(email)
 
-        user = self.model(email=email, id_number=id_number, name=name, surname=surname, phone_number=phone_number, role=role, school=school, **extra_fields)
+        user = self.model(email=email, id_number=id_number, passport_number=passport_number, name=name, surname=surname, phone_number=phone_number, role=role, school=school, **extra_fields)
         user.save(using=self._db)
 
         return user
@@ -112,6 +112,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     # needed feilds 
     email = models.EmailField(_('email address'), unique=True, blank=True, null=True)
     id_number = models.CharField(_('ID number'), max_length=13, unique=True, blank=True, null=True)
+    passport_number = models.CharField(_('passport number'), max_length=9, unique=True, blank=True, null=True)
 
     name = models.CharField(_('name'), max_length=32)
     surname = models.CharField(_('surname'), max_length=32)

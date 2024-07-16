@@ -20,7 +20,7 @@ from grades.models import Grade, Subject
 from classes.models import Classroom
 
 # serilializers
-from users.serializers import AccountUpdateSerializer, IDSerializer, ProfileSerializer, UsersSerializer, AccountCreationSerializer, TeachersSerializer
+from users.serializers import AccountUpdateSerializer, IDSerializer, ProfileSerializer, UsersSerializer, AccountCreationSerializer, TeachersSerializer, StudentAccountCreationIDSerializer, StudentAccountCreationPNSerializer
 from timetables.serializers import SchedulesSerializer
 from grades.serializers import GradesSerializer, GradeSerializer, SubjectDetailSerializer
 from classes.serializers import ClassSerializer, ClassUpdateSerializer, TeacherClassesSerializer
@@ -39,15 +39,64 @@ def create_account(user, details):
         serializer = AccountCreationSerializer(data=details)
         
         if serializer.is_valid():
-
-            # Extract validated data
-            validated_data = serializer.validated_data
             
             with transaction.atomic():
-                # Try to create the user using the manager's method
-                user = CustomUser.objects.create_user(**validated_data)
+                user = CustomUser.objects.create_user(**serializer.validated_data)
             
             return {'user' : user}
+            
+        return {"error" : serializer.errors}
+    
+    except IntegrityError as e:
+        return {'error': 'account with the provided email address already exists'}
+           
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+
+
+@database_sync_to_async
+def create_student_account(user, name, surname, email, grade, identification, citizen):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+
+        if citizen == 'yes':
+            data = {
+                'name': name,
+                'surname': surname,
+                'email': email,
+                'grade': grade,
+                'school': account.school,
+                'role': 'STUDENT',
+                'id_number': identification
+            }
+            serializer = StudentAccountCreationIDSerializer(data=data)
+        
+        else:
+            data = {
+                'name': name,
+                'surname': surname,
+                'email': email,
+                'grade': grade,
+                'school': account.school,
+                'role': 'STUDENT',
+                'passport_number': identification
+            }
+            serializer = StudentAccountCreationPNSerializer(data=data)
+        
+        if serializer.is_valid():
+            
+            with transaction.atomic():
+                user = CustomUser.objects.create_user(**serializer.validated_data)
+            
+            if email is not None:
+                return {'user' : user}
+            
+            else:
+                return {'message' : 'student account successfully created.. you can now link a parent, add to classes and much more'}
             
         return {"error" : serializer.errors}
     
