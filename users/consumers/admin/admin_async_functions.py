@@ -486,8 +486,9 @@ def search_students(user, grade_id):
 
     try:
         account = CustomUser.objects.get(account_id=user)
-        students = Grade.objects.get(grade_id=grade_id, school=account.school).students.all()
-
+        grade = Grade.objects.get(grade_id=grade_id, school=account.school)
+        students = grade.students.all()
+        
         serializer = UsersSerializer(students, many=True)
 
         return {"students": serializer.data}
