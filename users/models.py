@@ -52,7 +52,7 @@ class CustomUserManager(BaseUserManager):
 
         if role == 'STUDENT':
            
-            if not id_number or not passport_number:
+            if not id_number and not passport_number:
                 raise ValueError(_('either a ID/Passport number is required for a student account'))
           
             if not grade:
