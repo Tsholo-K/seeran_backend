@@ -226,6 +226,25 @@ def fetch_grades(user):
 
 
 @database_sync_to_async
+def fetch_student_grades(user):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        grades = Grade.objects.filter(school=account.school).order_by('grade')
+
+        serializer = GradesSerializer(grades, many=True)
+        student_count = CustomUser.objects.filter(role='student', school=account.school).count()
+
+        return { 'grades': serializer.data, 'student_count' : student_count }
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+    
+
+@database_sync_to_async
 def search_grade(user, grade_id):
 
     try:

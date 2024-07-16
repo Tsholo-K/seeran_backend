@@ -62,6 +62,10 @@ class AdminConsumer(AsyncWebsocketConsumer):
                 if description == 'grades':
                     response = await admin_async_functions.fetch_grades(user)
                     
+                # return all grades in the school plus the count of all students
+                if description == 'student_grades':
+                    response = await admin_async_functions.fetch_student_grades(user)
+
                 # log user out of the system
                 if description == 'log_me_out':
                     response = await general_async_functions.log_user_out(access_token)
