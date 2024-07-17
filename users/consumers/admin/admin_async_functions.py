@@ -29,14 +29,16 @@ from classes.serializers import ClassSerializer, ClassUpdateSerializer, TeacherC
     
     
 @database_sync_to_async
-def create_account(user, details):
+def create_account(user, name, surname, email, role):
 
     try:
         account = CustomUser.objects.get(account_id=user)
-
-        details['school'] = account.school.id
+        data = {'name': name, 'surname': surname, 'email': email, 'school': account.school.id, 'role': role}
         
-        serializer = AccountCreationSerializer(data=details)
+        if CustomUser.objects.filter(email=email).exists():
+            return {"error": "an account with the provided email address already exists"}
+        
+        serializer = AccountCreationSerializer(data=data)
         
         if serializer.is_valid():
             
@@ -63,7 +65,7 @@ def create_student_account(user, name, surname, email, grade_id, identification,
     try:
         if email != '':
             if CustomUser.objects.filter(email=email).exists():
-                return {"error": "a user with this email address already exists."}
+                return {"error": "an account with the provided email address already exists"}
         
         account = CustomUser.objects.get(account_id=user)
         grade = Grade.objects.get(grade_id=grade_id, school=account.school)

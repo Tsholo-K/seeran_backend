@@ -282,17 +282,18 @@ class AdminConsumer(AsyncWebsocketConsumer):
                 
                 # create account with role in [ADMIN, TEACHER]
                 if description == 'create_account':
-                    status = await admin_async_functions.create_account(user, details)
-                    if status.get('user'):
-                        response = await general_async_functions.send_account_confirmation_email(status.get('user'))
-                    else:
-                        response = status
+                    name = details.get('name')
+                    surname = details.get('surname')
+                    email = details.get('email')
+                    role = details.get('role')
+
+                    if ( name, surname, email, role) is not None:
+                        status = await admin_async_functions.create_account(user, name, surname, email, role)
                         
-                # delete account
-                if description == 'delete_account':
-                    account_id = details.get('account_id')
-                    if account_id is not None:
-                        response = await admin_async_functions.delete_account(user, account_id)
+                        if status.get('user'):
+                            response = await general_async_functions.send_account_confirmation_email(status.get('user'))
+                        else:
+                            response = status
                 
                 # create account with role in [ADMIN, TEACHER]
                 if description == 'create_student_account':
@@ -319,6 +320,12 @@ class AdminConsumer(AsyncWebsocketConsumer):
                                 response = await general_async_functions.send_account_confirmation_email(status.get('user'))
                             else:
                                 response = status
+                        
+                # delete account
+                if description == 'delete_account':
+                    account_id = details.get('account_id')
+                    if account_id is not None:
+                        response = await admin_async_functions.delete_account(user, account_id)
 
                 # create grade
                 if description == 'create_grade':
