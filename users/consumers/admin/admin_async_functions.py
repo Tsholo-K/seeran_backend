@@ -342,7 +342,7 @@ def create_subjects(user, grade_id, subjects):
                 existing_subjects.append(sub.title())
         
         if existing_subjects:
-            return {'error' : f'the following subjects have already been created for the school: {", ".join(existing_subjects)}'}
+            return {'error' : f'the following subjects have already been created for the current grade: {", ".join(existing_subjects)}.. duplicate subjects is not allowed'}
     
         with transaction.atomic():
             for sub in subject_list:
