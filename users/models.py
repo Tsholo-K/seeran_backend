@@ -57,12 +57,15 @@ class CustomUserManager(BaseUserManager):
           
             if not grade:
                 raise ValueError(_('student needs to be in an allocated grade'))
+
+            if email == '':
+                email = None
         
         else:
             grade = None
             passport_number = None
             passport_number = None
-            
+
         if email:
             email = self.normalize_email(email)
 
