@@ -149,7 +149,7 @@ def delete_account(user, account_id):
         account  = CustomUser.objects.get(account_id=account_id)
 
         if account.role == 'FOUNDER' or (account.role in ['PRINCIPAL', 'ADMIN'] and admin.role != 'PRINCIPAL') or (account.role != 'PARENT' and admin.school != account.school) or account.role == 'PARENT':
-            return { "error" : 'unauthorized access.. permission denied' }
+            return { "error" : 'unauthorized action.. permission denied' }
         
         account.delete()
                             
@@ -176,7 +176,7 @@ def search_account_profile(user, account_id):
             serializer = StudentProfileSerializer(instance=account)
         else:
             serializer = ProfileSerializer(instance=account)
-            
+
         return { "user" : serializer.data }
         
     except CustomUser.DoesNotExist:
@@ -329,15 +329,25 @@ def create_subjects(user, grade_id, subjects):
 
     try:
         account = CustomUser.objects.get(account_id=user)
-        
-        with transaction.atomic():
-            level = Grade.objects.get(grade_id=grade_id, school=account.school)
+        grade = Grade.objects.get(grade_id=grade_id, school=account.school)
 
-            if subjects:
-                subject_list = subjects.split(', ')
-                for sub in subject_list:
-                    ject = Subject.objects.create(subject=sub, grade=level)
-                    ject.save()
+        if subjects == '':
+            return { 'error': f'invalid request.. no subjects were provided' }
+        
+        subject_list = subjects.split(', ')
+        
+        existing_subjects = []
+        for sub in subject_list:
+            if Subject.objects.filter(subject=sub, grade=grade).exists():
+                existing_subjects.append(sub)
+        
+        if existing_subjects:
+            return {'error' : f'the following subjects have already been created for the school: {", ".join(existing_subjects)}'}
+    
+        with transaction.atomic():
+            for sub in subject_list:
+                ject = Subject.objects.create(subject=sub, grade=grade)
+                ject.save()
 
         # Determine the correct word to use based on the number of subjects
         subject_word = "subject" if len(subject_list) == 1 else "subjects"
