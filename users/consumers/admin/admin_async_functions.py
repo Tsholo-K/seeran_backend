@@ -371,6 +371,74 @@ def create_subjects(user, grade_id, subjects):
 
 
 @database_sync_to_async
+def create_register_class(user, grade_id, group, classroom, classroom_teacher):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+
+        if classroom_teacher:
+            teacher = CustomUser.objects.get(account_id=classroom_teacher, school=account.school)
+        else:
+            teacher = None
+
+        grade = Grade.objects.get(grade_id=grade_id, school=account.school)
+
+        if Classroom.objects.filter(group=group, grade=grade, school=account.school, register_class=True).exists():
+            return {"error": "a register class with the provided group in the same grade already exists.. a class group should be unique in the same grade and subject"}
+
+        with transaction.atomic():
+            new_class = Classroom.objects.create(classroom_identifier=classroom, group=group, grade=grade, teacher=teacher, school=account.school, register_class=True)
+            new_class.save()
+            
+        return { 'message': f'register class for grade {grade.grade} created successfully' }
+               
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Grade.DoesNotExist:
+        return { 'error': 'grade with the provided credentials does not exist' }
+
+    except Exception as e:
+        return { 'error': str(e) }
+
+
+@database_sync_to_async
+def create_subject_class(user, grade_id, subject_id, group, classroom, classroom_teacher):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+
+        if classroom_teacher:
+            teacher = CustomUser.objects.get(account_id=classroom_teacher, school=account.school)
+        else:
+            teacher = None
+
+        grade = Grade.objects.get(grade_id=grade_id, school=account.school)
+        subject = Subject.objects.get(subject_id=subject_id, grade=grade)
+
+        if Classroom.objects.filter(group=group, grade=grade, school=account.school, subject=subject).exists():
+            return {"error": "a class with the provided group in the same subject and grade already exists.. a class group should be unique in the same grade and subject"}
+
+        with transaction.atomic():
+            new_class = Classroom.objects.create(classroom_identifier=classroom, group=group, grade=grade, teacher=teacher, school=account.school, subject=subject)
+            new_class.save()
+            
+        return { 'message': f'class for grade {grade.grade} {subject.subject.lower()} created successfully' }
+               
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Grade.DoesNotExist:
+        return { 'error': 'grade with the provided credentials does not exist' }
+    
+    except Subject.DoesNotExist:
+        return { 'error': 'subject with the provided credentials does not exist' }
+
+    except Exception as e:
+        return { 'error': str(e) }
+
+
+@database_sync_to_async
 def search_register_classes(user, grade_id):
 
     try:
@@ -415,68 +483,6 @@ def search_subject(user, grade_id, subject_id):
     except Subject.DoesNotExist:
         return { 'error': 'grade with the provided credentials does not exist' }
     
-    except Exception as e:
-        return { 'error': str(e) }
-
-
-@database_sync_to_async
-def create_register_class(user, grade_id, group, classroom, classroom_teacher):
-
-    try:
-        account = CustomUser.objects.get(account_id=user)
-
-        if classroom_teacher:
-            teacher = CustomUser.objects.get(account_id=classroom_teacher, school=account.school)
-        else:
-            teacher = None
-
-        grade = Grade.objects.get(grade_id=grade_id, school=account.school)
-
-        with transaction.atomic():
-            new_class = Classroom.objects.create(classroom_identifier=classroom, group=group, grade=grade, teacher=teacher, school=account.school, register_class=True)
-            new_class.save()
-            
-        return { 'message': f'register class for grade {grade.grade} created successfully' }
-               
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-    
-    except Grade.DoesNotExist:
-        return { 'error': 'grade with the provided credentials does not exist' }
-
-    except Exception as e:
-        return { 'error': str(e) }
-
-
-@database_sync_to_async
-def create_subject_class(user, grade_id, subject_id, group, classroom, classroom_teacher):
-
-    try:
-        account = CustomUser.objects.get(account_id=user)
-
-        if classroom_teacher:
-            teacher = CustomUser.objects.get(account_id=classroom_teacher, school=account.school)
-        else:
-            teacher = None
-
-        grade = Grade.objects.get(grade_id=grade_id, school=account.school)
-        subject = Subject.objects.get(subject_id=subject_id, grade=grade)
-
-        with transaction.atomic():
-            new_class = Classroom.objects.create(classroom_identifier=classroom, group=group, grade=grade, teacher=teacher, school=account.school, subject=subject)
-            new_class.save()
-            
-        return { 'message': f'class for grade {grade.grade} {subject.subject.lower()} created successfully' }
-               
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-    
-    except Grade.DoesNotExist:
-        return { 'error': 'grade with the provided credentials does not exist' }
-    
-    except Subject.DoesNotExist:
-        return { 'error': 'subject with the provided credentials does not exist' }
-
     except Exception as e:
         return { 'error': str(e) }
 
@@ -590,7 +596,6 @@ def create_group_schedule(user, group_name, grade_id):
         grade = Grade.objects.get(grade_id=grade_id, school=account.school)
 
         with transaction.atomic():
-
             new_schedule = GroupSchedule.create(group_name=group_name, grade=grade)
             new_schedule.save()
 
