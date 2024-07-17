@@ -208,14 +208,15 @@ class AdminConsumer(AsyncWebsocketConsumer):
             if action == 'FORM DATA':
                         
                 # return all teacher accounts in the school
-                if description == 'subject_class_creation':
+                if description == 'class_creation':
                     response = await admin_async_functions.form_subject_class(user)
                         
-                # return all teacher accounts in the school
-                if description == 'subject_class_update':
+                # return all teacher accounts in the school( excluding the class teacher if there is )
+                if description == 'class_update':
                     class_id = details.get('class_id')
                     if class_id is not None:
                         response = await admin_async_functions.form_class_update(user, class_id)
+
 
             ################################################################################################################                
                         
