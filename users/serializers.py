@@ -100,10 +100,11 @@ class IDSerializer(serializers.ModelSerializer):
     role = serializers.SerializerMethodField()
     name = serializers.SerializerMethodField()
     surname = serializers.SerializerMethodField()
+    identifier = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
-        fields = [ 'email', 'name', 'surname', 'role', 'id' ]
+        fields = [ 'email', 'name', 'surname', 'role', 'id', 'identifier' ]
     
     def get_name(self, obj):
         return obj.name.title()
@@ -116,7 +117,15 @@ class IDSerializer(serializers.ModelSerializer):
     
     def get_id(self, obj):
         return obj.account_id
-
+    
+    def get_identifier(self, obj):
+        if obj.email:
+            return obj.email
+        if obj.id_number:
+            return obj.id_number
+        if obj.passport_number:
+            return obj.passport_number
+        return None
 
 class ProfilePictureSerializer(serializers.ModelSerializer):
 
