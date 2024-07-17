@@ -239,7 +239,7 @@ def update_email(user, new_email, authorization_otp, access_token):
     
     try:
         if CustomUser.objects.filter(email=new_email).exists():
-            return {"error": "A user with this email address already exists."}
+            return {"error": "an account with the provided email address already exists"}
         
         account = CustomUser.objects.get(account_id=user)
         

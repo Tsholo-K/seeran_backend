@@ -113,7 +113,11 @@ def create_student_account(user, name, surname, email, grade_id, identification,
 @database_sync_to_async
 def update_account(user, updates, account_id):
 
-    try:        
+    try:
+        if updates.get('email') != (None or ''):
+            if CustomUser.objects.filter(email=updates.get('email')).exists():
+                return {"error": "an account with the provided email address already exists"}
+
         admin = CustomUser.objects.get(account_id=user)
         account  = CustomUser.objects.get(account_id=account_id, school=admin.school)
 
