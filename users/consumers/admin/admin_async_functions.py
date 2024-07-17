@@ -377,7 +377,7 @@ def search_register_classes(user, grade_id):
         account = CustomUser.objects.get(account_id=user)
         grade  = Grade.objects.get(grade_id=grade_id, school=account.school)
 
-        classes = grade.grade_classes.all()
+        classes = grade.grade_classes.filter(register_class=True)
 
         serializer = ClassesSerializer(classes, many=True)
 
