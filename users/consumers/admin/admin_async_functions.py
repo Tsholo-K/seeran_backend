@@ -339,7 +339,7 @@ def create_subjects(user, grade_id, subjects):
         existing_subjects = []
         for sub in subject_list:
             if Subject.objects.filter(subject=sub, grade=grade).exists():
-                existing_subjects.append(sub)
+                existing_subjects.append(sub.title())
         
         if existing_subjects:
             return {'error' : f'the following subjects have already been created for the school: {", ".join(existing_subjects)}'}
