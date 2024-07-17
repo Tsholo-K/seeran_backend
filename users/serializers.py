@@ -78,6 +78,8 @@ class StudentProfileSerializer(serializers.ModelSerializer):
         fields = [ 'identifier', 'name', 'surname', 'image' ]
     
     def get_identifier(self, obj):
+        if obj.email:
+            return obj.email
         if obj.id_number:
             return obj.id_number
         return obj.passport_number
