@@ -342,7 +342,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     if (grade_id and subjects) is not None:
                         response = await admin_async_functions.create_subjects(user, grade_id, subjects)
 
-                # create class for subject with the provided id
+                # create subject class for subject with the provided id
                 if description == 'create_subject_class':
                     grade_id = details.get('grade_id')
                     subject_id = details.get('subject_id')
@@ -351,6 +351,15 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     classroom_teacher = details.get('classroom_teacher')
                     if (grade_id and subject_id and group and classroom) is not None:
                         response = await admin_async_functions.create_subject_class(user, grade_id, subject_id, group, classroom, classroom_teacher)
+
+                # create register class for grade with the provided id
+                if description == 'create_register_class':
+                    grade_id = details.get('grade_id')
+                    group = details.get('group')
+                    classroom = details.get('classroom')
+                    classroom_teacher = details.get('classroom_teacher')
+                    if (grade_id and group and classroom) is not None:
+                        response = await admin_async_functions.create_register_class(user, grade_id, group, classroom, classroom_teacher)
 
                 # create teacher schedule
                 if description == 'create_teacher_schedule':
