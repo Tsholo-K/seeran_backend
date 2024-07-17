@@ -41,7 +41,7 @@ class ClassSerializer(serializers.ModelSerializer):
 
 class ClassUpdateSerializer(serializers.ModelSerializer):
 
-    teacher = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all(), required=False, allow_null=True,  allow_blank=False)
+    teacher = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all(), required=False, allow_null=True)
     classroom_identifier = serializers.CharField(required=False)
     group = serializers.CharField(required=False)
 
