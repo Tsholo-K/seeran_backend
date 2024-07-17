@@ -381,7 +381,7 @@ def search_register_classes(user, grade_id):
 
         serializer = ClassesSerializer(classes, many=True)
 
-        return {"subject": serializer.data}
+        return {"classes": serializer.data}
     
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
