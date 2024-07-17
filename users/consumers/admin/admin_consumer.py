@@ -139,6 +139,12 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     if grade_id is not None:
                         response = await admin_async_functions.search_grade(user, grade_id)
 
+                # return register classes for grade with the provided id
+                if description == 'register_classes':
+                    grade_id = details.get('grade_id')
+                    if grade_id is not None:
+                        response = await admin_async_functions.search_register_classes(user, grade_id)
+
                 # return subject details with the provided id
                 if description == 'subject':
                     subject_id = details.get('subject_id')
