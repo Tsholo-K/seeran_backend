@@ -15,7 +15,7 @@ from django.utils.dateparse import parse_time
 
 # models 
 from users.models import CustomUser
-from timetables.models import Session, Schedule, TeacherSchedule
+from timetables.models import Session, Schedule, TeacherSchedule, GroupSchedule
 from grades.models import Grade, Subject
 from classes.models import Classroom
 
@@ -531,28 +531,20 @@ def search_students(user, grade_id):
     
 
 @database_sync_to_async
-def create_teacher_schedule(user, details):
+def create_teacher_schedule(user, sessions, day, account_id):
 
     try:
-        sessions = details['sessions']
-        day_of_week = details['day'].upper()
-        account_id = details['account_id']
-
-        if not sessions or not day_of_week or not account_id:
-            return { "error" : 'missing information' }
-
-        if day_of_week not in [ 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']:
+        if day not in [ 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']:
             return { "error" : 'invalid schedule day' }
 
         admin = CustomUser.objects.get(account_id=user)
         account = CustomUser.objects.get(account_id=account_id, role='TEACHER')
 
         if account.school != admin.school:
-            return { "error" : 'unauthorized access.. permission denied' }
+            return { "error" : 'unauthorized request.. permission denied' }
 
         with transaction.atomic():
-            
-            schedule = Schedule(day=day_of_week)
+            schedule = Schedule(day=day, day_order=Schedule.DAY_OF_THE_WEEK_ORDER[day])
             schedule.save()  # Save to generate a unique schedule_id
             
             # Iterate over the sessions in the provided data
@@ -573,11 +565,11 @@ def create_teacher_schedule(user, details):
             schedule.save()
 
             # Check if the teacher already has a schedule for the provided day
-            existing_teacher_schedule = TeacherSchedule.objects.filter(teacher=account, schedules__day=day_of_week)
+            existing_teacher_schedules = TeacherSchedule.objects.filter(teacher=account, schedules__day=day)
 
-            for schedules in existing_teacher_schedule:
+            for schedule in existing_teacher_schedules:
                 # Remove the specific schedules for that day
-                schedules.schedules.filter(day=day_of_week).delete()
+                schedule.schedules.filter(day=day).delete()
 
             # Check if the teacher already has a TeacherSchedule object
             teacher_schedule, created = TeacherSchedule.objects.get_or_create(teacher=account)
@@ -620,20 +612,43 @@ def delete_teacher_schedule(user, schedule_id):
 
         # Check if the user has permission to delete the schedule
         if admin.school != teacher_schedule.teacher.school:
-            return {"error": 'permission denied'}
+            return {"error": 'unauthorized request.. permission denied'}
 
         # Delete the schedule
         schedule.delete()
         
-        # Return a success response
-        return {'message': 'Schedule deleted successfully'}
+        return {'message': 'schedule deleted successfully'}
         
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
     
     except Exception as e:
         return { 'error': str(e) }
+
+
+@database_sync_to_async
+def search_student_schedules(user, account_id):
+
+    try:
+        admin = CustomUser.objects.get(account_id=user)
+        account  = CustomUser.objects.get(account_id=account_id)
+
+        if account.role != 'STUDENT' or  admin.school != account.school:
+            return { "error" : 'unauthorized request.. permission denied' }
+        
+        group_schedules = GroupSchedule.objects.filter(students=account)
+        
+        schedules = group_schedules.schedules.all()
+        serializer = SchedulesSerializer(schedules, many=True)
+
+        return {"schedules": serializer.data}
     
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+
 
 @database_sync_to_async
 def search_teacher_schedules(user, account_id):
@@ -643,17 +658,16 @@ def search_teacher_schedules(user, account_id):
         account  = CustomUser.objects.get(account_id=account_id)
 
         if account.role != 'TEACHER' or  admin.school != account.school:
-            return { "error" : 'unauthorized access.. permission denied' }
+            return { "error" : 'unauthorized request.. permission denied' }
         
         if hasattr(account, 'teacher_schedule'):
             teacher_schedule = account.teacher_schedule
-            schedules = teacher_schedule.schedules.all().order_by('day')
+            schedules = teacher_schedule.schedules.all()
             serializer = SchedulesSerializer(schedules, many=True)
     
             return {"schedules": serializer.data}
         
-        else:
-            return {"schedules": []}
+        return {"schedules": []}
         
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }

@@ -21,25 +21,21 @@ class Session(models.Model):
 class Schedule(models.Model):
 
     # schedule day of the week choices
-    DAY_OF_THE_WEEK_CHOICES = [
-        ('MONDAY', 'Monday'),
-        ('TUESDAY', 'Tuesday'),
-        ('WEDNESDAY', 'Wednesday'),
-        ('THURSDAY', 'Thursday'),
-        ('FRIDAY', 'Friday'),
-        ('SATURDAY', 'Saturday'),
-        ('SUNDAY', 'Sunday'),
-    ]
+    DAY_OF_THE_WEEK_CHOICES = [('MONDAY', 'Monday'), ('TUESDAY', 'Tuesday'), ('WEDNESDAY', 'Wednesday'), ('THURSDAY', 'Thursday'), ('FRIDAY', 'Friday'), ('SATURDAY', 'Saturday'), ('SUNDAY', 'Sunday')]
     day = models.CharField(_('schedule day'), max_length=10, choices=DAY_OF_THE_WEEK_CHOICES, default="MONDAY")
 
     sessions = models.ManyToManyField(Session)
 
     # schedule id 
-    schedule_id = models.CharField(max_length=15, unique=True)  
+    schedule_id = models.CharField(max_length=15, unique=True)
+
+    DAY_OF_THE_WEEK_ORDER = {'MONDAY': 1, 'TUESDAY': 2, 'WEDNESDAY': 3, 'THURSDAY': 4, 'FRIDAY': 5, 'SATURDAY': 6, 'SUNDAY': 7}
+    day_order = models.PositiveIntegerField(choices=[(v, k) for k, v in DAY_OF_THE_WEEK_ORDER.items()])
 
     class Meta:
         verbose_name = _('schedule')
         verbose_name_plural = _('schedules')
+        ordering = ['day_order']
 
     def __str__(self):
         return self.schedule_id
