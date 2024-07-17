@@ -33,7 +33,7 @@ def create_account(user, name, surname, email, role):
 
     try:
         account = CustomUser.objects.get(account_id=user)
-        data = {'name': name, 'surname': surname, 'email': email, 'school': account.school.id, 'role': role}
+        data = {'name': name, 'surname': surname, 'email': email, 'school': account.school.pk, 'role': role}
         
         if CustomUser.objects.filter(email=email).exists():
             return {"error": "an account with the provided email address already exists"}
@@ -74,14 +74,14 @@ def create_student_account(user, name, surname, email, grade_id, identification,
             if CustomUser.objects.filter(id_number=identification).exists():
                 return {"error": "a user with this ID number already exists."}
             
-            data = {'name': name, 'surname': surname, 'email': email, 'grade': grade.id, 'school': account.school.id, 'role': 'STUDENT', 'id_number': identification}
+            data = {'name': name, 'surname': surname, 'email': email, 'grade': grade.pk, 'school': account.school.pk, 'role': 'STUDENT', 'id_number': identification}
             serializer = StudentAccountCreationIDSerializer(data=data)
         
         else:
             if CustomUser.objects.filter(passport_number=identification).exists():
                 return {"error": "a user with this Passport Number already exists."}
             
-            data = {'name': name, 'surname': surname, 'email': email, 'grade': grade.id, 'school': account.school.id, 'role': 'STUDENT', 'passport_number': identification}
+            data = {'name': name, 'surname': surname, 'email': email, 'grade': grade.pk, 'school': account.school.pk, 'role': 'STUDENT', 'passport_number': identification}
             serializer = StudentAccountCreationPNSerializer(data=data)
         
         if serializer.is_valid():
@@ -250,13 +250,13 @@ def create_grade(user, grade, subjects):
 
         with transaction.atomic():
             # Include the grade_order when creating the Grade instance
-            level = Grade.objects.create(grade=grade, grade_order=grade_order, school=account.school)
-            level.save()
+            grad = Grade.objects.create(grade=grade, grade_order=grade_order, school=account.school)
+            grad.save()
 
             if subjects:
                 subject_list = subjects.split(', ')
                 for sub in subject_list:
-                    ject = Subject.objects.create(subject=sub, grade=level)
+                    ject = Subject.objects.create(subject=sub, grade=grad)
                     ject.save()
             
         return { 'message': 'you can now add student accounts, subjects, classes and much more..' }
