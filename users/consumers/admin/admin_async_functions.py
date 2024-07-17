@@ -20,7 +20,7 @@ from grades.models import Grade, Subject
 from classes.models import Classroom
 
 # serilializers
-from users.serializers import AccountUpdateSerializer, IDSerializer, ProfileSerializer, UsersSerializer, AccountCreationSerializer, TeachersSerializer, StudentAccountCreationIDSerializer, StudentAccountCreationPNSerializer
+from users.serializers import AccountUpdateSerializer, IDSerializer, ProfileSerializer, StudentProfileSerializer, UsersSerializer, AccountCreationSerializer, TeachersSerializer, StudentAccountCreationIDSerializer, StudentAccountCreationPNSerializer
 from timetables.serializers import SchedulesSerializer
 from grades.serializers import GradesSerializer, GradeSerializer, SubjectDetailSerializer
 from classes.serializers import ClassSerializer, ClassUpdateSerializer, TeacherClassesSerializer
@@ -172,8 +172,11 @@ def search_account_profile(user, account_id):
         if account.role == 'FOUNDER' or (account.role != 'PARENT' and admin.school != account.school) or (account.role == 'PARENT' and not account.children.filter(school=admin.school).exists()):
             return { "error" : 'unauthorized access.. permission denied' }
 
-        # return the users profile
-        serializer = ProfileSerializer(instance=account)
+        if account.role == 'STUDENT':
+            serializer = StudentProfileSerializer(instance=account)
+        else:
+            serializer = ProfileSerializer(instance=account)
+            
         return { "user" : serializer.data }
         
     except CustomUser.DoesNotExist:
