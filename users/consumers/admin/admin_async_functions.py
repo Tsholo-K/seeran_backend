@@ -66,6 +66,8 @@ def create_student_account(user, name, surname, email, grade_id, identification,
         if email != '':
             if CustomUser.objects.filter(email=email).exists():
                 return {"error": "an account with the provided email address already exists"}
+        else:
+            email = None
         
         account = CustomUser.objects.get(account_id=user)
         grade = Grade.objects.get(grade_id=grade_id, school=account.school)
