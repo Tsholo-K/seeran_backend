@@ -611,13 +611,16 @@ def search_schedules(user, account_id):
         if account.role == 'STUDENT':
             group_schedules = GroupSchedule.objects.get(students=account)
             schedules = group_schedules.schedules.all()
+            serializer = SchedulesSerializer(schedules, many=True)
+
+            return {"schedules": serializer.data, 'group_name' : group_schedules.group_name}
 
         if account.role == 'TEACHER':
             teacher_schedule = TeacherSchedule.objects.get(teacher=account)
             schedules = teacher_schedule.schedules.all()
+            serializer = SchedulesSerializer(schedules, many=True)
 
-        serializer = SchedulesSerializer(schedules, many=True)
-        return {"schedules": serializer.data}
+            return {"schedules": serializer.data}
         
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
@@ -626,8 +629,8 @@ def search_schedules(user, account_id):
         return { 'schedules': [] }
     
     except GroupSchedule.DoesNotExist:
-        return { 'schedules': [] }
-
+        return {'schedules': [], 'group_name' : 'No Group' }
+    
     except Exception as e:
         return { 'error': str(e) }
 
