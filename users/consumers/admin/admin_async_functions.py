@@ -599,6 +599,40 @@ def create_teacher_schedule(user, sessions, day, account_id):
 
 
 @database_sync_to_async
+def search_schedules(user, account_id):
+
+    try:
+        admin = CustomUser.objects.get(account_id=user)
+        account  = CustomUser.objects.get(account_id=account_id)
+
+        if account.role not in ['TEACHER', 'STUDENT'] or  admin.school != account.school:
+            return { "error" : 'unauthorized request.. permission denied' }
+        
+        if account.role == 'STUDENT':
+            group_schedules = GroupSchedule.objects.get(students=account)
+            schedules = group_schedules.schedules.all()
+
+        if account.role == 'TEACHER':
+            teacher_schedule = TeacherSchedule.objects.get(teacher=account)
+            schedules = teacher_schedule.schedules.all()
+
+        serializer = SchedulesSerializer(schedules, many=True)
+        return {"schedules": serializer.data}
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except TeacherSchedule.DoesNotExist:
+        return { 'schedules': [] }
+    
+    except GroupSchedule.DoesNotExist:
+        return { 'schedules': [] }
+
+    except Exception as e:
+        return { 'error': str(e) }
+
+
+@database_sync_to_async
 def delete_teacher_schedule(user, schedule_id):
 
     try:
@@ -618,56 +652,6 @@ def delete_teacher_schedule(user, schedule_id):
         schedule.delete()
         
         return {'message': 'schedule deleted successfully'}
-        
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-    
-    except Exception as e:
-        return { 'error': str(e) }
-
-
-@database_sync_to_async
-def search_student_schedules(user, account_id):
-
-    try:
-        admin = CustomUser.objects.get(account_id=user)
-        account  = CustomUser.objects.get(account_id=account_id)
-
-        if account.role != 'STUDENT' or  admin.school != account.school:
-            return { "error" : 'unauthorized request.. permission denied' }
-        
-        group_schedules = GroupSchedule.objects.filter(students=account)
-        
-        schedules = group_schedules.schedules.all()
-        serializer = SchedulesSerializer(schedules, many=True)
-
-        return {"schedules": serializer.data}
-    
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-    
-    except Exception as e:
-        return { 'error': str(e) }
-
-
-@database_sync_to_async
-def search_teacher_schedules(user, account_id):
-
-    try:
-        admin = CustomUser.objects.get(account_id=user)
-        account  = CustomUser.objects.get(account_id=account_id)
-
-        if account.role != 'TEACHER' or  admin.school != account.school:
-            return { "error" : 'unauthorized request.. permission denied' }
-        
-        if hasattr(account, 'teacher_schedule'):
-            teacher_schedule = account.teacher_schedule
-            schedules = teacher_schedule.schedules.all()
-            serializer = SchedulesSerializer(schedules, many=True)
-    
-            return {"schedules": serializer.data}
-        
-        return {"schedules": []}
         
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }

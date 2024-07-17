@@ -127,17 +127,11 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     if teacher_id is not None:
                         response = await admin_async_functions.search_teacher_classes(user, teacher_id)
 
-                # return schedule sessions with the provided id
-                if description == 'student_schedules':
+                # return schedules for the account with the provided id
+                if description == 'schedules':
                     account_id = details.get('account_id')
                     if account_id is not None:
-                        response = await admin_async_functions.search_student_schedules(user, account_id)
-                        
-                # return schedule sessions with the provided id
-                if description == 'teacher_schedules':
-                    account_id = details.get('account_id')
-                    if account_id is not None:
-                        response = await admin_async_functions.search_teacher_schedules(user, account_id)
+                        response = await admin_async_functions.search_schedules(user, account_id)
 
                 # return grade details with the provided id
                 if description == 'grade':
