@@ -796,3 +796,26 @@ def form_class_update(user, class_id):
 
     except Exception as e:
         return { 'error': str(e) }
+    
+
+@database_sync_to_async
+def form_add_students_to_register_class(user, class_id):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        classroom = Classroom.objects.get(class_id=class_id, school=account.school)
+
+        students = classroom.grade.students.exclude(id__in=classroom.students.all())
+
+        serializer = UsersSerializer(students, many=True)
+
+        return {"students": serializer.data}
+    
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+            
+    except Classroom.DoesNotExist:
+        return { 'error': 'class with the provided credentials does not exist' }
+
+    except Exception as e:
+        return { 'error': str(e) }

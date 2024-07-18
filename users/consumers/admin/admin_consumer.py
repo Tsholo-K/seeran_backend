@@ -217,11 +217,17 @@ class AdminConsumer(AsyncWebsocketConsumer):
                 if description == 'class_creation':
                     response = await admin_async_functions.form_subject_class(user)
                         
-                # return all teacher accounts in the school( excluding the class teacher if there is )
+                # return all teacher accounts in the school( excluding the class teacher, if there is )
                 if description == 'class_update':
                     class_id = details.get('class_id')
                     if class_id is not None:
                         response = await admin_async_functions.form_class_update(user, class_id)
+                        
+                # return all student accounts in the grade( excluding the one already in the class, if there is )
+                if description == 'add_students_to_register_class':
+                    class_id = details.get('class_id')
+                    if class_id is not None:
+                        response = await admin_async_functions.form_add_students_to_register_class(user, class_id)
 
 
             ################################################################################################################                
