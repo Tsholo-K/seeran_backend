@@ -194,7 +194,7 @@ class AccountsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = [ 'name', 'surname', 'id', 'image' ]
+        fields = [ 'name', 'surname', 'id', 'image', 'email' ]
     
     def get_id(self, obj):
         return obj.account_id
