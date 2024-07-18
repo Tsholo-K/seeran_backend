@@ -798,7 +798,7 @@ def remove_student_from_register_class(user, class_id, account_id):
 
         if classroom.students.filter(account_id=account_id).exists():
             with transaction.atomic():
-                classroom.students.remove(account_id=account_id)
+                classroom.students.remove(classroom.students.get(account_id=account_id))
                 classroom.save()
             
             return { 'message': f'student successfully removed from register class group {classroom.group}' }
