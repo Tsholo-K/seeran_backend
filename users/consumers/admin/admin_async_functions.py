@@ -20,7 +20,7 @@ from grades.models import Grade, Subject
 from classes.models import Classroom
 
 # serilializers
-from users.serializers import AccountUpdateSerializer, IDSerializer, ProfileSerializer, StudentProfileSerializer, UsersSerializer, AccountCreationSerializer, TeachersSerializer, StudentAccountCreationIDSerializer, StudentAccountCreationPNSerializer
+from users.serializers import AccountUpdateSerializer, IDSerializer, ProfileSerializer, StudentProfileSerializer, AccountsSerializer, StudentAccountsSerializer, AccountCreationSerializer, TeachersSerializer, StudentAccountCreationIDSerializer, StudentAccountCreationPNSerializer
 from timetables.serializers import SchedulesSerializer
 from grades.serializers import GradesSerializer, GradeSerializer, SubjectDetailSerializer, ClassesSerializer
 from classes.serializers import ClassSerializer, ClassUpdateSerializer, TeacherClassesSerializer
@@ -228,7 +228,7 @@ def search_accounts(user, role):
         if role == 'TEACHER':
             accounts = CustomUser.objects.filter(role=role, school=account.school)
 
-        serializer = UsersSerializer(accounts, many=True)
+        serializer = AccountsSerializer(accounts, many=True)
         return { "users" : serializer.data }
         
     except CustomUser.DoesNotExist:
@@ -574,7 +574,7 @@ def search_students(user, grade_id):
         account = CustomUser.objects.get(account_id=user)
         students = Grade.objects.get(grade_id=grade_id, school=account.school.pk).students.all()
 
-        serializer = UsersSerializer(students, many=True)
+        serializer = StudentAccountsSerializer(students, many=True)
 
         return {"students": serializer.data}
     
@@ -807,7 +807,7 @@ def form_add_students_to_register_class(user, class_id):
 
         students = classroom.grade.students.exclude(id__in=classroom.students.all())
 
-        serializer = UsersSerializer(students, many=True)
+        serializer = StudentAccountsSerializer(students, many=True)
 
         return {"students": serializer.data}
     

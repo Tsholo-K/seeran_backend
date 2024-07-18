@@ -185,7 +185,7 @@ class AccountUpdateSerializer(serializers.ModelSerializer):
         fields = ['name', 'surname', 'id_number', 'email', 'grade']
         
 
-class UsersSerializer(serializers.ModelSerializer):
+class AccountsSerializer(serializers.ModelSerializer):
 
     image = serializers.SerializerMethodField()
     id = serializers.SerializerMethodField()
@@ -209,6 +209,39 @@ class UsersSerializer(serializers.ModelSerializer):
       
         return '/default-user-image.svg'
 
+
+class StudentAccountsSerializer(serializers.ModelSerializer):
+
+    image = serializers.SerializerMethodField()
+    id = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
+    surname = serializers.SerializerMethodField()
+    identifier = serializers.SerializerMethodField()
+
+
+    class Meta:
+        model = CustomUser
+        fields = [ 'name', 'surname', 'id', 'image', 'identifier' ]
+    
+    def get_id(self, obj):
+        return obj.account_id
+    
+    def get_name(self, obj):
+        return obj.name.title()
+    
+    def get_surname(self, obj):
+        return obj.surname.title()
+            
+    def get_image(self, obj):
+      
+        return '/default-user-image.svg'
+    
+    def get_identifier(self, obj):
+        if obj.id_number:
+            return obj.id_number
+        if obj.passport_number:
+            return obj.passport_number
+        return None
 
 class TeachersSerializer(serializers.ModelSerializer):
 
