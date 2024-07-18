@@ -844,7 +844,11 @@ def form_add_students_to_register_class(user, class_id):
         account = CustomUser.objects.get(account_id=user)
         classroom = Classroom.objects.get(class_id=class_id, school=account.school)
 
-        students = classroom.grade.students.exclude(id__in=classroom.students.all())
+        # Get all students who are in the same grade and already in a register class
+        students_in_register_classes = CustomUser.objects.filter(enrolled_classes__grade=classroom.grade, enrolled_classes__register_class=True)
+
+        # Exclude these students from the current classroom's grade
+        students = classroom.grade.students.exclude(id__in=students_in_register_classes)
 
         serializer = StudentAccountsSerializer(students, many=True)
 
