@@ -725,7 +725,7 @@ def search_schedules(user, account_id):
 def delete_teacher_schedule(user, schedule_id):
 
     try:
-        admin = CustomUser.objects.get(account_id=user)
+        account = CustomUser.objects.get(account_id=user)
         
         # Retrieve the schedule object
         schedule = Schedule.objects.get(schedule_id=schedule_id)
@@ -734,7 +734,7 @@ def delete_teacher_schedule(user, schedule_id):
         teacher_schedule = schedule.teacher_linked_to.first()
 
         # Check if the user has permission to delete the schedule
-        if admin.school != teacher_schedule.teacher.school:
+        if account.school != teacher_schedule.teacher.school:
             return {"error": 'unauthorized request.. permission denied'}
 
         # Delete the schedule
@@ -745,6 +745,45 @@ def delete_teacher_schedule(user, schedule_id):
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
     
+    except Exception as e:
+        return { 'error': str(e) }
+
+
+@database_sync_to_async
+def add_students_to_register_class(user, class_id, students):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        classroom = Classroom.objects.get(class_id=class_id, school=account.school, register_class=True)
+
+        if students == '':
+            return { 'error': f'invalid request.. no students were provided. please provide students to be added to the specified class' }
+        
+        students_list = students.split(', ')
+        
+        existing_students = []
+        for student in students_list:
+            if classroom.students.filter(account_id=student).exists():
+                existing_students.append(student)
+        
+        if existing_students:
+            return {'error' : f'invalid request.. the provided list of students includes students that are already in this class, please review the list of users then submit the list again'}
+        
+        with transaction.atomic():
+
+            for student in students_list:
+                classroom.students.add(CustomUser.objects.get(account_id=student, school=account.school, grade=classroom.grade))
+
+            classroom.save()
+            
+        return {'message': 'students successfully added added to the class'}
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+            
+    except Classroom.DoesNotExist:
+        return { 'error': 'register class with the provided credentials does not exist, request denied' }
+
     except Exception as e:
         return { 'error': str(e) }
 

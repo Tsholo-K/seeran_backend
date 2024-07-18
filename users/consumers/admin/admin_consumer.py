@@ -387,6 +387,13 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     if schedule_id is not None:
                         response = await admin_async_functions.delete_teacher_schedule(user, schedule_id)
 
+                # add students to register class with the provided id
+                if description == 'add_students_to_register_class':
+                    class_id = details.get('class_id')
+                    students = details.get('students')
+                    if (class_id and students) is not None:
+                        response = await admin_async_functions.add_students_to_register_class(user, class_id, students)
+
 
             ###############################################################################################################
         
