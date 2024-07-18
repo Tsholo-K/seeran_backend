@@ -13,11 +13,4 @@ urlpatterns = [
     path("update-profile-picture/", views.update_profile_picture, name="update profile picture"),
     path("remove_profile_picture/", views.remove_profile_picture, name="remove profile picture"),
 
-    # general urls
-    path('profile/<str:account_id>/', views.user_profile, name="get users profile information"),
-        
-    # urls  for admindashboard, 'ADMIN' role required 
-    path('delete-user/', views.delete_user, name="delete user account"),
-    path('students/<str:grade>/', views.students, name="get student accounts in provided grade"),
-
 ]
