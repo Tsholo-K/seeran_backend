@@ -402,6 +402,7 @@ def create_register_class(user, grade_id, group, classroom, classroom_teacher):
         return { 'error': str(e) }
 
 
+
 @database_sync_to_async
 def create_subject_class(user, grade_id, subject_id, group, classroom, classroom_teacher):
 
@@ -787,6 +788,31 @@ def add_students_to_register_class(user, class_id, students):
     except Exception as e:
         return { 'error': str(e) }
 
+
+@database_sync_to_async
+def remove_student_from_register_class(user, class_id, account_id):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        classroom = Classroom.objects.get(class_id=class_id, school=account.school, register_class=True)
+
+        if classroom.students.filter(account_id=account_id).exists():
+            with transaction.atomic():
+                classroom.students.remove(account_id=account_id)
+                classroom.save()
+            
+            return { 'message': f'student successfully removed from register class group {classroom.group}' }
+        
+        return { 'error': f'can not remove student from class.. the provided student is not part of the register class' }
+               
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Classroom.DoesNotExist:
+        return { 'error': 'class with the provided credentials does not exist' }
+
+    except Exception as e:
+        return { 'error': str(e) }
 
 @database_sync_to_async
 def form_subject_class(user):

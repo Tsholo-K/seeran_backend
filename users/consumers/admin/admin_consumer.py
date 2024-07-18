@@ -393,6 +393,13 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     students = details.get('students')
                     if (class_id and students) is not None:
                         response = await admin_async_functions.add_students_to_register_class(user, class_id, students)
+                                        
+                # remove student from register class with the provided id
+                if description == 'remove_student_from_register_class':
+                    class_id = details.get('class_id')
+                    account_id = details.get('account_id')
+                    if (class_id and account_id) is not None:
+                        response = await admin_async_functions.remove_student_from_register_class(user, class_id, account_id)
 
 
             ###############################################################################################################
