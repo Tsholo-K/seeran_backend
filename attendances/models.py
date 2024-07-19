@@ -1,3 +1,25 @@
+# django
 from django.db import models
 
-# Create your models here.
+# models
+from classes.models import Classroom
+from users.models import CustomUser
+
+class Absent(models.Model):
+    date = models.DateField(auto_now_add=True)
+    classroom = models.ForeignKey(Classroom, on_delete=models.SET_NULL, related_name='attendances')
+    absent_students = models.ManyToManyField(CustomUser, related_name='absences')
+    submitted_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, related_name='submitted_attendances')
+
+    class Meta:
+        unique_together = ('date', 'classroom')
+
+
+class Late(models.Model):
+    date = models.DateField(auto_now_add=True)
+    classroom = models.ForeignKey(Classroom, on_delete=models.SET_NULL, related_name='late_arrivals')
+    student = models.ManyToManyField(CustomUser, related_name='late_arrivals')
+    submitted_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, related_name='submitted_late_arrivals')
+
+    class Meta:
+        unique_together = ('date', 'classroom')
