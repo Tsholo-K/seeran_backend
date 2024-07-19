@@ -228,6 +228,12 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     class_id = details.get('class_id')
                     if class_id is not None:
                         response = await admin_async_functions.form_add_students_to_register_class(user, class_id)
+                        
+                # return all student accounts in register class
+                if description == 'attendance_register':
+                    class_id = details.get('class_id')
+                    if class_id is not None:
+                        response = await admin_async_functions.form_attendance_register(user, class_id)
 
 
             ################################################################################################################                
