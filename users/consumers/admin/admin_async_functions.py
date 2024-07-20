@@ -10,6 +10,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.db import IntegrityError, transaction
 from django.utils.dateparse import parse_time
+from django.utils import timezone
 
 # simple jwt
 
@@ -18,6 +19,7 @@ from users.models import CustomUser
 from timetables.models import Session, Schedule, TeacherSchedule, GroupSchedule
 from grades.models import Grade, Subject
 from classes.models import Classroom
+from attendances.models import Absent
 
 # serilializers
 from users.serializers import AccountUpdateSerializer, IDSerializer, ProfileSerializer, StudentProfileSerializer, AccountsSerializer, StudentAccountsSerializer, AccountCreationSerializer, TeachersSerializer, StudentAccountCreationIDSerializer, StudentAccountCreationPNSerializer
@@ -896,12 +898,24 @@ def form_attendance_register(user, class_id):
     try:
         account = CustomUser.objects.get(account_id=user)
         classroom = Classroom.objects.get(class_id=class_id, register_class=True, school=account.school)
+        
+        # Get today's date
+        today = timezone.localdate()
 
-        students = classroom.students.all()
+        # Check if an Absent instance exists for today and the given class
+        attendance = Absent.objects.filter(date=today, classroom=classroom).first()
+
+        if attendance:
+            students = attendance.absent_students.all()
+            attendance_register_taken = True
+
+        else:
+            students = classroom.students.all()
+            attendance_register_taken = False
 
         serializer = StudentAccountsSerializer(students, many=True)
 
-        return {"students": serializer.data}
+        return {"students": serializer.data, "attendance_register_taken" : attendance_register_taken}
     
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
