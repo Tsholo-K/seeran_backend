@@ -84,7 +84,7 @@ def form_attendance_register(user, class_id):
         today = timezone.localdate()
             
         # Check if an Absent instance exists for today and the given class
-        attendance = Absent.objects.filter(date=today, classroom=classroom).first()
+        attendance = Absent.objects.filter(date__date=today, classroom=classroom).first()
 
         if attendance:
             students = attendance.absent_students.all()
@@ -120,7 +120,7 @@ def submit_absentes(user, class_id, students):
 
         today = timezone.localdate()
 
-        if Absent.objects.filter(date=today, classroom=classroom).exists():
+        if Absent.objects.filter(date__date=today, classroom=classroom).exists():
             return {'error': 'attendance register for this class has already been subimitted today.. can not resubmit'}
 
         with transaction.atomic():
@@ -159,14 +159,14 @@ def submit_late_arrivals(user, class_id, students):
 
         today = timezone.localdate()
 
-        absentes = Absent.objects.filter(date=today, classroom=classroom).first()
+        absentes = Absent.objects.filter(date__date=today, classroom=classroom).first()
         if not absentes:
             return {'error': 'attendance register for this class has not been submitted today.. can not submit late arrivals before the attendance register'}
 
         if absentes and not absentes.absent_students.exists():
             return {'error': 'attendance register for this class has all students present or marked as late for today.. can not submit late arrivals when all students are accounted for'}
 
-        register = Late.objects.filter(date=today, classroom=classroom).first()
+        register = Late.objects.filter(date__date=today, classroom=classroom).first()
         
         with transaction.atomic():
             if not register:
