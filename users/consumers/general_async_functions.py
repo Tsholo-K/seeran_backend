@@ -77,7 +77,7 @@ def form_attendance_register(user, class_id):
         account = CustomUser.objects.get(account_id=user)
         classroom = Classroom.objects.get(class_id=class_id, register_class=True, school=account.school)
         
-        if account.role not in ['ADMIN', 'PRINCIPAL'] or classroom.teacher != account:
+        if account.role not in ['ADMIN', 'PRINCIPAL'] and classroom.teacher != account:
             return { "error" : 'unauthorized request.. only the class teacher or school admin can submit the attendance register for this class' }
         
         # Get today's date
@@ -115,7 +115,7 @@ def submit_absentes(user, class_id, students):
         account = CustomUser.objects.get(account_id=user)
         classroom = Classroom.objects.get(class_id=class_id, school=account.school, register_class=True)
         
-        if account.role not in ['ADMIN', 'PRINCIPAL'] or classroom.teacher != account:
+        if account.role not in ['ADMIN', 'PRINCIPAL'] and classroom.teacher != account:
             return { "error" : 'unauthorized request.. only the class teacher or school admin can submit the attendance register for this class' }
 
         today = timezone.localdate()
@@ -150,7 +150,7 @@ def submit_late_arrivals(user, class_id, students):
         account = CustomUser.objects.get(account_id=user)
         classroom = Classroom.objects.get(class_id=class_id, school=account.school, register_class=True)
         
-        if account.role not in ['ADMIN', 'PRINCIPAL'] or classroom.teacher != account:
+        if account.role not in ['ADMIN', 'PRINCIPAL'] and classroom.teacher != account:
             return { "error" : 'unauthorized request.. only the class teacher or school admin can submit the attendance register for this class' }
 
         today = timezone.localdate()
