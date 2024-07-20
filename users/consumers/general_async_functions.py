@@ -2,7 +2,6 @@
 from decouple import config
 import base64
 import time
-
 # httpx
 import httpx
 
@@ -15,7 +14,8 @@ from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.contrib.auth.hashers import check_password
 from django.utils import timezone
-from django.db import IntegrityError, transaction
+from django.db import  transaction
+from django.db.models import Q
 
 # simple jwt
 from rest_framework_simplejwt.tokens import AccessToken as decode, TokenError
@@ -32,11 +32,11 @@ from attendances.models import Absent, Late
 # serializers
 from timetables.serializers import SessoinsSerializer
 from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
-from users.serializers import StudentAccountsSerializer
+from users.serializers import StudentAccountsSerializer, StudentaccountAttendanceRecordSerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
-    
+from attendances.utility_functions import get_month_dates
 
 @database_sync_to_async
 def fetch_security_info(user):
@@ -147,6 +147,9 @@ def submit_absentes(user, class_id, students):
 def submit_late_arrivals(user, class_id, students):
 
     try:
+        if not students:
+            return {"error" : 'invalid request.. no students provided.. at least one student is needed to be marked as late'}
+
         account = CustomUser.objects.get(account_id=user)
         classroom = Classroom.objects.get(class_id=class_id, school=account.school, register_class=True)
         
@@ -159,22 +162,63 @@ def submit_late_arrivals(user, class_id, students):
         if not absentes:
             return {'error': 'attendance register for this class has not been submitted today.. can not submit late arrivals before the attendance register'}
 
+        if absentes and not absentes.absent_students.exists():
+            return {'error': 'attendance register for this class has all students present or marked as late for today.. can not submit late arrivals when all students are accounted for'}
+
         register = Late.objects.filter(date=today, classroom=classroom).first()
         
         with transaction.atomic():
             if not register:
                 register = Late.objects.create(submitted_by=account, classroom=classroom)
-
-            if students:
-                for student in students.split(', '):
-                    student = CustomUser.objects.get(account_id=student)
-                    absentes.absent_students.remove(student)
-                    register.late_students.add(student)
+                absentes.absentes = True
+                
+            for student in students.split(', '):
+                student = CustomUser.objects.get(account_id=student)
+                absentes.absent_students.remove(student)
+                register.late_students.add(student)
 
             absentes.save()
             register.save()
 
         return { 'message': 'students marked as late, attendance register successfully updated'}
+               
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Classroom.DoesNotExist:
+        return { 'error': 'class with the provided credentials does not exist' }
+
+    except Exception as e:
+        return { 'error': str(e) }
+
+
+@database_sync_to_async
+def search_month_attendance_records(user, class_id, month_name):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        classroom = Classroom.objects.get(class_id=class_id, school=account.school, register_class=True)
+        
+        if account.role not in ['ADMIN', 'PRINCIPAL'] and classroom.teacher != account:
+            return { "error" : 'unauthorized request.. only the class teacher or school admin can view the attendance records for this class' }
+        
+        start_date, end_date = get_month_dates(month_name)
+
+        # Query for the Absent instances where absentes is True
+        absents = Absent.objects.filter(Q(date__gte=start_date) & Q(date__lt=end_date) & Q(classroom=classroom) & Q(absentes=True))
+
+        # For each absent instance, get the corresponding Late instance
+        attendance_records = []
+        for absent in absents:
+            late = Late.objects.filter(date=absent.date, classroom=classroom).first()
+            record = {
+                'date': absent.date,
+                'absent_students': StudentaccountAttendanceRecordSerializer(absent.absent_students.all(), many=True).data,
+                'late_students': StudentaccountAttendanceRecordSerializer(late.late_students.all(), many=True).data if late else [],
+            }
+            attendance_records.append(record)
+
+        return {'records': attendance_records}
                
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }

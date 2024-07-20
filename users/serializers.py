@@ -266,3 +266,28 @@ class TeachersSerializer(serializers.ModelSerializer):
     def get_image(self, obj):
       
         return '/default-user-image.svg'
+    
+
+class StudentaccountAttendanceRecordSerializer(serializers.ModelSerializer):
+
+    name = serializers.SerializerMethodField()
+    surname = serializers.SerializerMethodField()
+    identifier = serializers.SerializerMethodField()
+
+
+    class Meta:
+        model = CustomUser
+        fields = [ 'name', 'surname', 'identifier' ]
+    
+    def get_name(self, obj):
+        return obj.name.title()
+    
+    def get_surname(self, obj):
+        return obj.surname.title()
+    
+    def get_identifier(self, obj):
+        if obj.id_number:
+            return obj.id_number
+        if obj.passport_number:
+            return obj.passport_number
+        return None

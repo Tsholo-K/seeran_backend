@@ -164,6 +164,13 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     if schedule_id is not None:
                         response = await general_async_functions.search_schedule(schedule_id)
 
+                # return attendance records for the specified month
+                if description == 'search_month_attendance_records':
+                    class_id = details.get('class_id')
+                    month_name = details.get('month_name')
+                    if (class_id and month_name) is not None:
+                        response = await general_async_functions.search_month_attendance_records(user, class_id, month_name)
+
 
             ##############################################################################################################
 
