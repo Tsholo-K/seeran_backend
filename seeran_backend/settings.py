@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     'email_bans',
     'activities',
     'assessments',
+    'attendances',
     'chats',
     'classes',
     'grades',
