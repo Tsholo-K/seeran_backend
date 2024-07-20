@@ -212,7 +212,7 @@ def search_month_attendance_records(user, class_id, month_name):
         for absent in absents:
             late = Late.objects.filter(date=absent.date, classroom=classroom).first()
             record = {
-                'date': absent.date.strftime('%Y-%m-%d %H:%M:%S'),
+                'date': absent.date.isoformat(),
                 'absent_students': StudentaccountAttendanceRecordSerializer(absent.absent_students.all(), many=True).data,
                 'late_students': StudentaccountAttendanceRecordSerializer(late.late_students.all(), many=True).data if late else [],
             }

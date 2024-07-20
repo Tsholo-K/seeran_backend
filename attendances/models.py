@@ -1,13 +1,12 @@
 # django
 from django.db import models
-from django.utils import timezone
 
 # models
 from classes.models import Classroom
 from users.models import CustomUser
 
 class Absent(models.Model):
-    date = models.DateTimeField(default=timezone.now)
+    date = models.DateTimeField(auto_now_add=True)
     classroom = models.ForeignKey(Classroom, on_delete=models.SET_NULL, null=True, related_name='attendances')
     absent_students = models.ManyToManyField(CustomUser, related_name='absences')
     absentes = models.BooleanField(default=False)
@@ -18,7 +17,7 @@ class Absent(models.Model):
 
 
 class Late(models.Model):
-    date = models.DateTimeField(default=timezone.now)
+    date = models.DateTimeField(auto_now_add=True)
     classroom = models.ForeignKey(Classroom, on_delete=models.SET_NULL, null=True, related_name='late_arrivals')
     late_students = models.ManyToManyField(CustomUser, related_name='late_arrivals')
     submitted_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, related_name='submitted_late_arrivals')
