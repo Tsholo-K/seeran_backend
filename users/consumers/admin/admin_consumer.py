@@ -233,7 +233,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
                 if description == 'attendance_register':
                     class_id = details.get('class_id')
                     if class_id is not None:
-                        response = await admin_async_functions.form_attendance_register(user, class_id)
+                        response = await general_async_functions.form_attendance_register(user, class_id)
 
 
             ################################################################################################################                
@@ -406,6 +406,20 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     account_id = details.get('account_id')
                     if (class_id and account_id) is not None:
                         response = await admin_async_functions.remove_student_from_register_class(user, class_id, account_id)
+
+                # submit absentes
+                if description == 'submit_absentes':
+                    class_id = details.get('class_id')
+                    students = details.get('students')
+                    if (class_id and students) is not None:
+                        response = await general_async_functions.submit_absentes(user, class_id, students)
+
+                # subimit late arrivals
+                if description == 'submit_late_arrivals':
+                    class_id = details.get('class_id')
+                    students = details.get('students')
+                    if (class_id and students) is not None:
+                        response = await general_async_functions.submit_late_arrivals(user, class_id, students)
 
 
             ###############################################################################################################

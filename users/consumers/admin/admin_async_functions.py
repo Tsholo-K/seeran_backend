@@ -10,7 +10,6 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.db import IntegrityError, transaction
 from django.utils.dateparse import parse_time
-from django.utils import timezone
 
 # simple jwt
 
@@ -815,6 +814,7 @@ def remove_student_from_register_class(user, class_id, account_id):
 
     except Exception as e:
         return { 'error': str(e) }
+    
 
 @database_sync_to_async
 def form_subject_class(user):
@@ -890,39 +890,5 @@ def form_add_students_to_register_class(user, class_id):
 
     except Exception as e:
         return { 'error': str(e) }
-    
 
-@database_sync_to_async
-def form_attendance_register(user, class_id):
-
-    try:
-        account = CustomUser.objects.get(account_id=user)
-        classroom = Classroom.objects.get(class_id=class_id, register_class=True, school=account.school)
-        
-        # Get today's date
-        today = timezone.localdate()
-
-        # Check if an Absent instance exists for today and the given class
-        attendance = Absent.objects.filter(date=today, classroom=classroom).first()
-
-        if attendance:
-            students = attendance.absent_students.all()
-            attendance_register_taken = True
-
-        else:
-            students = classroom.students.all()
-            attendance_register_taken = False
-
-        serializer = StudentAccountsSerializer(students, many=True)
-
-        return {"students": serializer.data, "attendance_register_taken" : attendance_register_taken}
-    
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-            
-    except Classroom.DoesNotExist:
-        return { 'error': 'class with the provided credentials does not exist' }
-
-    except Exception as e:
-        return { 'error': str(e) }
     

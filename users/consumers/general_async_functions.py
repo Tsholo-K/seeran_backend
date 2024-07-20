@@ -14,6 +14,8 @@ from django.core.cache import cache
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.contrib.auth.hashers import check_password
+from django.utils import timezone
+from django.db import IntegrityError, transaction
 
 # simple jwt
 from rest_framework_simplejwt.tokens import AccessToken as decode, TokenError
@@ -23,11 +25,14 @@ from rest_framework_simplejwt.exceptions import TokenError
 from users.models import CustomUser
 from auth_tokens.models import AccessToken
 from email_bans.models import EmailBan
-from timetables.models import Session, Schedule, TeacherSchedule
+from timetables.models import Schedule
+from classes.models import Classroom
+from attendances.models import Absent, Late
 
 # serializers
-from timetables.serializers import SchedulesSerializer, SessoinsSerializer
+from timetables.serializers import SessoinsSerializer
 from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
+from users.serializers import StudentAccountsSerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
@@ -61,6 +66,122 @@ def search_schedule(schedule_id):
     except Schedule.DoesNotExist:
         return {"error" : "schedule with the provided ID does not exist"}
     
+    except Exception as e:
+        return { 'error': str(e) }
+    
+
+@database_sync_to_async
+def form_attendance_register(user, class_id):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        classroom = Classroom.objects.get(class_id=class_id, register_class=True, school=account.school)
+        
+        if account.role not in ['ADMIN', 'PRINCIPAL'] or classroom.teacher != account:
+            return { "error" : 'unauthorized request.. only the class teacher or school admin can submit the attendance register for this class' }
+        
+        # Get today's date
+        today = timezone.localdate()
+            
+        # Check if an Absent instance exists for today and the given class
+        attendance = Absent.objects.filter(date=today, classroom=classroom).first()
+
+        if attendance:
+            students = attendance.absent_students.all()
+            attendance_register_taken = True
+
+        else:
+            students = classroom.students.all()
+            attendance_register_taken = False
+
+        serializer = StudentAccountsSerializer(students, many=True)
+
+        return {"students": serializer.data, "attendance_register_taken" : attendance_register_taken}
+    
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+            
+    except Classroom.DoesNotExist:
+        return { 'error': 'class with the provided credentials does not exist' }
+
+    except Exception as e:
+        return { 'error': str(e) }
+
+
+@database_sync_to_async
+def submit_absentes(user, class_id, students):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        classroom = Classroom.objects.get(class_id=class_id, school=account.school, register_class=True)
+        
+        if account.role not in ['ADMIN', 'PRINCIPAL'] or classroom.teacher != account:
+            return { "error" : 'unauthorized request.. only the class teacher or school admin can submit the attendance register for this class' }
+
+        today = timezone.localdate()
+
+        if Absent.objects.filter(date=today, classroom=classroom).exists():
+            return {'error': 'attendance register for this class has already been subimitted today.. can not resubmit'}
+
+        with transaction.atomic():
+            register = Absent.objects.create(submitted_by=account, classroom=classroom)
+            if students:
+                for student in students.split(', '):
+                    register.absent_students.add(CustomUser.objects.get(account_id=student))
+
+            register.save()
+        
+        return { 'message': 'attendance register successfully taken for today'}
+               
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Classroom.DoesNotExist:
+        return { 'error': 'class with the provided credentials does not exist' }
+
+    except Exception as e:
+        return { 'error': str(e) }
+
+
+@database_sync_to_async
+def submit_late_arrivals(user, class_id, students):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        classroom = Classroom.objects.get(class_id=class_id, school=account.school, register_class=True)
+        
+        if account.role not in ['ADMIN', 'PRINCIPAL'] or classroom.teacher != account:
+            return { "error" : 'unauthorized request.. only the class teacher or school admin can submit the attendance register for this class' }
+
+        today = timezone.localdate()
+
+        absentes = Absent.objects.filter(date=today, classroom=classroom).first()
+        if not absentes:
+            return {'error': 'attendance register for this class has not been submitted today.. can not submit late arrivals before the attendance register'}
+
+        register = Late.objects.filter(date=today, classroom=classroom).first()
+        
+        with transaction.atomic():
+            if not register:
+                register = Late.objects.create(submitted_by=account, classroom=classroom)
+
+            if students:
+                for student in students.split(', '):
+                    student = CustomUser.objects.get(account_id=student)
+                    absentes.absent_students.remove(student)
+                    register.late_students.add(student)
+
+            absentes.save()
+            register.save()
+
+        return { 'message': 'students marked as late, attendance register successfully updated'}
+               
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Classroom.DoesNotExist:
+        return { 'error': 'class with the provided credentials does not exist' }
+
     except Exception as e:
         return { 'error': str(e) }
     

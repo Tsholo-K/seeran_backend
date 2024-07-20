@@ -18,7 +18,7 @@ class Absent(models.Model):
 class Late(models.Model):
     date = models.DateField(auto_now_add=True)
     classroom = models.ForeignKey(Classroom, on_delete=models.SET_NULL, null=True, related_name='late_arrivals')
-    student = models.ManyToManyField(CustomUser, related_name='late_arrivals')
+    late_students = models.ManyToManyField(CustomUser, related_name='late_arrivals')
     submitted_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, related_name='submitted_late_arrivals')
 
     class Meta:
