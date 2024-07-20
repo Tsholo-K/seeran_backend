@@ -126,6 +126,7 @@ def submit_absentes(user, class_id, students):
         with transaction.atomic():
             register = Absent.objects.create(submitted_by=account, classroom=classroom)
             if students:
+                register.absentes = True
                 for student in students.split(', '):
                     register.absent_students.add(CustomUser.objects.get(account_id=student))
 
@@ -170,7 +171,6 @@ def submit_late_arrivals(user, class_id, students):
         with transaction.atomic():
             if not register:
                 register = Late.objects.create(submitted_by=account, classroom=classroom)
-                absentes.absentes = True
                 
             for student in students.split(', '):
                 student = CustomUser.objects.get(account_id=student)
