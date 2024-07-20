@@ -7,7 +7,7 @@ from users.models import CustomUser
 
 class Absent(models.Model):
     date = models.DateField(auto_now_add=True)
-    classroom = models.ForeignKey(Classroom, on_delete=models.SET_NULL, related_name='attendances')
+    classroom = models.ForeignKey(Classroom, on_delete=models.SET_NULL, null=True, related_name='attendances')
     absent_students = models.ManyToManyField(CustomUser, related_name='absences')
     submitted_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, related_name='submitted_attendances')
 
@@ -17,7 +17,7 @@ class Absent(models.Model):
 
 class Late(models.Model):
     date = models.DateField(auto_now_add=True)
-    classroom = models.ForeignKey(Classroom, on_delete=models.SET_NULL, related_name='late_arrivals')
+    classroom = models.ForeignKey(Classroom, on_delete=models.SET_NULL, null=True, related_name='late_arrivals')
     student = models.ManyToManyField(CustomUser, related_name='late_arrivals')
     submitted_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, related_name='submitted_late_arrivals')
 
