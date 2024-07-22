@@ -1,4 +1,4 @@
-# python 
+# python
 import json
 
 # channels
@@ -9,18 +9,16 @@ from authentication.utils import validate_access_token
 
 # async functions 
 from users.consumers import general_async_functions
-from . import founder_async_functions
+from . import teacher_async_functions
 
-
-class FounderConsumer(AsyncWebsocketConsumer):
+class TeacherConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
-        
         # Get the user's role from the scope
         role = self.scope.get('role')
 
         # Check if the user has the required role
-        if role != 'FOUNDER':
+        if role != 'TEACHER':
             return await self.close()
         
         await self.accept()
@@ -39,7 +37,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         if user and access_token and (validate_access_token(access_token) is not None):
             
             response = None
-            
+
             action = json.loads(text_data).get('action')
             description = json.loads(text_data).get('description')
             
@@ -55,10 +53,10 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 # return users security information
                 if description == 'my_security_information':
                     response = await general_async_functions.fetch_security_info(user)
-                
-                # return all school objects
-                if description == 'schools':
-                    response = await founder_async_functions.fetch_schools()
+                    
+                # return user email information
+                if description == 'email_information':
+                    response = await general_async_functions.fetch_email_information(user)
 
                 # log user out of the system
                 if description == 'log_me_out':
@@ -71,7 +69,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 if response is not None:
                     return await self.send(text_data=json.dumps(response))
                 
-                return await self.send(text_data=json.dumps({ 'error': 'provided information is invalid.. request revoked'}))
+                return await self.send(text_data=json.dumps({ 'error': 'provided information is invalid.. request revoked' }))
             
             details = json.loads(text_data).get('details')
             
@@ -84,47 +82,25 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
             if action == 'SEARCH':
                 
-                # return school with the provided id
-                if description == 'school':
-                    school_id = details.get('school_id')
-                    if school_id is not None:
-                        response = await founder_async_functions.search_school(school_id)
-                        
-                # return school details for school with the provided id
-                if description == 'school_details':
-                    school_id = details.get('school_id')
-                    if school_id is not None:
-                        response = await founder_async_functions.search_school_details(school_id)
-                        
-                # return profile for principal with the provided id
-                if description == 'principal_profile':
-                    principal_id = details.get('principal_id')
-                    if principal_id is not None:
-                        response = await founder_async_functions.search_principal_profile(principal_id)
-                        
-                # return all principal invoices
-                if description == 'principal_invoices':
-                    principal_id = details.get('principal_id')
-                    if principal_id is not None:
-                        response = await founder_async_functions.search_principal_invoices(principal_id)
-                        
-                # return principal invoice with provided id
-                if description == 'principal_invoice':
-                    invoice_id = details.get('invoice_id')
-                    if invoice_id is not None:
-                        response = await founder_async_functions.search_principal_invoice(invoice_id)
-                        
-                # return bug reports
-                if description == 'bug_reports':
-                    resolved = details.get('resolved')
-                    if resolved is not None:
-                        response = await founder_async_functions.search_bug_reports(resolved)
-                                        
-                # return bug report with provided id
-                if description == 'bug_report':
-                    bug_report_id = details.get('bug_report_id')
-                    if bug_report_id is not None:
-                        response = await founder_async_functions.search_bug_report(bug_report_id)
+                # return email ban with the provided id
+                if description == 'email_ban':
+                    email_ban_id = details.get('email_ban_id')
+                    email = details.get('email')
+                    if (email_ban_id and email) is not None:
+                        response = await general_async_functions.search_email_ban(email, email_ban_id)
+
+                # return schedule sessions with the provided id
+                if description == 'schedule':
+                    schedule_id = details.get('schedule_id')
+                    if schedule_id is not None:
+                        response = await general_async_functions.search_schedule(schedule_id)
+
+                # return attendance records for the specified month
+                if description == 'search_month_attendance_records':
+                    class_id = details.get('class_id')
+                    month_name = details.get('month_name')
+                    if (class_id and month_name) is not None:
+                        response = await general_async_functions.search_month_attendance_records(user, class_id, month_name)
 
 
             ##############################################################################################################
@@ -159,7 +135,28 @@ class FounderConsumer(AsyncWebsocketConsumer):
                     otp = details.get('otp')
                     if otp is not None:
                         response = await general_async_functions.verify_otp(user, otp)
-                   
+                
+                # verify email revalidation otp
+                if description == 'verify_email_revalidation_otp':
+                    otp = details.get('otp')
+                    email_ban_id = details.get('email_ban_id')
+                    if (otp and email_ban_id) is not None:
+                        response = await general_async_functions.verify_email_revalidate_otp(user, otp, email_ban_id)
+
+
+            ################################################################################################################                
+
+            ############################################## FORM DATA #######################################################
+
+
+            if action == 'FORM DATA':
+
+                # return all student accounts in register class
+                if description == 'attendance_register':
+                    class_id = details.get('class_id')
+                    if class_id is not None:
+                        response = await general_async_functions.form_attendance_register(user, class_id)
+
 
             ################################################################################################################                
                         
@@ -181,19 +178,26 @@ class FounderConsumer(AsyncWebsocketConsumer):
                     authorization_otp = details.get('authorization_otp')
                     if (new_password and authorization_otp) is not None:
                         response = await general_async_functions.update_password(user, new_password, authorization_otp, access_token)
-                  
+
                 # toggle  multi-factor authentication option for user
                 if description == 'update_multi_factor_authentication':
                     toggle = details.get('toggle')
                     if toggle is not None:
                         response = await general_async_functions.update_multi_factor_authentication(user, toggle)
-                
-                # update bug report status
-                if description == 'update_bug_report':
-                    status = details.get('status')
-                    bug_report_id = details.get('bug_report_id')
-                    if (status and bug_report_id) is not None:
-                        response = await founder_async_functions.update_bug_report(status, bug_report_id)
+                        
+                # send email revalidation otp
+                if description == 'send_email_revalidation_otp':
+                    email_ban_id = details.get('email_ban_id')
+                    if email_ban_id is not None:
+                        status = await general_async_functions.validate_email_revalidation(user, email_ban_id)
+                        if status.get('user'):
+                            status = await general_async_functions.send_email_revalidation_one_time_pin_email(status.get('user'))
+                            if status.get('message'):
+                                response = await general_async_functions.update_email_ban(email_ban_id)
+                            else:
+                                response = status
+                        else:
+                            response = status
 
 
             ################################################################################################################                
@@ -203,31 +207,19 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
             if action == 'POST':
                 
-                # create school account
-                if description == 'create_school_account':
-                    response = await founder_async_functions.create_school_account(details)
-                
-                # delete school account
-                if description == 'delete_school_account':
-                    school_id = details.get('school_id')
-                    if school_id is not None:
-                        response = await founder_async_functions.delete_school_account(school_id)
-                        
-                # create school account
-                if description == 'create_principal_account':
-                    school_id = details.get('school')
-                    if school_id is not None:
-                        status = await founder_async_functions.create_principal_account(details, school_id)
-                        if status.get('user'):
-                            response = await general_async_functions.send_account_confirmation_email(status.get('user'))
-                        else:
-                            response = status
-                    
-                # delete principal account
-                if description == 'delete_principal_account':
-                    principal_id = details.get('principal_id')
-                    if principal_id is not None:
-                        response = await founder_async_functions.delete_principal_account(principal_id)
+                # submit absentes
+                if description == 'submit_absentes':
+                    class_id = details.get('class_id')
+                    students = details.get('students')
+                    if (class_id and students) is not None:
+                        response = await general_async_functions.submit_absentes(user, class_id, students)
+
+                # subimit late arrivals
+                if description == 'submit_late_arrivals':
+                    class_id = details.get('class_id')
+                    students = details.get('students')
+                    if (class_id and students) is not None:
+                        response = await general_async_functions.submit_late_arrivals(user, class_id, students)
 
 
             ###############################################################################################################
@@ -239,5 +231,3 @@ class FounderConsumer(AsyncWebsocketConsumer):
             return await self.send(text_data=json.dumps({ 'error': 'provided information is invalid.. request revoked' }))
         
         return await self.send(text_data=json.dumps({ 'error': 'request not authenticated.. access denied' }))
-
-

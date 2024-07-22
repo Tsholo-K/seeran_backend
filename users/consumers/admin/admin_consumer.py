@@ -9,7 +9,7 @@ from authentication.utils import validate_access_token
 
 # async functions 
 from users.consumers import general_async_functions
-from users.consumers.admin import admin_async_functions
+from . import admin_async_functions
 
 class AdminConsumer(AsyncWebsocketConsumer):
 
@@ -22,7 +22,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             return await self.close()
         
         await self.accept()
-        return await self.send(text_data=json.dumps({ 'message': 'Welcome' }))
+        return await self.send(text_data=json.dumps({ 'message': 'Welcome Back' }))
 
 
     async def disconnect(self, close_code):

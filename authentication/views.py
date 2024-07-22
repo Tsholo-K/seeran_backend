@@ -9,7 +9,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework import status
-from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework_simplejwt.tokens import AccessToken as decode
 from .serializers import CustomTokenObtainPairSerializer
 
 # django
@@ -350,24 +350,25 @@ def signin(request):
     """
     
     # retrieve provided infomation
-    full_names = request.data.get('fullname')
-    email = request.data.get('email')
-
-    # if there's a missing credential return an error
-    if not full_names or not email:
-        return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
-    
     try:
+        full_names = request.data.get('fullname')
+        email = request.data.get('email')
+
+        # if there's a missing credential return an error
+        if not full_names or not email:
+            return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
+    
         # validate email format
         validate_email(email)
 
+        # validate provided names
         if not validate_names(full_names):
             return Response({"error": "only provide your first name and surname"}, status=status.HTTP_400_BAD_REQUEST)
 
         # try to validate the credentials by getting a user with the provided credentials 
         user = CustomUser.objects.get(email=email)
 
-        if user.role not in  ["FOUNDER", "PARENT"]:
+        if user.role not in ["FOUNDER", "PARENT"]:
             if user.school.none_compliant:
                 return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
                 
@@ -419,21 +420,28 @@ def signin(request):
         if response.status_code == 200:
 
             # if the email was successfully sent cache the otp then return the response
-            cache.set(user.email, (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
-            return Response({"message": "OTP created and sent to your email",}, status=status.HTTP_200_OK)
+            cache.set(user.email + 'signin_otp', (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
+            return Response({"message": "a sign-in OTP has been generated and sent to your email address.. it will be valid for the next 5 minutes",}, status=status.HTTP_200_OK)
         
         # if there was an error sending the email respond accordingly
-        return Response({"error": "failed to send OTP to your email address"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)    
+        if response.status_code in [ 400, 401, 402, 403, 404 ]:
+            return {"error": f"there was an error sending sign-in OTP to your email address.. please open a new bug ticket with the issue. error code {response.status_code}"}
+        
+        if response.status_code == 429:
+            return {"error": f"there was an error sending sign-in OTP to your email address.. please try again in a few moments"}
+
+        else:
+            return {"error": "there was an error sending sign-in OTP to your email address.."}
     
     except ObjectDoesNotExist:
         # if there's no user with the provided credentials return an error 
-        return Response({"error": "provided credentials are invalid"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error": "account with the provided credentials does not exist"}, status=status.HTTP_404_NOT_FOUND)
     
     except ValidationError:
-        return Response({"error": "Invalid email format."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "invalid email format.. request revoked"}, status=status.HTTP_400_BAD_REQUEST)
     
     except ValueError:
-        return Response({"error": "please enter your first name followed by your surname."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "please enter your first name followed by your surname or vice verca"}, status=status.HTTP_400_BAD_REQUEST)
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -460,30 +468,24 @@ def activate_account(request):
         Note: All exceptions are handled and appropriate HTTP status codes are returned.
     """
     
-    email = request.data.get('email')
-    new_password = request.data.get('password')
-    confirm_password = request.data.get('confirmpassword')
-
-    if not (email or new_password or confirm_password):
-        return Response({"error": "missing credentials, all fields are required"}, status=status.HTTP_400_BAD_REQUEST)
-    
-    if new_password != confirm_password:
-        return Response({"error": "passwords do not match"}, status=status.HTTP_400_BAD_REQUEST)
-    
     try:
+        email = request.data.get('email')
+        new_password = request.data.get('password')
+
+        if not (email or new_password):
+            return Response({"error": "missing credentials, all fields are required"}, status=status.HTTP_400_BAD_REQUEST)
 
         # get authorization otp 
-        otp = request.COOKIES.get('authorization_otp')
-        hashed_authorization_otp_and_salt = cache.get(email + 'authorization_otp')
+        otp = request.COOKIES.get('signin_authorization_otp')
+        hashed_authorization_otp_and_salt = cache.get(email + 'signin_authorization_otp')
 
         if not (hashed_authorization_otp_and_salt or otp or verify_user_otp(otp, hashed_authorization_otp_and_salt)):
             # if the authorization otp does'nt match the one stored for the user return an error 
-            response = Response({"denied": "invalid authorization OTP, action forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
+            response = Response({"denied": "requests provided authorization OTP is invalid.. process forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
                         
-            cache.delete(user.email + 'authorization_otp')
-
+            cache.delete(user.email + 'signin_authorization_otp')
             if otp:
-                response.delete_cookie('authorization_otp', domain='.seeran-grades.cloud')
+                response.delete_cookie('signin_authorization_otp', domain='.seeran-grades.cloud')
                 
             return response
         
@@ -537,101 +539,167 @@ def authenticate(request):
 ####################################################################################################################################
 
 ##################################################### validation and verification views ############################################
-    
 
-# verify otp 
-# verifies otp before password reset
-# sets needed authorization cookie and limited access token so user can reset their password
+
 @api_view(['POST'])
-def otp_verification(request):
-    
-    email = request.data.get('email')
-    otp = request.data.get('otp')
-  
-    if not email or not otp:
-        return Response({"error": "email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
-    
+def verify_otp(request):
+
     try:
-        hashed_otp = cache.get(email)
-        if not hashed_otp:
-            return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
+        email = request.data.get('email')
+        otp = request.data.get('otp')
     
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=hashed_otp):
+        if not email or not otp:
+            return Response({"error": "invalid request.. email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
         
-        # OTP is verified, prompt the user to set their password
-        try:
-            user = CustomUser.objects.get(email=email)
-        
-        except ObjectDoesNotExist:
-            return Response({"error": "invalid credentials/tokens"})
-        
-        cache.delete(user.email)
+        stored_hashed_otp_and_salt = cache.get(email + 'signin_otp')
 
-        authorization_otp, hashed_authorization_otp = generate_otp()
-        cache.set(user.email+'authorization_otp', hashed_authorization_otp, timeout=300)  # 300 seconds = 5 mins
+        if not stored_hashed_otp_and_salt:
+            cache.delete(email + 'signin_otp_attempts')
+            return Response({"denied": "no sign-in OTP for account on record.. please generate a new one "}, status=status.HTTP_403_FORBIDDEN)
+
+        if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
+            
+            # OTP is verified, prompt the user to set their password
+            cache.delete(email + 'signin_otp')
+            
+            authorization_otp, hashed_authorization_otp, salt = generate_otp()
+            
+            response = Response({"message": "OTP verified successfully"}, status=status.HTTP_200_OK)
+
+            cache.set(email + 'signin_authorization_otp', (hashed_authorization_otp, salt), timeout=300)  # 300 seconds = 5 mins
+            response.set_cookie('signin_authorization_otp', authorization_otp, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
+        
+        else:
+
+            attempts = cache.get(email + 'signin_otp_attempts', 3)
+            
+            # Incorrect OTP, decrement attempts and handle expiration
+            attempts -= 1
+            
+            if attempts <= 0:
+                cache.delete(email + 'signin_otp')
+                cache.delete(email + 'signin_otp_attempts')
                 
-        access_token = generate_access_token(user)
+                return Response({"denied": "maximum OTP verification attempts exceeded.. generated sign-in OTP for account discarded"}, status=status.HTTP_403_FORBIDDEN)
+            
+            cache.set(email + 'signin_otp_attempts', attempts, timeout=300)  # Update attempts with expiration
 
-        response = Response({"message": "OTP verified successfully"}, status=status.HTTP_200_OK)
-
-        response.set_cookie('access_token', access_token, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)
-        response.set_cookie('authorization_otp', authorization_otp, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
-        
-        return response
-    
-    else:
-        return Response({"error": "incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": f"provided OTP incorrect.. you have {attempts} verification attempts remaining"}, status=status.HTTP_400_BAD_REQUEST)
+ 
+    except Exception as e:
+        return {"error": str(e)}
 
 
 # validate email before password reset
 @api_view(['POST'])
 def validate_password_reset(request):
     
-    # check for sent email
-    sent_email = request.data.get('email')
-    if not sent_email:
-        return Response({"error": "email address is required"})
-    
-    # try to get the user with the provided email
     try:
+        # check for sent email
+        sent_email = request.data.get('email')
+        if not sent_email:
+            return Response({"error": "request error, no email address provided.. email address is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # try to get the user with the provided email
         user = CustomUser.objects.get(email=sent_email)
-        if not user.role == "FOUNDER":
+
+        if user.role != "FOUNDER":
             if user.school.none_compliant:
-                return Response({"denied": "access denied"})
+                return Response({"denied": "access denied"}, status=status.HTTP_400_BAD_REQUEST)
     
         # check if the account is activated 
         if user.activated == False:
-            return Response({"error": "action forbiden for provided account"})
+            return Response({"error": "action forbidden for account with provided credentials"}, status=status.HTTP_403_FORBIDDEN)
         
         # check if the email is banned 
         if user.email_banned:
-            return Response({ "error" : "your email address has been banned, failed to send OTP"})
+            return Response({ "error" : "your email address has been banned, failed to send OTP.. you can visit your school to have it changed"}, status=status.HTTP_400_BAD_REQUEST)
         
         # Validate the email
         if not validate_user_email(sent_email):
-            return Response({"error": " invalid email address"})
+            return Response({"error": "provided email address is invalid"}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Create an OTP for the user
-        # otp, hashed_otp, salt = generate_otp()
+        # if everything checks out without an error 
+        # create an otp for the user
+        otp, hashed_otp, salt = generate_otp()
+
+        # Define your Mailgun API URL
+        mailgun_api_url = "https://api.eu.mailgun.net/v3/" + config('MAILGUN_DOMAIN') + "/messages"
+
+        # Define your email data
+        email_data = {
+            "from": "seeran grades <authorization@" + config('MAILGUN_DOMAIN') + ">",
+            "to": user.surname.title() + " " + user.name.title() + "<" + user.email + ">",
+            "subject": "One Time Passcode",
+            "template": "one-time passcode",
+            "v:onetimecode": otp,
+            "v:otpcodereason": "we recieved a password reset request for your account, this OTP was generated in response to your password reset request.."
+        }
+
+        # Define your headers
+        headers = {
+            "Authorization": "Basic " + base64.b64encode(f"api:{config('MAILGUN_API_KEY')}".encode()).decode(),
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+
+        # Send the email via Mailgun
+        response = requests.post(mailgun_api_url, headers=headers, data=email_data)
+
+        if response.status_code == 200:
+
+            # if the email was successfully sent cache the otp then return the response
+            cache.set(user.email + 'password_reset_otp', (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
+            return Response({"message": "a password reset OTP has been generated and sent to your email address.. it will be valid for the next 5 minutes",}, status=status.HTTP_200_OK)
         
-        # Send the OTP via email
-        try:
-                
-            # cache hashed otp and return reponse
-            # cache.set(sent_email, (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
-            return Response({"message": "email verified, OTP created and sent to your email"}, status=status.HTTP_200_OK)
+        # if there was an error sending the email respond accordingly
+        if response.status_code in [ 400, 401, 402, 403, 404 ]:
+            return {"error": f"there was an error sending password reset OTP to your email address.. please open a new bug ticket with the issue. error code {response.status_code}"}
+        
+        if response.status_code == 429:
+            return {"error": f"there was an error sending password reset OTP to your email address.. please try again in a few moments"}
+
+        else:
+            return {"error": "there was an error sending password reset OTP to your email address.."}
+       
+    except CustomUser.DoesNotExist:
+        return { 'error': 'user with the provided credentials does not exist' }
+        
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def password_reset_otp_verification(request):
+    
+    try:
+        email = request.data.get('email')
+        otp = request.data.get('otp')
+    
+        if not email or not otp:
+            return Response({"error": "email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
+    
+        stored_hashed_otp_and_salt = cache.get(email + 'password_reset_otp')
+        if not stored_hashed_otp_and_salt:
+            return Response({"denied": "no password reset OTP for account on record.. please generate a new one"}, status=status.HTTP_400_BAD_REQUEST)
+    
+        if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
             
-            # else:
-            #     return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-                
-    except ObjectDoesNotExist:
-        return Response({"error": "invalid email address"})
+            cache.delete(email + 'password_reset_otp')
+            authorization_otp, hashed_authorization_otp, salt = generate_otp()
+
+            response = Response({"message": "OTP verified successfully"}, status=status.HTTP_200_OK)
+
+            cache.set(email + 'password_reset_authorization_otp', (hashed_authorization_otp, salt), timeout=300)  # 300 seconds = 5 mins
+            response.set_cookie('password_reset_authorization_otp', authorization_otp, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
+            response.set_cookie('email', email, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
+
+            return response
+        
+        else:
+            return Response({"error": "incorrect OTP. Please try again."}, status=status.HTTP_400_BAD_REQUEST)
+    
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 ####################################################################################################################################
@@ -643,64 +711,39 @@ def validate_password_reset(request):
 # reset password  used when user has forgotten their password
 @api_view(['POST'])
 def reset_password(request):
-       
-    # check if request contains required tokens
-    access_token = request.COOKIES.get('access_token')
-    if not access_token:
-        return Response({"error" : "access token required"})
-        
-    new_access_token = validate_access_token(access_token)
-    
-    if new_access_token == None: 
-        # Error occurred during validation/refresh, return the error response
-        return Response({'error': 'invalid token'}, status=406)
-    
-    # Get the new password and confirm password from the request data, and authorization otp from the cookies
-    otp = request.COOKIES.get('authorization_otp')
-    new_password = request.data.get('new_password')
-    confirm_password = request.data.get('confirm_password')
-    
-    if not new_password or not confirm_password or not otp:
-        return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
-        
-    # Validate that the new password and confirm password match
-    if new_password != confirm_password:
-        return Response({"error": "new password and confirm password do not match"}, status=status.HTTP_400_BAD_REQUEST)
-
-    # Assuming the user is authenticated and has changed their password
-    decoded_token = AccessToken(new_access_token)
     
     try:
-        user = CustomUser.objects.get(pk=decoded_token['user_id'])
+        # Get the new password and confirm password from the request data, and authorization otp from the cookies
+        otp = request.COOKIES.get('password_reset_authorization_otp')
+        new_password = request.data.get('new_password')
+        email = request.COOKIES.get('email')
         
-    except ObjectDoesNotExist:
-        return Response({"error": "invalid credentials/tokens"})
+        if not (new_password or otp or email):
+            return Response({"error": "invalid request.. missing credentials"}, status=status.HTTP_400_BAD_REQUEST)    
     
-    # get authorization otp from cache and verify provided otp
-    try:
-        hashed_authorization_otp = cache.get(user.email + 'authorization_otp')
-        if not hashed_authorization_otp:
-            return Response({"error": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
+        user = CustomUser.objects.get(email=email)
+        
+        # get authorization otp from cache and verify provided otp
+        hashed_authorization_otp_and_salt = cache.get(user.email + 'password_reset_authorization_otp')
+        if not hashed_authorization_otp_and_salt:
+            return Response({"denied": "no password reset authorization OTP for account on record.. process forrbiden"}, status=status.HTTP_403_FORBIDDEN)
+        
+        if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=hashed_authorization_otp_and_salt):
+            response = Response({"denied": "requests provided authorization OTP is invalid.. process forrbiden"}, status=status.HTTP_403_FORBIDDEN)
+        
+        # update the user's password
+        user.set_password(new_password)
+        user.save()
     
-    except Exception as e:
-        return Response({"error": f"error retrieving OTP from cache: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    if not verify_user_otp(otp, hashed_authorization_otp):
-        return Response({"error": "incorrect OTP, action forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
-    
-    # update the user's password
-    user.set_password(new_password)
-    user.save()
-    
-    try:
-        response = Response({"message": "password changed successfully"}, status=200)
+        response = Response({"message": "your accounts password has been changed successfully.. you can now login with your new credentials"}, status=200)
    
-        # Remove access token cookie from the response
-        response.delete_cookie('access_token', domain='.seeran-grades.com')
         return response
     
-    except:
-        pass
+    except ObjectDoesNotExist:
+        return Response({"error": "an account with the provided credentials does not exist"})
+
+    except Exception as e:
+        return Response({"error": {str(e)}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # Request otp view
