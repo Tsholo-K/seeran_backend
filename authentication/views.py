@@ -569,6 +569,8 @@ def verify_otp(request):
             cache.set(email + 'signin_authorization_otp', (hashed_authorization_otp, salt), timeout=300)  # 300 seconds = 5 mins
             response.set_cookie('signin_authorization_otp', authorization_otp, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
         
+            return response
+        
         else:
 
             attempts = cache.get(email + 'signin_otp_attempts', 3)
