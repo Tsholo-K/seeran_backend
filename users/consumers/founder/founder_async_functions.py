@@ -12,7 +12,7 @@ from balances.models import Balance
 from bug_reports.models import BugReport
 
 # serializers
-from users.serializers import ProfileSerializer, PrincipalCreationSerializer
+from users.serializers import ProfileSerializer, PrincipalCreationSerializer, PrincipalIDSerializer
 from schools.serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSerializer, SchoolDetailsSerializer
 from balances.serializers import BillsSerializer, BillSerializer
 from bug_reports.serializers import BugReportsSerializer, UnresolvedBugReportSerializer, ResolvedBugReportSerializer, UpdateBugReportStatusSerializer
@@ -88,7 +88,27 @@ def search_principal_profile(principal_id):
     
     except Exception as e:
         return { 'error': str(e) }
+    
+    
+@database_sync_to_async
+def search_account_id(account_id):
 
+    try:
+        account  = CustomUser.objects.get(account_id=account_id)
+
+        if account.role != 'PRINCIPAL':
+            return { "error" : 'unauthorized access.. permission denied' }
+
+        # return the users profile
+        serializer = PrincipalIDSerializer(instance=account)
+        return { "user" : serializer.data }
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+    
 
 @database_sync_to_async
 def search_principal_invoices(principal_id):

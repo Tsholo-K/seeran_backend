@@ -126,7 +126,40 @@ class IDSerializer(serializers.ModelSerializer):
         if obj.passport_number:
             return obj.passport_number
         return None
+    
+    
+class PrincipalIDSerializer(serializers.ModelSerializer):
 
+    id = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
+    surname = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CustomUser
+        fields = [ 'email', 'name', 'surname', 'phone_number', 'role', 'id', 'identifier' ]
+    
+    def get_name(self, obj):
+        return obj.name.title()
+    
+    def get_surname(self, obj):
+        return obj.surname.title()
+    
+    def get_role(self, obj):
+        return obj.role.title()
+    
+    def get_id(self, obj):
+        return obj.account_id
+    
+    def get_identifier(self, obj):
+        if obj.email:
+            return obj.email
+        if obj.id_number:
+            return obj.id_number
+        if obj.passport_number:
+            return obj.passport_number
+        return None
+    
 class ProfilePictureSerializer(serializers.ModelSerializer):
 
     image = serializers.SerializerMethodField()

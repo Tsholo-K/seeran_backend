@@ -101,7 +101,13 @@ class FounderConsumer(AsyncWebsocketConsumer):
                     principal_id = details.get('principal_id')
                     if principal_id is not None:
                         response = await founder_async_functions.search_principal_profile(principal_id)
-                        
+                                        
+                # return account id with the provided id
+                if description == 'account_id':
+                    account_id = details.get('account_id')
+                    if account_id is not None:
+                        response = await founder_async_functions.search_account_id(account_id)
+
                 # return all principal invoices
                 if description == 'principal_invoices':
                     principal_id = details.get('principal_id')
