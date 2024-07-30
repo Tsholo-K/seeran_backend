@@ -25,8 +25,7 @@ DEBUG = config('DEBUG')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # sets the ip addresses the application can be hosted from
-ALLOWED_HOSTS = ["*"] 
-
+ALLOWED_HOSTS = config('ALLOWED_HOSTS').split(',')
 
 # Application definition
 # a list of all installed apps
@@ -87,6 +86,15 @@ MIDDLEWARE = [
     
     # django middleware
     'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+# These headers are important because they:
+# Prevent attacks: Help mitigate common vulnerabilities like XSS, clickjacking, and data injection.
+# Enforce security policies: Ensure that your application is accessed in a secure manner.
+# Enhance trust: Signal to users and browsers that your site is committed to security best practices.
+MIDDLEWARE += [
+    'django.middleware.security.SecurityMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -221,10 +229,45 @@ DATABASES = {
 # ssl config
 # configures the application to commmunicate in https
 if not DEBUG:
+    # What it does: Tells Django that the request was originally made via HTTPS, even if your proxy (e.g., Nginx) forwards it as HTTP.
+    # Why it's important: Ensures secure communication from clients to your application, especially when behind a proxy.
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+
+    # What it does: Redirects all HTTP requests to HTTPS.
+    # Why it's important: Ensures all communication is encrypted.
     SECURE_SSL_REDIRECT = True
+
+    # What it does: Ensures that cookies with the session data are only sent over HTTPS.
+    # Why it's important: Protects session data from being intercepted.
+    SESSION_COOKIE_SECURE = True
+
+    # What it does: Ensures that cookies with the CSRF token are only sent over HTTPS.
+    # Why it's important: Protects against Cross-Site Request Forgery attacks by ensuring tokens are only sent over secure connections.
+    CSRF_COOKIE_SECURE = True
+
+    # What it does: Prevents your site from being displayed in a frame (e.g., iframe).
+    # Why it's important: Protects against clickjacking attacks.
+    X_FRAME_OPTIONS = 'DENY'
+
+    # What it does: Enables the browser’s XSS protection.
+    # Why it's important: Adds an extra layer of protection against cross-site scripting (XSS) attacks.
+    SECURE_BROWSER_XSS_FILTER = True
+
+    # What it does: Prevents browsers from interpreting files as a different MIME type than what is specified.
+    # Why it's important: Protects against attacks based on MIME-type confusion.
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+
+    # What it does: Enforces the use of HTTPS by telling browsers to only connect to your site over HTTPS for the next year.
+    # Why it's important: Ensures that future connections to your site are secure.
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+
+    # What it does: Applies HSTS (HTTP Strict Transport Security) to all subdomains.
+    # Why it's important: Ensures that all subdomains are also accessed securely.
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+
+    # What it does: Indicates to browsers that your site is eligible for inclusion in the HSTS preload list.
+    # Why it's important: Ensures that your site and all its subdomains are accessed securely from the first connection.
+    SECURE_HSTS_PRELOAD = True
 
 
 # default settings 
