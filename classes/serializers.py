@@ -74,3 +74,19 @@ class TeacherClassesSerializer(serializers.ModelSerializer):
     
     def get_student_count(self, obj):
         return obj.students.count()
+
+
+class TeacherRegisterClassSerializer(serializers.ModelSerializer):
+
+    student_count = serializers.SerializerMethodField()
+    id = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Classroom
+        fields = ['classroom_identifier', 'student_count', 'group', 'id']
+
+    def get_student_count(self, obj):
+        return obj.students.count()
+    
+    def get_id(self, obj):
+        return obj.class_id

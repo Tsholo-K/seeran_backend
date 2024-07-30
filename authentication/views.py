@@ -1,5 +1,5 @@
 # python
-from datetime import timedelta
+from datetime import timedelta, timezone
 from decouple import config
 import requests
 import base64
@@ -10,19 +10,23 @@ from rest_framework.response import Response
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework import status
 from rest_framework_simplejwt.tokens import AccessToken as decode
-from .serializers import CustomTokenObtainPairSerializer
 
 # django
-from django.core.exceptions import ObjectDoesNotExist
-from django.core.cache import cache
-from django.core.validators import validate_email
-from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
+from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ValidationError
+from django.contrib.auth.password_validation import validate_password
+from django.core.cache import cache
+from django.core.validators import validate_email
+from django.views.decorators.http import require_POST
 
 # models
 from users.models import CustomUser
 from auth_tokens.models import AccessToken
+
+# serializers
+from .serializers import CustomTokenObtainPairSerializer
 
 # utility functions 
 from .utils import validate_access_token, generate_access_token, generate_token, generate_otp, verify_user_otp, validate_user_email, validate_names
@@ -35,159 +39,115 @@ from .decorators import token_required
 
 
 @api_view(['POST'])
+@require_POST
 def login(request):
-
     """
-        This view handles the login process. It expects a POST request with user credentials.
+    API endpoint for user login with optional multi-factor authentication (MFA).
 
-        Steps:
-        1. It tries to authenticate the incoming credentials using the `CustomTokenObtainPairSerializer`.
-        2. If authentication fails, it returns a 401 Unauthorized error.
-        3. If some other exception occurs during authentication, it returns a 500 Internal Server Error.
-        4. After successful authentication, it tries to get the user object from the database using the provided email.
-        5. If the user doesn't exist or if the user is not a "FOUNDER" and their school is non-compliant, it returns an error.
-        6. If the user's multi-factor authentication is enabled:
-            - If the user's email has recently been banned, it disables multi-factor authentication and logs them in without it.
-            - If the user's email is not banned, it generates an OTP and tries to send it to the user's email address.
-            - If the OTP email is successfully sent, it caches the hashed OTP against the user's email address for 5 minutes.
-            - If there was an error sending the OTP email, it returns a 500 Internal Server Error.
-        7. If the user's multi-factor authentication is disabled, it logs the user in and sets the access and refresh token cookies.
+    Handles authentication and MFA process securely.
 
-        Note: All exceptions are handled and appropriate HTTP status codes are returned.
+    Args:
+        request (HttpRequest): HTTP request object containing user credentials.
+
+    Returns:
+        Response: JSON response indicating success or failure of login and MFA steps.
     """
-    
-    # try to authenticate the incoming credentials
     try:
         serializer = CustomTokenObtainPairSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         token = serializer.validated_data
         
-    
-        # after successful authentication try to get the user object from the database
+        # Retrieve user object from database
         user = CustomUser.objects.get(email=request.data.get('email'))
         
-        if user.role not in  ["FOUNDER", "PARENT"]:
+        # Deny access for non-founders and non-parents if school is non-compliant
+        if user.role not in ["FOUNDER", "PARENT"]:
             if user.school.none_compliant:
                 return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
      
-        # if users multi-factor authentication is enabled do this..
+        # Handle multi-factor authentication (MFA) if enabled for the user
         if user.multifactor_authentication:
-        
-            # if the users email has recently been banned, disable multi-factor authentication 
-            # because mfa requires we send an otp to the users email
-            # then log them in without multi-factor authentication 
+            # Disable MFA if email is banned (for security reasons)
             if user.email_banned:
-            
-                # disable mfa
                 user.multifactor_authentication = False
                 user.save()
-            
-                if 'refresh' in token:
-                    # Calculate cutoff time for expired tokens
-                    cutoff_time = timezone.now() - timedelta(hours=24)
                 
+                # Clear old access tokens if any, to limit active sessions
+                if 'access' in token:
+                    cutoff_time = timezone.now() - timedelta(hours=24)
                     with transaction.atomic():
-                        # Delete all RefreshToken objects for the user that were created before the cutoff_time
                         AccessToken.objects.filter(user=user, created_at__lt=cutoff_time).delete()
-
-                        # Count the remaining RefreshToken objects for the user
-                        refresh_tokens_count = AccessToken.objects.filter(user=user).count()
+                        access_tokens_count = AccessToken.objects.filter(user=user).count()
                     
-                    if refresh_tokens_count >= 3:
+                    if access_tokens_count >= 3:
                         return Response({"error": "maximum number of connected devices reached"}, status=status.HTTP_403_FORBIDDEN)
                     
-                    # the alert key is used on the frontend to alert the user of their email being banned and what they can do to appeal(if they can)
-                    # the alert key is used on the frontend to alert the user of their email being banned and what they can do to appeal(if they can)
                     response = Response({"message": "login successful", "alert" : "your email address has been blacklisted", "role" : user.role.title()}, status=status.HTTP_200_OK)
-        
                     access_token = token['access']
                     AccessToken.objects.create(user=user, token=access_token)
                 
-                    # set access token cookie with custom expiration (5 mins)
+                    # Set access token cookie with custom expiration (24 hours)
                     response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
                 
                 else:
-                    response = Response({"error": "couldn't generating authentication token"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    response = Response({"error": "couldn't generating authentication tokens foe account"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 
                 return response
-        
-            # else if their email address is not banned generate an otp for the user
+            
+            # Generate OTP and send to user's email for MFA
             otp, hashed_otp, salt = generate_otp()
-        
-            # then try to send the OTP to their email address
-            # Define your Mailgun API URL
             mailgun_api_url = "https://api.eu.mailgun.net/v3/" + config('MAILGUN_DOMAIN') + "/messages"
-
-            # Define your email data
             email_data = {
                 "from": "seeran grades <authorization@" + config('MAILGUN_DOMAIN') + ">",
                 "to": user.surname.title() + " " + user.name.title() + "<" + user.email + ">",
                 "subject": "One Time Passcode",
                 "template": "one-time passcode",
                 "v:onetimecode": otp,
-                "v:otpcodereason": "Your account has mutil-factor authentication toggled on, this OTP was generated in response to your login request.."
+                "v:otpcodereason": "Your account has multi-factor authentication toggled on, this OTP was generated in response to your login request."
             }
-
-            # Define your headers
             headers = {
                 "Authorization": "Basic " + base64.b64encode(f"api:{config('MAILGUN_API_KEY')}".encode()).decode(),
                 "Content-Type": "application/x-www-form-urlencoded"
             }
-
-            # Send the email via Mailgun
             response = requests.post(
                 mailgun_api_url,
                 headers=headers,
                 data=email_data
             )
-
             if response.status_code == 200:
-                    
-                # if the email was successfully delivered cache the hashed otp against the users 'email' address for 5 mins( 300 seconds)
-                # this is cached to our redis database for faster retrieval when we verify the otp
-                cache.set(user.email, (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
-                
-                # then generate another authorization otp for the request
-                # this is saved in the cookies of the the request( it will be needed when the user verifyies the otp )
-                authorization_otp, hashed_authorization_otp, authorization_otp_salt = generate_otp()
-                
-                # cache the authorization otp under the users 'email+"authorization_otp"'
-                cache.set(user.email+'authorization_otp', (hashed_authorization_otp, authorization_otp_salt), timeout=300)  # 300 seconds = 5 mins
-                
+                cache.set(user.email+'login_otp', (hashed_otp, salt), timeout=300)  # Cache OTP for 5 mins
+                login_authorization_otp, hashed_login_authorization_otp, salt = generate_otp()
+                cache.set(user.email+'login_authorization_otp', (hashed_login_authorization_otp, salt), timeout=300)  # Cache auth OTP for 5 mins
+
                 response = Response({"multifactor_authentication": "a new OTP has been sent to your email address"}, status=status.HTTP_200_OK)
-            
-                # set the authorization cookie then return the response
-                response.set_cookie('authorization_otp', authorization_otp, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
-                
+                response.set_cookie('login_authorization_otp', login_authorization_otp, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # Set auth OTP cookie (5 mins)
                 return response
-                
-            else:
-                # if there was an error sending the email respond accordingly
-                # this will kick off our sns service and their email will get banned 
-                # regardless of wether it was a soft of hard bounce
-                return Response({"error": "failed to send OTP to your  email address"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        if 'access' in token:
-            # Calculate cutoff time for expired tokens
-            cutoff_time = timezone.now() - timedelta(hours=24)
+        
+            # if there was an error sending the email respond accordingly
+            if response.status_code in [ 400, 401, 402, 403, 404 ]:
+                return {"error": f"there was an error sending sign-in OTP to your email address.. please open a new bug ticket with the issue. error code {response.status_code}"}
             
-            with transaction.atomic():
-                # Delete all RefreshToken objects for the user that were created before the cutoff_time
-                AccessToken.objects.filter(user=user, created_at__lt=cutoff_time).delete()
+            if response.status_code == 429:
+                return {"error": f"there was an error sending sign-in OTP to your email address.. please try again in a few moments"}
 
-                # Count the remaining RefreshToken objects for the user
+            else:
+                return {"error": "there was an error sending sign-in OTP to your email address.."}
+
+        # Handle login without MFA
+        if 'access' in token:
+            cutoff_time = timezone.now() - timedelta(hours=24)
+            with transaction.atomic():
+                AccessToken.objects.filter(user=user, created_at__lt=cutoff_time).delete()
                 refresh_tokens_count = AccessToken.objects.filter(user=user).count()
             
             if refresh_tokens_count >= 3:
                 return Response({"error": "maximum number of connected devices reached"}, status=status.HTTP_403_FORBIDDEN)
             
-            # if users multi-factor authentication is disabled do this..
             response = Response({"message": "login successful", "role" : user.role.title()}, status=status.HTTP_200_OK)
- 
             access_token = token['access']
             AccessToken.objects.create(user=user, token=access_token)
         
-            # set access token cookie with custom expiration (5 mins)
+            # Set access token cookie with custom expiration (24 hours)
             response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
         
         else:
@@ -196,46 +156,21 @@ def login(request):
         return response
     
     except ObjectDoesNotExist:
-        # if the user doesnt exist return an error
-        # this far through the view this should be impossible but to stay on the safe side we'll handle the error 
-        return Response({"error": "invalid credentials"}, status=status.HTTP_404_NOT_FOUND)   
+        return Response({"error": "invalid credentials"}, status=status.HTTP_404_NOT_FOUND)
     
     except AuthenticationFailed:
-        # if authentication fails respond accordingly
         return Response({"error": "invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-        
-    # if any exception occurs during the proccess return an error
+    
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])
 def multi_factor_authentication_login(request):
-
-    """
-        This view handles the multi-factor authentication (MFA) process. It expects a POST request with the user's email and OTP.
-
-        Steps:
-        1. It retrieves the provided email, OTP, and the authorization OTP from the cookie.
-        2. If any of these are missing, it returns a 400 Bad Request error.
-        3. It tries to get the user object using the provided email address.
-        4. If no user exists, it returns an error.
-        5. After getting the user object, it retrieves the stored OTP from the cache.
-        6. If there's no OTP in the cache, it returns a 400 Bad Request error.
-        7. If any other exception occurs while retrieving the OTP from the cache, it returns a 500 Internal Server Error.
-        8. If everything checks out, it verifies the provided OTP against the stored OTP.
-        9. If the provided OTP is verified successfully, it verifies the authorization OTP in the request's cookies.
-        10. If the authorization OTP doesn't match the one stored for the user, it returns a 400 Bad Request error.
-        11. If there's no error until here, verification is successful. It deletes all cached OTPs and generates an access and refresh token for the user.
-        12. It then sets the access/refresh token cookies and returns a successful response.
-
-        Note: All exceptions are handled and appropriate HTTP status codes are returned.
-    """
-    
     # retrieve the provided email, otp and the authorization otp in the cookie
     email = request.data.get('email')
     otp = request.data.get('otp')
-    authorization_cookie_otp = request.COOKIES.get('authorization_otp')
+    authorization_cookie_otp = request.COOKIES.get('login_authorization_otp')
     
     # if anyone of these is missing return a 400 error
     if not email or not otp or not authorization_cookie_otp:
@@ -247,10 +182,10 @@ def multi_factor_authentication_login(request):
         user = CustomUser.objects.get(email=email)
     
         # after getting the user object retrieve the stored otp from cache 
-        stored_hashed_otp_and_salt = cache.get(user.email)
+        stored_hashed_otp_and_salt = cache.get(user.email+'login_otp')
         
         # try to get the the authorization otp from cache
-        hashed_authorization_otp_and_salt = cache.get(user.email + 'authorization_otp')
+        hashed_authorization_otp_and_salt = cache.get(user.email + 'login_authorization_otp')
         
         if not ( hashed_authorization_otp_and_salt and stored_hashed_otp_and_salt ):
             # if there's no authorization otp in cache( wasn't provided in the first place, or expired since it also has a 5 minute lifespan )
@@ -265,15 +200,15 @@ def multi_factor_authentication_login(request):
                 response = Response({"denied": "incorrect authorization OTP, action forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
                             
                 # if there's no error till here verification is successful, delete all cached otps
-                cache.delete(user.email)
-                cache.delete(user.email + 'authorization_otp')
+                cache.delete(user.email+'login_otp')
+                cache.delete(user.email + 'login_authorization_otp')
 
-                response.delete_cookie('authorization_otp', domain='.seeran-grades.cloud')
+                response.delete_cookie('login_authorization_otp', domain='.seeran-grades.cloud')
                 return response
             
             # if there's no error till here verification is successful, delete all cached otps
-            cache.delete(user.email)
-            cache.delete(user.email + 'authorization_otp')
+            cache.delete(user.email+'login_otp')
+            cache.delete(user.email + 'login_authorization_otp_attempts')
             
             # then generate an access and refresh token for the user 
             token = generate_token(user)
@@ -287,9 +222,9 @@ def multi_factor_authentication_login(request):
                     AccessToken.objects.filter(user=user, created_at__lt=cutoff_time).delete()
 
                     # Count the remaining RefreshToken objects for the user
-                    refresh_tokens_count = AccessToken.objects.filter(user=user).count()
+                    access_tokens_count = AccessToken.objects.filter(user=user).count()
                 
-                if refresh_tokens_count >= 3:
+                if access_tokens_count >= 3:
                     return Response({"error": "maximum number of connected devices reached"}, status=status.HTTP_403_FORBIDDEN)
                 
                 # if users multi-factor authentication is disabled do this..
@@ -305,16 +240,16 @@ def multi_factor_authentication_login(request):
 
             return response
         
-        attempts = cache.get(email + 'attempts', 3)
+        attempts = cache.get(email + 'login_authorization_otp_attempts', 3)
         
         if attempts <= 0:
-            cache.delete(email)
-            cache.delete(email + 'attempts')
+            cache.delete(email+'login_otp')
+            cache.delete(email + 'login_authorization_otp_attempts')
             return Response({"denied": "maximum OTP verification attempts exceeded.."}, status=status.HTTP_400_BAD_REQUEST)
         
         # Incorrect OTP, decrement attempts and handle expiration
         attempts -= 1
-        cache.set(email + 'attempts', attempts, timeout=300)  # Update attempts with expiration
+        cache.set(email + 'login_authorization_otp_attempts', attempts, timeout=300)  # Update attempts with expiration
 
         return Response({"error": f"incorrect OTP.. {attempts} remaining"}, status=status.HTTP_400_BAD_REQUEST)
     
@@ -733,6 +668,8 @@ def reset_password(request):
         if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=hashed_authorization_otp_and_salt):
             response = Response({"denied": "requests provided authorization OTP is invalid.. process forrbiden"}, status=status.HTTP_403_FORBIDDEN)
         
+        validate_password(new_password)
+
         # update the user's password
         user.set_password(new_password)
         user.save()

@@ -9,13 +9,14 @@ import httpx
 from channels.db import database_sync_to_async
 
 # django
-from django.core.cache import cache
-from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
-from django.contrib.auth.hashers import check_password
 from django.utils import timezone
 from django.db import  transaction
 from django.db.models import Q
+from django.contrib.auth.password_validation import validate_password
+from django.core.cache import cache
+from django.core.validators import validate_email
+from django.contrib.auth.hashers import check_password
 
 # simple jwt
 from rest_framework_simplejwt.tokens import AccessToken as decode, TokenError
@@ -456,11 +457,13 @@ def update_password(user, new_password, authorization_otp, access_token):
     
         hashed_authorization_otp = cache.get(account.email + 'authorization_otp')
         if not hashed_authorization_otp:
-            return {"denied": "OTP expired, taking you back to email verification.."}
+            return {"denied": "OTP expired.. taking you back to password verification.."}
     
         if not verify_user_otp(authorization_otp, hashed_authorization_otp):
-            return {"denied": "incorrect authorization OTP, action forrbiden"}
+            return {"denied": "incorrect authorization OTP.. action forrbiden"}
     
+        validate_password(new_password)
+        
         account.set_password(new_password)
         account.save()
         
@@ -480,9 +483,12 @@ def update_password(user, new_password, authorization_otp, access_token):
     
     except CustomUser.DoesNotExist:
         return {'error': 'user with the provided credentials does not exist'}
+    
+    except ValidationError as e:
+        return {"error": str(e)}
 
     except Exception as e:
-        return {"error": {str(e)}}
+        return {"error": str(e)}
     
 
 @database_sync_to_async

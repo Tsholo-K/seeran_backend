@@ -103,4 +103,3 @@ class ClassesSerializer(serializers.ModelSerializer):
     
     def get_id(self, obj):
         return obj.class_id
-

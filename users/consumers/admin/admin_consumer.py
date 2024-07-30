@@ -63,8 +63,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     response = await admin_async_functions.fetch_grades(user)
                     
                 # return all grades in the school plus the count of all students
-                if description == 'student_grades':
-                    response = await admin_async_functions.fetch_student_grades(user)
+                if description == 'grades_with_student_count':
+                    response = await admin_async_functions.fetch_grades_with_student_count(user)
 
                 # log user out of the system
                 if description == 'log_me_out':
@@ -143,7 +143,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
                 if description == 'register_classes':
                     grade_id = details.get('grade_id')
                     if grade_id is not None:
-                        response = await admin_async_functions.search_register_classes(user, grade_id)
+                        response = await admin_async_functions.search_grade_register_classes(user, grade_id)
 
                 # return subject details with the provided id
                 if description == 'subject':

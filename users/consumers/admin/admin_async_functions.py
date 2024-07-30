@@ -292,7 +292,7 @@ def fetch_grades(user):
 
 
 @database_sync_to_async
-def fetch_student_grades(user):
+def fetch_grades_with_student_count(user):
 
     try:
         account = CustomUser.objects.get(account_id=user)
@@ -369,6 +369,32 @@ def create_subjects(user, grade_id, subjects):
     
     except Exception as e:
         return { 'error': str(e) }
+    
+
+@database_sync_to_async
+def search_subject(user, grade_id, subject_id):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        grade  = Grade.objects.get(school=account.school, grade_id=grade_id)
+
+        subject = Subject.objects.get(subject_id=subject_id, grade=grade)
+
+        serializer = SubjectDetailSerializer(subject)
+
+        return {"subject": serializer.data}
+    
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+           
+    except Grade.DoesNotExist:
+        return { 'error': 'grade with the provided credentials does not exist' }
+        
+    except Subject.DoesNotExist:
+        return { 'error': 'grade with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
 
 
 @database_sync_to_async
@@ -441,7 +467,7 @@ def create_subject_class(user, grade_id, subject_id, group, classroom, classroom
 
 
 @database_sync_to_async
-def search_register_classes(user, grade_id):
+def search_grade_register_classes(user, grade_id):
 
     try:
         account = CustomUser.objects.get(account_id=user)
@@ -457,32 +483,6 @@ def search_register_classes(user, grade_id):
         return { 'error': 'account with the provided credentials does not exist' }
            
     except Grade.DoesNotExist:
-        return { 'error': 'grade with the provided credentials does not exist' }
-    
-    except Exception as e:
-        return { 'error': str(e) }
-    
-
-@database_sync_to_async
-def search_subject(user, grade_id, subject_id):
-
-    try:
-        account = CustomUser.objects.get(account_id=user)
-        grade  = Grade.objects.get(school=account.school, grade_id=grade_id)
-
-        subject = Subject.objects.get(subject_id=subject_id, grade=grade)
-
-        serializer = SubjectDetailSerializer(subject)
-
-        return {"subject": serializer.data}
-    
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-           
-    except Grade.DoesNotExist:
-        return { 'error': 'grade with the provided credentials does not exist' }
-        
-    except Subject.DoesNotExist:
         return { 'error': 'grade with the provided credentials does not exist' }
     
     except Exception as e:

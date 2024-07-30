@@ -16,9 +16,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 credentials, project_id = default()
 storage_client = Client(credentials=credentials)
 
-MEDIA_URL = f'https://storage.googleapis.com/{config('GS_BUCKET_NAME')}/userimages/'
-STATIC_URL = f'https://storage.googleapis.com/{config('GS_BUCKET_NAME')}/defaults/'
-
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')

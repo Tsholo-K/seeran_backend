@@ -88,6 +88,10 @@ class TeacherConsumer(AsyncWebsocketConsumer):
                     email = details.get('email')
                     if (email_ban_id and email) is not None:
                         response = await general_async_functions.search_email_ban(email, email_ban_id)
+                        
+                # return attendance records for the specified month
+                if description == 'my_register_class':
+                    response = await teacher_async_functions.search_my_register_class(user)
 
                 # return schedule sessions with the provided id
                 if description == 'schedule':
