@@ -52,7 +52,7 @@ class SchoolSerializer(serializers.ModelSerializer):
       
             if principal:
                         
-                return { "name" : principal.name, "surname" : principal.surname, "id" : principal.account_id, 'image': '/default-user-image.svg' }
+                return { "name" : principal.name, "surname" : principal.surname, "id" : principal.account_id, "email" : principal.email, 'image': '/default-user-image.svg' }
             
             else:
                 return None

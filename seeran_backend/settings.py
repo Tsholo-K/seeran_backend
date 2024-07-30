@@ -15,17 +15,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 
 
+# Google
+# DEFAULT_FILE_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
+# GS_BUCKET_NAME = 'your-bucket-name'
+
+
 # uplaod image max-size 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 26214400  # 25 MB
 
 
+# SECURITY WARNING: don't run with debug turned on in production!
 # activates debug mode for the application
 DEBUG = config('DEBUG')
-
-
-# SECURITY WARNING: don't run with debug turned on in production!
-# sets the ip addresses the application can be hosted from
-ALLOWED_HOSTS = config('ALLOWED_HOSTS').split(',')
 
 # Application definition
 # a list of all installed apps
@@ -40,7 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     # 'django.contrib.staticfiles',  Can be removed if not using static files
-    
+
     # project apps 
     'authentication',
     'schools',
@@ -99,9 +100,21 @@ MIDDLEWARE += [
 ]
 
 
-# cors config
-# origins/domains allowed to communicate with the application in production
+
+# Purpose: This setting is used to specify which domains are allowed to make cross-origin requests to your Django application.
+# Usage: It's part of the CORS (Cross-Origin Resource Sharing) configuration, 
+# which controls how resources on your server can be accessed by web pages from other domains.
+# Format: The CORS_ALLOWED_ORIGINS setting is a list of URLs that represent the allowed origins.
+# For example, https://www.example.cloud and https://example:3000 are allowed to interact with your API.
 CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS').split(',')
+
+
+# Purpose: This setting specifies a list of host/domain names that your Django application can serve.
+# It’s used to prevent HTTP Host header attacks.
+# Usage: Django uses this setting to validate the Host header in incoming HTTP requests.
+# Requests with a Host header not listed in ALLOWED_HOSTS will be denied.
+# Format: It’s usually a list of strings. In your example, 'proxy.seeran-grades.cloud' is the only allowed host.
+ALLOWED_HOSTS = config('ALLOWED_HOSTS').split(',')
 
 
 # allowed methods
