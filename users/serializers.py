@@ -134,6 +134,7 @@ class PrincipalIDSerializer(serializers.ModelSerializer):
     role = serializers.SerializerMethodField()
     name = serializers.SerializerMethodField()
     surname = serializers.SerializerMethodField()
+    identifier = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
