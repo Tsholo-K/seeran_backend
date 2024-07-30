@@ -3,18 +3,12 @@ from pathlib import Path
 from datetime import timedelta
 from decouple import config
 
-# google
-from google.auth import default
-from google.cloud.storage import Client
 
 # celery
 from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-credentials, project_id = default()
-storage_client = Client(credentials=credentials)
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -69,8 +63,8 @@ INSTALLED_APPS = [
     'corsheaders', # handle cors 
     'django_redis', # redis caching
     'channels', # django channels 
-    'storages', # allows communication with google storage bucket
-    'django_celery_beat',
+    # 'storages', # allows communication with google storage bucket
+    # 'django_celery_beat',
 ]
 
 
