@@ -27,7 +27,7 @@ class Grade(models.Model):
         ordering = ['grade_order']
         
     def __str__(self):
-        return self.name
+        return self.grade_id
 
     # grade id creation handler
     def save(self, *args, **kwargs):
