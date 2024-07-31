@@ -230,7 +230,7 @@ def update_account(updates, account_id):
             
         account  = CustomUser.objects.get(account_id=account_id)
 
-        if account.role == 'PRINCIPAL':
+        if account.role != 'PRINCIPAL':
             return { "error" : 'unauthorized access.. permission denied' }
         
         serializer = PrincipalAccountUpdateSerializer(instance=account, data=updates)
