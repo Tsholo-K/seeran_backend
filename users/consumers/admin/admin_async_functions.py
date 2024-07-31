@@ -377,6 +377,7 @@ def search_subject(user, details):
 
 @database_sync_to_async
 def create_register_class(user, details):
+
     try:
         account = CustomUser.objects.get(account_id=user)
 
@@ -391,27 +392,19 @@ def create_register_class(user, details):
             return {"error": "a register class with the provided group in the same grade already exists.. a class group should be unique in the same grade and subject(if applicable)"}
 
         with transaction.atomic():
-            new_class = Classroom.objects.create(
-                classroom_identifier=details.get('classroom'),
-                group=details.get('group'),
-                grade=grade,
-                teacher=teacher,
-                school=account.school,
-                register_class=True
-            )
+            new_class = Classroom.objects.create(classroom_identifier=details.get('classroom'), group=details.get('group'), grade=grade, teacher=teacher, school=account.school, register_class=True)
             new_class.save()
             
-        return {'message': f'register class for grade {grade.grade} created successfully'}
-
+        return { 'message': f'register class for grade {grade.grade} created successfully' }
+               
     except CustomUser.DoesNotExist:
-        return {'error': 'account with the provided credentials does not exist'}
-
+        return { 'error': 'account with the provided credentials does not exist' }
+    
     except Grade.DoesNotExist:
-        return {'error': 'grade with the provided credentials does not exist'}
+        return { 'error': 'grade with the provided credentials does not exist' }
 
     except Exception as e:
-        return {'error': str(e)}
-
+        return { 'error': str(e) }
 
 
 @database_sync_to_async

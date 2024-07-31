@@ -42,64 +42,18 @@ class Classroom(models.Model):
     classroom_identifier = models.CharField(_('classroom identifier'), max_length=16, default='1')
     group = models.CharField(_('class group'), max_length=16, default='A')
 
-    teacher = models.ForeignKey(
-        CustomUser,
-        on_delete=models.SET_NULL,
-        limit_choices_to={'role': 'teacher'},
-        null=True,
-        blank=True,
-        related_name='taught_classes',
-        help_text='The teacher assigned to the classroom.'
-    )
+    teacher = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, limit_choices_to={'role': 'teacher'}, null=True, blank=True, related_name='taught_classes', help_text='The teacher assigned to the classroom.')
+    students = models.ManyToManyField(CustomUser, related_name='enrolled_classes', help_text='Students enrolled in the classroom.')
+    parents = models.ManyToManyField(CustomUser, related_name='children_classes', help_text='Parents or guardians of students in the classroom.')
 
-    students = models.ManyToManyField(
-        CustomUser,
-        related_name='enrolled_classes',
-        help_text='Students enrolled in the classroom.'
-    )
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='grade_classes', help_text='Grade level associated with the classroom.')
 
-    parents = models.ManyToManyField(
-        CustomUser,
-        related_name='children_classes',
-        help_text='Parents or guardians of students in the classroom.'
-    )
+    register_class = models.BooleanField(_('is the class a register class'), unique=True, default=False, help_text='Ensure only one register class per teacher.')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='subject_classes', null=True, blank=True, help_text='Subject taught in the classroom.')
 
-    grade = models.ForeignKey(
-        Grade,
-        on_delete=models.CASCADE,
-        related_name='grade_classes',
-        help_text='Grade level associated with the classroom.'
-    )
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='classes', help_text='School to which the classroom belongs.')
 
-    register_class = models.BooleanField(
-        _('is the class a register class'),
-        unique=True,
-        default=False,
-        help_text='Ensure only one register class per teacher.'
-    )
-    
-    subject = models.ForeignKey(
-        Subject,
-        on_delete=models.CASCADE,
-        related_name='subject_classes',
-        null=True,
-        blank=True,
-        help_text='Subject taught in the classroom.'
-    )
-
-    school = models.ForeignKey(
-        School,
-        on_delete=models.CASCADE,
-        related_name='classes',
-        help_text='School to which the classroom belongs.'
-    )
-
-    class_id = models.CharField(
-        _('classroom identifier'),
-        max_length=15,
-        unique=True,
-        help_text='Unique identifier for the classroom.'
-    )
+    class_id = models.CharField(_('classroom identifier'), max_length=15, unique=True, help_text='Unique identifier for the classroom.')
 
     class Meta:
         verbose_name = _('classroom')
@@ -108,20 +62,10 @@ class Classroom(models.Model):
     def __str__(self):
         return f"{self.school} - Grade {self.grade} - {self.classroom_identifier}"
 
-    def clean(self):
-        """
-        Custom validation method to ensure students belong to the correct grade and school.
-        """
-        for student in self.students.all():
-            if student.grade != self.grade or student.school != self.school:
-                raise ValidationError(f"{student} is not in grade {self.grade} or not from {self.school}")
-
     def save(self, *args, **kwargs):
         """
-        Override save method to generate class_id if not provided and validate data before saving.
+        Override save method to generate class_id if not provided before saving.
         """
-        self.full_clean()  # Validate before saving
-
         if not self.class_id:
             self.class_id = self.generate_unique_id('CR')
 
