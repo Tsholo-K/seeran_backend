@@ -172,7 +172,7 @@ class AccountCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = [ 'name', 'surname' 'email', 'school', 'role', ]
+        fields = [ 'name', 'surname', 'email', 'school', 'role', ]
         
 
 class PrincipalAccountUpdateSerializer(serializers.ModelSerializer):
