@@ -11,7 +11,7 @@ from .models import Classroom
 from users.models import CustomUser
 
 # serilializers
-from users.serializers import StudentAccountsSerializer
+from users.serializers import AccountSerializer
 
 
 class ClassSerializer(serializers.ModelSerializer):
@@ -32,7 +32,7 @@ class ClassSerializer(serializers.ModelSerializer):
 
     def get_students(self, obj):
         students = obj.students.all()
-        serializer = StudentAccountsSerializer(students, many=True)
+        serializer = AccountSerializer(students, many=True)
         return serializer.data
     
     def get_student_count(self, obj):
