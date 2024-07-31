@@ -52,14 +52,11 @@ def create_account(user, details):
         if serializer.is_valid():
             
             with transaction.atomic():
-                user = CustomUser.objects.create_user(**serializer.validated_data)
+                created_user = CustomUser.objects.create_user(**serializer.validated_data)
             
-            return {'user' : user}
+            return {'user' : created_user}
             
         return {"error" : serializer.errors}
-    
-    except IntegrityError as e:
-        return {'error': 'account with the provided email address already exists'}
            
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
@@ -136,7 +133,7 @@ def update_account(user, details):
         updates = details.get('updates')
 
         if updates.get('email') != (None or ''):
-            if not validate_user_email(details.get('new_email')):
+            if not validate_user_email(details.get('email')):
                 return {'error': 'Invalid email format'}
 
             if CustomUser.objects.filter(email=updates.get('email')).exists():

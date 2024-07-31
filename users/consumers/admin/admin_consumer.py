@@ -177,10 +177,13 @@ class AdminConsumer(AsyncWebsocketConsumer):
         }
 
         func = post_map.get(description)
+        
         if func:
             response = await func(user, details)
+
             if response.get('user') and description in ['create_account', 'create_student_account']:
                 return await general_async_functions.send_account_confirmation_email(response.get('user'))
+            
             return response
         
         return {'error': 'Invalid post description'}
