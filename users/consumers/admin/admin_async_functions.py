@@ -178,7 +178,7 @@ def delete_account(user, details):
         if requested_user.role == 'PARENT' and requested_user.children.exists():
             return { "error" : 'the parent account is still linked to a student account.. permission denied' }
 
-        account.delete()
+        requested_user.delete()
                             
         return {"message" : 'account successfully deleted'}
         

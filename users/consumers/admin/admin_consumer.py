@@ -98,6 +98,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
         }
 
         func = search_map.get(description)
+        
         if func:
             return await func(user, details)
         
