@@ -133,7 +133,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         func = form_data_map.get(description)
         if func:
-            return await func(user, details)
+            response = await func(user) if description in ['class_creation'] else await func(user, details)
+            return response
         
         return {'error': 'Invalid form data description'}
 
