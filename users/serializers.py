@@ -22,6 +22,7 @@ class MyAccountDetailsSerializer(serializers.ModelSerializer):
 
     name = serializers.SerializerMethodField()
     surname = serializers.SerializerMethodField()
+    identifier = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
     id = serializers.SerializerMethodField()
     role = serializers.SerializerMethodField()
@@ -44,6 +45,13 @@ class MyAccountDetailsSerializer(serializers.ModelSerializer):
             
     def get_image(self, obj):
         return '/default-user-image.svg'
+    
+    def get_identifier(self, obj):
+        if obj.email:
+            return obj.email
+        if obj.id_number:
+            return obj.id_number
+        return obj.passport_number
 
 
 class AccountProfileSerializer(serializers.ModelSerializer):
