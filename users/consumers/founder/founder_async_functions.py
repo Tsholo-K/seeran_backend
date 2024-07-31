@@ -224,11 +224,11 @@ def update_principal_account(details):
         updates = details.get('updates')
 
         if updates.get('email'):
-            if CustomUser.objects.filter(email=updates['email']).exists():
+            if CustomUser.objects.filter(email=updates.get('email')).exists():
                 return {"error": "an account with the provided email address already exists"}
 
         if updates.get('phone_number'):
-            if CustomUser.objects.filter(phone_number=updates['phone_number'], role='PRINCIPAL').exists():
+            if CustomUser.objects.filter(phone_number=updates.get('phone_number'), role='PRINCIPAL').exists():
                 return {"error": "an account with the provided phone number already exists"}
             
         account = CustomUser.objects.get(account_id=details.get('account_id'))

@@ -41,7 +41,7 @@ def create_account(user, details):
         if CustomUser.objects.filter(email=details.get('email')).exists():
             return {"error": "an account with the provided email address already exists"}
 
-        if details.get('role') not in ['ADMIN', 'PARENT']:
+        if details.get('role') not in ['ADMIN', 'TEACHER']:
             return {"error": "invalid account role"}
         
         account = CustomUser.objects.get(account_id=user)
