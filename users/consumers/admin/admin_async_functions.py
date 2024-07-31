@@ -138,9 +138,6 @@ def update_account(user, updates, account_id):
             
         return {"error" : serializer.errors}
     
-    except IntegrityError as e:
-        return {'error': 'account with the provided email address already exists'}
-    
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
     

@@ -3,6 +3,7 @@ from channels.db import database_sync_to_async
 # django
 from django.db.models import Count, Q
 from django.db import models, transaction
+from django.db import IntegrityError
 
 # models 
 from balances.models import Bill
@@ -12,7 +13,7 @@ from balances.models import Balance
 from bug_reports.models import BugReport
 
 # serializers
-from users.serializers import ProfileSerializer, PrincipalCreationSerializer, PrincipalIDSerializer
+from users.serializers import ProfileSerializer, PrincipalCreationSerializer, PrincipalIDSerializer, PrincipalAccountUpdateSerializer
 from schools.serializers import SchoolCreationSerializer, SchoolsSerializer, SchoolSerializer, SchoolDetailsSerializer
 from balances.serializers import BillsSerializer, BillSerializer
 from bug_reports.serializers import BugReportsSerializer, UnresolvedBugReportSerializer, ResolvedBugReportSerializer, UpdateBugReportStatusSerializer
@@ -210,6 +211,43 @@ def update_bug_report(status, bug_report_id):
     
     except BugReport.DoesNotExist:
         return { 'error': 'bug report with the provided ID does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+
+
+@database_sync_to_async
+def update_account(updates, account_id):
+
+    try:
+        if updates.get('email') != (None or ''):
+            if CustomUser.objects.filter(email=updates.get('email')).exists():
+                return {"error": "an account with the provided email address already exists"}
+
+        if updates.get('phone_number') != (None or ''):
+            if CustomUser.objects.filter(phone_number=updates.get('phone_number'), role='PRINCIPAL').exists():
+                return {"error": "an account with the provided phone number already exists"}
+            
+        account  = CustomUser.objects.get(account_id=account_id)
+
+        if account.role == 'PRINCIPAL':
+            return { "error" : 'unauthorized access.. permission denied' }
+        
+        serializer = PrincipalAccountUpdateSerializer(instance=account, data=updates)
+        
+        if serializer.is_valid():
+            
+            with transaction.atomic():
+                serializer.save()
+                account.refresh_from_db()  # Refresh the user instance from the database
+            
+            serializer = PrincipalIDSerializer(instance=account)
+            return { "user" : serializer.data }
+            
+        return {"error" : serializer.errors}
+    
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
     
     except Exception as e:
         return { 'error': str(e) }

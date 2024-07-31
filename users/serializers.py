@@ -219,6 +219,18 @@ class AccountUpdateSerializer(serializers.ModelSerializer):
         fields = ['name', 'surname', 'id_number', 'email', 'grade']
         
 
+class PrincipalAccountUpdateSerializer(serializers.ModelSerializer):
+
+    name = serializers.CharField(required=False)  # Corrected to CharField
+    surname = serializers.CharField(required=False)  # Corrected to CharField
+    email = serializers.EmailField(required=False)  # Make email optional
+    phone_number = serializers.CharField(required=False)  # Corrected to CharField
+
+    class Meta:
+        model = CustomUser
+        fields = ['name', 'surname', 'email', 'phone_number']
+
+
 class AccountsSerializer(serializers.ModelSerializer):
 
     image = serializers.SerializerMethodField()
@@ -240,7 +252,6 @@ class AccountsSerializer(serializers.ModelSerializer):
         return obj.surname.title()
             
     def get_image(self, obj):
-      
         return '/default-user-image.svg'
 
 

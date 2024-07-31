@@ -200,6 +200,13 @@ class FounderConsumer(AsyncWebsocketConsumer):
                     bug_report_id = details.get('bug_report_id')
                     if (status and bug_report_id) is not None:
                         response = await founder_async_functions.update_bug_report(status, bug_report_id)
+                
+                # update users account details
+                if description == 'update_account':
+                    updates = details.get('updates')
+                    account_id = details.get('account_id')
+                    if (updates and account_id) is not None:
+                        response = await founder_async_functions.update_account(updates, account_id)
 
 
             ################################################################################################################                
