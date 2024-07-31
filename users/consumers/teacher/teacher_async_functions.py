@@ -21,56 +21,12 @@ from classes.models import Classroom
 from attendances.models import Absent
 
 # serilializers
-from users.serializers import AccountUpdateSerializer, IDSerializer, ProfileSerializer, StudentProfileSerializer, AccountsSerializer, StudentAccountsSerializer, AccountCreationSerializer, TeachersSerializer, StudentAccountCreationIDSerializer, StudentAccountCreationPNSerializer
+from users.serializers import AccountSerializer
 from timetables.serializers import SchedulesSerializer
 from grades.serializers import GradesSerializer, GradeSerializer, SubjectDetailSerializer, ClassesSerializer
 from classes.serializers import ClassSerializer, ClassUpdateSerializer, TeacherClassesSerializer, TeacherRegisterClassSerializer
 
 # utility functions 
-    
-@database_sync_to_async
-def search_account_profile(user, account_id):
-
-    try:
-        admin = CustomUser.objects.get(account_id=user)
-        account  = CustomUser.objects.get(account_id=account_id)
-
-        if account.role == 'FOUNDER' or (account.role != 'PARENT' and admin.school != account.school) or (account.role == 'PARENT' and not account.children.filter(school=admin.school).exists()):
-            return { "error" : 'unauthorized access.. permission denied' }
-
-        if account.role == 'STUDENT':
-            serializer = StudentProfileSerializer(instance=account)
-        else:
-            serializer = ProfileSerializer(instance=account)
-
-        return { "user" : serializer.data }
-        
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-    
-    except Exception as e:
-        return { 'error': str(e) }
-    
-    
-@database_sync_to_async
-def search_account_id(user, account_id):
-
-    try:
-        admin = CustomUser.objects.get(account_id=user)
-        account  = CustomUser.objects.get(account_id=account_id)
-
-        if account.role == 'FOUNDER' or (account.role != 'PARENT' and admin.school != account.school) or (account.role == 'PARENT' and not account.children.filter(school=admin.school).exists()):
-            return { "error" : 'unauthorized access.. permission denied' }
-
-        # return the users profile
-        serializer = IDSerializer(instance=account)
-        return { "user" : serializer.data }
-        
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-    
-    except Exception as e:
-        return { 'error': str(e) }
 
 
 @database_sync_to_async
@@ -142,7 +98,7 @@ def search_students(user, grade_id):
         account = CustomUser.objects.get(account_id=user)
         students = Grade.objects.get(grade_id=grade_id, school=account.school.pk).students.all()
 
-        serializer = StudentAccountsSerializer(students, many=True)
+        serializer = AccountSerializer(students, many=True)
 
         return {"students": serializer.data}
     
@@ -389,7 +345,7 @@ def form_subject_class(user):
         account = CustomUser.objects.get(account_id=user)
 
         accounts = CustomUser.objects.filter(role='TEACHER', school=account.school).order_by('name', 'surname', 'account_id')
-        serializer = TeachersSerializer(accounts, many=True)
+        serializer = AccountSerializer(accounts, many=True)
 
         return { "teachers" : serializer.data }
         
@@ -408,16 +364,16 @@ def form_class_update(user, class_id):
         classroom = Classroom.objects.get(class_id=class_id, school=account.school)
 
         if classroom.teacher is not None:
-            teacher = TeachersSerializer(classroom.teacher)
+            teacher = AccountSerializer(classroom.teacher)
 
             accounts = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(account_id=classroom.teacher.account_id).order_by('name', 'surname', 'account_id')
-            teachers = TeachersSerializer(accounts, many=True)
+            teachers = AccountSerializer(accounts, many=True)
 
             return { 'teacher' : teacher.data, "teachers" : teachers.data, 'group' : classroom.group, 'classroom_identifier' : classroom.classroom_identifier  }
         
         else:
             accounts = CustomUser.objects.filter(role='TEACHER', school=account.school).order_by('name', 'surname', 'account_id')
-            teachers = TeachersSerializer(accounts, many=True)
+            teachers = AccountSerializer(accounts, many=True)
 
             return { 'teacher' : None, "teachers" : teachers.data, 'group' : classroom.group, 'classroom_identifier' : classroom.classroom_identifier  }
         
@@ -444,7 +400,7 @@ def form_add_students_to_register_class(user, class_id):
         # Exclude these students from the current classroom's grade
         students = classroom.grade.students.exclude(id__in=students_in_register_classes)
 
-        serializer = StudentAccountsSerializer(students, many=True)
+        serializer = AccountSerializer(students, many=True)
 
         return {"students": serializer.data}
     

@@ -52,11 +52,11 @@ class TeacherConsumer(AsyncWebsocketConsumer):
                 
                 # return users security information
                 if description == 'my_security_information':
-                    response = await general_async_functions.fetch_security_info(user)
+                    response = await general_async_functions.fetch_my_security_information(user)
                     
                 # return user email information
                 if description == 'email_information':
-                    response = await general_async_functions.fetch_email_information(user)
+                    response = await general_async_functions.fetch_my_email_information(user)
 
                 # log user out of the system
                 if description == 'log_me_out':
@@ -87,7 +87,19 @@ class TeacherConsumer(AsyncWebsocketConsumer):
                     email_ban_id = details.get('email_ban_id')
                     email = details.get('email')
                     if (email_ban_id and email) is not None:
-                        response = await general_async_functions.search_email_ban(email, email_ban_id)
+                        response = await general_async_functions.search_my_email_ban(email, email_ban_id)
+                        
+                # return account profile with the provided id
+                if description == 'account_profile':
+                    account_id = details.get('account_id')
+                    if account_id is not None:
+                        response = await general_async_functions.search_account_profile(user, account_id)
+                
+                # return account id with the provided id
+                if description == 'account_id':
+                    account_id = details.get('account_id')
+                    if account_id is not None:
+                        response = await general_async_functions.search_account_id(user, account_id)
                         
                 # return attendance records for the specified month
                 if description == 'my_register_class':
@@ -97,7 +109,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
                 if description == 'schedule':
                     schedule_id = details.get('schedule_id')
                     if schedule_id is not None:
-                        response = await general_async_functions.search_schedule(schedule_id)
+                        response = await general_async_functions.search_for_schedule(schedule_id)
 
                 # return attendance records for the specified month
                 if description == 'search_month_attendance_records':
@@ -159,7 +171,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
                 if description == 'attendance_register':
                     class_id = details.get('class_id')
                     if class_id is not None:
-                        response = await general_async_functions.form_attendance_register(user, class_id)
+                        response = await general_async_functions.form_data_for_attendance_register(user, class_id)
 
 
             ################################################################################################################                
@@ -197,7 +209,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
                         if status.get('user'):
                             status = await general_async_functions.send_email_revalidation_one_time_pin_email(status.get('user'))
                             if status.get('message'):
-                                response = await general_async_functions.update_email_ban(email_ban_id)
+                                response = await general_async_functions.update_email_ban_otp_sends(email_ban_id)
                             else:
                                 response = status
                         else:

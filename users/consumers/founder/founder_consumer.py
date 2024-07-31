@@ -15,7 +15,6 @@ from . import founder_async_functions
 class FounderConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
-        
         # Get the user's role from the scope
         role = self.scope.get('role')
 
@@ -24,233 +23,133 @@ class FounderConsumer(AsyncWebsocketConsumer):
             return await self.close()
         
         await self.accept()
-        return await self.send(text_data=json.dumps({ 'message': 'Welcome Back' }))
-
+        return await self.send(text_data=json.dumps({'message': 'Welcome Back'}))
 
     async def disconnect(self, close_code):
         pass
 
-
     async def receive(self, text_data):
-        
         user = self.scope.get('user')
         access_token = self.scope.get('access_token')
+
+        if not (user and access_token and validate_access_token(access_token)):
+            return await self.send(text_data=json.dumps({'error': 'request not authenticated.. access denied'}))
+
+        data = json.loads(text_data)
+        action = data.get('action')
+        description = data.get('description')
+        details = data.get('details')
+
+        if not action or not description:
+            return await self.send(text_data=json.dumps({'error': 'invalid request..'}))
+
+        response = await self.handle_request(action, description, details, user, access_token)
         
-        if user and access_token and (validate_access_token(access_token) is not None):
-            
-            response = None
-            
-            action = json.loads(text_data).get('action')
-            description = json.loads(text_data).get('description')
-            
-            if not ( action or description ):
-                return await self.send(text_data=json.dumps({ 'error': 'invalid request..' }))
-
-
-            ################################################ GET #######################################################
-
-
-            if action == 'GET':
-                
-                # return users security information
-                if description == 'my_security_information':
-                    response = await general_async_functions.fetch_security_info(user)
-                
-                # return all school objects
-                if description == 'schools':
-                    response = await founder_async_functions.fetch_schools()
-
-                # log user out of the system
-                if description == 'log_me_out':
-                    response = await general_async_functions.log_user_out(access_token)
-
-
-            ##############################################################################################################
-
-
-                if response is not None:
-                    return await self.send(text_data=json.dumps(response))
-                
-                return await self.send(text_data=json.dumps({ 'error': 'provided information is invalid.. request revoked'}))
-            
-            details = json.loads(text_data).get('details')
-            
-            if not details:
-                return await self.send(text_data=json.dumps({ 'error': 'invalid request.. request denied' }))
-
-
-            ############################################## SEARCH ########################################################
-
-
-            if action == 'SEARCH':
-                
-                # return school with the provided id
-                if description == 'school':
-                    school_id = details.get('school_id')
-                    if school_id is not None:
-                        response = await founder_async_functions.search_school(school_id)
-                        
-                # return school details for school with the provided id
-                if description == 'school_details':
-                    school_id = details.get('school_id')
-                    if school_id is not None:
-                        response = await founder_async_functions.search_school_details(school_id)
-                        
-                # return profile for principal with the provided id
-                if description == 'principal_profile':
-                    principal_id = details.get('principal_id')
-                    if principal_id is not None:
-                        response = await founder_async_functions.search_principal_profile(principal_id)
-                                        
-                # return account id with the provided id
-                if description == 'account_id':
-                    account_id = details.get('account_id')
-                    if account_id is not None:
-                        response = await founder_async_functions.search_account_id(account_id)
-
-                # return all principal invoices
-                if description == 'principal_invoices':
-                    principal_id = details.get('principal_id')
-                    if principal_id is not None:
-                        response = await founder_async_functions.search_principal_invoices(principal_id)
-                        
-                # return principal invoice with provided id
-                if description == 'principal_invoice':
-                    invoice_id = details.get('invoice_id')
-                    if invoice_id is not None:
-                        response = await founder_async_functions.search_principal_invoice(invoice_id)
-                        
-                # return bug reports
-                if description == 'bug_reports':
-                    resolved = details.get('resolved')
-                    if resolved is not None:
-                        response = await founder_async_functions.search_bug_reports(resolved)
-                                        
-                # return bug report with provided id
-                if description == 'bug_report':
-                    bug_report_id = details.get('bug_report_id')
-                    if bug_report_id is not None:
-                        response = await founder_async_functions.search_bug_report(bug_report_id)
-
-
-            ##############################################################################################################
-
-            ############################################## VERIFY ########################################################
-
-
-            if action == 'VERIFY':
-                        
-                # verify email before email update
-                if description == 'verify_email':
-                    email = details.get('email')
-                    if email is not None:
-                        status = await general_async_functions.verify_email(email)
-                        if status.get('user'):
-                            response = await general_async_functions.send_one_time_pin_email(status.get('user'), reason='This OTP was generated in response to your email update request..')
-                        else:
-                            response = status
-                
-                # verify password before password update
-                if description == 'verify_password':
-                    password = details.get('password')
-                    if password is not None:
-                        status = await general_async_functions.verify_password(user, password)
-                        if status.get('user'):
-                            response = await general_async_functions.send_one_time_pin_email(status.get('user'), reason='This OTP was generated in response to your password update request..')
-                        else:
-                            response = status
-                
-                # verify otp
-                if description == 'verify_otp':
-                    otp = details.get('otp')
-                    if otp is not None:
-                        response = await general_async_functions.verify_otp(user, otp)
-                   
-
-            ################################################################################################################                
-                        
-            ################################################ PUT ##########################################################
-
-
-            if action == 'PUT':
-                
-                # update users email
-                if description == 'update_email':
-                    new_email = details.get('new_email')
-                    authorization_otp = details.get('authorization_otp')
-                    if (new_email and authorization_otp) is not None:
-                        response = await general_async_functions.update_email(user, new_email, authorization_otp, access_token)
-                
-                # update users password
-                if description == 'update_password':
-                    new_password = details.get('new_password')
-                    authorization_otp = details.get('authorization_otp')
-                    if (new_password and authorization_otp) is not None:
-                        response = await general_async_functions.update_password(user, new_password, authorization_otp, access_token)
-                  
-                # toggle  multi-factor authentication option for user
-                if description == 'update_multi_factor_authentication':
-                    toggle = details.get('toggle')
-                    if toggle is not None:
-                        response = await general_async_functions.update_multi_factor_authentication(user, toggle)
-                
-                # update bug report status
-                if description == 'update_bug_report':
-                    status = details.get('status')
-                    bug_report_id = details.get('bug_report_id')
-                    if (status and bug_report_id) is not None:
-                        response = await founder_async_functions.update_bug_report(status, bug_report_id)
-                
-                # update users account details
-                if description == 'update_account':
-                    updates = details.get('updates')
-                    account_id = details.get('account_id')
-                    if (updates and account_id) is not None:
-                        response = await founder_async_functions.update_account(updates, account_id)
-
-
-            ################################################################################################################                
-                        
-            ################################################# POST ##########################################################
-
-
-            if action == 'POST':
-                
-                # create school account
-                if description == 'create_school_account':
-                    response = await founder_async_functions.create_school_account(details)
-                
-                # delete school account
-                if description == 'delete_school_account':
-                    school_id = details.get('school_id')
-                    if school_id is not None:
-                        response = await founder_async_functions.delete_school_account(school_id)
-                        
-                # create school account
-                if description == 'create_principal_account':
-                    school_id = details.get('school')
-                    if school_id is not None:
-                        status = await founder_async_functions.create_principal_account(details, school_id)
-                        if status.get('user'):
-                            response = await general_async_functions.send_account_confirmation_email(status.get('user'))
-                        else:
-                            response = status
-                    
-                # delete principal account
-                if description == 'delete_principal_account':
-                    principal_id = details.get('principal_id')
-                    if principal_id is not None:
-                        response = await founder_async_functions.delete_principal_account(principal_id)
-
-
-            ###############################################################################################################
+        if response is not None:
+            return await self.send(text_data=json.dumps(response))
         
-                        
-            if response is not None:
-                return await self.send(text_data=json.dumps(response))
-            
-            return await self.send(text_data=json.dumps({ 'error': 'provided information is invalid.. request revoked' }))
+        return await self.send(text_data=json.dumps({'error': 'provided information is invalid.. request revoked'}))
+
+    async def handle_request(self, action, description, details, user, access_token): # re Handle 
+        action_map = {
+            'GET': self.handle_get,
+            'SEARCH': self.handle_search,
+            'VERIFY': self.handle_verify,
+            'PUT': self.handle_put,
+            'POST': self.handle_post,
+        }
+
+        handler = action_map.get(action)
+        if handler:
+            return await handler(description, details, user, access_token)
         
-        return await self.send(text_data=json.dumps({ 'error': 'request not authenticated.. access denied' }))
+        return {'error': 'Invalid action'}
 
+    async def handle_get(self, description, details, user, access_token):
+        if description == 'my_security_information':
+            return await general_async_functions.fetch_my_security_information(user)
+        
+        elif description == 'schools':
+            return await founder_async_functions.fetch_schools()
+        
+        elif description == 'log_me_out':
+            return await general_async_functions.log_user_out(access_token)
+        
+        else:
+            return {'error': 'Invalid get description'}
+        
+    async def handle_search(self, description, details, user, access_token):
+        search_map = {
+            'school': founder_async_functions.search_school,
+            'school_details': founder_async_functions.search_school_details,
+            'principal_profile': founder_async_functions.search_principal_account_profile,
+            'account_id': founder_async_functions.search_principal_account_id,
+            'principal_invoices': founder_async_functions.search_principal_invoices,
+            'principal_invoice': founder_async_functions.search_principal_invoice,
+            'bug_reports': founder_async_functions.search_bug_reports,
+            'bug_report': founder_async_functions.search_bug_report,
+        }
 
+        func = search_map.get(description)
+        if func:
+            return await func(details)
+        
+        return {'error': 'Invalid search description'}
+
+    async def handle_verify(self, description, details, user, access_token):
+
+        if description == 'verify_email':
+            response = await general_async_functions.verify_email(details)
+            if response.get('user'):
+                return await general_async_functions.send_one_time_pin_email(response.get('user'), reason='This OTP was generated in response to your email update request..')
+            
+        elif description == 'verify_password':
+            response = await general_async_functions.verify_password(user, details)
+            if response.get('user'):
+                return await general_async_functions.send_one_time_pin_email(response.get('user'), reason='This OTP was generated in response to your password update request..')
+            
+        elif description == 'verify_otp':
+            return await general_async_functions.verify_otp(user, details)
+        
+        else:
+            return {'error': 'Invalid verify description'}
+
+    async def handle_put(self, description, details, user, access_token):
+
+        if description == 'update_email':
+            return await general_async_functions.update_email(user, details, access_token)
+        
+        elif description == 'update_password':
+            return await general_async_functions.update_password(user, details, access_token)
+        
+        elif description == 'update_multi_factor_authentication':
+            return await general_async_functions.update_multi_factor_authentication(user, details)
+        
+        elif description == 'update_bug_report':
+            return await founder_async_functions.update_bug_report(details)
+        
+        elif description == 'update_account':
+            return await founder_async_functions.update_principal_account(details)
+        
+        else:
+            return {'error': 'Invalid put description'}
+
+    async def handle_post(self, description, details, user, access_token):
+
+        if description == 'create_school_account':
+            return await founder_async_functions.create_school_account(details)
+        
+        elif description == 'delete_school_account':
+            return await founder_async_functions.delete_school_account(details)
+        
+        elif description == 'create_principal_account':
+            response = await founder_async_functions.create_principal_account(details)
+            if response.get('user'):
+                return await general_async_functions.send_account_confirmation_email(response.get('user'))
+            return response
+            
+        elif description == 'delete_principal_account':
+            return await founder_async_functions.delete_principal_account(details)
+        
+        else:
+            return {'error': 'Invalid post description'}

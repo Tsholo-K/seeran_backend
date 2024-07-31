@@ -31,16 +31,17 @@ from classes.models import Classroom
 from attendances.models import Absent, Late
 
 # serializers
-from timetables.serializers import SessoinsSerializer
+from users.serializers import AccountSerializer, StudentAccountAttendanceRecordSerializer, AccountProfileSerializer, AccountIDSerializer
 from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
-from users.serializers import StudentAccountsSerializer, StudentaccountAttendanceRecordSerializer
+from timetables.serializers import SessoinsSerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
 from attendances.utility_functions import get_month_dates
 
+
 @database_sync_to_async
-def fetch_security_info(user):
+def fetch_my_security_information(user):
 
     try:
         account = CustomUser.objects.get(account_id=user)
@@ -51,13 +52,149 @@ def fetch_security_info(user):
     
     except Exception as e:
         return { 'error': str(e) }
+    
+
+@database_sync_to_async
+def fetch_my_email_information(user):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        
+        email_bans = EmailBan.objects.filter(email=account.email).order_by('-banned_at')
+        serializer = EmailBansSerializer(email_bans, many=True)
+    
+        return {'information' : { "email_bans" : serializer.data, 'strikes' : account.email_ban_amount, 'banned' : account.email_banned }}
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'user with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
 
 
 @database_sync_to_async
-def search_schedule(schedule_id):
+def search_account_profile(user, details):
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        requested_user = CustomUser.objects.get(account_id=details.get('account_id'))
+        
+        # No one can view the profile of a user with role not in ['PARENT', 'STUDENT', 'PRINCIPAL', 'ADMIN', 'TEACHER']
+        if requested_user.role not in ['PARENT', 'STUDENT', 'PRINCIPAL', 'ADMIN', 'TEACHER']:
+            return {"error": "unauthorized access.. permission denied"}
+
+        # Admins and principals can only view profiles of accounts linked to their own school
+        if account.role in ['PRINCIPAL', 'ADMIN']:
+            if requested_user.role != 'PARENT' and account.school != requested_user.school:
+                return {"error": "unauthorized access.. permission denied"}
+            if requested_user.role == 'PARENT' and not requested_user.children.filter(school=account.school).exists():
+                return {"error": "unauthorized access.. permission denied"}
+
+        # Teachers can view parents and students in their own class and admins/principals in their school
+        if account.role == 'TEACHER':
+            if requested_user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER'] and account.school != requested_user.school:
+                return {"error": "unauthorized access.. permission denied"}
+            if requested_user.role == 'PARENT' and not requested_user.children.filter(taught_classes__teacher=account).exists():
+                return {"error": "unauthorized access.. permission denied"}
+            if requested_user.role == 'STUDENT' and not account.taught_classes.filter(students=requested_user).exists():
+                return {"error": "unauthorized access.. permission denied"}
+
+        # Parents can view their children (students), teachers of their children, admins/principals of their children's schools, and other parents they share children with
+        if account.role == 'PARENT':
+            if requested_user.role == 'STUDENT' and requested_user not in account.children.all():
+                return {"error": "unauthorized access.. permission denied"}
+            if requested_user.role == 'TEACHER' and not account.children.filter(taught_classes__teacher=requested_user).exists():
+                return {"error": "unauthorized access.. permission denied"}
+            if requested_user.role in ['PRINCIPAL', 'ADMIN'] and not account.children.filter(school=requested_user.school).exists():
+                return {"error": "unauthorized access.. permission denied"}
+            if requested_user.role == 'PARENT' and not account.children.filter(pk__in=requested_user.children.values_list('pk', flat=True)).exists():
+                return {"error": "unauthorized access.. permission denied"}
+
+        # Students can only view their parents, teachers who teach them, and admins/principals from their own school
+        if account.role == 'STUDENT':
+            if requested_user.role not in ['PARENT', 'TEACHER', 'PRINCIPAL', 'ADMIN']:
+                return {"error": "unauthorized access.. permission denied"}
+            if requested_user.role == 'PARENT' and account not in requested_user.children.all():
+                return {"error": "unauthorized access.. permission denied"}
+            if requested_user.role == 'TEACHER' and not requested_user.taught_classes.filter(students=account).exists():
+                return {"error": "unauthorized access.. permission denied"}
+            if requested_user.role in ['PRINCIPAL', 'ADMIN'] and account.school != requested_user.school:
+                return {"error": "unauthorized access.. permission denied"}
+
+        serializer = AccountProfileSerializer(instance=requested_user)
+        return {"user": serializer.data}
+
+    except CustomUser.DoesNotExist:
+        return {'error': 'account with the provided credentials does not exist'}
+    
+    except Exception as e:
+        return {'error': str(e)}
+
+    
+@database_sync_to_async
+def search_account_id(user, details):
 
     try:
-        schedule = Schedule.objects.get(schedule_id=schedule_id)
+        account = CustomUser.objects.get(account_id=user)
+        requested_user = CustomUser.objects.get(account_id=details.get('account_id'))
+        
+        # No one can view the profile of a user with role not in ['PARENT', 'STUDENT', 'PRINCIPAL', 'ADMIN', 'TEACHER']
+        if requested_user.role not in ['PARENT', 'STUDENT', 'PRINCIPAL', 'ADMIN', 'TEACHER']:
+            return {"error": "unauthorized access.. permission denied"}
+
+        # Admins and principals can only view profiles of accounts linked to their own school
+        if account.role in ['PRINCIPAL', 'ADMIN']:
+            if requested_user.role != 'PARENT' and account.school != requested_user.school:
+                return {"error": "unauthorized access.. permission denied"}
+            if requested_user.role == 'PARENT' and not requested_user.children.filter(school=account.school).exists():
+                return {"error": "unauthorized access.. permission denied"}
+
+        # Teachers can view parents and students in their own class and admins/principals in their school
+        if account.role == 'TEACHER':
+            if requested_user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER'] and account.school != requested_user.school:
+                return {"error": "unauthorized access.. permission denied"}
+            if requested_user.role == 'PARENT' and not requested_user.children.filter(taught_classes__teacher=account).exists():
+                return {"error": "unauthorized access.. permission denied"}
+            if requested_user.role == 'STUDENT' and not account.taught_classes.filter(students=requested_user).exists():
+                return {"error": "unauthorized access.. permission denied"}
+
+        # Parents can view their children (students), teachers of their children, admins/principals of their children's schools, and other parents they share children with
+        if account.role == 'PARENT':
+            if requested_user.role == 'STUDENT' and requested_user not in account.children.all():
+                return {"error": "unauthorized access.. permission denied"}
+            if requested_user.role == 'TEACHER' and not account.children.filter(taught_classes__teacher=requested_user).exists():
+                return {"error": "unauthorized access.. permission denied"}
+            if requested_user.role in ['PRINCIPAL', 'ADMIN'] and not account.children.filter(school=requested_user.school).exists():
+                return {"error": "unauthorized access.. permission denied"}
+            if requested_user.role == 'PARENT' and not account.children.filter(pk__in=requested_user.children.values_list('pk', flat=True)).exists():
+                return {"error": "unauthorized access.. permission denied"}
+
+        # Students can only view their parents, teachers who teach them, and admins/principals from their own school
+        if account.role == 'STUDENT':
+            if requested_user.role not in ['PARENT', 'TEACHER', 'PRINCIPAL', 'ADMIN']:
+                return {"error": "unauthorized access.. permission denied"}
+            if requested_user.role == 'PARENT' and account not in requested_user.children.all():
+                return {"error": "unauthorized access.. permission denied"}
+            if requested_user.role == 'TEACHER' and not requested_user.taught_classes.filter(students=account).exists():
+                return {"error": "unauthorized access.. permission denied"}
+            if requested_user.role in ['PRINCIPAL', 'ADMIN'] and account.school != requested_user.school:
+                return {"error": "unauthorized access.. permission denied"}
+        
+        # return the users ID
+        serializer = AccountIDSerializer(instance=requested_user)
+        return { "user" : serializer.data }
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+    
+
+@database_sync_to_async
+def search_for_schedule(details):
+
+    try:
+        schedule = Schedule.objects.get(schedule_id=details.get('schedule_id'))
     
         sessions = schedule.sessions.all()
         serializer = SessoinsSerializer(sessions, many=True)
@@ -69,52 +206,14 @@ def search_schedule(schedule_id):
     
     except Exception as e:
         return { 'error': str(e) }
-    
-
-@database_sync_to_async
-def form_attendance_register(user, class_id):
-
-    try:
-        account = CustomUser.objects.get(account_id=user)
-        classroom = Classroom.objects.get(class_id=class_id, register_class=True, school=account.school)
-        
-        if account.role not in ['ADMIN', 'PRINCIPAL'] and classroom.teacher != account:
-            return { "error" : 'unauthorized request.. only the class teacher or school admin can submit the attendance register for this class' }
-        
-        # Get today's date
-        today = timezone.localdate()
-            
-        # Check if an Absent instance exists for today and the given class
-        attendance = Absent.objects.filter(date__date=today, classroom=classroom).first()
-
-        if attendance:
-            students = attendance.absent_students.all()
-            attendance_register_taken = True
-
-        else:
-            students = classroom.students.all()
-            attendance_register_taken = False
-
-        serializer = StudentAccountsSerializer(students, many=True)
-
-        return {"students": serializer.data, "attendance_register_taken" : attendance_register_taken}
-    
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-            
-    except Classroom.DoesNotExist:
-        return { 'error': 'class with the provided credentials does not exist' }
-
-    except Exception as e:
-        return { 'error': str(e) }
 
 
 @database_sync_to_async
-def submit_absentes(user, class_id, students):
+def submit_absentes(user, details):
 
     try:
         account = CustomUser.objects.get(account_id=user)
-        classroom = Classroom.objects.get(class_id=class_id, school=account.school, register_class=True)
+        classroom = Classroom.objects.get(class_id=details.get('class_id'), school=account.school, register_class=True)
         
         if account.role not in ['ADMIN', 'PRINCIPAL'] and classroom.teacher != account:
             return { "error" : 'unauthorized request.. only the class teacher or school admin can submit the attendance register for this class' }
@@ -126,9 +225,9 @@ def submit_absentes(user, class_id, students):
 
         with transaction.atomic():
             register = Absent.objects.create(submitted_by=account, classroom=classroom)
-            if students:
+            if details.get('students'):
                 register.absentes = True
-                for student in students.split(', '):
+                for student in details.get('students').split(', '):
                     register.absent_students.add(CustomUser.objects.get(account_id=student))
 
             register.save()
@@ -146,14 +245,14 @@ def submit_absentes(user, class_id, students):
 
 
 @database_sync_to_async
-def submit_late_arrivals(user, class_id, students):
+def submit_late_arrivals(user, details):
 
     try:
-        if not students:
+        if not details.get('students'):
             return {"error" : 'invalid request.. no students provided.. at least one student is needed to be marked as late'}
 
         account = CustomUser.objects.get(account_id=user)
-        classroom = Classroom.objects.get(class_id=class_id, school=account.school, register_class=True)
+        classroom = Classroom.objects.get(class_id=details.get('class_id'), school=account.school, register_class=True)
         
         if account.role not in ['ADMIN', 'PRINCIPAL'] and classroom.teacher != account:
             return { "error" : 'unauthorized request.. only the class teacher or school admin can submit the attendance register for this class' }
@@ -173,7 +272,7 @@ def submit_late_arrivals(user, class_id, students):
             if not register:
                 register = Late.objects.create(submitted_by=account, classroom=classroom)
                 
-            for student in students.split(', '):
+            for student in details.get('students').split(', '):
                 student = CustomUser.objects.get(account_id=student)
                 absentes.absent_students.remove(student)
                 register.late_students.add(student)
@@ -194,16 +293,16 @@ def submit_late_arrivals(user, class_id, students):
 
 
 @database_sync_to_async
-def search_month_attendance_records(user, class_id, month_name):
+def search_month_attendance_records(user, details):
 
     try:
         account = CustomUser.objects.get(account_id=user)
-        classroom = Classroom.objects.get(class_id=class_id, school=account.school, register_class=True)
-        
+        classroom = Classroom.objects.get(class_id=details.get('class_id'), school=account.school, register_class=True)
+
         if account.role not in ['ADMIN', 'PRINCIPAL'] and classroom.teacher != account:
             return { "error" : 'unauthorized request.. only the class teacher or school admin can view the attendance records for this class' }
         
-        start_date, end_date = get_month_dates(month_name)
+        start_date, end_date = get_month_dates(details.get('month_name'))
 
         # Query for the Absent instances where absentes is True
         absents = Absent.objects.filter(Q(date__gte=start_date) & Q(date__lt=end_date) & Q(classroom=classroom) & Q(absentes=True))
@@ -214,8 +313,8 @@ def search_month_attendance_records(user, class_id, month_name):
             late = Late.objects.filter(date__date=absent.date.date(), classroom=classroom).first()
             record = {
                 'date': absent.date.isoformat(),
-                'absent_students': StudentaccountAttendanceRecordSerializer(absent.absent_students.all(), many=True).data,
-                'late_students': StudentaccountAttendanceRecordSerializer(late.late_students.all(), many=True).data if late else [],
+                'absent_students': StudentAccountAttendanceRecordSerializer(absent.absent_students.all(), many=True).data,
+                'late_students': StudentAccountAttendanceRecordSerializer(late.late_students.all(), many=True).data if late else [],
             }
             attendance_records.append(record)
 
@@ -229,51 +328,16 @@ def search_month_attendance_records(user, class_id, month_name):
 
     except Exception as e:
         return { 'error': str(e) }
+
     
 
 @database_sync_to_async
-def fetch_email_information(user):
+def search_my_email_ban(details):
 
     try:
-        account = CustomUser.objects.get(account_id=user)
-        
-        email_bans = EmailBan.objects.filter(email=account.email).order_by('-banned_at')
-        serializer = EmailBansSerializer(email_bans, many=True)
-    
-        return {'information' : { "email_bans" : serializer.data, 'strikes' : account.email_ban_amount, 'banned' : account.email_banned }}
-        
-    except CustomUser.DoesNotExist:
-        return { 'error': 'user with the provided credentials does not exist' }
-    
-    except Exception as e:
-        return { 'error': str(e) }
-    
-    
-@database_sync_to_async
-def fetch_email_information(user):
+        email_ban = EmailBan.objects.get(ban_id=details.get('email_ban_id'))
 
-    try:
-        account = CustomUser.objects.get(account_id=user)
-        
-        email_bans = EmailBan.objects.filter(email=account.email).order_by('-banned_at')
-        serializer = EmailBansSerializer(email_bans, many=True)
-    
-        return {'information' : { "email_bans" : serializer.data, 'strikes' : account.email_ban_amount, 'banned' : account.email_banned }}
-        
-    except CustomUser.DoesNotExist:
-        return { 'error': 'user with the provided credentials does not exist' }
-    
-    except Exception as e:
-        return { 'error': str(e) }
-    
-
-@database_sync_to_async
-def search_email_ban(email, email_ban_id):
-
-    try:
-        email_ban = EmailBan.objects.get(ban_id=email_ban_id)
-        
-        if cache.get(email + 'email_revalidation_otp'):
+        if cache.get(details.get('email') + 'email_revalidation_otp'):
             can_request = False
         else:
             can_request = True
@@ -289,12 +353,12 @@ def search_email_ban(email, email_ban_id):
 
 
 @database_sync_to_async
-def validate_email_revalidation(user, email_ban_id):
+def validate_email_revalidation(user, details):
 
     try:
         account = CustomUser.objects.get(account_id=user)
 
-        email_ban = EmailBan.objects.get(ban_id=email_ban_id)
+        email_ban = EmailBan.objects.get(ban_id=details.get('email_ban_id'))
         
         if not email_ban.email == account.email:
             return { "error" : "invalid request, banned email different from account email" }
@@ -325,7 +389,7 @@ def validate_email_revalidation(user, email_ban_id):
 
 
 @database_sync_to_async
-def update_email_ban(email_ban_id):
+def update_email_ban_otp_sends(email_ban_id):
 
     try:
         email_ban = EmailBan.objects.get(ban_id=email_ban_id)
@@ -338,18 +402,18 @@ def update_email_ban(email_ban_id):
         return {"message": "a new OTP has been sent to your email address"}
 
     except EmailBan.DoesNotExist:
-        return {'error': 'ban with the provided credentials does not exist'}
+        return {'error': 'email ban with the provided credentials does not exist'}
     
     except Exception as e:
         return {'error': str(e)}
 
 
 @database_sync_to_async
-def verify_email_revalidate_otp(user, otp, email_ban_id):
+def verify_email_revalidate_otp(user, details):
 
     try:
         account = CustomUser.objects.get(account_id=user)
-        email_ban = EmailBan.objects.get(ban_id=email_ban_id)
+        email_ban = EmailBan.objects.get(ban_id=details.get('email_ban_id'))
         
         # try to get revalidation otp from cache
         hashed_otp = cache.get(account.email + 'email_revalidation_otp')
@@ -358,7 +422,7 @@ def verify_email_revalidate_otp(user, otp, email_ban_id):
             return {"error": "OTP expired"}
 
         # check if both otps are valid
-        if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=hashed_otp):
+        if verify_user_otp(user_otp=details.get('otp'), stored_hashed_otp_and_salt=hashed_otp):
             
             
             email_ban.status = 'APPEALED'
@@ -401,30 +465,30 @@ def verify_email_revalidate_otp(user, otp, email_ban_id):
     
 
 @database_sync_to_async
-def update_email(user, new_email, authorization_otp, access_token):
+def update_email(user, details, access_token):
     
     try:
-        if CustomUser.objects.filter(email=new_email).exists():
-            return {"error": "an account with the provided email address already exists"}
+        if not validate_user_email(details.get('new_email')):
+            return {'error': 'Invalid email format'}
         
+        if CustomUser.objects.filter(email=details.get('new_email')).exists():
+            return {"error": "an account with the provided email address already exists"}
+
         account = CustomUser.objects.get(account_id=user)
         
-        if new_email == account.email:
+        if details.get('new_email') == account.email:
             return {"error": "cannot set current email as new email"}
     
         hashed_authorization_otp = cache.get(account.email + 'authorization_otp')
         if not hashed_authorization_otp:
             return {"denied": "OTP expired, taking you back to email verification.."}
     
-        if not verify_user_otp(authorization_otp, hashed_authorization_otp):
+        if not verify_user_otp(details.get('authorization_otp'), hashed_authorization_otp):
             return {"denied": "incorrect authorization OTP, action forrbiden"}
-            
-        if not validate_user_email(new_email):
-            return {'error': 'Invalid email format'}
     
         EmailBan.objects.filter(email=account.email).delete()
         
-        account.email = new_email
+        account.email = details.get('new_email')
         account.email_ban_amount = 0
         account.save()
         
@@ -450,21 +514,21 @@ def update_email(user, new_email, authorization_otp, access_token):
 
 
 @database_sync_to_async
-def update_password(user, new_password, authorization_otp, access_token):
+def update_password(user, details, access_token):
     
     try:
         account = CustomUser.objects.get(account_id=user)
-    
+
         hashed_authorization_otp = cache.get(account.email + 'authorization_otp')
         if not hashed_authorization_otp:
             return {"denied": "OTP expired.. taking you back to password verification.."}
     
-        if not verify_user_otp(authorization_otp, hashed_authorization_otp):
+        if not verify_user_otp(details.get('authorization_otp'), hashed_authorization_otp):
             return {"denied": "incorrect authorization OTP.. action forrbiden"}
     
-        validate_password(new_password)
+        validate_password(details.get('new_password'))
         
-        account.set_password(new_password)
+        account.set_password(details.get('new_password'))
         account.save()
         
         # Decode the token
@@ -492,12 +556,13 @@ def update_password(user, new_password, authorization_otp, access_token):
     
 
 @database_sync_to_async
-def verify_email(email):
+def verify_email(details):
 
     try:
-        validate_email(email)
+        if not validate_user_email(details.get('email')):
+            return {'error': 'Invalid email format'}
         
-        account = CustomUser.objects.get(email=email)
+        account = CustomUser.objects.get(email=details.get('email'))
         
         # check if users email is banned
         if account.email_banned:
@@ -516,7 +581,7 @@ def verify_email(email):
 
 
 @database_sync_to_async
-def verify_password(user, password):
+def verify_password(user, details):
     
     try:
         account = CustomUser.objects.get(account_id=user)
@@ -526,7 +591,7 @@ def verify_password(user, password):
             return { "error" : "your email address has been banned, request denied"}
             
         # Validate the password
-        if not check_password(password, account.password):
+        if not check_password(details.get('password'), account.password):
             return {"error": "invalid password, please try again"}
         
         return {"user" : account}
@@ -539,18 +604,18 @@ def verify_password(user, password):
 
 
 @database_sync_to_async
-def verify_otp(user, otp):
+def verify_otp(user, details):
 
     try:
         account = CustomUser.objects.get(account_id=user)
-        
+
         stored_hashed_otp_and_salt = cache.get(account.email + 'account_otp')
 
         if not stored_hashed_otp_and_salt:
             cache.delete(account.email + 'account_otp_attempts')
             return {"denied": "OTP expired.. please generate a new one"}
 
-        if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
+        if verify_user_otp(user_otp=details.get('otp'), stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
             
             # OTP is verified, prompt the user to set their password
             cache.delete(account.email)
@@ -585,7 +650,7 @@ def verify_otp(user, otp):
     
 
 @database_sync_to_async
-def update_multi_factor_authentication(user, toggle):
+def update_multi_factor_authentication(user, details):
 
     try:
         account = CustomUser.objects.get(account_id=user)
@@ -593,10 +658,10 @@ def update_multi_factor_authentication(user, toggle):
         if account.email_banned:
             return { "error" : "your email has been banned"}
     
-        account.multifactor_authentication = toggle
+        account.multifactor_authentication = details.get('toggle')
         account.save()
         
-        return {'message': 'Multifactor authentication {} successfully'.format('enabled' if toggle else 'disabled')}
+        return {'message': 'Multifactor authentication {} successfully'.format('enabled' if details.get('toggle') else 'disabled')}
     
     except CustomUser.DoesNotExist:
         return { 'error': 'user with the provided credentials does not exist' }
@@ -628,6 +693,44 @@ def log_user_out(access_token):
 
     except Exception as e:
         return {"error": str(e)}
+    
+
+@database_sync_to_async
+def form_data_for_attendance_register(user, details):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        classroom = Classroom.objects.get(class_id=details.get('class_id'), register_class=True, school=account.school)
+        
+        if account.role not in ['ADMIN', 'PRINCIPAL'] and classroom.teacher != account:
+            return { "error" : 'unauthorized request.. only the class teacher or school admin can submit the attendance register for this class' }
+        
+        # Get today's date
+        today = timezone.localdate()
+            
+        # Check if an Absent instance exists for today and the given class
+        attendance = Absent.objects.filter(date__date=today, classroom=classroom).first()
+
+        if attendance:
+            students = attendance.absent_students.all()
+            attendance_register_taken = True
+
+        else:
+            students = classroom.students.all()
+            attendance_register_taken = False
+
+        serializer = AccountSerializer(students, many=True)
+
+        return {"students": serializer.data, "attendance_register_taken" : attendance_register_taken}
+    
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+            
+    except Classroom.DoesNotExist:
+        return { 'error': 'class with the provided credentials does not exist' }
+
+    except Exception as e:
+        return { 'error': str(e) }
 
 
 async def send_account_confirmation_email(user):
