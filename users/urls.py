@@ -10,7 +10,7 @@ urlpatterns = [
     path('my-profile/', views.my_profile, name='user profile info'),
 
     # profile picture update 
-    path("update-profile-picture/", views.update_profile_picture, name="update profile picture"),
-    path("remove_profile_picture/", views.remove_profile_picture, name="remove profile picture"),
+    # path("update-profile-picture/", views.update_profile_picture, name="update profile picture"),
+    # path("remove_profile_picture/", views.remove_profile_picture, name="remove profile picture"),
 
 ]
