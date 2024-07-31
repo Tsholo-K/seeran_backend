@@ -133,7 +133,7 @@ def update_account(user, details):
         updates = details.get('updates')
 
         if updates.get('email'):
-            if not validate_user_email(details.get('email')):
+            if not validate_user_email(updates.get('email')):
                 return {'error': 'Invalid email format'}
 
             if CustomUser.objects.filter(email=updates.get('email')).exists():
@@ -151,7 +151,7 @@ def update_account(user, details):
             
             with transaction.atomic():
                 serializer.save()
-                account.refresh_from_db()  # Refresh the user instance from the database
+                requested_user.refresh_from_db()  # Refresh the user instance from the database
             
             serializer = AccountIDSerializer(instance=requested_user)
             return { "user" : serializer.data }
