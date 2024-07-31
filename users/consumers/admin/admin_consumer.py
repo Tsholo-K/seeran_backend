@@ -151,10 +151,13 @@ class AdminConsumer(AsyncWebsocketConsumer):
         func = put_map.get(description)
         if func:
             response = await func(user, details, access_token) if description in ['update_email', 'update_password'] else await func(user, details)
+            
             if description == 'send_email_revalidation_otp' and response.get('user'):
-                await general_async_functions.send_email_revalidation_one_time_pin_email(response.get('user'))
+                response = await general_async_functions.send_email_revalidation_one_time_pin_email(response.get('user'))
+
                 if response.get('message'):
                     return await general_async_functions.update_email_ban_otp_sends(details)
+                
             return response
         
         return {'error': 'Invalid put description'}
@@ -177,7 +180,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
         }
 
         func = post_map.get(description)
-        
+
         if func:
             response = await func(user, details)
 

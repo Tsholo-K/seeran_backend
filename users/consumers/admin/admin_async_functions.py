@@ -132,7 +132,7 @@ def update_account(user, details):
     try:
         updates = details.get('updates')
 
-        if updates.get('email') != (None or ''):
+        if updates.get('email'):
             if not validate_user_email(details.get('email')):
                 return {'error': 'Invalid email format'}
 
@@ -145,7 +145,7 @@ def update_account(user, details):
         if requested_user.role == 'FOUNDER' or (requested_user.role in ['PRINCIPAL', 'ADMIN'] and account.role != 'PRINCIPAL') or (requested_user.role != 'PARENT' and account.school != requested_user.school) or (requested_user.role == 'PARENT' and not requested_user.children.filter(school=account.school).exists()):
             return { "error" : 'unauthorized access.. permission denied' }
         
-        serializer = AccountUpdateSerializer(instance=account, data=updates)
+        serializer = AccountUpdateSerializer(instance=requested_user, data=updates)
         
         if serializer.is_valid():
             
@@ -153,7 +153,7 @@ def update_account(user, details):
                 serializer.save()
                 account.refresh_from_db()  # Refresh the user instance from the database
             
-            serializer = AccountIDSerializer(instance=account)
+            serializer = AccountIDSerializer(instance=requested_user)
             return { "user" : serializer.data }
             
         return {"error" : serializer.errors}
