@@ -198,7 +198,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         ordering = ['name', 'surname', 'account_id']
 
     def __str__(self):
-        return self.email if self.email else self.id_number
+        return self.name + ' ' + self.surname
 
     def save(self, *args, **kwargs):
         """
