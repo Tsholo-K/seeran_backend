@@ -100,7 +100,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
         func = search_map.get(description)
         
         if func:
-            response = await func(details) if description == 'schedule' else await func(user, details)
+            response = await func(details) if description in ['schedule'] else await func(user, details)
             return response
         
         return {'error': 'Invalid search description'}
@@ -174,7 +174,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'create_subject_class': admin_async_functions.create_subject_class,
             'create_register_class': admin_async_functions.create_register_class,
             'create_teacher_schedule': admin_async_functions.create_teacher_schedule,
-            'delete_teacher_schedule': admin_async_functions.delete_teacher_schedule,
+            'delete_schedule': admin_async_functions.delete_schedule,
             'add_students_to_register_class': admin_async_functions.add_students_to_register_class,
             'remove_student_from_register_class': admin_async_functions.remove_student_from_register_class,
             'submit_absentes': general_async_functions.submit_absentes,

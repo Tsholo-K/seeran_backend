@@ -699,7 +699,7 @@ def search_schedules(user, details):
 
 
 @database_sync_to_async
-def delete_teacher_schedule(user, details):
+def delete_schedule(user, details):
 
     try:
         account = CustomUser.objects.get(account_id=user)
