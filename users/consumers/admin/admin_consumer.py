@@ -82,19 +82,20 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
     async def handle_search(self, description, details, user, access_token):
         search_map = {
-            'email_ban': general_async_functions.search_my_email_ban,
             'accounts': admin_async_functions.search_accounts,
             'students': admin_async_functions.search_students,
+            'parents': general_async_functions.search_parents,
             'account_profile': general_async_functions.search_account_profile,
             'account_id': general_async_functions.search_account_id,
+            'schedules': general_async_functions.search_schedules,
+            'schedule': general_async_functions.search_for_schedule,
             'teacher_classes': admin_async_functions.search_teacher_classes,
-            'schedules': admin_async_functions.search_schedules,
-            'grade': admin_async_functions.search_grade,
             'register_classes': admin_async_functions.search_grade_register_classes,
+            'search_month_attendance_records': general_async_functions.search_month_attendance_records,
+            'grade': admin_async_functions.search_grade,
             'subject': admin_async_functions.search_subject,
             'class': admin_async_functions.search_class,
-            'schedule': general_async_functions.search_for_schedule,
-            'search_month_attendance_records': general_async_functions.search_month_attendance_records,
+            'email_ban': general_async_functions.search_my_email_ban,
         }
 
         func = search_map.get(description)

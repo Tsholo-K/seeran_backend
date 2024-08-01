@@ -22,7 +22,6 @@ from attendances.models import Absent
 
 # serilializers
 from users.serializers import AccountUpdateSerializer, AccountIDSerializer, AccountSerializer, AccountCreationSerializer, StudentAccountCreationSerializer, ParentAccountCreationSerializer
-from timetables.serializers import SchedulesSerializer
 from grades.serializers import GradesSerializer, GradeSerializer, SubjectDetailSerializer, ClassesSerializer
 from classes.serializers import ClassSerializer, ClassUpdateSerializer, TeacherClassesSerializer
 
@@ -136,7 +135,7 @@ def link_parent(user, details):
         existing_parent = CustomUser.objects.filter(email=details.get('email')).first()
         if existing_parent:
             if existing_parent.role != 'PARENT':
-                return {"error": "An account with the provided email address already exists but is not a parent."}
+                return {"error": "an account with the provided email address already exists, but the accounts role is not parent"}
             return {'alert': 'There is already a parent account created with the provided email address', 'parent': existing_parent.account_id}
        
         account = CustomUser.objects.get(account_id=user)
@@ -696,43 +695,6 @@ def create_schedule(user, details):
     
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
-    
-    except Exception as e:
-        return { 'error': str(e) }
-
-
-@database_sync_to_async
-def search_schedules(user, details):
-
-    try:
-        admin = CustomUser.objects.get(account_id=user)
-        account  = CustomUser.objects.get(account_id=details.get('account_id'))
-
-        if account.role not in ['TEACHER', 'STUDENT'] or  admin.school != account.school:
-            return { "error" : 'unauthorized request.. permission denied' }
-        
-        if account.role == 'STUDENT':
-            group_schedules = GroupSchedule.objects.get(students=account)
-            schedules = group_schedules.schedules.all()
-            serializer = SchedulesSerializer(schedules, many=True)
-
-            return {"schedules": serializer.data, 'group_name' : group_schedules.group_name}
-
-        if account.role == 'TEACHER':
-            teacher_schedule = TeacherSchedule.objects.get(teacher=account)
-            schedules = teacher_schedule.schedules.all()
-            serializer = SchedulesSerializer(schedules, many=True)
-
-            return {"schedules": serializer.data}
-        
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-    
-    except TeacherSchedule.DoesNotExist:
-        return { 'schedules': [] }
-    
-    except GroupSchedule.DoesNotExist:
-        return {'schedules': [], 'group_name' : 'No Group' }
     
     except Exception as e:
         return { 'error': str(e) }

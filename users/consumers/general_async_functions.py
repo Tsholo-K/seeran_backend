@@ -26,14 +26,15 @@ from rest_framework_simplejwt.exceptions import TokenError
 from users.models import CustomUser
 from auth_tokens.models import AccessToken
 from email_bans.models import EmailBan
-from timetables.models import Schedule
+from timetables.models import Schedule, TeacherSchedule, GroupSchedule
 from classes.models import Classroom
 from attendances.models import Absent, Late
+from grades.models import Grade
 
 # serializers
 from users.serializers import AccountSerializer, StudentAccountAttendanceRecordSerializer, AccountProfileSerializer, AccountIDSerializer
 from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
-from timetables.serializers import SessoinsSerializer
+from timetables.serializers import SessoinsSerializer, SchedulesSerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
@@ -185,6 +186,85 @@ def search_account_id(user, details):
         
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+    
+
+@database_sync_to_async
+def search_parents(user, details):
+
+    try:
+        if user == details.get('account_id'):
+            student = CustomUser.objects.get(account_id=user)
+
+            if student.role != 'STUDENT':
+                return { "error" : 'unauthorized request.. permission denied' }
+            
+        else:
+            account = CustomUser.objects.get(account_id=user)
+
+            if account.role not in ['ADMIN', 'PRINCIPAL', 'TEACHER', 'PARENT']:
+                return { "error" : 'invalid role for request.. permission denied' }
+      
+            student = CustomUser.objects.get(account_id=details.get('account_id'))
+            
+            if student.role != 'STUDENT':
+                return { "error" : 'unauthorized request.. permission denied' }
+
+            if account.role in ['ADMIN', 'PRINCIPAL'] and account.school != student.school:
+                return { "error" : 'unauthorized request.. permission denied' }
+                
+            if account.role == 'TEACHER' and not account.taught_classes.filter(students=student).exists():
+                return {"error": "unauthorized access.. permission denied"}
+                
+            if account.role == 'PARENT' and account not in student.children.all():
+                return {"error": "unauthorized access.. permission denied"}
+
+            parents = CustomUser.objects.filter(children=student, role='PARENT').exclude(account) if account.role == 'PARENT' else CustomUser.objects.filter(children=student, role='PARENT')
+
+        serializer = AccountSerializer(parents, many=True)
+
+        return {"parents": serializer.data}
+    
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+           
+    except Grade.DoesNotExist:
+        return { 'error': 'grade with the provided credentials does not exist' }
+    
+    except Exception as e:
+        return { 'error': str(e) }
+    
+
+@database_sync_to_async
+def search_schedules(user, details):
+
+    try:
+        if user == details.get('account_id'):
+            teacher  = CustomUser.objects.get(account_id=user)
+
+            if teacher.role != 'TEACHER':
+                return { "error" : 'unauthorized request.. permission denied' }
+
+        else:
+            account = CustomUser.objects.get(account_id=user)
+            teacher = CustomUser.objects.get(account_id=details.get('account_id'))
+
+            if teacher.role != 'TEACHER' or account.school != teacher.school or account.role not in ['ADMIN', 'PRINCIPAL']:
+                return { "error" : 'unauthorized request.. permission denied' }
+
+        teacher_schedule = TeacherSchedule.objects.get(teacher=teacher)
+        schedules = teacher_schedule.schedules.all()
+        serializer = SchedulesSerializer(schedules, many=True)
+
+        return {"schedules": serializer.data}
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except TeacherSchedule.DoesNotExist:
+        return { 'schedules': [] }
     
     except Exception as e:
         return { 'error': str(e) }
