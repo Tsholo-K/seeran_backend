@@ -85,6 +85,8 @@ def create_student_account(user, details):
             
             if CustomUser.objects.filter(id_number=details.get('id_number')).exists():
                 return {"error": "a user with this ID number already exists."}
+            
+            details['passport_number'] = None
 
         if details.get('citizen') == 'no':
             if details.get('passport_number') == (None or ''):
@@ -92,11 +94,14 @@ def create_student_account(user, details):
             
             if CustomUser.objects.filter(passport_number=details.get('passport_number')).exists():
                 return {"error": "a user with this Passport Number already exists."}
+            
+            details['id_number'] = None
 
         account = CustomUser.objects.get(account_id=user)
         grade = Grade.objects.get(grade_id=details.get('grade_id'), school=account.school)
 
         details['grade'] = grade.pk
+        details['role'] = 'STUDENT'
 
         serializer = StudentAccountCreationSerializer(data=details)
         
