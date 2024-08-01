@@ -173,7 +173,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'create_subjects': admin_async_functions.create_subjects,
             'create_subject_class': admin_async_functions.create_subject_class,
             'create_register_class': admin_async_functions.create_register_class,
-            'create_teacher_schedule': admin_async_functions.create_teacher_schedule,
+            'create_schedule': admin_async_functions.create_schedule,
             'delete_schedule': admin_async_functions.delete_schedule,
             'add_students_to_register_class': admin_async_functions.add_students_to_register_class,
             'remove_student_from_register_class': admin_async_functions.remove_student_from_register_class,

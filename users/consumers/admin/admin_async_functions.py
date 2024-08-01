@@ -594,7 +594,7 @@ def create_group_schedule(user, group_name, grade_id):
 
 
 @database_sync_to_async
-def create_teacher_schedule(user, details):
+def create_schedule(user, details):
 
     try:
         if details.get('day').upper() not in [ 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']:
