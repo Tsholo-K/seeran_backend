@@ -82,11 +82,10 @@ class CustomUserManager(BaseUserManager):
             if not id_number and not passport_number:
                 raise ValueError(_('Either ID or Passport number is required for a student account'))
             
-            if passport_number != '':
-                id_number = None
-            
-            if id_number != '':
+            if id_number:
                 passport_number = None
+            else:
+                id_number = None
             
             if not grade:
                 raise ValueError(_('Student needs to be allocated to a grade'))
