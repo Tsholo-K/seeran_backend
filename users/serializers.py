@@ -159,9 +159,9 @@ class PrincipalAccountCreationSerializer(serializers.ModelSerializer):
 
 class StudentAccountCreationSerializer(serializers.ModelSerializer):
 
-    email = serializers.EmailField(required=False, allow_blank=True)  # Make email optional
-    id_number = serializers.EmailField(required=False)  # Make email optional
-    passport_number = serializers.EmailField(required=False)  # Make email optional
+    email = serializers.EmailField(required=False, allow_blank=True)  # Make optional
+    id_number = serializers.CharField(required=False)  # Make optional
+    passport_number = serializers.CharField(required=False)  # Make optional
 
     class Meta:
         model = CustomUser
