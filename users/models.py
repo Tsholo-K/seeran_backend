@@ -13,7 +13,7 @@ from schools.models import School
 from grades.models import Grade
 
 # utility functions
-from authentication.utils import get_upload_path, is_phone_number_valid
+from authentication.utils import get_upload_path, is_phone_number_valid, validate_user_email
 
 
 class CustomUserManager(BaseUserManager):
@@ -48,24 +48,36 @@ class CustomUserManager(BaseUserManager):
 
         # Ensure at least one identifier (email, ID number, passport number) is provided
         if not email and not id_number and not passport_number:
-            raise ValueError(_('Either email, ID number or Passport number must be provided'))
+            raise ValueError(_('either email, ID number or Passport number must be provided for the creation of an account depandant on role'))
+        
+        # Ensure name and surname are provided
+        if not name:
+            raise ValueError(_('invalid information provided, account missing name. all accounts are required to have a name associated with them no matter the role'))
+        if not surname:
+            raise ValueError(_('invalid information provided, account missing surname. all accounts are required to have a surname associated with them no matter the role'))
 
         # Check if the email already exists
-        if email and self.model.objects.filter(email=email).exists():
-            raise ValueError(_('An account with the provided email already exists'))
+        if email:
+            if not validate_user_email(email):
+                raise ValueError(_('invalid email address'))
+            
+            if self.model.objects.filter(email=email).exists():
+                raise ValueError(_('an account with the provided email address already exists'))
+            
+            email = self.normalize_email(email)
 
         # Check if the ID number already exists
         if id_number and self.model.objects.filter(id_number=id_number).exists():
-            raise ValueError(_('An account with the provided ID number already exists'))
+            raise ValueError(_('an account with the provided ID number already exists'))
         
         # Check if the passport number already exists
         if passport_number and self.model.objects.filter(passport_number=passport_number).exists():
-            raise ValueError(_('An account with the provided Passport number already exists'))
+            raise ValueError(_('an account with the provided Passport number already exists'))
 
         # Validate role-specific requirements
         if role in ['STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL']:
             if school is None:
-                raise ValueError(_('Account must be associated with a school'))
+                raise ValueError(_('the role specified for the account requires that the account be associated with a school'))
         else:
             school = None  # Parents/founders should not be associated with a school
 
@@ -96,10 +108,6 @@ class CustomUserManager(BaseUserManager):
             grade = None
             passport_number = None
             id_number = None
-
-        # Normalize email address
-        if email:
-            email = self.normalize_email(email)
 
         # Create and save user instance
         user = self.model(email=email, id_number=id_number, passport_number=passport_number, name=name, surname=surname, grade=grade, phone_number=phone_number, role=role, school=school, **extra_fields)

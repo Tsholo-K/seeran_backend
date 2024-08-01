@@ -21,7 +21,7 @@ from classes.models import Classroom
 from attendances.models import Absent
 
 # serilializers
-from users.serializers import AccountUpdateSerializer, AccountIDSerializer, AccountSerializer, AccountCreationSerializer, StudentAccountCreationSerializer
+from users.serializers import AccountUpdateSerializer, AccountIDSerializer, AccountSerializer, AccountCreationSerializer, StudentAccountCreationSerializer, ParentAccountCreationSerializer
 from timetables.serializers import SchedulesSerializer
 from grades.serializers import GradesSerializer, GradeSerializer, SubjectDetailSerializer, ClassesSerializer
 from classes.serializers import ClassSerializer, ClassUpdateSerializer, TeacherClassesSerializer
@@ -69,29 +69,29 @@ def create_account(user, details):
 def create_student_account(user, details):
 
     try:
-        if details.get('email') != (None or ''):
+        if details.get('citizen') not in ['yes', 'no']:
+            return {"error": "invalid citizen value"}
+
+        if details.get('email'):
             if not validate_user_email(details.get('email')):
                 return {'error': 'Invalid email format'}
             
             if CustomUser.objects.filter(email=details.get('email')).exists():
                 return {"error": "an account with the provided email address already exists"}
 
-        if details.get('citizen') not in ['yes', 'no']:
-            return {"error": "invalid citizen value"}
-
         if details.get('citizen') == 'yes':
-            if details.get('id_number') == (None or ''):
-                return {"error": "ID number needed for all citizen students"}
+            if not details.get('id_number'):
+                return {"error": "ID number needed for all student accounts who are citizens"}
             
             if CustomUser.objects.filter(id_number=details.get('id_number')).exists():
-                return {"error": "a user with this ID number already exists."}
+                return {"error": "an account with this ID number already exists"}
 
         if details.get('citizen') == 'no':
-            if details.get('passport_number') == (None or ''):
-                return {"error": "Passport number needed for all none citizen students"}
+            if not details.get('passport_number'):
+                return {"error": "Passport number needed for all student accounts who are not citizens"}
             
             if CustomUser.objects.filter(passport_number=details.get('passport_number')).exists():
-                return {"error": "a user with this Passport Number already exists."}
+                return {"error": "an account with this Passport Number already exists"}
 
         account = CustomUser.objects.get(account_id=user)
         grade = Grade.objects.get(grade_id=details.get('grade_id'), school=account.school)
@@ -120,10 +120,50 @@ def create_student_account(user, details):
     
     except Grade.DoesNotExist:
         return { 'error': 'grade with the provided credentials does not exist' }
-    
-    except IntegrityError as e:
-        return {'error': 'account with the provided email address already exists'}
 
+    except Exception as e:
+        return { 'error': str(e) }
+
+
+@database_sync_to_async
+def link_parent(user, details):
+
+    try:
+        if not validate_user_email(details.get('email')):
+            return {'error': 'Invalid email format'}
+    
+        # Check if an account with the provided email already exists
+        existing_parent = CustomUser.objects.filter(email=details.get('email')).first()
+        if existing_parent:
+            if existing_parent.role != 'PARENT':
+                return {"error": "An account with the provided email address already exists but is not a parent."}
+            return {'alert': 'There is already a parent account created with the provided email address', 'parent': existing_parent.account_id}
+       
+        account = CustomUser.objects.get(account_id=user)
+        child = CustomUser.objects.get(account_id=details.get('child'), school=account.school, role='STUDENT')
+
+        # Check if the child already has two or more parents linked
+        parent_count = CustomUser.objects.filter(children=child, role='PARENT').count()
+        if parent_count >= 2:
+            return {"error": "maximum number of linked parents reached for the provided student account"}
+
+        details['role'] = 'PARENT'
+        
+        serializer = ParentAccountCreationSerializer(data=details)
+        
+        if serializer.is_valid():
+            
+            with transaction.atomic():
+                parent = CustomUser.objects.create_user(**serializer.validated_data)
+                parent.children.add(child)
+
+            return {'user' : parent}
+            
+        return {"error" : serializer.errors}
+           
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
     except Exception as e:
         return { 'error': str(e) }
 

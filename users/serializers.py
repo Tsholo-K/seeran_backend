@@ -158,18 +158,13 @@ class StudentAccountCreationSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = [ 'name', 'surname', 'id_number', 'passport_number', 'email', 'school', 'role', 'grade' ]
-        
 
-class PrincipalAccountUpdateSerializer(serializers.ModelSerializer):
 
-    name = serializers.CharField(required=False)  # Corrected to CharField
-    surname = serializers.CharField(required=False)  # Corrected to CharField
-    email = serializers.EmailField(required=False)  # Make email optional
-    phone_number = serializers.CharField(required=False)  # Corrected to CharField
+class ParentAccountCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['name', 'surname', 'email', 'phone_number']
+        fields = [ 'name', 'surname', 'email',  'role' ]
 
 
 class AccountCreationSerializer(serializers.ModelSerializer):
@@ -177,6 +172,18 @@ class AccountCreationSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = [ 'name', 'surname', 'email', 'school', 'role', ]
+        
+
+class PrincipalAccountUpdateSerializer(serializers.ModelSerializer):
+
+    name = serializers.CharField(required=False)
+    surname = serializers.CharField(required=False)
+    email = serializers.EmailField(required=False)  # Make email optional
+    phone_number = serializers.CharField(required=False)
+
+    class Meta:
+        model = CustomUser
+        fields = ['name', 'surname', 'email', 'phone_number']
 
 
 class AccountUpdateSerializer(serializers.ModelSerializer):
@@ -184,8 +191,8 @@ class AccountUpdateSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=False)  # Make email optional
     id_number = serializers.CharField(required=False)  # Make id number optional
     grade = serializers.IntegerField(required=False)  # Make grade number optional
-    name = serializers.CharField(required=False)  # Corrected to CharField
-    surname = serializers.CharField(required=False)  # Corrected to CharField
+    name = serializers.CharField(required=False)
+    surname = serializers.CharField(required=False)
 
     class Meta:
         model = CustomUser

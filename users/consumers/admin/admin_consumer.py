@@ -179,6 +179,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'remove_student_from_register_class': admin_async_functions.remove_student_from_register_class,
             'submit_absentes': general_async_functions.submit_absentes,
             'submit_late_arrivals': general_async_functions.submit_late_arrivals,
+            'link_parent': admin_async_functions.link_parent,
         }
 
         func = post_map.get(description)
@@ -186,7 +187,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
         if func:
             response = await func(user, details)
 
-            if response.get('user') and description in ['create_account', 'create_student_account']:
+            if response.get('user') and description in ['create_account', 'create_student_account', 'link_parent']:
                 return await general_async_functions.send_account_confirmation_email(response.get('user'))
             
             return response
