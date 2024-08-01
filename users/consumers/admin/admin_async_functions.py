@@ -96,6 +96,7 @@ def create_student_account(user, details):
         account = CustomUser.objects.get(account_id=user)
         grade = Grade.objects.get(grade_id=details.get('grade_id'), school=account.school)
 
+        details['school'] = account.school.pk
         details['grade'] = grade.pk
         details['role'] = 'STUDENT'
 
