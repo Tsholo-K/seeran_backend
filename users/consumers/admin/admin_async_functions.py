@@ -70,7 +70,7 @@ def create_student_account(user, details):
 
     try:
         if details.get('email') != (None or ''):
-            if not validate_user_email(details.get('new_email')):
+            if not validate_user_email(details.get('email')):
                 return {'error': 'Invalid email format'}
             
             if CustomUser.objects.filter(email=details.get('email')).exists():
