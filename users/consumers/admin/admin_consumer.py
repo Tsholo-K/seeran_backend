@@ -168,6 +168,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
         post_map = {
             'create_account': admin_async_functions.create_account,
             'create_student_account': admin_async_functions.create_student_account,
+            'link_parent': admin_async_functions.link_parent,
             'delete_account': admin_async_functions.delete_account,
             'create_grade': admin_async_functions.create_grade,
             'create_subjects': admin_async_functions.create_subjects,
@@ -179,7 +180,6 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'remove_student_from_register_class': admin_async_functions.remove_student_from_register_class,
             'submit_absentes': general_async_functions.submit_absentes,
             'submit_late_arrivals': general_async_functions.submit_late_arrivals,
-            'link_parent': admin_async_functions.link_parent,
         }
 
         func = post_map.get(description)
