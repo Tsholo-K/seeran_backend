@@ -100,7 +100,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
         func = search_map.get(description)
         
         if func:
-            return await func(user, details)
+            response = await func(details) if description == 'schedule' else await func(user, details)
+            return response
         
         return {'error': 'Invalid search description'}
 
