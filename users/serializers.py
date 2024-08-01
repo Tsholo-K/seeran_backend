@@ -160,19 +160,12 @@ class PrincipalAccountCreationSerializer(serializers.ModelSerializer):
 class StudentAccountCreationSerializer(serializers.ModelSerializer):
 
     email = serializers.EmailField(required=False, allow_blank=True)  # Make optional
-    id_number = serializers.CharField(required=False)  # Make optional
-    passport_number = serializers.CharField(required=False)  # Make optional
+    id_number = serializers.CharField(required=False, allow_blank=True)  # Make optional
+    passport_number = serializers.CharField(required=False, allow_blank=True)  # Make optional
 
     class Meta:
         model = CustomUser
         fields = [ 'name', 'surname', 'id_number', 'passport_number', 'email', 'school', 'role', 'grade' ]
-
-
-class AccountCreationSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = CustomUser
-        fields = [ 'name', 'surname', 'email', 'school', 'role', ]
         
 
 class PrincipalAccountUpdateSerializer(serializers.ModelSerializer):
@@ -185,6 +178,13 @@ class PrincipalAccountUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ['name', 'surname', 'email', 'phone_number']
+
+
+class AccountCreationSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = CustomUser
+        fields = [ 'name', 'surname', 'email', 'school', 'role', ]
 
 
 class AccountUpdateSerializer(serializers.ModelSerializer):
