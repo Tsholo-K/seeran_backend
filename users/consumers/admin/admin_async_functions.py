@@ -224,11 +224,51 @@ def delete_account(user, details):
         return {"message" : 'account successfully deleted'}
         
     except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
+        return {'error': 'the account with the provided credentials does not exist, please check the account details and try again'}
     
     except Exception as e:
         return { 'error': str(e) }
-    
+
+
+@database_sync_to_async
+def unlink_parent(user, details):
+    """
+    Unlink a parent account from a student account.
+
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing the account IDs of the parent and student to be unlinked.
+
+    Returns:
+        dict: A dictionary containing either a success message or an error message.
+    """
+    try:
+        # Fetch the account of the user making the request
+        account = CustomUser.objects.get(account_id=user)
+
+        # Fetch the student account using the provided child ID
+        child = CustomUser.objects.get(account_id=details.get('child_id'))
+
+        # Ensure the specified account is a student and belongs to the same school
+        if child.role != 'STUDENT' or account.school != child.school:
+            return {"error": "unauthorized action, the specified student account is either not a student or does not belong to your school. please ensure you are attempting to unlink a parent from a student enrolled in your school"}
+
+        # Fetch the parent account using the provided parent ID
+        parent = CustomUser.objects.get(account_id=details.get('parent_id'), role='PARENT')
+
+        # Remove the child from the parent's list of children
+        parent.children.remove(child)
+
+        return {"message": "the parent account has been successfully unlinked. the account will no longer be associated with the student or have access to the student's information"}
+
+    except CustomUser.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'the account with the provided credentials does not exist, please check the account details and try again'}
+
+    except Exception as e:
+        # Handle any unexpected errors
+        return {'error': str(e)}
+
 
 @database_sync_to_async
 def search_accounts(user, details):
