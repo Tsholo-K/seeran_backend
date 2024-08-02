@@ -651,70 +651,105 @@ def search_students(user, details):
 
 @database_sync_to_async
 def create_schedule(user, details):
+    """
+    Creates a schedule for a teacher or a group based on the provided details.
 
+    Parameters:
+    user (str): The account ID of the user creating the schedule.
+    details (dict): A dictionary containing the schedule details. It should include:
+        - 'day' (str): The day of the week for the schedule.
+        - 'for_group' (bool): Flag indicating whether the schedule is for a group.
+        - 'group_schedule_id' (str): The ID of the group schedule (if for_group is True).
+        - 'account_id' (str): The account ID of the teacher (if for_group is False).
+        - 'sessions' (list): A list of session details. Each session should include:
+            - 'class' (str): The type of class for the session.
+            - 'classroom' (str, optional): The classroom for the session.
+            - 'startTime' (dict): A dictionary with 'hour', 'minute', and 'second' for the start time.
+            - 'endTime' (dict): A dictionary with 'hour', 'minute', and 'second' for the end time.
+
+    Returns:
+    dict: A dictionary with a 'message' key if the schedule was successfully created, 
+          or an 'error' key if there was an error.
+    """
     try:
-        if details.get('day').upper() not in [ 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']:
-            return { "error" : 'the provided day for the schedule is invalid, please check that the day falls under any day in the Gregorian calendar'}
+        # Validate the day
+        if details.get('day').upper() not in ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']:
+            return {"error": 'The provided day for the schedule is invalid, please check that the day falls under any day in the Gregorian calendar'}
 
+        # Fetch the user account
         account = CustomUser.objects.get(account_id=user)
-        teacher = CustomUser.objects.get(account_id=details.get('account_id'))
 
-        if teacher.school != account.school or teacher.role != 'TEACHER':
-            return { "error" : 'the specified teacher account is either not a teacher or does not belong to your school. please ensure you are attempting to create schedules for a parent from a teacher enrolled in your school'}
+        for_group_schedule = details.get('for_group')
+        if for_group_schedule:
+            # Fetch the group schedule and validate school association
+            group_schedule = GroupSchedule.objects.get(group_schedule_id=details.get('group_schedule_id'))
+            if group_schedule.grade.school != account.school:
+                return {"error": 'the specified group schedule does not belong to your school. please ensure you are attempting to create schedules for a group schedule from your school'}
+        else:
+            # Fetch the teacher account and validate school and role
+            teacher = CustomUser.objects.get(account_id=details.get('account_id'))
+            if teacher.school != account.school or teacher.role != 'TEACHER':
+                return {"error": 'the specified teacher account is either not a teacher or does not belong to your school. please ensure you are attempting to create schedules for a teacher enrolled in your school'}
 
+        # Begin database transaction
         with transaction.atomic():
+            # Create and save the schedule
             schedule = Schedule(day=details.get('day').upper(), day_order=Schedule.DAY_OF_THE_WEEK_ORDER[details.get('day').upper()])
             schedule.save()  # Save to generate a unique schedule_id
-            
+
             # Iterate over the sessions in the provided data
             for session_info in details.get('sessions'):
-                
                 # Convert the start and end times to Time objects
                 start_time = parse_time(f"{session_info['startTime']['hour']}:{session_info['startTime']['minute']}:{session_info['startTime']['second']}")
                 end_time = parse_time(f"{session_info['endTime']['hour']}:{session_info['endTime']['minute']}:{session_info['endTime']['second']}")
-                
-                # Create a new Session object
-                session = Session( type=session_info['class'], classroom=session_info.get('classroom'), session_from=start_time, session_till=end_time )
+
+                # Create a new Session object and save it
+                session = Session(type=session_info['class'], classroom=session_info.get('classroom'), session_from=start_time, session_till=end_time)
                 session.save()
-                
+
                 # Add the session to the schedule's sessions
                 schedule.sessions.add(session)
-            
+
             # Save the schedule again to commit the added sessions
             schedule.save()
 
-            # Check if the teacher already has a schedule for the provided day
-            existing_teacher_schedules = TeacherSchedule.objects.filter(teacher=teacher, schedules__day=details.get('day').upper())
+            if for_group_schedule:
+                # Remove the specific schedules for that day from the group schedule
+                group_schedule.schedules.filter(day=details.get('day').upper()).delete()
 
-            for schedule in existing_teacher_schedules:
-                # Remove the specific schedules for that day
-                schedule.schedules.filter(day=details.get('day').upper()).delete()
+                # Add the new schedule to the group's schedules and save
+                group_schedule.schedules.add(schedule)
+                group_schedule.save()
 
-            # Check if the teacher already has a TeacherSchedule object
-            teacher_schedule, created = TeacherSchedule.objects.get_or_create(teacher=teacher)
+                # Return a success response
+                return {'message': 'a new schedule has been added to the group\'s weekly schedules. all subscribed students should be able to view all the sessions concerning the schedule when they visit their schedules again.'}
 
-            # If the object was created, a new unique teacher_schedule_id will be generated
-            if created:
+            else:
+                # Get or create the TeacherSchedule object for the teacher
+                teacher_schedule, created = TeacherSchedule.objects.get_or_create(teacher=teacher)
+                
+                if not created:
+                    # Remove the specific schedules for that day from the teacher's existing schedules
+                    teacher_schedule.schedules.filter(day=details.get('day').upper()).delete()
+
+                # Add the new schedule to the teacher's schedules and save
+                teacher_schedule.schedules.add(schedule)
                 teacher_schedule.save()
 
-            # Add the new schedule to the teacher's schedules
-            teacher_schedule.schedules.add(schedule)
+                # Return a success response
+                return {'message': 'a new schedule has been added to the teacher\'s weekly schedules. they should be able to view all the sessions concerning the schedule when they visit their schedules again.'}
 
-            # Save the TeacherSchedule object to commit any changes
-            teacher_schedule.save()
-
-        # Return a success response
-        return {'message': 'teacher schedule successfully created'}
-        
-    except ValidationError as e:
-        # Handle specific known validation errors
-        return {'error': str(e)}
-    
     except CustomUser.DoesNotExist:
+        # Handle case where user account does not exist
         return {'error': 'an account with the provided credentials does not exist, please check the account details and try again'}
-    
+
+    except GroupSchedule.DoesNotExist:
+        # Handle case where group schedule does not exist
+        return {'error': 'a group schedule with the provided credentials does not exist, please check the group details and try again'}
+
     except Exception as e:
-        return { 'error': str(e) }
+        # Handle any other exceptions
+        return {'error': str(e)}
 
 
 @database_sync_to_async
