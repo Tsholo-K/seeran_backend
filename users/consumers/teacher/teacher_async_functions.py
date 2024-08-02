@@ -22,7 +22,7 @@ from attendances.models import Absent
 
 # serilializers
 from users.serializers import AccountSerializer
-from timetables.serializers import SchedulesSerializer
+from timetables.serializers import ScheduleSerializer
 from grades.serializers import GradesSerializer, GradeSerializer, SubjectDetailSerializer, ClassesSerializer
 from classes.serializers import ClassSerializer, ClassUpdateSerializer, TeacherClassesSerializer, TeacherRegisterClassSerializer
 
@@ -221,14 +221,14 @@ def search_schedules(user, account_id):
         if account.role == 'STUDENT':
             group_schedules = GroupSchedule.objects.get(students=account)
             schedules = group_schedules.schedules.all()
-            serializer = SchedulesSerializer(schedules, many=True)
+            serializer = ScheduleSerializer(schedules, many=True)
 
             return {"schedules": serializer.data, 'group_name' : group_schedules.group_name}
 
         if account.role == 'TEACHER':
             teacher_schedule = TeacherSchedule.objects.get(teacher=account)
             schedules = teacher_schedule.schedules.all()
-            serializer = SchedulesSerializer(schedules, many=True)
+            serializer = ScheduleSerializer(schedules, many=True)
 
             return {"schedules": serializer.data}
         
