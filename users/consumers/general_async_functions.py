@@ -40,6 +40,9 @@ from timetables.serializers import SessoinsSerializer, ScheduleSerializer
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
 from attendances.utility_functions import get_month_dates
 
+# checks
+from users.checks import permission_checks
+
 
 @database_sync_to_async
 def fetch_my_security_information(user):
@@ -75,120 +78,79 @@ def fetch_my_email_information(user):
 
 @database_sync_to_async
 def search_account_profile(user, details):
+    """
+    Function to search and retrieve the profile of a user based on the access control logic.
+
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing the account_id of the requested user.
+
+    Returns:
+        dict: A dictionary containing either the requested user's profile data or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user or requested user with the provided account ID does not exist.
+        Exception: For any other unexpected errors.
+    """
     try:
         account = CustomUser.objects.get(account_id=user)
         requested_user = CustomUser.objects.get(account_id=details.get('account_id'))
         
-        # No one can view the profile of a user with role not in ['PARENT', 'STUDENT', 'PRINCIPAL', 'ADMIN', 'TEACHER']
-        if requested_user.role not in ['PARENT', 'STUDENT', 'PRINCIPAL', 'ADMIN', 'TEACHER']:
-            return {"error": "unauthorized access.. permission denied"}
+        # Check permissions
+        permission_error = permission_checks.check_profile_or_id_view_permissions(account, requested_user)
+        if permission_error:
+            return permission_error
 
-        # Admins and principals can only view profiles of accounts linked to their own school
-        if account.role in ['PRINCIPAL', 'ADMIN']:
-            if requested_user.role != 'PARENT' and account.school != requested_user.school:
-                return {"error": "unauthorized access.. permission denied"}
-            if requested_user.role == 'PARENT' and not requested_user.children.filter(school=account.school).exists():
-                return {"error": "unauthorized access.. permission denied"}
-
-        # Teachers can view parents and students in their own class and admins/principals in their school
-        if account.role == 'TEACHER':
-            if requested_user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER'] and account.school != requested_user.school:
-                return {"error": "unauthorized access.. permission denied"}
-            if requested_user.role == 'PARENT' and not requested_user.children.filter(taught_classes__teacher=account).exists():
-                return {"error": "unauthorized access.. permission denied"}
-            if requested_user.role == 'STUDENT' and not account.taught_classes.filter(students=requested_user).exists():
-                return {"error": "unauthorized access.. permission denied"}
-
-        # Parents can view their children (students), teachers of their children, admins/principals of their children's schools, and other parents they share children with
-        if account.role == 'PARENT':
-            if requested_user.role == 'STUDENT' and requested_user not in account.children.all():
-                return {"error": "unauthorized access.. permission denied"}
-            if requested_user.role == 'TEACHER' and not account.children.filter(taught_classes__teacher=requested_user).exists():
-                return {"error": "unauthorized access.. permission denied"}
-            if requested_user.role in ['PRINCIPAL', 'ADMIN'] and not account.children.filter(school=requested_user.school).exists():
-                return {"error": "unauthorized access.. permission denied"}
-            if requested_user.role == 'PARENT' and not account.children.filter(pk__in=requested_user.children.values_list('pk', flat=True)).exists():
-                return {"error": "unauthorized access.. permission denied"}
-
-        # Students can only view their parents, teachers who teach them, and admins/principals from their own school
-        if account.role == 'STUDENT':
-            if requested_user.role not in ['PARENT', 'TEACHER', 'PRINCIPAL', 'ADMIN']:
-                return {"error": "unauthorized access.. permission denied"}
-            if requested_user.role == 'PARENT' and account not in requested_user.children.all():
-                return {"error": "unauthorized access.. permission denied"}
-            if requested_user.role == 'TEACHER' and not requested_user.taught_classes.filter(students=account).exists():
-                return {"error": "unauthorized access.. permission denied"}
-            if requested_user.role in ['PRINCIPAL', 'ADMIN'] and account.school != requested_user.school:
-                return {"error": "unauthorized access.. permission denied"}
-
+        # Serialize the requested user's profile to return it in the response
         serializer = AccountProfileSerializer(instance=requested_user)
         return {"user": serializer.data}
 
     except CustomUser.DoesNotExist:
-        return {'error': 'account with the provided credentials does not exist'}
+        # Handle case where the user or requested user account does not exist
+        return {'error': 'account with the provided credentials does not exist, please check the account details and try again'}
     
     except Exception as e:
+        # Handle any other unexpected errors
         return {'error': str(e)}
 
     
 @database_sync_to_async
 def search_account_id(user, details):
+    """
+    Function to search and retrieve the account ID of a user based on the access control logic.
 
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing the account_id of the requested user.
+
+    Returns:
+        dict: A dictionary containing either the requested user's account ID or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user or requested user with the provided account ID does not exist.
+        Exception: For any other unexpected errors.
+    """
     try:
         account = CustomUser.objects.get(account_id=user)
         requested_user = CustomUser.objects.get(account_id=details.get('account_id'))
         
-        # No one can view the profile of a user with role not in ['PARENT', 'STUDENT', 'PRINCIPAL', 'ADMIN', 'TEACHER']
-        if requested_user.role not in ['PARENT', 'STUDENT', 'PRINCIPAL', 'ADMIN', 'TEACHER']:
-            return {"error": "unauthorized access.. permission denied"}
-
-        # Admins and principals can only view profiles of accounts linked to their own school
-        if account.role in ['PRINCIPAL', 'ADMIN']:
-            if requested_user.role != 'PARENT' and account.school != requested_user.school:
-                return {"error": "unauthorized access.. permission denied"}
-            if requested_user.role == 'PARENT' and not requested_user.children.filter(school=account.school).exists():
-                return {"error": "unauthorized access.. permission denied"}
-
-        # Teachers can view parents and students in their own class and admins/principals in their school
-        if account.role == 'TEACHER':
-            if requested_user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER'] and account.school != requested_user.school:
-                return {"error": "unauthorized access.. permission denied"}
-            if requested_user.role == 'PARENT' and not requested_user.children.filter(taught_classes__teacher=account).exists():
-                return {"error": "unauthorized access.. permission denied"}
-            if requested_user.role == 'STUDENT' and not account.taught_classes.filter(students=requested_user).exists():
-                return {"error": "unauthorized access.. permission denied"}
-
-        # Parents can view their children (students), teachers of their children, admins/principals of their children's schools, and other parents they share children with
-        if account.role == 'PARENT':
-            if requested_user.role == 'STUDENT' and requested_user not in account.children.all():
-                return {"error": "unauthorized access.. permission denied"}
-            if requested_user.role == 'TEACHER' and not account.children.filter(taught_classes__teacher=requested_user).exists():
-                return {"error": "unauthorized access.. permission denied"}
-            if requested_user.role in ['PRINCIPAL', 'ADMIN'] and not account.children.filter(school=requested_user.school).exists():
-                return {"error": "unauthorized access.. permission denied"}
-            if requested_user.role == 'PARENT' and not account.children.filter(pk__in=requested_user.children.values_list('pk', flat=True)).exists():
-                return {"error": "unauthorized access.. permission denied"}
-
-        # Students can only view their parents, teachers who teach them, and admins/principals from their own school
-        if account.role == 'STUDENT':
-            if requested_user.role not in ['PARENT', 'TEACHER', 'PRINCIPAL', 'ADMIN']:
-                return {"error": "unauthorized access.. permission denied"}
-            if requested_user.role == 'PARENT' and account not in requested_user.children.all():
-                return {"error": "unauthorized access.. permission denied"}
-            if requested_user.role == 'TEACHER' and not requested_user.taught_classes.filter(students=account).exists():
-                return {"error": "unauthorized access.. permission denied"}
-            if requested_user.role in ['PRINCIPAL', 'ADMIN'] and account.school != requested_user.school:
-                return {"error": "unauthorized access.. permission denied"}
+        # Check permissions
+        permission_error = permission_checks.check_profile_or_id_view_permissions(account, requested_user)
+        if permission_error:
+            return permission_error
         
-        # return the users ID
+        # Serialize the requested user's account ID to return it in the response
         serializer = AccountIDSerializer(instance=requested_user)
-        return { "user" : serializer.data }
-        
+        return {"user": serializer.data}
+
     except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
+        # Handle case where the user or requested user account does not exist
+        return {'error': 'account with the provided credentials does not exist, please check the account details and try again'}
     
     except Exception as e:
-        return { 'error': str(e) }
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
     
 
 @database_sync_to_async
@@ -238,40 +200,125 @@ def search_parents(user, details):
     
 
 @database_sync_to_async
-def search_schedules(user, details):
+def search_teacher_schedule_schedules(user, details):
+    """
+    Function to search and retrieve schedules for a specific teacher.
 
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing the account_id of the teacher.
+
+    Returns:
+        dict: A dictionary containing either the teacher schedules or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user or teacher with the provided account ID does not exist.
+        TeacherSchedule.DoesNotExist: If the teacher does not have a schedule.
+        Exception: For any other unexpected errors.
+    """
     try:
+        # Check if the user is requesting their own schedule
         if user == details.get('account_id'):
-            teacher  = CustomUser.objects.get(account_id=user)
+            # Retrieve the teacher's account
+            teacher = CustomUser.objects.get(account_id=user)
 
+            # Ensure the user has the role of 'TEACHER'
             if teacher.role != 'TEACHER':
-                return { "error" : 'unauthorized request.. permission denied' }
+                return {"error": "only teachers or admins and principals from the same school can make requests and access their schedules"}
 
         else:
+            # Retrieve the account making the request
             account = CustomUser.objects.get(account_id=user)
+            # Retrieve the teacher's account
             teacher = CustomUser.objects.get(account_id=details.get('account_id'))
 
+            # Ensure the teacher's role and the requester's permissions
             if teacher.role != 'TEACHER' or account.school != teacher.school or account.role not in ['ADMIN', 'PRINCIPAL']:
-                return { "error" : 'unauthorized request.. permission denied' }
+                return {"error": "only admins and principals from the same school can access a teacher's schedule"}
 
+        # Retrieve the teacher's schedule
         teacher_schedule = TeacherSchedule.objects.get(teacher=teacher)
         schedules = teacher_schedule.schedules.all()
-        serializer = ScheduleSerializer(schedules, many=True)
 
+        # Serialize the schedules to return them in the response
+        serializer = ScheduleSerializer(schedules, many=True)
         return {"schedules": serializer.data}
-        
+
     except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
+        # Handle case where the user or teacher account does not exist
+        return {'error': 'the account with the provided credentials does not exist, please check the account details and try again'}
     
     except TeacherSchedule.DoesNotExist:
-        return { 'schedules': [] }
+        # Handle case where the teacher does not have a schedule
+        return {'schedules': []}
     
     except Exception as e:
-        return { 'error': str(e) }
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
+    
+
+@database_sync_to_async
+def search_group_schedule_schedules(user, details):
+    """
+    Function to search and retrieve weekly schedules for a specific group schedule.
+
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing the group_schedule_id to identify the group schedule.
+
+    Returns:
+        dict: A dictionary containing either the schedules or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
+        GroupSchedule.DoesNotExist: If the group schedule with the provided ID does not exist.
+        Exception: For any other unexpected errors.
+    """
+    try:
+        # Retrieve the account making the request
+        account = CustomUser.objects.get(account_id=user)
+        
+        # Retrieve the specified group schedule
+        group_schedule = GroupSchedule.objects.get(group_schedule_id=details.get('group_schedule_id'))
+
+        # Check permissions for various roles
+
+        # Founders are not allowed to access group schedules
+        if account.role == 'FOUNDER':
+            return {"error": "founders are not authorized to access group schedules"}
+
+        # Students can only access schedules if they are in the group schedule's students
+        if account.role == 'STUDENT' and account not in group_schedule.students.all():
+            return {"error": "as a student, you can only view schedules for group schedules you are subscribed to. please check your group schedule assignments and try again"}
+
+        # Parents can only access schedules if at least one of their children is in the group schedule's students
+        if account.role == 'PARENT' and not any(child in group_schedule.students.all() for child in account.children.all()):
+            return {"error": "as a parent, you can only view schedules for group schedules that your children are subscribed to. please check your child's group schedule assignments and try again"}
+
+        # Teachers, Admins, and Principals can only access schedules if they belong to the same school as the group schedule's grade
+        if account.role in ['TEACHER', 'ADMIN', 'PRINCIPAL'] and account.school != group_schedule.grade.school:
+            return {"error": "you can only view schedules for group schedules within your own school. please check the group schedule and try again"}
+
+        # Serialize and return the schedules associated with the group schedule
+        serializer = ScheduleSerializer(group_schedule.schedules.all(), many=True)
+        return {"schedules": serializer.data}
+    
+    except CustomUser.DoesNotExist:
+        # Handle case where the user account does not exist
+        return {'error': 'the account with the provided credentials does not exist, please check the account details and try again'}
+    
+    except GroupSchedule.DoesNotExist:
+        # Handle case where the group schedule does not exist
+        return {'error': 'the group schedule with the provided credentials does not exist, please check the group schedule details and try again'}
+    
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
 
 
 @database_sync_to_async
-def search_for_schedule(details):
+def search_for_schedule_sessions(details):
 
     try:
         schedule = Schedule.objects.get(schedule_id=details.get('schedule_id'))

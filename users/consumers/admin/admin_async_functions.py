@@ -650,34 +650,6 @@ def search_students(user, details):
 
 
 @database_sync_to_async
-def create_group_schedule(user, group_name, grade_id):
-
-    try:
-        account = CustomUser.objects.get(account_id=user)
-        grade = Grade.objects.get(grade_id=grade_id, school=account.school)
-
-        with transaction.atomic():
-            new_schedule = GroupSchedule.create(group_name=group_name, grade=grade)
-            new_schedule.save()
-
-        # Return a success response
-        return {'message': f'group schedule for grade {grade.grade} successfully created.. you can now link students and add schedules to it'}
-        
-    except ValidationError as e:
-        # Handle specific known validation errors
-        return {'error': str(e)}
-        
-    except Grade.DoesNotExist:
-        return { 'error': 'grade with the provided credentials does not exist' }
-
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-    
-    except Exception as e:
-        return { 'error': str(e) }
-
-
-@database_sync_to_async
 def create_schedule(user, details):
 
     try:
@@ -774,29 +746,50 @@ def create_group_schedule(user, details):
 
 @database_sync_to_async
 def search_group_schedules(user, details):
+    """
+    Function to search and retrieve group schedules for a specific grade.
 
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing the grade_id to identify the grade.
+
+    Returns:
+        dict: A dictionary containing either the group schedules or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
+        Grade.DoesNotExist: If the grade with the provided ID does not exist.
+        Exception: For any other unexpected errors.
+    """
     try:
+        # Retrieve the account making the request
         account = CustomUser.objects.get(account_id=user)
+        
+        # Retrieve the specified grade
         grade = Grade.objects.get(grade_id=details.get('grade_id'))
 
-        # Ensure the specified grade belongs to the same school
+        # Ensure the specified grade belongs to the same school as the account's school
         if account.school != grade.school:
             return {"error": "the specified grade does not belong to your school. please ensure you are attempting to access group schedules for a grade in your own school"}
 
+        # Retrieve all group schedules associated with the specified grade
         group_schedules = GroupSchedule.objects.filter(grade=grade)
 
+        # Serialize the group schedules to return them in the response
         serializer = GroupScheduleSerializer(group_schedules, many=True)
-
         return {"schedules": serializer.data}
-        
+    
     except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
+        # Handle case where the user account does not exist
+        return {'error': 'the account with the provided credentials does not exist, please check the account details and try again'}
     
     except Grade.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
+        # Handle case where the grade does not exist
+        return {'error': 'the specified grade does not exist, please check the grade details and try again'}
 
     except Exception as e:
-        return { 'error': str(e) }
+        # Handle any other unexpected errors
+        return {'error': str(e)}
     
 
 @database_sync_to_async
