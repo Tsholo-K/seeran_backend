@@ -24,6 +24,7 @@ from attendances.models import Absent
 from users.serializers import AccountUpdateSerializer, AccountIDSerializer, AccountSerializer, AccountCreationSerializer, StudentAccountCreationSerializer, ParentAccountCreationSerializer
 from grades.serializers import GradesSerializer, GradeSerializer, SubjectDetailSerializer, ClassesSerializer
 from classes.serializers import ClassSerializer, ClassUpdateSerializer, TeacherClassesSerializer
+from timetables.serializers import GroupScheduleSerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
@@ -224,7 +225,7 @@ def delete_account(user, details):
         return {"message" : 'account successfully deleted'}
         
     except CustomUser.DoesNotExist:
-        return {'error': 'the account with the provided credentials does not exist, please check the account details and try again'}
+        return {'error': 'an account with the provided credentials does not exist, please check the account details and try again'}
     
     except Exception as e:
         return { 'error': str(e) }
@@ -251,7 +252,7 @@ def unlink_parent(user, details):
 
         # Ensure the specified account is a student and belongs to the same school
         if child.role != 'STUDENT' or account.school != child.school:
-            return {"error": "unauthorized action, the specified student account is either not a student or does not belong to your school. please ensure you are attempting to unlink a parent from a student enrolled in your school"}
+            return {"error": "the specified student account is either not a student or does not belong to your school. please ensure you are attempting to unlink a parent from a student enrolled in your school"}
 
         # Fetch the parent account using the provided parent ID
         parent = CustomUser.objects.get(account_id=details.get('parent_id'))
@@ -267,7 +268,7 @@ def unlink_parent(user, details):
 
     except CustomUser.DoesNotExist:
         # Handle the case where the provided account ID does not exist
-        return {'error': 'the account with the provided credentials does not exist, please check the account details and try again'}
+        return {'error': 'an account with the provided credentials does not exist, please check the account details and try again'}
 
     except Exception as e:
         # Handle any unexpected errors
@@ -681,13 +682,13 @@ def create_schedule(user, details):
 
     try:
         if details.get('day').upper() not in [ 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY']:
-            return { "error" : 'invalid schedule day' }
+            return { "error" : 'the provided day for the schedule is invalid, please check that the day falls under any day in the Gregorian calendar'}
 
-        admin = CustomUser.objects.get(account_id=user)
-        account = CustomUser.objects.get(account_id=details.get('account_id'), role='TEACHER')
+        account = CustomUser.objects.get(account_id=user)
+        teacher = CustomUser.objects.get(account_id=details.get('account_id'))
 
-        if account.school != admin.school:
-            return { "error" : 'unauthorized request.. permission denied' }
+        if teacher.school != account.school or teacher.role != 'TEACHER':
+            return { "error" : 'the specified teacher account is either not a teacher or does not belong to your school. please ensure you are attempting to create schedules for a parent from a teacher enrolled in your school'}
 
         with transaction.atomic():
             schedule = Schedule(day=details.get('day').upper(), day_order=Schedule.DAY_OF_THE_WEEK_ORDER[details.get('day').upper()])
@@ -711,14 +712,14 @@ def create_schedule(user, details):
             schedule.save()
 
             # Check if the teacher already has a schedule for the provided day
-            existing_teacher_schedules = TeacherSchedule.objects.filter(teacher=account, schedules__day=details.get('day').upper())
+            existing_teacher_schedules = TeacherSchedule.objects.filter(teacher=teacher, schedules__day=details.get('day').upper())
 
             for schedule in existing_teacher_schedules:
                 # Remove the specific schedules for that day
                 schedule.schedules.filter(day=details.get('day').upper()).delete()
 
             # Check if the teacher already has a TeacherSchedule object
-            teacher_schedule, created = TeacherSchedule.objects.get_or_create(teacher=account)
+            teacher_schedule, created = TeacherSchedule.objects.get_or_create(teacher=teacher)
 
             # If the object was created, a new unique teacher_schedule_id will be generated
             if created:
@@ -738,11 +739,65 @@ def create_schedule(user, details):
         return {'error': str(e)}
     
     except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
+        return {'error': 'an account with the provided credentials does not exist, please check the account details and try again'}
     
     except Exception as e:
         return { 'error': str(e) }
 
+
+@database_sync_to_async
+def create_group_schedule(user, details):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        grade = Grade.objects.get(grade_id=details.get('grade_id'))
+
+        if account.school != grade.school:
+            return { "error" : 'you do not have permission to perform this action because the specified grade does not belong to your school. please ensure you are attempting to create a group schedule in a grade within your own school' }
+
+        with transaction.atomic():
+            group_schedule = GroupSchedule.objects.create(group_name=details.get('group_name'), grade=grade)
+            group_schedule.save()
+
+        # Return a success response
+        return {'message': 'you can now add individual daily schedules and subscribe students in the grade to the group schedule for a shared weekly schedule'}
+    
+    except CustomUser.DoesNotExist:
+        return {'error': 'the account with the provided credentials does not exist, please check the account details and try again'}
+        
+    except Grade.DoesNotExist:
+        return {'error': 'a grade with the provided credentials does not exist, please check your details and try again'}
+
+    except Exception as e:
+        return { 'error': str(e) }
+    
+
+@database_sync_to_async
+def search_group_schedules(user, details):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        grade = Grade.objects.get(account_id=details.get('grade_id'))
+
+        # Ensure the specified grade belongs to the same school
+        if account.school != grade.school:
+            return {"error": "the specified grade does not belong to your school. please ensure you are attempting to access group schedules for a grade in your own school"}
+
+        group_schedules = GroupSchedule.objects.filter(grade=grade)
+
+        serializer = GroupScheduleSerializer(group_schedules, many=True)
+
+        return {"schedules": serializer.data}
+        
+    except CustomUser.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+    
+    except Grade.DoesNotExist:
+        return { 'error': 'account with the provided credentials does not exist' }
+
+    except Exception as e:
+        return { 'error': str(e) }
+    
 
 @database_sync_to_async
 def delete_schedule(user, details):

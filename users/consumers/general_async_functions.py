@@ -34,7 +34,7 @@ from grades.models import Grade
 # serializers
 from users.serializers import AccountSerializer, StudentAccountAttendanceRecordSerializer, AccountProfileSerializer, AccountIDSerializer
 from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
-from timetables.serializers import SessoinsSerializer, SchedulesSerializer
+from timetables.serializers import SessoinsSerializer, ScheduleSerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
@@ -256,7 +256,7 @@ def search_schedules(user, details):
 
         teacher_schedule = TeacherSchedule.objects.get(teacher=teacher)
         schedules = teacher_schedule.schedules.all()
-        serializer = SchedulesSerializer(schedules, many=True)
+        serializer = ScheduleSerializer(schedules, many=True)
 
         return {"schedules": serializer.data}
         
@@ -268,7 +268,7 @@ def search_schedules(user, details):
     
     except Exception as e:
         return { 'error': str(e) }
-    
+
 
 @database_sync_to_async
 def search_for_schedule(details):
