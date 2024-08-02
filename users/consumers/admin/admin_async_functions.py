@@ -254,7 +254,11 @@ def unlink_parent(user, details):
             return {"error": "unauthorized action, the specified student account is either not a student or does not belong to your school. please ensure you are attempting to unlink a parent from a student enrolled in your school"}
 
         # Fetch the parent account using the provided parent ID
-        parent = CustomUser.objects.get(account_id=details.get('parent_id'), role='PARENT')
+        parent = CustomUser.objects.get(account_id=details.get('parent_id'))
+
+        # Ensure the specified account is a student and belongs to the same school
+        if parent.role != 'PARENT':
+            return {"error": "unauthorized action, the specified parent account is either not a parent. please ensure you are attempting to unlink a parent from a student"}
 
         # Remove the child from the parent's list of children
         parent.children.remove(child)

@@ -171,7 +171,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'create_student_account': admin_async_functions.create_student_account,
             'link_parent': admin_async_functions.link_parent,
             'delete_account': admin_async_functions.delete_account,
-            'unlink_parent': admin_async_functions.link_parent,
+            'unlink_parent': admin_async_functions.unlink_parent,
             'create_grade': admin_async_functions.create_grade,
             'create_subjects': admin_async_functions.create_subjects,
             'create_subject_class': admin_async_functions.create_subject_class,
