@@ -777,7 +777,7 @@ def search_group_schedules(user, details):
 
     try:
         account = CustomUser.objects.get(account_id=user)
-        grade = Grade.objects.get(account_id=details.get('grade_id'))
+        grade = Grade.objects.get(grade_id=details.get('grade_id'))
 
         # Ensure the specified grade belongs to the same school
         if account.school != grade.school:
