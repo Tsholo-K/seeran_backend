@@ -830,12 +830,13 @@ def search_group_schedules(user, details):
 @database_sync_to_async
 def delete_schedule(user, details):
     """
-    Deletes a specific schedule for a teacher.
+    Deletes a specific schedule for a teacher or group.
 
     Parameters:
     user (str): The account ID of the user requesting the deletion.
     details (dict): A dictionary containing the schedule details. It should include:
         - 'schedule_id' (str): The ID of the schedule to be deleted.
+        - 'for_group' (bool): Flag indicating whether the schedule is for a group.
 
     Returns:
     dict: A dictionary with a 'message' key if the schedule was successfully deleted,
@@ -848,23 +849,32 @@ def delete_schedule(user, details):
         # Retrieve the schedule object
         schedule = Schedule.objects.get(schedule_id=details.get('schedule_id'))
 
-        # Retrieve the TeacherSchedule object linked to this schedule
-        teacher_schedule = schedule.teacher_linked_to.first()
+        for_group = details.get('for_group')
+        if for_group:
+            # Retrieve the GroupSchedule object linked to this schedule
+            group_schedule = schedule.group_linked_to.first()
 
-        # Check if the user has permission to delete the schedule
-        if account.school != teacher_schedule.teacher.school:
-            return {"error": 'Unauthorized request: Permission denied. You can only delete schedules from your own school.'}
+            # Check if the user has permission to delete the schedule
+            if not group_schedule or account.school != group_schedule.grade.school:
+                return {"error": 'permission denied. you can only delete schedules from your own school.'}
+        else:
+            # Retrieve the TeacherSchedule object linked to this schedule
+            teacher_schedule = schedule.teacher_linked_to.first()
+
+            # Check if the user has permission to delete the schedule
+            if not teacher_schedule or account.school != teacher_schedule.teacher.school:
+                return {"error": 'permission denied. you can only delete schedules from your own school'}
 
         # Delete the schedule
         schedule.delete()
         
-        return {'message': 'The schedule has been successfully deleted.'}
+        return {'message': 'The schedule has been successfully deleted'}
         
     except CustomUser.DoesNotExist:
-        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
+        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
     
     except Schedule.DoesNotExist:
-        return {'error': 'a schedule with the provided ID does not exist. please check the schedule details and try again.'}
+        return {'error': 'A schedule with the provided ID does not exist. Please check the schedule details and try again.'}
 
     except Exception as e:
         return {'error': str(e)}
