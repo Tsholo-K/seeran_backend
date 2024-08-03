@@ -829,8 +829,20 @@ def search_group_schedules(user, details):
 
 @database_sync_to_async
 def delete_schedule(user, details):
+    """
+    Deletes a specific schedule for a teacher.
 
+    Parameters:
+    user (str): The account ID of the user requesting the deletion.
+    details (dict): A dictionary containing the schedule details. It should include:
+        - 'schedule_id' (str): The ID of the schedule to be deleted.
+
+    Returns:
+    dict: A dictionary with a 'message' key if the schedule was successfully deleted,
+          or an 'error' key if there was an error.
+    """
     try:
+        # Fetch the user account making the request
         account = CustomUser.objects.get(account_id=user)
         
         # Retrieve the schedule object
@@ -841,18 +853,61 @@ def delete_schedule(user, details):
 
         # Check if the user has permission to delete the schedule
         if account.school != teacher_schedule.teacher.school:
-            return {"error": 'unauthorized request.. permission denied'}
+            return {"error": 'Unauthorized request: Permission denied. You can only delete schedules from your own school.'}
 
         # Delete the schedule
         schedule.delete()
         
-        return {'message': 'schedule deleted successfully'}
+        return {'message': 'The schedule has been successfully deleted.'}
         
     except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
+        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
     
+    except Schedule.DoesNotExist:
+        return {'error': 'a schedule with the provided ID does not exist. please check the schedule details and try again.'}
+
     except Exception as e:
-        return { 'error': str(e) }
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def delete_group_schedule(user, details):
+    """
+    Deletes a specific group schedule.
+
+    Parameters:
+    user (str): The account ID of the user requesting the deletion.
+    details (dict): A dictionary containing the group schedule details. It should include:
+        - 'group_schedule_id' (str): The ID of the group schedule to be deleted.
+
+    Returns:
+    dict: A dictionary with a 'message' key if the group schedule was successfully deleted,
+          or an 'error' key if there was an error.
+    """
+    try:
+        # Fetch the user account making the request
+        account = CustomUser.objects.get(account_id=user)
+        
+        # Retrieve the group schedule object
+        group_schedule = GroupSchedule.objects.get(group_schedule_id=details.get('group_schedule_id'))
+
+        # Check if the user has permission to delete the group schedule
+        if account.school != group_schedule.grade.school:
+            return {"error": 'permission denied. you can only delete group schedules from your own school'}
+
+        # Delete the group schedule
+        group_schedule.delete()
+        
+        return {'message': 'The group schedule has been successfully deleted'}
+        
+    except CustomUser.DoesNotExist:
+        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
+    
+    except GroupSchedule.DoesNotExist:
+        return {'error': 'a group schedule with the provided ID does not exist. please check the group schedule details and try again.'}
+
+    except Exception as e:
+        return {'error': str(e)}
 
 
 @database_sync_to_async
