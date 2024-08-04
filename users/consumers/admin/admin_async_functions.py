@@ -922,7 +922,7 @@ def delete_group_schedule(user, details):
 
 
 @database_sync_to_async
-def form_data_add_students_to_group_schedule(user, details):
+def add_students_to_group_schedule(user, details):
     """
     Adds students to a specific group schedule.
 
@@ -1139,7 +1139,7 @@ def form_data_for_class_update(user, details):
     
 
 @database_sync_to_async
-def add_students_to_group_schedule(user, details):
+def form_data_add_students_to_group_schedule(user, details):
     """
     return students who are not subscribed to a specified group schedule.
 
