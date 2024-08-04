@@ -1022,7 +1022,7 @@ def remove_students_from_group_schedule(user, details):
         # Serialize the students
         serializer = AccountSerializer(students, many=True)
 
-        return {"students": serializer.data}
+        return {"students": serializer.data, 'message': 'students successfully removed from group schedule'}
         
     except CustomUser.DoesNotExist:
         return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
