@@ -1014,8 +1014,15 @@ def remove_students_from_group_schedule(user, details):
                 group_schedule.students.remove(CustomUser.objects.get(account_id=student, school=account.school, grade=group_schedule.grade))
 
             group_schedule.save()
-            
-        return {'message': 'Students successfully removed from group schedule.'}
+        
+        
+        # Get all students subscribed to this group schedule
+        students = group_schedule.students.all()
+
+        # Serialize the students
+        serializer = AccountSerializer(students, many=True)
+
+        return {"students": serializer.data}
         
     except CustomUser.DoesNotExist:
         return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
