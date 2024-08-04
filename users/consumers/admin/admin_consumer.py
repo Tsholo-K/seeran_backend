@@ -85,11 +85,12 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'accounts': admin_async_functions.search_accounts,
             'students': admin_async_functions.search_students,
             'parents': general_async_functions.search_parents,
+            'subscribed_students': admin_async_functions.search_subscribed_students,
             'account_profile': general_async_functions.search_account_profile,
             'account_id': general_async_functions.search_account_id,
             'teacher_schedule_schedules': general_async_functions.search_teacher_schedule_schedules,
             'group_schedule_schedules': general_async_functions.search_group_schedule_schedules,
-            'group_schedules': admin_async_functions.search_group_schedules,
+            'group_schedules': general_async_functions.search_group_schedules,
             'schedule_sessions': general_async_functions.search_for_schedule_sessions,
             'teacher_classes': admin_async_functions.search_teacher_classes,
             'register_classes': admin_async_functions.search_grade_register_classes,
@@ -134,6 +135,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'class_update': admin_async_functions.form_data_for_class_update,
             'add_students_to_register_class': admin_async_functions.form_data_for_adding_students_to_register_class,
             'attendance_register': general_async_functions.form_data_for_attendance_register,
+            'add_students_to_group_schedule': admin_async_functions.form_data_add_students_to_group_schedule,
         }
 
         func = form_data_map.get(description)
@@ -184,6 +186,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'delete_group_schedule': admin_async_functions.delete_group_schedule,
             'add_students_to_register_class': admin_async_functions.add_students_to_register_class,
             'remove_student_from_register_class': admin_async_functions.remove_student_from_register_class,
+            'add_students_to_group_schedule': admin_async_functions.add_students_to_group_schedule,
+            'remove_students_from_group_schedule': admin_async_functions.remove_students_from_group_schedule,
             'submit_absentes': general_async_functions.submit_absentes,
             'submit_late_arrivals': general_async_functions.submit_late_arrivals,
         }

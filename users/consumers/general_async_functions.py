@@ -35,6 +35,7 @@ from grades.models import Grade
 from users.serializers import AccountSerializer, StudentAccountAttendanceRecordSerializer, AccountProfileSerializer, AccountIDSerializer
 from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
 from timetables.serializers import SessoinsSerializer, ScheduleSerializer
+from timetables.serializers import GroupScheduleSerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
@@ -315,7 +316,109 @@ def search_group_schedule_schedules(user, details):
     except Exception as e:
         # Handle any other unexpected errors
         return {'error': str(e)}
+    
 
+@database_sync_to_async
+def search_group_schedules(user, details):
+    """
+    Function to search and retrieve group schedules for a specific grade or student.
+
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing the grade_id to identify the grade.
+
+    Returns:
+        dict: A dictionary containing either the group schedules or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
+        Grade.DoesNotExist: If the grade with the provided ID does not exist.
+        Exception: For any other unexpected errors.
+    """
+    try:
+        # Retrieve the account making the request
+        account = CustomUser.objects.get(account_id=user)
+        
+        # Ensure the specified role is valid
+        if account.role not in ['ADMIN', 'PRINCIPAL', 'PARENT', 'TEACHER', 'STUDENT']:
+            return {"error": "The specified account's role is invalid. please ensure you are attempting to access group schedules from an authorized account."}
+
+        group_schedules = []
+
+        if account.role in ['ADMIN', 'PRINCIPAL']:
+            if details.get('account_id'):
+                # Retrieve the student
+                student = CustomUser.objects.get(account_id=details.get('account_id'))
+
+                if student.role != 'STUDENT' or account.school != student.school:
+                    return {"error": "unauthorized access. you can only view group schedules of students in your school."}
+                
+                # Retrieve all group schedules associated with the student
+                if hasattr(student, 'my_group_schedule'):
+                    group_schedules = student.my_group_schedule.all()
+                else:
+                    return {"schedules": []}
+                
+            if details.get('grade_id'):
+                # Retrieve the specified grade
+                grade = Grade.objects.get(grade_id=details.get('grade_id'))
+
+                # Ensure the specified grade belongs to the same school as the account's school
+                if account.school != grade.school:
+                    return {"error": "the specified grade does not belong to your school. please ensure you are attempting to access group schedules for a grade in your own school."}
+
+                # Retrieve all group schedules associated with the specified grade
+                group_schedules = GroupSchedule.objects.filter(grade=grade)
+
+        if account.role in ['PARENT']:
+            # Retrieve the account's child
+            child = CustomUser.objects.get(account_id=details.get('account_id'))
+
+            if child.role != 'STUDENT' or child not in account.children.all():
+                return {"error": "unauthorized access. you are only permitted to view group schedules of students who are your children."}
+            
+            # Retrieve all group schedules associated with the child
+            if hasattr(child, 'my_group_schedule'):
+                group_schedules = child.my_group_schedule.all()
+            else:
+                return {"schedules": []}
+
+        if account.role in ['STUDENT']:
+            # Retrieve all group schedules associated with the account
+            if hasattr(account, 'my_group_schedule'):
+                group_schedules = account.my_group_schedule.all()
+            else:
+                return {"schedules": []}
+
+        if account.role in ['TEACHER']:
+            # Retrieve the student
+            student = CustomUser.objects.get(account_id=details.get('account_id'))
+
+            if student.role != 'STUDENT' or not account.taught_classes.filter(students=student).exists():
+                return {"error": "unauthorized access. you can only view group schedules of students you teach."}
+            
+            # Retrieve all group schedules associated with the student
+            if hasattr(student, 'my_group_schedule'):
+                group_schedules = student.my_group_schedule.all()
+            else:
+                return {"schedules": []}
+
+        # Serialize the group schedules to return them in the response
+        serializer = GroupScheduleSerializer(group_schedules, many=True)
+        return {"schedules": serializer.data}
+    
+    except CustomUser.DoesNotExist:
+        # Handle case where the user account does not exist
+        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
+    
+    except Grade.DoesNotExist:
+        # Handle case where the grade does not exist
+        return {'error': 'the specified grade does not exist. Please check the grade details and try again.'}
+
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+    
 
 @database_sync_to_async
 def search_for_schedule_sessions(details):

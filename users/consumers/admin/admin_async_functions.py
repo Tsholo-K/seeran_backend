@@ -24,7 +24,6 @@ from attendances.models import Absent
 from users.serializers import AccountUpdateSerializer, AccountIDSerializer, AccountSerializer, AccountCreationSerializer, StudentAccountCreationSerializer, ParentAccountCreationSerializer
 from grades.serializers import GradesSerializer, GradeSerializer, SubjectDetailSerializer, ClassesSerializer
 from classes.serializers import ClassSerializer, ClassUpdateSerializer, TeacherClassesSerializer
-from timetables.serializers import GroupScheduleSerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
@@ -298,6 +297,52 @@ def search_accounts(user, details):
     
     except Exception as e:
         return { 'error': str(e) }
+
+
+@database_sync_to_async
+def search_subscribed_students(user, details):
+    """
+    Searches and retrieves students subscribed to a specific group schedule.
+
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing the group_schedule_id to identify the group schedule.
+
+    Returns:
+        dict: A dictionary containing the list of subscribed students or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
+        GroupSchedule.DoesNotExist: If the group schedule with the provided ID does not exist.
+        Exception: For any other unexpected errors.
+    """
+    try:
+        # Retrieve the account making the request
+        account = CustomUser.objects.get(account_id=user)
+        
+        # Retrieve the group schedule
+        group_schedule = GroupSchedule.objects.get(group_schedule_id=details.get('group_schedule_id'))
+
+        # Check if the user has permission to view the group schedule
+        if account.school != group_schedule.grade.school:
+            return {"error": 'permission denied. you can only view details about group schedules from your own school.'}
+
+        # Get all students subscribed to this group schedule
+        students = group_schedule.students.all()
+
+        # Serialize the students
+        serializer = AccountSerializer(students, many=True)
+
+        return {"students": serializer.data}
+
+    except CustomUser.DoesNotExist:
+        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
+                
+    except GroupSchedule.DoesNotExist:
+        return {'error': 'a group schedule with the provided credentials does not exist. Please check the group schedule details and try again.'}
+
+    except Exception as e:
+        return {'error': str(e)}
 
 
 SCHOOL_GRADES_CHOICES = [('000', 'Grade 000'), ('00', 'Grade 00'), ('R', 'Grade R'), ('1', 'Grade 1'), ('2', 'Grade 2'), ('3', 'Grade 3'), ('4', 'Grade 4'), ('5', 'Grade 5'), ('6', 'Grade 6'), ('7', 'Grade 7'), ('8', 'Grade 8'), ('9', 'Grade 9'), ('10', 'Grade 10'), ('11', 'Grade 11'), ('12', 'Grade 12')]
@@ -780,54 +825,6 @@ def create_group_schedule(user, details):
     
 
 @database_sync_to_async
-def search_group_schedules(user, details):
-    """
-    Function to search and retrieve group schedules for a specific grade.
-
-    Args:
-        user (str): The account ID of the user making the request.
-        details (dict): A dictionary containing the grade_id to identify the grade.
-
-    Returns:
-        dict: A dictionary containing either the group schedules or an error message.
-
-    Raises:
-        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
-        Grade.DoesNotExist: If the grade with the provided ID does not exist.
-        Exception: For any other unexpected errors.
-    """
-    try:
-        # Retrieve the account making the request
-        account = CustomUser.objects.get(account_id=user)
-        
-        # Retrieve the specified grade
-        grade = Grade.objects.get(grade_id=details.get('grade_id'))
-
-        # Ensure the specified grade belongs to the same school as the account's school
-        if account.school != grade.school:
-            return {"error": "the specified grade does not belong to your school. please ensure you are attempting to access group schedules for a grade in your own school"}
-
-        # Retrieve all group schedules associated with the specified grade
-        group_schedules = GroupSchedule.objects.filter(grade=grade)
-
-        # Serialize the group schedules to return them in the response
-        serializer = GroupScheduleSerializer(group_schedules, many=True)
-        return {"schedules": serializer.data}
-    
-    except CustomUser.DoesNotExist:
-        # Handle case where the user account does not exist
-        return {'error': 'the account with the provided credentials does not exist, please check the account details and try again'}
-    
-    except Grade.DoesNotExist:
-        # Handle case where the grade does not exist
-        return {'error': 'the specified grade does not exist, please check the grade details and try again'}
-
-    except Exception as e:
-        # Handle any other unexpected errors
-        return {'error': str(e)}
-    
-
-@database_sync_to_async
 def delete_schedule(user, details):
     """
     Deletes a specific schedule for a teacher or group.
@@ -868,13 +865,17 @@ def delete_schedule(user, details):
         # Delete the schedule
         schedule.delete()
         
-        return {'message': 'The schedule has been successfully deleted'}
+        if for_group:
+            return {'message': 'the schedule has been successfully deleted from the group schedule and will be removed from schedules of all students subscribed to the group schedule'}
+        
+        else:
+            return {'message': 'the schedule has been successfully deleted from the teachers schedule and will no longer be available to the teacher'}
         
     except CustomUser.DoesNotExist:
-        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
     
     except Schedule.DoesNotExist:
-        return {'error': 'A schedule with the provided ID does not exist. Please check the schedule details and try again.'}
+        return {'error': 'a schedule with the provided ID does not exist. Please check the schedule details and try again.'}
 
     except Exception as e:
         return {'error': str(e)}
@@ -921,6 +922,112 @@ def delete_group_schedule(user, details):
 
 
 @database_sync_to_async
+def form_data_add_students_to_group_schedule(user, details):
+    """
+    Adds students to a specific group schedule.
+
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing the group_schedule_id and a list of student IDs.
+
+    Returns:
+        dict: A dictionary containing a success message or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
+        GroupSchedule.DoesNotExist: If the group schedule with the provided ID does not exist.
+        Exception: For any other unexpected errors.
+    """
+    try:
+        # Retrieve the account making the request
+        account = CustomUser.objects.get(account_id=user)
+        
+        # Retrieve the group schedule object
+        group_schedule = GroupSchedule.objects.get(group_schedule_id=details.get('group_schedule_id'))
+
+        # Check if the user has permission to modify the group schedule
+        if account.school != group_schedule.grade.school:
+            return {"error": 'Permission denied. You can only modify group schedules from your own school.'}
+        
+        # Get the list of student IDs from the details
+        students_list = details.get('students').split(', ')
+        
+        # Check if any of the provided students are already in the group schedule
+        existing_students = [student for student in students_list if group_schedule.students.filter(account_id=student).exists()]
+        
+        if existing_students:
+            return {'error': 'Invalid request. The provided list of students includes students that are already in this class. Please review the list of students and submit again.'}
+        
+        # Add students to the group schedule within a transaction
+        with transaction.atomic():
+            for student in students_list:
+                group_schedule.students.add(CustomUser.objects.get(account_id=student, school=account.school, grade=group_schedule.grade))
+
+            group_schedule.save()
+            
+        return {'message': 'Students successfully added to group schedule.'}
+        
+    except CustomUser.DoesNotExist:
+        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+            
+    except GroupSchedule.DoesNotExist:
+        return {'error': 'A group schedule with the provided credentials does not exist. Please check the group schedule details and try again.'}
+
+    except Exception as e:
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def remove_students_from_group_schedule(user, details):
+    """
+    Removes students from a specific group schedule.
+
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing the group_schedule_id and a list of student IDs.
+
+    Returns:
+        dict: A dictionary containing a success message or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
+        GroupSchedule.DoesNotExist: If the group schedule with the provided ID does not exist.
+        Exception: For any other unexpected errors.
+    """
+    try:
+        # Retrieve the account making the request
+        account = CustomUser.objects.get(account_id=user)
+        
+        # Retrieve the group schedule object
+        group_schedule = GroupSchedule.objects.get(group_schedule_id=details.get('group_schedule_id'))
+
+        # Check if the user has permission to modify the group schedule
+        if account.school != group_schedule.grade.school:
+            return {"error": 'Permission denied. You can only modify group schedules from your own school.'}
+        
+        # Get the list of student IDs from the details
+        students_list = details.get('students').split(', ')
+        
+        # Remove students from the group schedule within a transaction
+        with transaction.atomic():
+            for student in students_list:
+                group_schedule.students.remove(CustomUser.objects.get(account_id=student, school=account.school, grade=group_schedule.grade))
+
+            group_schedule.save()
+            
+        return {'message': 'Students successfully removed from group schedule.'}
+        
+    except CustomUser.DoesNotExist:
+        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+            
+    except GroupSchedule.DoesNotExist:
+        return {'error': 'A group schedule with the provided credentials does not exist. Please check the group schedule details and try again.'}
+
+    except Exception as e:
+        return {'error': str(e)}
+
+
+@database_sync_to_async
 def add_students_to_register_class(user, details):
 
     try:
@@ -938,7 +1045,7 @@ def add_students_to_register_class(user, details):
                 existing_students.append(student)
         
         if existing_students:
-            return {'error' : f'invalid request.. the provided list of students includes students that are already in this class, please review the list of users then submit the list again'}
+            return {'error' : f'invalid request.. the provided list of students includes students that are already in this class, please review the list of students then submit the list again'}
         
         with transaction.atomic():
 
@@ -947,7 +1054,7 @@ def add_students_to_register_class(user, details):
 
             classroom.save()
             
-        return {'message': 'students successfully added added to the class'}
+        return {'message': 'students successfully added to the class'}
         
     except CustomUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
@@ -1029,6 +1136,52 @@ def form_data_for_class_update(user, details):
 
     except Exception as e:
         return { 'error': str(e) }
+    
+
+@database_sync_to_async
+def add_students_to_group_schedule(user, details):
+    """
+    return students who are not subscribed to a specified group schedule.
+
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing the group_schedule_id to identify the group schedule.
+
+    Returns:
+        dict: A dictionary containing the list of students who can be added to the group schedule or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
+        GroupSchedule.DoesNotExist: If the group schedule with the provided ID does not exist.
+        Exception: For any other unexpected errors.
+    """
+    try:
+        # Retrieve the account making the request
+        account = CustomUser.objects.get(account_id=user)
+        
+        # Retrieve the group schedule
+        group_schedule = GroupSchedule.objects.get(group_schedule_id=details.get('group_schedule_id'))
+
+        # Check if the user has permission to add students to the group schedule
+        if account.school != group_schedule.grade.school:
+            return {"error": "permission denied. you can only view details about group schedules from your own school."}
+
+        # Get all students who are in the same grade but not subscribed to this group schedule
+        students_in_grade = CustomUser.objects.filter(grade=group_schedule.grade, role='STUDENT').exclude(my_group_schedule=group_schedule)
+
+        # Serialize the students
+        serializer = AccountSerializer(students_in_grade, many=True)
+
+        return {"students": serializer.data}
+
+    except CustomUser.DoesNotExist:
+        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
+            
+    except GroupSchedule.DoesNotExist:
+        return {'error': 'a group schedule with the provided credentials does not exist. Please check the group schedule details and try again.'}
+
+    except Exception as e:
+        return {'error': str(e)}
     
 
 @database_sync_to_async
