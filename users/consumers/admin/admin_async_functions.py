@@ -1259,7 +1259,7 @@ def form_data_for_class_update(user, details):
         classroom = Classroom.objects.get(class_id=details.get('class_id'))
                 
         # Check if the user has permission to retrieve this list
-        if account.school != classroom.school or classroom.register_class == False:
+        if account.school != classroom.school:
             return {"error": "permission denied. the provided classroom is not from your school. you can only update details of classes from your own school."}
         
         # Initialize the teacher and teachers list
@@ -1268,6 +1268,7 @@ def form_data_for_class_update(user, details):
             teacher = AccountSerializer(classroom.teacher).data
             # Retrieve other teachers from the same school, excluding the current teacher
             accounts = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(account_id=classroom.teacher.account_id).order_by('name', 'surname', 'account_id')
+        
         else:
             # If no teacher is assigned to the classroom
             teacher = None
