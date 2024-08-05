@@ -134,6 +134,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'class_creation': admin_async_functions.form_data_for_class_creation,
             'class_update': admin_async_functions.form_data_for_class_update,
             'add_students_to_register_class': admin_async_functions.form_data_for_adding_students_to_register_class,
+            'add_students_to_subject_class': admin_async_functions.form_data_for_adding_students_to_subject_class,
             'attendance_register': general_async_functions.form_data_for_attendance_register,
             'add_students_to_group_schedule': admin_async_functions.form_data_add_students_to_group_schedule,
         }
@@ -176,18 +177,23 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'link_parent': admin_async_functions.link_parent,
             'delete_account': admin_async_functions.delete_account,
             'unlink_parent': admin_async_functions.unlink_parent,
+
             'create_grade': admin_async_functions.create_grade,
             'create_subjects': admin_async_functions.create_subjects,
-            'create_subject_class': admin_async_functions.create_subject_class,
-            'create_register_class': admin_async_functions.create_register_class,
+
+            'create_class': admin_async_functions.create_class,
+            'add_students_to_class': admin_async_functions.add_students_to_class,
+            'remove_student_from_class': admin_async_functions.remove_student_from_class,
+            'delete_class': admin_async_functions.delete_class,
+
             'create_schedule': admin_async_functions.create_schedule,
-            'create_group_schedule': admin_async_functions.create_group_schedule,
             'delete_schedule': admin_async_functions.delete_schedule,
-            'delete_group_schedule': admin_async_functions.delete_group_schedule,
-            'add_students_to_register_class': admin_async_functions.add_students_to_register_class,
-            'remove_student_from_register_class': admin_async_functions.remove_student_from_register_class,
+
+            'create_group_schedule': admin_async_functions.create_group_schedule,
             'add_students_to_group_schedule': admin_async_functions.add_students_to_group_schedule,
             'remove_students_from_group_schedule': admin_async_functions.remove_students_from_group_schedule,
+            'delete_group_schedule': admin_async_functions.delete_group_schedule,
+
             'submit_absentes': general_async_functions.submit_absentes,
             'submit_late_arrivals': general_async_functions.submit_late_arrivals,
         }

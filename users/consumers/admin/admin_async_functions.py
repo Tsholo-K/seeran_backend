@@ -504,71 +504,111 @@ def search_subject(user, details):
 
 
 @database_sync_to_async
-def create_register_class(user, details):
+def create_class(user, details):
+    """
+    Creates a new class, either a register class or a subject class, based on the provided details.
 
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing:
+            - classroom_teacher (str): The account ID of the teacher for the class (optional).
+            - grade_id (str): The ID of the grade.
+            - register (bool): A boolean indicating if the class is a register class.
+            - group (str): The group identifier for the class.
+            - classroom (str): The classroom identifier.
+            - subject_id (str): The ID of the subject (optional, required if register is False).
+
+    Returns:
+        dict: A dictionary containing a success message or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user or teacher with the provided account ID does not exist.
+        Grade.DoesNotExist: If the grade with the provided grade ID does not exist.
+        Subject.DoesNotExist: If the subject with the provided subject ID does not exist (when creating a subject class).
+        Exception: For any other unexpected errors.
+    """
     try:
+        # Retrieve the account making the request
         account = CustomUser.objects.get(account_id=user)
 
+        # Retrieve the teacher if specified
         if details.get('classroom_teacher'):
             teacher = CustomUser.objects.get(account_id=details.get('classroom_teacher'), school=account.school)
         else:
             teacher = None
 
-        grade = Grade.objects.get(grade_id=details.get('grade_id'), school=account.school)
+        # Retrieve the grade
+        grade = Grade.objects.get(grade_id=details.get('grade_id'))
 
-        if Classroom.objects.filter(group=details.get('group'), grade=grade, school=account.school, register_class=True).exists():
-            return {"error": "a register class with the provided group in the same grade already exists.. a class group should be unique in the same grade and subject(if applicable)"}
+        if account.school != grade.school:
+            return { "error" : 'you do not have permission to perform this action because the specified grade does not belong to your school. please ensure you are attempting to create a group schedule in a grade within your own school' }
 
-        with transaction.atomic():
-            new_class = Classroom.objects.create(classroom_identifier=details.get('classroom'), group=details.get('group'), grade=grade, teacher=teacher, school=account.school, register_class=True)
-            new_class.save()
-            
-        return { 'message': f'register class for grade {grade.grade} created successfully' }
+        if details.get('register'):
+            # Check if a register class with the same group already exists in the same grade
+            if Classroom.objects.filter(group=details.get('group'), grade=grade, school=account.school, register_class=True).exists():
+                return {"error": "a register class with the provided group in the same grade already exists.. a class group should be unique in the same grade and subject(if applicable)"}
+
+            # Create the register class
+            with transaction.atomic():
+                new_class = Classroom.objects.create(classroom_identifier=details.get('classroom'), group=details.get('group'), grade=grade, teacher=teacher, school=account.school, register_class=True)
+                new_class.save()
+                
+            return {'message': f'register class for grade {grade.grade} created successfully. you can now add students and track attendance in the register classes page'}
+
+        if details.get('subject_id'):
+            # Retrieve the subject
+            subject = Subject.objects.get(subject_id=details.get('subject_id'), grade=grade)
+
+            # Check if a class with the same group already exists in the same subject and grade
+            if Classroom.objects.filter(group=details.get('group'), grade=grade, school=account.school, subject=subject).exists():
+                return {"error": "a class with the provided group in the same subject and grade already exists.. a class group should be unique in the same grade and subject"}
+
+            # Create the subject class
+            with transaction.atomic():
+                new_class = Classroom.objects.create(classroom_identifier=details.get('classroom'), group=details.get('group'), grade=grade, teacher=teacher, school=account.school, subject=subject)
+                new_class.save()
+                
+            return {'message': f'class for grade {grade.grade} {subject.subject.lower()} created successfully. you can now add students, set assessments and track performance in the subject classes page'}
                
     except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
+        # Handle case where the user or teacher account does not exist
+        return {'error': 'account with the provided credentials does not exist'}
     
     except Grade.DoesNotExist:
-        return { 'error': 'grade with the provided credentials does not exist' }
+        # Handle case where the grade does not exist
+        return {'error': 'grade with the provided credentials does not exist'}
 
     except Exception as e:
-        return { 'error': str(e) }
+        # Handle any other unexpected errors
+        return {'error': str(e)}
 
 
 @database_sync_to_async
-def create_subject_class(user, details):
-
+def delete_class(user, details):
     try:
+        # Retrieve the account making the request
         account = CustomUser.objects.get(account_id=user)
 
-        if details.get('classroom_teacher'):
-            teacher = CustomUser.objects.get(account_id=details.get('classroom_teacher'), school=account.school)
-        else:
-            teacher = None
+        # Retrieve the grade
+        classroom = Classroom.objects.get(grade_id=details.get('class_id'))
 
-        grade = Grade.objects.get(grade_id=details.get('grade_id'), school=account.school)
-        subject = Subject.objects.get(subject_id=details.get('subject_id'), grade=grade)
+        if account.school != classroom.school:
+            return { "error" : 'you do not have permission to perform this action because the specified classroom does not belong to your school. please ensure you are attempting to create a group schedule in a grade within your own school' }
 
-        if Classroom.objects.filter(group=details.get('group'), grade=grade, school=account.school, subject=subject).exists():
-            return {"error": "a class with the provided group in the same subject and grade already exists.. a class group should be unique in the same grade and subject"}
-
-        with transaction.atomic():
-            new_class = Classroom.objects.create(classroom_identifier=details.get('classroom'), group=details.get('group'), grade=grade, teacher=teacher, school=account.school, subject=subject)
-            new_class.save()
-            
-        return { 'message': f'class for grade {grade.grade} {subject.subject.lower()} created successfully' }
+        classroom.delete()
+        return {'message': f'class for grade created successfully. you can now add students, set assessments and track performance in the subject classes page'}
                
     except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
+        # Handle case where the user or teacher account does not exist
+        return {'error': 'account with the provided credentials does not exist'}
     
-    except Grade.DoesNotExist:
-        return { 'error': 'grade with the provided credentials does not exist' }
-    
-    except Subject.DoesNotExist:
-        return { 'error': 'subject with the provided credentials does not exist' }
+    except Classroom.DoesNotExist:
+        # Handle case where the grade does not exist
+        return {'error': 'classroom with the provided credentials does not exist'}
 
     except Exception as e:
-        return { 'error': str(e) }
+        # Handle any other unexpected errors
+        return {'error': str(e)}
 
 
 @database_sync_to_async
@@ -620,12 +660,14 @@ def update_class(user, details):
                 return { "message" : 'class details successfully updated' }
             
         return {"error" : serializer.errors}
-               
+
     except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
+        # Handle case where the user account does not exist
+        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
     
     except Classroom.DoesNotExist:
-        return { 'error': 'classroom with the provided credentials does not exist' }
+        # Handle case where the classroom does not exist
+        return {'error': 'a classroom with the provided credentials does not exist. please check the classroom details and try again.'}
 
     except Exception as e:
         return { 'error': str(e) }
@@ -641,12 +683,14 @@ def search_class(user, details):
         serializer = ClassSerializer(classroom)
 
         return {"class": serializer.data}
-    
+
     except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-           
+        # Handle case where the user account does not exist
+        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
+    
     except Classroom.DoesNotExist:
-        return { 'error': 'grade with the provided credentials does not exist' }
+        # Handle case where the classroom does not exist
+        return {'error': 'a classroom with the provided credentials does not exist. please check the classroom details and try again.'}
     
     except Exception as e:
         return { 'error': str(e) }
@@ -662,12 +706,14 @@ def search_teacher_classes(user, details):
         serializer = TeacherClassesSerializer(classes, many=True)
 
         return {"classes": serializer.data}
-    
+
     except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-           
+        # Handle case where the user account does not exist
+        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
+    
     except Classroom.DoesNotExist:
-        return { 'error': 'grade with the provided credentials does not exist' }
+        # Handle case where the classroom does not exist
+        return {'error': 'a classroom with the provided credentials does not exist. please check the classroom details and try again.'}
     
     except Exception as e:
         return { 'error': str(e) }
@@ -1035,68 +1081,137 @@ def remove_students_from_group_schedule(user, details):
 
 
 @database_sync_to_async
-def add_students_to_register_class(user, details):
+def add_students_to_class(user, details):
+    """
+    Adds students to a specified class, either a register class or a subject class.
 
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing:
+            - class_id (str): The ID of the class.
+            - register (bool): Whether the class is a register class.
+            - students (str): A comma-separated string of student account IDs.
+
+    Returns:
+        dict: A dictionary containing a success message or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
+        Classroom.DoesNotExist: If the classroom with the provided class ID does not exist.
+        Exception: For any other unexpected errors.
+    """
     try:
+        # Retrieve the account making the request
         account = CustomUser.objects.get(account_id=user)
-        classroom = Classroom.objects.get(class_id=details.get('class_id'), school=account.school, register_class=True)
+        
+        # Retrieve the classroom with the provided class ID
+        classroom = Classroom.objects.get(class_id=details.get('class_id'))
+
+        register = details.get('register')
+        if register:
+            # Check if the user has permission to add students to the register class
+            if account.school != classroom.school or classroom.register_class == False:
+                return {"error": "permission denied. the provided classroom is either not from your school or is not a register class. you can only manage register classes from your own school."}
+        else:
+            # Check if the user has permission to add students to the subject class
+            if account.school != classroom.school or not classroom.subject:
+                return {"error": "permission denied. the provided classroom is either not from your school or has no subject linked to it. you can only manage subject classes from your own school."}
 
         if details.get('students') == '':
-            return { 'error': f'invalid request.. no students were provided. please provide students to be added to the specified class' }
+            return {'error': 'invalid request. no students were provided. please provide students to be added to the specified class.'}
         
+        # Split the comma-separated string of student account IDs into a list
         students_list = details.get('students').split(', ')
         
+        # Check for existing students in the class
         existing_students = []
         for student in students_list:
             if classroom.students.filter(account_id=student).exists():
                 existing_students.append(student)
         
         if existing_students:
-            return {'error' : f'invalid request.. the provided list of students includes students that are already in this class, please review the list of students then submit the list again'}
+            return {'error': f'invalid request. the provided list of students includes students that are already in this class. please review the list of students and try again.'}
         
+        # Use a transaction to ensure atomicity
         with transaction.atomic():
-
             for student in students_list:
+                # Add each student to the classroom
                 classroom.students.add(CustomUser.objects.get(account_id=student, school=account.school, grade=classroom.grade))
 
             classroom.save()
-            
-        return {'message': 'students successfully added to the class'}
         
+        if register:
+            return {'message': f'the provided list of students are now part of the grade {classroom.grade}, group {classroom.group.title()} {classroom.subject.subject.lower()} class.'}
+        else:
+            return {'message': f'the provided list of students are now part of the grade {classroom.grade}, group {classroom.group.title()} register class.'}
+
     except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-            
+        # Handle case where the user account does not exist
+        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
+    
     except Classroom.DoesNotExist:
-        return { 'error': 'register class with the provided credentials does not exist, request denied' }
+        # Handle case where the classroom does not exist
+        return {'error': 'a classroom with the provided credentials does not exist. please check the classroom details and try again.'}
 
     except Exception as e:
-        return { 'error': str(e) }
+        # Handle any other unexpected errors
+        return {'error': str(e)}
 
 
 @database_sync_to_async
-def remove_student_from_register_class(user, details):
+def remove_student_from_class(user, details):
+    """
+    Removes a student from a specified register class.
 
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing:
+            - class_id (str): The ID of the class.
+            - account_id (str): The account ID of the student to be removed.
+
+    Returns:
+        dict: A dictionary containing a success message or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
+        Classroom.DoesNotExist: If the classroom with the provided class ID does not exist.
+        Exception: For any other unexpected errors.
+    """
     try:
+        # Retrieve the account making the request
         account = CustomUser.objects.get(account_id=user)
-        classroom = Classroom.objects.get(class_id=details.get('class_id'), school=account.school, register_class=True)
+        
+        # Retrieve the classroom with the provided class ID and school, ensuring it is a register class
+        classroom = Classroom.objects.get(class_id=details.get('class_id'))
 
+        # Check if the user has permission to remove students from the class
+        if account.school != classroom.school:
+            return {"error": "permission denied. the provided classroom is not from your school. you can only manage classes from your own school."}
+
+        # Check if the student is part of the classroom
         if classroom.students.filter(account_id=details.get('account_id')).exists():
+            # Use a transaction to ensure atomicity
             with transaction.atomic():
+                # Remove the student from the classroom
                 classroom.students.remove(classroom.students.get(account_id=details.get('account_id')))
                 classroom.save()
             
-            return { 'message': f'student successfully removed from register class group {classroom.group}' }
+            return {'message': f'the student has been successfully removed from the class, and will no longer be associated or have access to data linked to the class'}
         
-        return { 'error': f'can not remove student from class.. the provided student is not part of the register class' }
+        return {'error': 'cannot remove student from class.. the student with the provided credentials is not part of the class'}
                
     except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
+        # Handle case where the user account does not exist
+        return {'error': 'account with the provided credentials does not exist'}
     
     except Classroom.DoesNotExist:
-        return { 'error': 'class with the provided credentials does not exist' }
+        # Handle case where the classroom does not exist
+        return {'error': 'class with the provided credentials does not exist'}
 
     except Exception as e:
-        return { 'error': str(e) }
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
     
 
 @database_sync_to_async
@@ -1119,30 +1234,63 @@ def form_data_for_class_creation(user):
 
 @database_sync_to_async
 def form_data_for_class_update(user, details):
+    """
+    Retrieves the data needed for updating a classroom's details, including available teachers and current teacher assignment.
 
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing the class ID to identify the class.
+
+    Returns:
+        dict: A dictionary containing the current teacher, list of available teachers, group, and classroom identifier, 
+              or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
+        Classroom.DoesNotExist: If the classroom with the provided class ID does not exist.
+        Exception: For any other unexpected errors.
+    """
     try:
+        # Retrieve the account making the request
         account = CustomUser.objects.get(account_id=user)
-        classroom = Classroom.objects.get(class_id=details.get('class_id'), school=account.school)
-
+        
+        # Retrieve the classroom with the provided class ID
+        classroom = Classroom.objects.get(class_id=details.get('class_id'))
+                
+        # Check if the user has permission to retrieve this list
+        if account.school != classroom.school or classroom.register_class == False:
+            return {"error": "permission denied. the provided classroom is not from your school. you can only update details of classes from your own school."}
+        
+        # Initialize the teacher and teachers list
         if classroom.teacher is not None:
+            # Serialize the current teacher
             teacher = AccountSerializer(classroom.teacher).data
+            # Retrieve other teachers from the same school, excluding the current teacher
             accounts = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(account_id=classroom.teacher.account_id).order_by('name', 'surname', 'account_id')
-        
         else:
+            # If no teacher is assigned to the classroom
             teacher = None
+            # Retrieve all teachers from the same school
             accounts = CustomUser.objects.filter(role='TEACHER', school=account.school).order_by('name', 'surname', 'account_id')
-            
-        teachers = AccountSerializer(accounts, many=True).data
-        return { 'teacher' : teacher, "teachers" : teachers, 'group' : classroom.group, 'classroom_identifier' : classroom.classroom_identifier  }
         
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-            
-    except Classroom.DoesNotExist:
-        return { 'error': 'class with the provided credentials does not exist' }
+        # Serialize the list of available teachers
+        teachers = AccountSerializer(accounts, many=True).data
+        
+        # Return the data
+        return { 'teacher': teacher, "teachers": teachers, 'group': classroom.group, 'classroom_identifier': classroom.classroom_identifier }
 
+    except CustomUser.DoesNotExist:
+        # Handle case where the user account does not exist
+        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
+    
+    except Classroom.DoesNotExist:
+        # Handle case where the classroom does not exist
+        return {'error': 'a classroom with the provided credentials does not exist. please check the classroom details and try again.'}
+    
     except Exception as e:
+        # Handle any other unexpected errors
         return { 'error': str(e) }
+
     
 
 @database_sync_to_async
@@ -1182,7 +1330,8 @@ def form_data_add_students_to_group_schedule(user, details):
         return {"students": serializer.data}
 
     except CustomUser.DoesNotExist:
-        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
+        # Handle case where the user account does not exist
+        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
             
     except GroupSchedule.DoesNotExist:
         return {'error': 'a group schedule with the provided credentials does not exist. Please check the group schedule details and try again.'}
@@ -1193,28 +1342,111 @@ def form_data_add_students_to_group_schedule(user, details):
 
 @database_sync_to_async
 def form_data_for_adding_students_to_register_class(user, details):
+    """
+    Retrieves a list of students who are in the same grade as the specified class but are not currently enrolled in any register class.
 
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing the class ID to identify the class.
+
+    Returns:
+        dict: A dictionary containing either the list of students or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
+        Classroom.DoesNotExist: If the classroom with the provided class ID does not exist.
+        Exception: For any other unexpected errors.
+    """
     try:
+        # Retrieve the account making the request
         account = CustomUser.objects.get(account_id=user)
-        classroom = Classroom.objects.get(class_id=details.get('class_id'), school=account.school)
+        
+        # Retrieve the classroom with the provided class ID within the user's school
+        classroom = Classroom.objects.get(class_id=details.get('class_id'))
+                
+        # Check if the user has permission to retrieve this list
+        if account.school != classroom.school or classroom.register_class == False:
+            return {"error": "permission denied the provided classsroom is either not from your school or is not a register class. you can only view details about register classes from your own school."}
 
         # Get all students who are in the same grade and already in a register class
         students_in_register_classes = CustomUser.objects.filter(enrolled_classes__grade=classroom.grade, enrolled_classes__register_class=True)
-
-        # Exclude these students from the current classroom's grade
+        
+        # Exclude these students from the list of students in the current classroom's grade
         students = classroom.grade.students.exclude(id__in=students_in_register_classes)
-
+        
+        # Serialize the list of students to return them in the response
         serializer = AccountSerializer(students, many=True)
 
         return {"students": serializer.data}
-    
+
     except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-            
+        # Handle case where the user account does not exist
+        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
+    
     except Classroom.DoesNotExist:
-        return { 'error': 'class with the provided credentials does not exist' }
+        # Handle case where the classroom does not exist
+        return {'error': 'a classroom with the provided credentials does not exist. please check the classroom details and try again.'}
+    
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
+    
+
+@database_sync_to_async
+def form_data_for_adding_students_to_subject_class(user, details):
+    """
+    Retrieves a list of students who are in the same grade as the specified class but are not currently enrolled in that class or any other class within the same subject.
+
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing the class ID to identify the class.
+
+    Returns:
+        dict: A dictionary containing either the list of students or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
+        Classroom.DoesNotExist: If the classroom with the provided class ID does not exist.
+        Exception: For any other unexpected errors.
+    """
+    try:
+        # Retrieve the account making the request
+        account = CustomUser.objects.get(account_id=user)
+        
+        # Retrieve the classroom with the provided class ID within the user's school
+        classroom = Classroom.objects.get(class_id=details.get('class_id'))
+        
+        # Check if the user has permission to retrieve this list
+        if account.school != classroom.school or not classroom.subject:
+            return {"error": "permission denied the provided classsroom is either not from your school or has no subject linked to it. you can only view details about subject classes from your own school."}
+
+        # Get all students who are in the same grade as the classroom
+        students_in_same_grade = CustomUser.objects.filter(grade=classroom.grade)
+        
+        # Get all students who are already enrolled in any class within the same subject as the specified classroom
+        students_in_subject_classes = CustomUser.objects.filter(enrolled_classes__subject=classroom.subject)
+
+        # Exclude these students from the list of students in the same grade
+        students = students_in_same_grade.exclude(id__in=students_in_subject_classes)
+
+        # Serialize the list of students to return them in the response
+        serializer = AccountSerializer(students, many=True)
+
+        return {"students": serializer.data}
+
+    except CustomUser.DoesNotExist:
+        # Handle case where the user account does not exist
+        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
+    
+    except Classroom.DoesNotExist:
+        # Handle case where the classroom does not exist
+        return {'error': 'a classroom with the provided credentials does not exist. please check the classroom details and try again.'}
 
     except Exception as e:
-        return { 'error': str(e) }
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
+
 
     
