@@ -1141,9 +1141,9 @@ def add_students_to_class(user, details):
             classroom.save()
         
         if register:
-            return {'message': f'the provided list of students are now part of the grade {classroom.grade}, group {classroom.group.title()} {classroom.subject.subject.lower()} class.'}
+            return {'message': f'the provided list of students are now part of the grade {classroom.grade.grade}, group {classroom.group.title()} {classroom.subject.subject.lower()} class.'}
         else:
-            return {'message': f'the provided list of students are now part of the grade {classroom.grade}, group {classroom.group.title()} register class.'}
+            return {'message': f'the provided list of students are now part of the grade {classroom.grade.grade}, group {classroom.group.title()} register class.'}
 
     except CustomUser.DoesNotExist:
         # Handle case where the user account does not exist
