@@ -643,10 +643,11 @@ def update_class(user, details):
         account = CustomUser.objects.get(account_id=user)
         classroom = Classroom.objects.get(class_id=details.get('class_id'), school=account.school)
 
-        if updates.get('teacher') != (None or ''):
-            new_teacher = updates.get('teacher')
+        new_teacher = updates.get('teacher')
+        if new_teacher:
             if new_teacher == 'remove teacher':
                 updates['teacher'] = None  # remove the teacher
+
             else:
                 teacher = CustomUser.objects.get(account_id=new_teacher, school=account.school)
                 updates['teacher'] = teacher.pk
@@ -776,6 +777,7 @@ def create_schedule(user, details):
             group_schedule = GroupSchedule.objects.get(group_schedule_id=details.get('group_schedule_id'))
             if group_schedule.grade.school != account.school:
                 return {"error": 'the specified group schedule does not belong to your school. please ensure you are attempting to create schedules for a group schedule from your school'}
+        
         else:
             # Fetch the teacher account and validate school and role
             teacher = CustomUser.objects.get(account_id=details.get('account_id'))
