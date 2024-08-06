@@ -366,3 +366,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # teacherschedule : TS
 # groudschedule : GS
 # Announcement : AN
+# Chatroom : CT

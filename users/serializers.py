@@ -58,19 +58,23 @@ class AccountProfileSerializer(serializers.ModelSerializer):
 
     name = serializers.SerializerMethodField()
     surname = serializers.SerializerMethodField()
+    id = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
     identifier = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
-        fields = [ 'name', 'surname', 'identifier', 'image' ]
+        fields = [ 'name', 'surname', 'id', 'identifier', 'image' ]
     
     def get_name(self, obj):
         return obj.name.title()
     
     def get_surname(self, obj):
         return obj.surname.title()
-            
+                
+    def get_id(self, obj):
+        return obj.account_id
+
     def get_image(self, obj):
         return '/default-user-image.svg'
 
