@@ -1189,6 +1189,9 @@ def search_announcement(user, details):
             if announcement.school != account.school:
                 return {"error": "unauthorized request. you can only view announcements from your own school. Please check announcement details and try again."}
 
+        if account not in announcement.reached:
+            announcement.reached.add(account)
+
         # Serialize and return the announcement data
         serializer = AnnouncementSerializer(announcement)
         return {'announcement': serializer.data}
