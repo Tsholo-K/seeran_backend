@@ -32,7 +32,7 @@ class AnnouncementSerializer(serializers.ModelSerializer):
             return { 
                 "name" : obj.announce_by.name.title(), 
                 "surname" : obj.announce_by.surname.title(), 
-                "identifier" : obj.announce_by.accound_id, 
+                "identifier" : obj.announce_by.account_id, 
                 'image': '/default-user-image.svg' 
             }
         else:
