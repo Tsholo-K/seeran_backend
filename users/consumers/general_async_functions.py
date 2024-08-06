@@ -37,7 +37,7 @@ from users.serializers import AccountSerializer, StudentAccountAttendanceRecordS
 from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
 from timetables.serializers import SessoinsSerializer, ScheduleSerializer
 from timetables.serializers import GroupScheduleSerializer
-from announcements.serializers import AnnouncementsSerializer
+from announcements.serializers import AnnouncementsSerializer, AnnouncementSerializer
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
 from attendances.utility_functions import get_month_dates
@@ -1079,7 +1079,7 @@ def log_out(access_token):
 
 
 @database_sync_to_async
-def search_announcements(user):
+def fetch_announcements(user):
     """
     Fetch announcements for a user based on their role and associated schools.
 
@@ -1115,7 +1115,7 @@ def search_announcements(user):
 
         # Validate user role
         if account.role not in ['PARENT', 'STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL']:
-            return {"error": "The specified account's role is invalid. Please ensure you are attempting to access announcements from an authorized account."}
+            return {"error": "the specified account's role is invalid. Please ensure you are attempting to access announcements from an authorized account."}
 
         # Fetch announcements based on role
         if account.role == 'PARENT':
@@ -1132,11 +1132,74 @@ def search_announcements(user):
         return {'announcements': serializer.data}
 
     except CustomUser.DoesNotExist:
-        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
 
     except Exception as e:
         return {'error': str(e)}
 
+
+@database_sync_to_async
+def search_announcement(user, details):
+    """
+    Function to search and retrieve a specific announcement based on user role and permissions.
+
+    This function checks the user's role and school association to determine if they have the appropriate
+    permissions to access the announcement. The function also verifies that the announcement belongs to 
+    a school associated with the user.
+
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing the `announcement_id` to identify the specific announcement.
+
+    Returns:
+        dict: A dictionary containing either the requested announcement data or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user or announcement with the provided ID does not exist.
+        Exception: For any other unexpected errors.
+
+    Example:
+        response = await search_announcement(request.user.account_id, {'announcement_id': 'AN123'})
+        if 'error' in response:
+            # Handle error
+        else:
+            announcement_data = response['announcement']
+            # Process announcement data
+    """
+    try:
+        # Retrieve the user account making the request
+        account = CustomUser.objects.get(account_id=user)
+
+        # Validate user role
+        if account.role not in ['PARENT', 'STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL']:
+            return {"error": "the specified account's role is invalid. please ensure you are attempting to access an announcement from an authorized account."}
+
+        # Retrieve the specified announcement
+        announcement = Announcement.objects.get(announcement_id=details.get('announcement_id'))
+
+        # Check access based on user role
+        if account.role == 'PARENT':
+            # Parents can only access announcements related to the schools of their children
+            children_schools = account.children.values_list('school', flat=True)
+            if announcement.school not in children_schools:
+                return {"error": "unauthorized request. you can only view announcements from schools your children are linked to. Please check announcement details and try again."}
+
+        else:
+            # Other roles can only access announcements from their own school
+            if announcement.school != account.school:
+                return {"error": "unauthorized request. you can only view announcements from your own school. Please check announcement details and try again."}
+
+        # Serialize and return the announcement data
+        serializer = AnnouncementSerializer(announcement)
+        return {'announcement': serializer.data}
+
+    except CustomUser.DoesNotExist:
+        # Handle case where the user or announcement does not exist
+        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
+    
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
     
 
 @database_sync_to_async

@@ -73,7 +73,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'grades': admin_async_functions.fetch_grades,
             'grades_with_student_count': admin_async_functions.fetch_grades_with_student_count,
 
-            'announcements': general_async_functions.search_announcements,
+            'announcements': general_async_functions.fetch_announcements,
 
             'log_out': general_async_functions.log_out,
         }
@@ -104,6 +104,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'register_classes': admin_async_functions.search_grade_register_classes,
 
             'month_attendance_records': general_async_functions.search_month_attendance_records,
+
+            'announcement': general_async_functions.search_announcement,
 
             'grade': admin_async_functions.search_grade,
             'subject': admin_async_functions.search_subject,

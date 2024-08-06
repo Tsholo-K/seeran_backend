@@ -1220,30 +1220,62 @@ def remove_student_from_class(user, details):
 
 @database_sync_to_async
 def announce(user, details):
+    """
+    Function to create and save a new announcement in the system.
 
+    This function is used to create an announcement. It checks the user's role to ensure they have the appropriate
+    permissions to make announcements and saves the announcement if valid. The announcement is associated with the
+    user's school and user information is included in the announcement details.
+
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing the details of the announcement to be created.
+
+    Returns:
+        dict: A dictionary containing a success message or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
+        Exception: For any other unexpected errors.
+
+    Example:
+        response = await announce(request.user.account_id, {
+            'title': 'Important Update',
+            'message': 'The school will be closed tomorrow for maintenance.'
+        })
+        if 'error' in response:
+            # Handle error
+        else:
+            # Process success message
+    """
     try:
-        # Fetch the user account making the request
+        # Retrieve the user account making the request
         account = CustomUser.objects.get(account_id=user)
 
+        # Add user and school information to the announcement details
         details['announce_by'] = account.pk
         details['school'] = account.school.pk
 
+        # Serialize the announcement data
         serializer = AnnouncementCreationSerializer(data=details)
 
+        # Validate and save the announcement
         if serializer.is_valid():
-            
             with transaction.atomic():
                 serializer.save()
-            
-            return {'message': 'The group schedule has been successfully deleted'}
-            
-        return {"error" : serializer.errors}
+            return {'message': 'the announcement is now available to all users in the school and the parents linked to them'}
+        
+        # Return validation errors
+        return {"error": serializer.errors}
         
     except CustomUser.DoesNotExist:
-        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
+        # Handle case where the user does not exist
+        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
 
     except Exception as e:
+        # Handle any other unexpected errors
         return {'error': str(e)}
+
 
 
 @database_sync_to_async

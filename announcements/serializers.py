@@ -17,26 +17,26 @@ class AnnouncementCreationSerializer(serializers.ModelSerializer):
 
 class AnnouncementSerializer(serializers.ModelSerializer):
     
-    id = serializers.SerializerMethodField()
-    group_name = serializers.SerializerMethodField()
-    students_count = serializers.SerializerMethodField()
-    schedules_count = serializers.SerializerMethodField()
+    title = serializers.SerializerMethodField()
+    announce_by = serializers.SerializerMethodField()
 
     class Meta:
         model = Announcement
-        fields = [ 'title', 'message', 'announce_by' ]
-    
-    def get_id(self, obj):
-        return obj.group_schedule_id
-    
-    def get_group_name(self, obj):
-        return obj.group_name.title()
-    
-    def get_students_count(self, obj):
-        return obj.students.count()
-    
-    def get_schedules_count(self, obj):
-        return obj.schedules.count()
+        fields = [ 'title', 'message', 'announce_by', 'announced_at' ]
+        
+    def get_title(self, obj):
+        return obj.title.title()
+
+    def get_announce_by(self, obj):    
+        if obj.announce_by:
+            return { 
+                "name" : obj.announce_by.name.title(), 
+                "surname" : obj.announce_by.surname.title(), 
+                "identifier" : obj.announce_by.accound_id, 
+                'image': '/default-user-image.svg' 
+            }
+        else:
+            return None
 
 
 class AnnouncementsSerializer(serializers.ModelSerializer):
