@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'timetables',
     'auth_tokens',
     'uploads',
+    'announcements',
     
     # third party apps
     'corsheaders', # handle cors 
