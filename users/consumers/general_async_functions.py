@@ -1172,7 +1172,7 @@ def search_announcement(user, details):
 
         # Validate user role
         if account.role not in ['PARENT', 'STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL']:
-            return {"error": "the specified account's role is invalid. please ensure you are attempting to access an announcement from an authorized account."}
+            return {"error": "The specified account's role is invalid. Please ensure you are attempting to access an announcement from an authorized account."}
 
         # Retrieve the specified announcement
         announcement = Announcement.objects.get(announcement_id=details.get('announcement_id'))
@@ -1181,15 +1181,15 @@ def search_announcement(user, details):
         if account.role == 'PARENT':
             # Parents can only access announcements related to the schools of their children
             children_schools = account.children.values_list('school', flat=True)
-            if announcement.school not in children_schools:
-                return {"error": "unauthorized request. you can only view announcements from schools your children are linked to. Please check announcement details and try again."}
-
+            if announcement.school.id not in children_schools:
+                return {"error": "Unauthorized request. You can only view announcements from schools your children are linked to. Please check announcement details and try again."}
         else:
             # Other roles can only access announcements from their own school
             if announcement.school != account.school:
-                return {"error": "unauthorized request. you can only view announcements from your own school. Please check announcement details and try again."}
+                return {"error": "Unauthorized request. You can only view announcements from your own school. Please check announcement details and try again."}
 
-        if account not in announcement.reached:
+        # Check if the user is already in the reached list and add if not
+        if not announcement.reached.filter(pk=account.pk).exists():
             announcement.reached.add(account)
 
         # Serialize and return the announcement data
@@ -1198,7 +1198,7 @@ def search_announcement(user, details):
 
     except CustomUser.DoesNotExist:
         # Handle case where the user or announcement does not exist
-        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
+        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
     
     except Exception as e:
         # Handle any other unexpected errors
