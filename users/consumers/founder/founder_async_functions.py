@@ -256,7 +256,7 @@ def update_principal_account(details):
     
 
 @database_sync_to_async
-def search_principal_account_profile(details):
+def search_principal_profile(details):
     """
     Searches for a principal's account profile by their account ID.
 
@@ -279,7 +279,7 @@ def search_principal_account_profile(details):
 
     
 @database_sync_to_async
-def search_principal_account_id(details):
+def search_principal_id(details):
     """
     Searches for a principal's account ID by their account ID.
 

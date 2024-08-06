@@ -19,11 +19,13 @@ from timetables.models import Session, Schedule, TeacherSchedule, GroupSchedule
 from grades.models import Grade, Subject
 from classes.models import Classroom
 from attendances.models import Absent
+from announcements.models import Announcement
 
 # serilializers
 from users.serializers import AccountUpdateSerializer, AccountIDSerializer, AccountSerializer, AccountCreationSerializer, StudentAccountCreationSerializer, ParentAccountCreationSerializer
 from grades.serializers import GradesSerializer, GradeSerializer, SubjectDetailSerializer, ClassesSerializer
 from classes.serializers import ClassSerializer, ClassUpdateSerializer, TeacherClassesSerializer
+from announcements.serializers import AnnouncementCreationSerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
@@ -658,7 +660,7 @@ def update_class(user, details):
             with transaction.atomic():
                 serializer.save()
 
-                return { "message" : 'class details successfully updated' }
+                return {"message" : 'class details have been successfully updated'}
             
         return {"error" : serializer.errors}
 
@@ -1215,7 +1217,34 @@ def remove_student_from_class(user, details):
         # Handle any other unexpected errors
         return {'error': str(e)}
 
-    
+
+@database_sync_to_async
+def announce(user, details):
+
+    try:
+        # Fetch the user account making the request
+        account = CustomUser.objects.get(account_id=user)
+
+        details['announce_by'] = account.pk
+        details['school'] = account.school.pk
+
+        serializer = AnnouncementCreationSerializer(data=details)
+
+        if serializer.is_valid():
+            
+            with transaction.atomic():
+                serializer.save()
+            
+            return {'message': 'The group schedule has been successfully deleted'}
+            
+        return {"error" : serializer.errors}
+        
+    except CustomUser.DoesNotExist:
+        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
+
+    except Exception as e:
+        return {'error': str(e)}
+
 
 @database_sync_to_async
 def form_data_for_class_creation(user):

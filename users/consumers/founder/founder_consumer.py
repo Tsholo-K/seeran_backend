@@ -73,7 +73,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
             return await founder_async_functions.fetch_schools()
         
         elif description == 'log_me_out':
-            return await general_async_functions.log_user_out(access_token)
+            return await general_async_functions.log_out(access_token)
         
         else:
             return {'error': 'Invalid get description'}
@@ -82,10 +82,13 @@ class FounderConsumer(AsyncWebsocketConsumer):
         search_map = {
             'school': founder_async_functions.search_school,
             'school_details': founder_async_functions.search_school_details,
-            'principal_profile': founder_async_functions.search_principal_account_profile,
-            'account_id': founder_async_functions.search_principal_account_id,
+
+            'principal_profile': founder_async_functions.search_principal_profile,
+            'principal_id': founder_async_functions.search_principal_id,
+
             'principal_invoices': founder_async_functions.search_principal_invoices,
             'principal_invoice': founder_async_functions.search_principal_invoice,
+
             'bug_reports': founder_async_functions.search_bug_reports,
             'bug_report': founder_async_functions.search_bug_report,
         }

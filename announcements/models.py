@@ -3,6 +3,7 @@ import uuid
 
 # django
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 # models
 from schools.models import School
@@ -11,12 +12,12 @@ from users.models import CustomUser
 
 class Announcement(models.Model):
 
-    title = models.CharField(max_length=200, help_text="Title of the announcement")
+    title = models.CharField(max_length=124, help_text="Title of the announcement")
     message = models.TextField(max_length=1024, help_text="Message of the announcement")
 
-    announcement_date = models.DateField(null=True, blank=True, help_text="Date of the announcement")
+    reached = models.ManyToManyField(CustomUser, help_text="All users who have seen the announcement")
 
-    announced_at = models.DateTimeField(auto_now_add=True, help_text="Datetime when the announcement was made")
+    announced_at = models.DateTimeField(auto_now_add=True, help_text="Time when the announcement was made")
     announce_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='my_announcements', help_text="User who made the announcement")
    
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='school_announcements', help_text="School related to the announcement")
@@ -25,6 +26,11 @@ class Announcement(models.Model):
 
     def __str__(self):
         return self.title
+
+    class Meta:
+        verbose_name = _('announcement')
+        verbose_name_plural = _('announcements')
+        ordering = ['announced_at']
 
     # annoumcement id creation handler
     def save(self, *args, **kwargs):

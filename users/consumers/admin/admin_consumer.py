@@ -69,9 +69,13 @@ class AdminConsumer(AsyncWebsocketConsumer):
         get_map = {
             'my_security_information': general_async_functions.fetch_my_security_information,
             'email_information': general_async_functions.fetch_my_email_information,
+
             'grades': admin_async_functions.fetch_grades,
             'grades_with_student_count': admin_async_functions.fetch_grades_with_student_count,
-            'log_me_out': general_async_functions.log_user_out,
+
+            'announcements': general_async_functions.search_announcements,
+
+            'log_out': general_async_functions.log_out,
         }
 
         func = get_map.get(description)
@@ -85,19 +89,26 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'accounts': admin_async_functions.search_accounts,
             'students': admin_async_functions.search_students,
             'parents': general_async_functions.search_parents,
+
             'subscribed_students': admin_async_functions.search_subscribed_students,
+
             'account_profile': general_async_functions.search_account_profile,
             'account_id': general_async_functions.search_account_id,
+
             'teacher_schedule_schedules': general_async_functions.search_teacher_schedule_schedules,
             'group_schedule_schedules': general_async_functions.search_group_schedule_schedules,
             'group_schedules': general_async_functions.search_group_schedules,
             'schedule_sessions': general_async_functions.search_for_schedule_sessions,
+
             'teacher_classes': admin_async_functions.search_teacher_classes,
             'register_classes': admin_async_functions.search_grade_register_classes,
-            'search_month_attendance_records': general_async_functions.search_month_attendance_records,
+
+            'month_attendance_records': general_async_functions.search_month_attendance_records,
+
             'grade': admin_async_functions.search_grade,
             'subject': admin_async_functions.search_subject,
             'class': admin_async_functions.search_class,
+
             'email_ban': general_async_functions.search_my_email_ban,
         }
 
@@ -131,11 +142,15 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
     async def handle_form_data(self, description, details, user, access_token):
         form_data_map = {
+
             'class_creation': admin_async_functions.form_data_for_class_creation,
             'class_update': admin_async_functions.form_data_for_class_update,
+
             'add_students_to_register_class': admin_async_functions.form_data_for_adding_students_to_register_class,
             'add_students_to_subject_class': admin_async_functions.form_data_for_adding_students_to_subject_class,
+
             'attendance_register': general_async_functions.form_data_for_attendance_register,
+
             'add_students_to_group_schedule': admin_async_functions.form_data_add_students_to_group_schedule,
         }
 
@@ -150,9 +165,13 @@ class AdminConsumer(AsyncWebsocketConsumer):
         put_map = {
             'update_email': general_async_functions.update_email,
             'update_password': general_async_functions.update_password,
+
             'update_multi_factor_authentication': general_async_functions.update_multi_factor_authentication,
+
             'update_account': admin_async_functions.update_account,
+
             'update_class': admin_async_functions.update_class,
+
             'send_email_revalidation_otp': general_async_functions.validate_email_revalidation,
         }
 
@@ -193,6 +212,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'add_students_to_group_schedule': admin_async_functions.add_students_to_group_schedule,
             'remove_students_from_group_schedule': admin_async_functions.remove_students_from_group_schedule,
             'delete_group_schedule': admin_async_functions.delete_group_schedule,
+
+            'announce': admin_async_functions.announce,
 
             'submit_absentes': general_async_functions.submit_absentes,
             'submit_late_arrivals': general_async_functions.submit_late_arrivals,

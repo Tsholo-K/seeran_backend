@@ -30,13 +30,14 @@ from timetables.models import Schedule, TeacherSchedule, GroupSchedule
 from classes.models import Classroom
 from attendances.models import Absent, Late
 from grades.models import Grade
+from announcements.models import Announcement
 
 # serializers
 from users.serializers import AccountSerializer, StudentAccountAttendanceRecordSerializer, AccountProfileSerializer, AccountIDSerializer
 from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
 from timetables.serializers import SessoinsSerializer, ScheduleSerializer
 from timetables.serializers import GroupScheduleSerializer
-
+from announcements.serializers import AnnouncementsSerializer
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
 from attendances.utility_functions import get_month_dates
@@ -47,40 +48,234 @@ from users.checks import permission_checks
 
 @database_sync_to_async
 def fetch_my_security_information(user):
+    """
+    Function to fetch security-related information for a given user.
 
+    This function retrieves the multi-factor authentication status and event email settings for the specified user.
+
+    Args:
+        user (str): The account ID of the user making the request.
+
+    Returns:
+        dict: A dictionary containing the user's security information or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
+        Exception: For any other unexpected errors.
+
+    Example:
+        response = await fetch_my_security_information(request.user.account_id)
+        if 'error' in response:
+            # Handle error
+        else:
+            security_info = response
+            # Process security information
+    """
     try:
+        # Retrieve the account making the request
         account = CustomUser.objects.get(account_id=user)
-        return { 'multifactor_authentication': account.multifactor_authentication, 'event_emails': account.event_emails }
+        
+        # Return security-related information
+        return {'multifactor_authentication': account.multifactor_authentication, 'event_emails': account.event_emails}
         
     except CustomUser.DoesNotExist:
-        return { 'error': 'user with the provided credentials does not exist' }
+        # Handle case where the user account does not exist
+        return {'error': 'User with the provided credentials does not exist'}
     
     except Exception as e:
-        return { 'error': str(e) }
-    
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
 
 @database_sync_to_async
 def fetch_my_email_information(user):
+    """
+    Function to fetch email-related information for a given user.
 
+    This function retrieves email ban records and email ban status for the specified user.
+
+    Args:
+        user (str): The account ID of the user making the request.
+
+    Returns:
+        dict: A dictionary containing the user's email information or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
+        Exception: For any other unexpected errors.
+
+    Example:
+        response = await fetch_my_email_information(request.user.account_id)
+        if 'error' in response:
+            # Handle error
+        else:
+            email_info = response['information']
+            # Process email information
+    """
     try:
+        # Retrieve the account making the request
         account = CustomUser.objects.get(account_id=user)
         
+        # Retrieve email ban records for the user's email address
         email_bans = EmailBan.objects.filter(email=account.email).order_by('-banned_at')
+        # Serialize the email ban records
         serializer = EmailBansSerializer(email_bans, many=True)
     
-        return {'information' : { "email_bans" : serializer.data, 'strikes' : account.email_ban_amount, 'banned' : account.email_banned }}
+        # Return email-related information
+        return {'information': {'email_bans': serializer.data, 'strikes': account.email_ban_amount, 'banned': account.email_banned}}
         
     except CustomUser.DoesNotExist:
-        return { 'error': 'user with the provided credentials does not exist' }
+        # Handle case where the user account does not exist
+        return {'error': 'User with the provided credentials does not exist'}
+    
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def search_my_email_ban(details):
+
+    try:
+        email_ban = EmailBan.objects.get(ban_id=details.get('email_ban_id'))
+
+        if cache.get(details.get('email') + 'email_revalidation_otp'):
+            can_request = False
+        else:
+            can_request = True
+            
+        serializer = EmailBanSerializer(email_ban)
+        return { "email_ban" : serializer.data , 'can_request': can_request}
+        
+    except EmailBan.DoesNotExist:
+        return { 'error': 'ban with the provided credentials does not exist' }
     
     except Exception as e:
         return { 'error': str(e) }
+
+
+@database_sync_to_async
+def validate_email_revalidation(user, details):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+
+        email_ban = EmailBan.objects.get(ban_id=details.get('email_ban_id'))
+        
+        if not email_ban.email == account.email:
+            return { "error" : "invalid request, banned email different from account email" }
+
+        if email_ban.status == 'APPEALED':
+            return { "error" : "ban already appealed" }
+
+        if not email_ban.can_appeal:
+            return { "error" : "can not appeal this email ban" }
+        
+        if email_ban.otp_send >= 3 :
+            email_ban.can_appeal = False
+            email_ban.status = 'BANNED'
+            email_ban.save()
+            
+            return { "denied" : "maximum amount of OTP sends reached, email permanently banned",  }
+        
+        return {'user' : account}
+    
+    except CustomUser.DoesNotExist:
+        return {'error': 'user with the provided credentials does not exist'}
+
+    except EmailBan.DoesNotExist:
+        return {'error': 'ban with the provided credentials does not exist'}
+    
+    except Exception as e:
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def update_email_ban_otp_sends(email_ban_id):
+
+    try:
+        email_ban = EmailBan.objects.get(ban_id=email_ban_id)
+        
+        email_ban.otp_send += 1
+        if email_ban.status != 'PENDING':
+            email_ban.status = 'PENDING'
+        email_ban.save()
+        
+        return {"message": "a new OTP has been sent to your email address"}
+
+    except EmailBan.DoesNotExist:
+        return {'error': 'email ban with the provided credentials does not exist'}
+    
+    except Exception as e:
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def verify_email_revalidate_otp(user, details):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        email_ban = EmailBan.objects.get(ban_id=details.get('email_ban_id'))
+        
+        # try to get revalidation otp from cache
+        hashed_otp = cache.get(account.email + 'email_revalidation_otp')
+        if not hashed_otp:
+            cache.delete(account.email + 'email_revalidation_attempts')
+            return {"error": "OTP expired"}
+
+        # check if both otps are valid
+        if verify_user_otp(user_otp=details.get('otp'), stored_hashed_otp_and_salt=hashed_otp):
+            
+            
+            email_ban.status = 'APPEALED'
+            account.email_banned = False
+            account.save()
+            email_ban.save()
+
+            return {"message": "email successfully revalidated email ban lifted", 'status' : email_ban.status.title()}
+
+        else:
+            attempts = cache.get(account.email + 'email_revalidation_attempts', 3)
+            
+            # Incorrect OTP, decrement attempts and handle expiration
+            attempts -= 1
+            
+            if attempts <= 0:
+
+                cache.delete(account.email + 'email_revalidation_otp')
+                cache.delete(account.email + 'email_revalidation_attempts')
+                
+                if email_ban.otp_send >= 3 :
+                    email_ban.can_appeal = False
+                    email_ban.status = 'BANNED'
+                    email_ban.save()
+                
+                return {"denied": "maximum OTP verification attempts exceeded.."}
+            
+            cache.set(account.email + 'email_revalidation_attempts', attempts, timeout=300)  # Update attempts with expiration
+
+            return {"error": f"revalidation error, incorrect OTP.. {attempts} attempts remaining"}
+    
+    except CustomUser.DoesNotExist:
+        return {'error': 'user with the provided credentials does not exist'}
+
+    except EmailBan.DoesNotExist:
+        return {'error': 'ban with the provided credentials does not exist'}
+    
+    except Exception as e:
+        return {'error': str(e)}
 
 
 @database_sync_to_async
 def search_account_profile(user, details):
     """
     Function to search and retrieve the profile of a user based on the access control logic.
+
+    This function performs the following steps:
+    1. Retrieve the account making the request.
+    2. Retrieve the requested user's account.
+    3. Check permissions using the `check_profile_or_id_view_permissions` function.
+    4. Serialize and return the requested user's profile.
 
     Args:
         user (str): The account ID of the user making the request.
@@ -92,9 +287,19 @@ def search_account_profile(user, details):
     Raises:
         CustomUser.DoesNotExist: If the user or requested user with the provided account ID does not exist.
         Exception: For any other unexpected errors.
+
+    Example:
+        response = await search_account_profile(request.user.account_id, {'account_id': 'U123'})
+        if 'error' in response:
+            # Handle error
+        else:
+            profile = response['user']
+            # Process profile
     """
     try:
+        # Retrieve the account making the request
         account = CustomUser.objects.get(account_id=user)
+        # Retrieve the requested user's account
         requested_user = CustomUser.objects.get(account_id=details.get('account_id'))
         
         # Check permissions
@@ -108,17 +313,23 @@ def search_account_profile(user, details):
 
     except CustomUser.DoesNotExist:
         # Handle case where the user or requested user account does not exist
-        return {'error': 'account with the provided credentials does not exist, please check the account details and try again'}
+        return {'error': 'an account with the provided credentials does not exist, please check the account details and try again'}
     
     except Exception as e:
         # Handle any other unexpected errors
         return {'error': str(e)}
 
-    
+
 @database_sync_to_async
 def search_account_id(user, details):
     """
     Function to search and retrieve the account ID of a user based on the access control logic.
+
+    This function performs the following steps:
+    1. Retrieve the account making the request.
+    2. Retrieve the requested user's account.
+    3. Check permissions using the `check_profile_or_id_view_permissions` function.
+    4. Serialize and return the requested user's account ID.
 
     Args:
         user (str): The account ID of the user making the request.
@@ -130,9 +341,19 @@ def search_account_id(user, details):
     Raises:
         CustomUser.DoesNotExist: If the user or requested user with the provided account ID does not exist.
         Exception: For any other unexpected errors.
+
+    Example:
+        response = await search_account_id(request.user.account_id, {'account_id': 'U123'})
+        if 'error' in response:
+            # Handle error
+        else:
+            account_id = response['user']
+            # Process account ID
     """
     try:
+        # Retrieve the account making the request
         account = CustomUser.objects.get(account_id=user)
+        # Retrieve the requested user's account
         requested_user = CustomUser.objects.get(account_id=details.get('account_id'))
         
         # Check permissions
@@ -146,64 +367,104 @@ def search_account_id(user, details):
 
     except CustomUser.DoesNotExist:
         # Handle case where the user or requested user account does not exist
-        return {'error': 'account with the provided credentials does not exist, please check the account details and try again'}
+        return {'error': 'an account with the provided credentials does not exist, please check the account details and try again'}
+    
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+    
+
+@database_sync_to_async
+def search_parents(user, details):
+    """
+    Function to search and retrieve the parents of a specific student.
+
+    This function performs the following steps:
+    1. Determine if the user is requesting their own parents or the parents of another student.
+    2. Retrieve the student's account and validate their role.
+    3. Verify the requester's permissions:
+       - Students can request their own parents.
+       - Admins and Principals from the same school can access a student's parents.
+       - Teachers can access the parents of students they teach.
+       - Parents can access their own children's parents but cannot access parents of other students.
+    4. Retrieve and serialize the parents associated with the student.
+
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing the account_id of the student.
+
+    Returns:
+        dict: A dictionary containing either the parents or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user or student with the provided account ID does not exist.
+        Exception: For any other unexpected errors.
+
+    Example:
+        response = await search_parents(request.user.account_id, {'account_id': 'S123'})
+        if 'error' in response:
+            # Handle error
+        else:
+            parents = response['parents']
+            # Process parents
+    """
+    try:
+        # Check if the user is requesting their own parents
+        if user == details.get('account_id'):
+            student = CustomUser.objects.get(account_id=user)
+
+            if student.role != 'STUDENT':
+                return {"error": "Unauthorized request.. permission denied"}
+
+        else:
+            # Retrieve the account making the request
+            account = CustomUser.objects.get(account_id=user)
+            # Retrieve the student's account
+            student = CustomUser.objects.get(account_id=details.get('account_id'))
+
+            # Ensure the requester's role and permissions
+            if account.role not in ['ADMIN', 'PRINCIPAL', 'TEACHER', 'PARENT']:
+                return {"error": "Invalid role for request.. permission denied"}
+            
+            if student.role != 'STUDENT':
+                return {"error": "Unauthorized request.. permission denied"}
+
+            if account.role in ['ADMIN', 'PRINCIPAL'] and account.school != student.school:
+                return {"error": "Unauthorized request.. permission denied"}
+                
+            if account.role == 'TEACHER' and not account.taught_classes.filter(students=student).exists():
+                return {"error": "Unauthorized access.. permission denied"}
+                
+            if account.role == 'PARENT' and account not in student.children.all():
+                return {"error": "Unauthorized access.. permission denied"}
+
+            parents = CustomUser.objects.filter(children=student, role='PARENT').exclude(account) if account.role == 'PARENT' else CustomUser.objects.filter(children=student, role='PARENT')
+
+        # Serialize the parents to return them in the response
+        serializer = AccountSerializer(parents, many=True)
+        return {"parents": serializer.data}
+
+    except CustomUser.DoesNotExist:
+        # Handle case where the user or teacher account does not exist
+        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
     
     except Exception as e:
         # Handle any other unexpected errors
         return {'error': str(e)}
 
     
-
-@database_sync_to_async
-def search_parents(user, details):
-
-    try:
-        if user == details.get('account_id'):
-            student = CustomUser.objects.get(account_id=user)
-
-            if student.role != 'STUDENT':
-                return { "error" : 'unauthorized request.. permission denied' }
-            
-        else:
-            account = CustomUser.objects.get(account_id=user)
-
-            if account.role not in ['ADMIN', 'PRINCIPAL', 'TEACHER', 'PARENT']:
-                return { "error" : 'invalid role for request.. permission denied' }
-      
-            student = CustomUser.objects.get(account_id=details.get('account_id'))
-            
-            if student.role != 'STUDENT':
-                return { "error" : 'unauthorized request.. permission denied' }
-
-            if account.role in ['ADMIN', 'PRINCIPAL'] and account.school != student.school:
-                return { "error" : 'unauthorized request.. permission denied' }
-                
-            if account.role == 'TEACHER' and not account.taught_classes.filter(students=student).exists():
-                return {"error": "unauthorized access.. permission denied"}
-                
-            if account.role == 'PARENT' and account not in student.children.all():
-                return {"error": "unauthorized access.. permission denied"}
-
-            parents = CustomUser.objects.filter(children=student, role='PARENT').exclude(account) if account.role == 'PARENT' else CustomUser.objects.filter(children=student, role='PARENT')
-
-        serializer = AccountSerializer(parents, many=True)
-
-        return {"parents": serializer.data}
-    
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-           
-    except Grade.DoesNotExist:
-        return { 'error': 'grade with the provided credentials does not exist' }
-    
-    except Exception as e:
-        return { 'error': str(e) }
-    
-
 @database_sync_to_async
 def search_teacher_schedule_schedules(user, details):
     """
     Function to search and retrieve schedules for a specific teacher.
+
+    This function performs the following steps:
+    1. Determine if the user is requesting their own schedule or another teacher's schedule.
+    2. Retrieve the teacher's account and validate their role.
+    3. Verify the requester's permissions:
+       - Teachers can request their own schedules.
+       - Admins and Principals from the same school can access a teacher's schedule.
+    4. Retrieve and serialize the teacher's schedules.
 
     Args:
         user (str): The account ID of the user making the request.
@@ -216,6 +477,14 @@ def search_teacher_schedule_schedules(user, details):
         CustomUser.DoesNotExist: If the user or teacher with the provided account ID does not exist.
         TeacherSchedule.DoesNotExist: If the teacher does not have a schedule.
         Exception: For any other unexpected errors.
+
+    Example:
+        response = await search_teacher_schedule_schedules(request.user.account_id, {'account_id': 'T123'})
+        if 'error' in response:
+            # Handle error
+        else:
+            schedules = response['schedules']
+            # Process schedules
     """
     try:
         # Check if the user is requesting their own schedule
@@ -225,7 +494,7 @@ def search_teacher_schedule_schedules(user, details):
 
             # Ensure the user has the role of 'TEACHER'
             if teacher.role != 'TEACHER':
-                return {"error": "only teachers or admins and principals from the same school can make requests and access their schedules"}
+                return {"error": "Only teachers or admins and principals from the same school can make requests and access their schedules."}
 
         else:
             # Retrieve the account making the request
@@ -235,7 +504,7 @@ def search_teacher_schedule_schedules(user, details):
 
             # Ensure the teacher's role and the requester's permissions
             if teacher.role != 'TEACHER' or account.school != teacher.school or account.role not in ['ADMIN', 'PRINCIPAL']:
-                return {"error": "only admins and principals from the same school can access a teacher's schedule"}
+                return {"error": "Only admins and principals from the same school can access a teacher's schedule."}
 
         # Retrieve the teacher's schedule
         teacher_schedule = TeacherSchedule.objects.get(teacher=teacher)
@@ -247,7 +516,7 @@ def search_teacher_schedule_schedules(user, details):
 
     except CustomUser.DoesNotExist:
         # Handle case where the user or teacher account does not exist
-        return {'error': 'the account with the provided credentials does not exist, please check the account details and try again'}
+        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
     
     except TeacherSchedule.DoesNotExist:
         # Handle case where the teacher does not have a schedule
@@ -257,12 +526,21 @@ def search_teacher_schedule_schedules(user, details):
         # Handle any other unexpected errors
         return {'error': str(e)}
 
-    
 
 @database_sync_to_async
 def search_group_schedule_schedules(user, details):
     """
     Function to search and retrieve weekly schedules for a specific group schedule.
+
+    This function performs the following steps:
+    1. Retrieve the account making the request.
+    2. Retrieve the specified group schedule.
+    3. Check permissions based on the user's role:
+       - Founders are not allowed to access group schedules.
+       - Students can only access schedules if they are subscribed to the group schedule.
+       - Parents can only access schedules if at least one of their children is subscribed to the group schedule.
+       - Teachers, Admins, and Principals can only access schedules if they belong to the same school as the group schedule's grade.
+    4. Serialize and return the schedules associated with the group schedule.
 
     Args:
         user (str): The account ID of the user making the request.
@@ -275,6 +553,14 @@ def search_group_schedule_schedules(user, details):
         CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
         GroupSchedule.DoesNotExist: If the group schedule with the provided ID does not exist.
         Exception: For any other unexpected errors.
+
+    Example:
+        response = await search_group_schedule_schedules(request.user.account_id, {'group_schedule_id': 'GS123'})
+        if 'error' in response:
+            # Handle error
+        else:
+            schedules = response['schedules']
+            # Process schedules
     """
     try:
         # Retrieve the account making the request
@@ -287,19 +573,19 @@ def search_group_schedule_schedules(user, details):
 
         # Founders are not allowed to access group schedules
         if account.role == 'FOUNDER':
-            return {"error": "founders are not authorized to access group schedules"}
+            return {"error": "Founders are not authorized to access group schedules"}
 
         # Students can only access schedules if they are in the group schedule's students
         if account.role == 'STUDENT' and account not in group_schedule.students.all():
-            return {"error": "as a student, you can only view schedules for group schedules you are subscribed to. please check your group schedule assignments and try again"}
+            return {"error": "As a student, you can only view schedules for group schedules you are subscribed to. Please check your group schedule assignments and try again"}
 
         # Parents can only access schedules if at least one of their children is in the group schedule's students
         if account.role == 'PARENT' and not any(child in group_schedule.students.all() for child in account.children.all()):
-            return {"error": "as a parent, you can only view schedules for group schedules that your children are subscribed to. please check your child's group schedule assignments and try again"}
+            return {"error": "As a parent, you can only view schedules for group schedules that your children are subscribed to. Please check your child's group schedule assignments and try again"}
 
         # Teachers, Admins, and Principals can only access schedules if they belong to the same school as the group schedule's grade
         if account.role in ['TEACHER', 'ADMIN', 'PRINCIPAL'] and account.school != group_schedule.grade.school:
-            return {"error": "you can only view schedules for group schedules within your own school. please check the group schedule and try again"}
+            return {"error": "You can only view schedules for group schedules within your own school. Please check the group schedule and try again"}
 
         # Serialize and return the schedules associated with the group schedule
         serializer = ScheduleSerializer(group_schedule.schedules.all(), many=True)
@@ -307,11 +593,11 @@ def search_group_schedule_schedules(user, details):
     
     except CustomUser.DoesNotExist:
         # Handle case where the user account does not exist
-        return {'error': 'the account with the provided credentials does not exist, please check the account details and try again'}
+        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again'}
     
     except GroupSchedule.DoesNotExist:
         # Handle case where the group schedule does not exist
-        return {'error': 'the group schedule with the provided credentials does not exist, please check the group schedule details and try again'}
+        return {'error': 'a group schedule with the provided credentials does not exist. Please check the group schedule details and try again'}
     
     except Exception as e:
         # Handle any other unexpected errors
@@ -463,9 +749,10 @@ def submit_absentes(user, details):
             register.save()
         
         return { 'message': 'attendance register successfully taken for today'}
-               
+
     except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
+        # Handle case where the user or teacher account does not exist
+        return {'error': 'The account with the provided credentials does not exist. Please check the account details and try again.'}
     
     except Classroom.DoesNotExist:
         return { 'error': 'class with the provided credentials does not exist' }
@@ -558,140 +845,6 @@ def search_month_attendance_records(user, details):
 
     except Exception as e:
         return { 'error': str(e) }
-
-    
-
-@database_sync_to_async
-def search_my_email_ban(details):
-
-    try:
-        email_ban = EmailBan.objects.get(ban_id=details.get('email_ban_id'))
-
-        if cache.get(details.get('email') + 'email_revalidation_otp'):
-            can_request = False
-        else:
-            can_request = True
-            
-        serializer = EmailBanSerializer(email_ban)
-        return { "email_ban" : serializer.data , 'can_request': can_request}
-        
-    except EmailBan.DoesNotExist:
-        return { 'error': 'ban with the provided credentials does not exist' }
-    
-    except Exception as e:
-        return { 'error': str(e) }
-
-
-@database_sync_to_async
-def validate_email_revalidation(user, details):
-
-    try:
-        account = CustomUser.objects.get(account_id=user)
-
-        email_ban = EmailBan.objects.get(ban_id=details.get('email_ban_id'))
-        
-        if not email_ban.email == account.email:
-            return { "error" : "invalid request, banned email different from account email" }
-
-        if email_ban.status == 'APPEALED':
-            return { "error" : "ban already appealed" }
-
-        if not email_ban.can_appeal:
-            return { "error" : "can not appeal this email ban" }
-        
-        if email_ban.otp_send >= 3 :
-            email_ban.can_appeal = False
-            email_ban.status = 'BANNED'
-            email_ban.save()
-            
-            return { "denied" : "maximum amount of OTP sends reached, email permanently banned",  }
-        
-        return {'user' : account}
-    
-    except CustomUser.DoesNotExist:
-        return {'error': 'user with the provided credentials does not exist'}
-
-    except EmailBan.DoesNotExist:
-        return {'error': 'ban with the provided credentials does not exist'}
-    
-    except Exception as e:
-        return {'error': str(e)}
-
-
-@database_sync_to_async
-def update_email_ban_otp_sends(email_ban_id):
-
-    try:
-        email_ban = EmailBan.objects.get(ban_id=email_ban_id)
-        
-        email_ban.otp_send += 1
-        if email_ban.status != 'PENDING':
-            email_ban.status = 'PENDING'
-        email_ban.save()
-        
-        return {"message": "a new OTP has been sent to your email address"}
-
-    except EmailBan.DoesNotExist:
-        return {'error': 'email ban with the provided credentials does not exist'}
-    
-    except Exception as e:
-        return {'error': str(e)}
-
-
-@database_sync_to_async
-def verify_email_revalidate_otp(user, details):
-
-    try:
-        account = CustomUser.objects.get(account_id=user)
-        email_ban = EmailBan.objects.get(ban_id=details.get('email_ban_id'))
-        
-        # try to get revalidation otp from cache
-        hashed_otp = cache.get(account.email + 'email_revalidation_otp')
-        if not hashed_otp:
-            cache.delete(account.email + 'email_revalidation_attempts')
-            return {"error": "OTP expired"}
-
-        # check if both otps are valid
-        if verify_user_otp(user_otp=details.get('otp'), stored_hashed_otp_and_salt=hashed_otp):
-            
-            
-            email_ban.status = 'APPEALED'
-            account.email_banned = False
-            account.save()
-            email_ban.save()
-
-            return {"message": "email successfully revalidated email ban lifted", 'status' : email_ban.status.title()}
-
-        else:
-            attempts = cache.get(account.email + 'email_revalidation_attempts', 3)
-            
-            # Incorrect OTP, decrement attempts and handle expiration
-            attempts -= 1
-            
-            if attempts <= 0:
-
-                cache.delete(account.email + 'email_revalidation_otp')
-                cache.delete(account.email + 'email_revalidation_attempts')
-                
-                if email_ban.otp_send >= 3 :
-                    email_ban.can_appeal = False
-                    email_ban.status = 'BANNED'
-                    email_ban.save()
-                
-                return {"denied": "maximum OTP verification attempts exceeded.."}
-            
-            cache.set(account.email + 'email_revalidation_attempts', attempts, timeout=300)  # Update attempts with expiration
-
-            return {"error": f"revalidation error, incorrect OTP.. {attempts} attempts remaining"}
-    
-    except CustomUser.DoesNotExist:
-        return {'error': 'user with the provided credentials does not exist'}
-
-    except EmailBan.DoesNotExist:
-        return {'error': 'ban with the provided credentials does not exist'}
-    
-    except Exception as e:
-        return {'error': str(e)}
     
 
 @database_sync_to_async
@@ -901,7 +1054,7 @@ def update_multi_factor_authentication(user, details):
     
     
 @database_sync_to_async
-def log_user_out(access_token):
+def log_out(access_token):
          
     try:
         # Decode the token
@@ -923,6 +1076,67 @@ def log_user_out(access_token):
 
     except Exception as e:
         return {"error": str(e)}
+
+
+@database_sync_to_async
+def search_announcements(user):
+    """
+    Fetch announcements for a user based on their role and associated schools.
+
+    This function performs the following steps:
+    1. Fetch the user account making the request.
+    2. Validate the user's role to ensure it is authorized to access announcements.
+    3. Retrieve announcements based on the user's role:
+       - For parents, fetch announcements related to their children's schools.
+       - For other roles (Student, Admin, Principal), fetch announcements related to the user's school.
+    4. Serialize the announcements and return them.
+
+    Args:
+        user (CustomUser): The user object making the request.
+
+    Returns:
+        dict: A dictionary containing serialized announcements or an error message.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user does not exist in the database.
+        Exception: For any other unexpected errors.
+
+    Example:
+        response = await search_announcements(request.user)
+        if 'error' in response:
+            # Handle error
+        else:
+            announcements = response['announcements']
+            # Process announcements
+    """
+    try:
+        # Fetch the user account making the request
+        account = CustomUser.objects.get(account_id=user)
+
+        # Validate user role
+        if account.role not in ['PARENT', 'STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL']:
+            return {"error": "The specified account's role is invalid. Please ensure you are attempting to access announcements from an authorized account."}
+
+        # Fetch announcements based on role
+        if account.role == 'PARENT':
+            # Fetch announcements related to the schools of the user's children
+            children_schools = account.children.values_list('school', flat=True)
+            announcements = Announcement.objects.filter(school__in=children_schools)
+
+        else:
+            # Fetch announcements related to the user's school
+            announcements = Announcement.objects.filter(school=account.school)
+
+        # Serialize the announcements
+        serializer = AnnouncementsSerializer(announcements, many=True, context={'user': user})
+        return {'announcements': serializer.data}
+
+    except CustomUser.DoesNotExist:
+        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+
+    except Exception as e:
+        return {'error': str(e)}
+
     
 
 @database_sync_to_async
