@@ -1487,12 +1487,11 @@ def search_chat_room(user, details):
         chat_room = ChatRoom.objects.filter(Q(user_one=account, user_two=requested_user) | Q(user_one=requested_user, user_two=account)).first()
         
         chat_room_exists = bool(chat_room)
-        chat_room_id = chat_room.chatroom_id if chat_room_exists else None
 
         # Serialize the requested user's data
         serializer = ChatroomSerializer(requested_user)
         
-        return {'user': serializer.data, 'chat': chat_room_exists, 'chatroom_id': chat_room_id}
+        return {'user': serializer.data, 'chat': chat_room_exists}
 
     except CustomUser.DoesNotExist:
         # Handle case where the user does not exist
@@ -1518,13 +1517,16 @@ def search_chat_room_messages(user, details):
         dict: A dictionary containing the serialized messages and the next cursor for pagination, or an error message.
     """
     try:
-        # Fetch user and chat room
+        # Retrieve the account making the request
         account = CustomUser.objects.get(account_id=user)
-        chat_room = ChatRoom.objects.get(chatroom_id=details.get('chatroom_id'))
-
-        # Check if the user is part of the chat room
-        if account != chat_room.user_one and account != chat_room.user_two:
-            return {"error": 'Unauthorized request. Only the users linked to this chat room can access its messages.'}
+        # Retrieve the requested user's account
+        requested_user = CustomUser.objects.get(account_id=details.get('account_id'))
+        
+        # Check if a chat room exists between the two users
+        chat_room = ChatRoom.objects.filter(Q(user_one=account, user_two=requested_user) | Q(user_one=requested_user, user_two=account)).first()
+        
+        if not chat_room:
+            return {"error": 'no such chat room exists'}
 
         # Retrieve the cursor from the request
         cursor = details.get('cursor')
@@ -1566,18 +1568,21 @@ def search_chat_room_messages(user, details):
 @database_sync_to_async
 def mark_messages_as_read(user, details):
     try:
-        # Fetch user and chat room
+        # Retrieve the account making the request
         account = CustomUser.objects.get(account_id=user)
-        chat_room = ChatRoom.objects.get(chatroom_id=details.get('chatroom_id'))
+        # Retrieve the requested user's account
+        requested_user = CustomUser.objects.get(account_id=details.get('account_id'))
+        
+        # Check if a chat room exists between the two users
+        chat_room = ChatRoom.objects.filter(Q(user_one=account, user_two=requested_user) | Q(user_one=requested_user, user_two=account)).first()
 
-        # Check if the user is part of the chat room
-        if account != chat_room.user_one and account != chat_room.user_two:
-            return {"error": 'unauthorized request. Only the users linked to this chat room can access its messages.'}
+        if chat_room:
+            # Mark messages as read
+            ChatRoomMessage.objects.filter(chat_room=chat_room, read_receipt=False).exclude(sender=account).update(read_receipt=True)
 
-        # Mark messages as read
-        ChatRoomMessage.objects.filter(chat_room=chat_room, read_receipt=False).exclude(sender=account).update(read_receipt=True)
-
-        return {"read": True}
+            return {"read": True}
+        
+        return {"error": 'no such chat room exists'}
 
     except CustomUser.DoesNotExist:
         # Handle case where the user does not exist
