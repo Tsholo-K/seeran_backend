@@ -193,9 +193,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             response = await func(user, details)
             
             if response.get('other_user') and description in ['text']:
-                recipient_connections = connection_manager.get_active_connections().get(response['other_user'], [])
-                for connection in recipient_connections:
-                    await connection.send(text_data=json.dumps({'description': 'text_message', 'message': response['message'], 'from': response['from'], 'chat_id': response['other_user']}))
+                await connection_manager.send_message(response['other_user'], json.dumps({'description': 'text_message', 'message': response['message'], 'from': response['from'], 'chat_id': response.get('other_user')}))
 
                 response = {'message': response['message']}
 

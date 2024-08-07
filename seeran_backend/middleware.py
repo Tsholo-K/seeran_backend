@@ -138,7 +138,6 @@ class ConnectionManager:
         self.active_connections[account_id].append(websocket)
 
 
-
     async def disconnect(self, account_id, websocket):
         """
         Removes a WebSocket connection for a user.
@@ -154,18 +153,6 @@ class ConnectionManager:
                 del self.active_connections[account_id]
 
 
-    async def send_message(self, account_id, message):
-        """
-        Sends a message to all active WebSocket connections for a user.
-
-        Args:
-            account_id (str): The account ID of the user.
-            message (dict): The message to send.
-        """
-        if account_id in self.active_connections:
-            for connection in self.active_connections[account_id]:
-                await connection.send(text_data=json.dumps(message))
-
     def get_active_connections(self):
         """
         Returns the current active connections.
@@ -174,6 +161,20 @@ class ConnectionManager:
             dict: A dictionary of active connections.
         """
         return self.active_connections
+    
+    
+    async def send_message(self, account_id, message):
+        """
+        Sends a message to all active WebSocket connections for a user.
 
+        Args:
+            account_id (str): The account ID of the user.
+            message (str): The message to send.
+        """
+        connections = self.active_connections.get(account_id, [])
+        for connection in connections:
+            await connection.send(text_data=message)
+
+            
 # Initialize the ConnectionManager instance
 connection_manager = ConnectionManager()
