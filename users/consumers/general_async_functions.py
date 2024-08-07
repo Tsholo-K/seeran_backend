@@ -1374,7 +1374,7 @@ def search_chat_room_messages(user, details):
         messages = list(messages)[::-1]
 
         # Mark messages as read
-        ChatRoomMessage.objects.filter(chat_room=chat_room, sender__ne=account, read_receipt=False).update(read_receipt=True)
+        ChatRoomMessage.objects.filter(chat_room=chat_room, read_receipt=False).exclude(sender=account).update(read_receipt=True)
 
         # Serialize the messages
         serializer = ChatRoomMessageSerializer(messages, many=True, context={'user': user})

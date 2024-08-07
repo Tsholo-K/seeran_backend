@@ -36,7 +36,9 @@ class ChatSerializer(serializers.ModelSerializer):
     
     def get_unread(self, obj):
         user = self.context['user']
-        return ChatRoomMessage.objects.filter(chat_room=obj, read_receipt=False, sender__ne=user).count()
+        # Count unread messages in the chat room that were not sent by the current user
+        unread_count = ChatRoomMessage.objects.filter(chat_room=obj, read_receipt=False).exclude(sender__account_id=user).count()
+        return unread_count
 
 
 class ChatMessageSerializer(serializers.ModelSerializer):
