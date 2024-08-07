@@ -19,7 +19,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
         role = self.scope.get('role')
 
         # Check if the user has the required role
-        if role not in ['ADMIN', 'PRINCIPAL']:
+        if role not in ['TEACHER']:
             return await self.close()
         
         await self.accept()
