@@ -194,8 +194,8 @@ class TeacherConsumer(AsyncWebsocketConsumer):
                 recipient_account_id = response['other_user']
                 recipient_connections = connection_manager.get_active_connections().get(recipient_account_id, [])
                 for connection in recipient_connections:
-                    await connection.send_json({'message': response['message']})
-
+                    await connection.send(text_data=json.dumps({'message': response['message']}))
+                    
                 response = {'message': response['message']}
 
             return response
