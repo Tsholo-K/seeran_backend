@@ -1258,7 +1258,7 @@ def text(user, details):
             new_message = ChatRoomMessage.objects.create(sender=account, content=details.get('message'), chat_room=chat_room)
 
         # Serialize the new message
-        serializer = ChatRoomMessageSerializer(new_message, context={'request': {'user': account}})
+        serializer = ChatRoomMessageSerializer(new_message, context={'user': user})
         return {'message': serializer.data}
 
     except CustomUser.DoesNotExist:
@@ -1346,15 +1346,12 @@ def search_chat_room_messages(user, details):
             # Fetch the latest messages if no cursor is provided
             messages = ChatRoomMessage.objects.filter(chat_room=chat_room).order_by('-timestamp')[:20]
 
-        # Convert QuerySet to a list to support negative indexing
-        messages_list = list(messages)
-
         # Serialize the messages
-        serializer = ChatRoomMessageSerializer(messages_list, many=True, context={'user': user})
+        serializer = ChatRoomMessageSerializer(messages[::-1], many=True)
         
         # Determine the next cursor
-        if messages_list:
-            next_cursor = messages_list[-1].timestamp.isoformat()
+        if messages:
+            next_cursor = messages.last().timestamp.isoformat()
         else:
             next_cursor = None
 
