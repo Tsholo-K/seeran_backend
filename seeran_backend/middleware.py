@@ -132,7 +132,6 @@ class ConnectionManager:
 
         # Check if the user already has 3 or more connections
         if len(self.active_connections[account_id]) >= 3:
-            await websocket.send(text_data=json.dumps({'error': 'Too many connections. Limit is 3, disconnect one of your other devices to connect this one'}))
             await websocket.close()
             return
 
