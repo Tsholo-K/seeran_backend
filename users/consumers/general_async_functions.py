@@ -1349,9 +1349,8 @@ def search_chat_room_messages(user, details):
         # Convert QuerySet to a list to support negative indexing
         messages_list = list(messages)
 
-        # Serialize the messages, passing the request user context
-        context = {'request': {'user': account}}  # Simulate request context
-        serializer = ChatRoomMessageSerializer(messages_list, many=True, context=context)
+        # Serialize the messages
+        serializer = ChatRoomMessageSerializer(messages_list, many=True, context={'user': user})
         
         # Determine the next cursor
         if messages_list:
