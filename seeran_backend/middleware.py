@@ -1,3 +1,6 @@
+# python
+import json
+
 from channels.db import database_sync_to_async
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
@@ -129,7 +132,7 @@ class ConnectionManager:
 
         # Check if the user already has 3 or more connections
         if len(self.active_connections[account_id]) >= 3:
-            await websocket.send_json({'error': 'Too many connections. Limit is 3, disconnect one of your other devices to connect this one'})
+            await websocket.send(text_data=json.dumps({'error': 'Too many connections. Limit is 3, disconnect one of your other devices to connect this one'}))
             await websocket.close()
             return
 
@@ -158,7 +161,7 @@ class ConnectionManager:
         """
         if account_id in self.active_connections:
             for connection in self.active_connections[account_id]:
-                await connection.send_json(message)
+                await connection.send(text_data=json.dumps(message))
 
     def get_active_connections(self):
         """
