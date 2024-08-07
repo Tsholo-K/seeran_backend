@@ -194,8 +194,8 @@ class TeacherConsumer(AsyncWebsocketConsumer):
         if func:
             response = await func(user, details)
             
-            if response.get('chat_id') and description in ['text']:
-                await connection_manager.send_message(response['chat_id'], json.dumps({'description': 'text_message', 'message': response['message'], 'from': response['from'], 'chat_id': response.get('chat_id')}))
+            if response.get('reciever') and description in ['text']:
+                await connection_manager.send_message(response['reciever'], json.dumps({'description': 'text_message', 'message': response['message'], 'from': response['from'], 'sender': response['sender']}))
 
                 response = {'message': response['message']}
 

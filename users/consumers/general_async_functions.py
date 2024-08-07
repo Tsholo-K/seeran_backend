@@ -1450,7 +1450,7 @@ def text(user, details):
         serializer = ChatRoomMessageSerializer(new_message, context={'user': user})
         message_data = serializer.data
 
-        return {'message': message_data, 'from': f'{requested_user.surname.title()} {requested_user.name.title()}', 'sender': account.account_id}
+        return {'message': message_data, 'from': f'{requested_user.surname.title()} {requested_user.name.title()}', 'reciever': requested_user.account_id, 'sender': account.account_id}
 
     except CustomUser.DoesNotExist:
         return {'error': 'User account not found. Please verify the account details.'}
