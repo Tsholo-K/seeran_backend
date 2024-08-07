@@ -162,6 +162,8 @@ class TeacherConsumer(AsyncWebsocketConsumer):
 
             'update_multi_factor_authentication': general_async_functions.update_multi_factor_authentication,
 
+            'mark_messages_as_read': general_async_functions.mark_messages_as_read,
+
             'send_email_revalidation_otp': general_async_functions.validate_email_revalidation,
         }
 

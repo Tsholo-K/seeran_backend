@@ -1457,9 +1457,7 @@ def text(user, details):
     
     except Exception as e:
         return {'error': str(e)}
-
-
-
+    
 
 @database_sync_to_async
 def search_chat_room(user, details):
@@ -1555,7 +1553,8 @@ def search_chat_room_messages(user, details):
         return {'messages': serializer.data, 'next_cursor': next_cursor}
 
     except CustomUser.DoesNotExist:
-        return {'error': 'User not found.'}
+        # Handle case where the user does not exist
+        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
     
     except ChatRoom.DoesNotExist:
         return {'error': 'Chat room not found.'}
@@ -1563,7 +1562,33 @@ def search_chat_room_messages(user, details):
     except Exception as e:
         return {'error': str(e)}
 
-    
+
+@database_sync_to_async
+def mark_messages_as_read(user, details):
+    try:
+        # Fetch user and chat room
+        account = CustomUser.objects.get(account_id=user)
+        chat_room = ChatRoom.objects.get(chatroom_id=details.get('chatroom_id'))
+
+        # Check if the user is part of the chat room
+        if account != chat_room.user_one and account != chat_room.user_two:
+            return {"error": 'unauthorized request. Only the users linked to this chat room can access its messages.'}
+
+        # Mark messages as read
+        ChatRoomMessage.objects.filter(chat_room=chat_room, read_receipt=False).exclude(sender=account).update(read_receipt=True)
+
+        return {"read": True}
+
+    except CustomUser.DoesNotExist:
+        # Handle case where the user does not exist
+        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+        
+    except ChatRoom.DoesNotExist:
+        return {'error': 'Chat room not found.'}
+
+    except Exception as e:
+        return {'error': str(e)}
+
 
 @database_sync_to_async
 def form_data_for_attendance_register(user, details):
