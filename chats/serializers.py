@@ -23,9 +23,9 @@ class ChatRoomSerializer(serializers.ModelSerializer):
     def get_user(self, obj):
         # Access the user from the context and determine the sender
         user = self.context['user']
-        return { 'name' : obj.user_two.name.title() , 'surname' : obj.user_two.surname.title(), 'image' : '/default-user-image.svg'} \
+        return { 'name' : obj.user_two.name.title() , 'surname' : obj.user_two.surname.title(), 'image' : '/default-user-image.svg', 'id' : obj.user_two.accound_id} \
             if obj.user_one.account_id == user else \
-            {'name' : obj.user_one.name.title(), 'surname' : obj.user_one.surname.title(), 'image' : '/default-user-image.svg'}
+            {'name' : obj.user_one.name.title(), 'surname' : obj.user_one.surname.title(), 'image' : '/default-user-image.svg', 'id' : obj.user_one.accound_id}
 
     def get_last_message(self, obj):
         # Fetch the latest messages if no cursor is provided
