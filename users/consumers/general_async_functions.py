@@ -1261,48 +1261,6 @@ def text(user, details):
         # Handle any other unexpected errors
         return {'error': str(e)}
 
-    
-
-@database_sync_to_async
-def search_chat_room_messages(user, details):
-    try:
-        # Fetch user and chat room
-        account = CustomUser.objects.get(account_id=user)
-        chat_room = ChatRoom.objects.get(chatroom_id=details.get('chatroom_id'))
-
-        # Check if the user is part of the chat room
-        if account != chat_room.user_one and account != chat_room.user_two:
-            return {"error": 'Unauthorized request. Only the users linked to this chat room can access its messages.'}
-
-        # Retrieve the cursor from the request
-        cursor = details.get('cursor')
-        if cursor:
-            # Fetch messages with a timestamp less than the cursor (if cursor is present)
-            messages = ChatRoomMessage.objects.filter(chat_room=chat_room, timestamp__lt=cursor).order_by('-timestamp')[:20]
-        else:
-            # Fetch the latest messages if no cursor is provided
-            messages = ChatRoomMessage.objects.filter(chat_room=chat_room).order_by('-timestamp')[:20]
-
-        # Serialize the messages
-        serializer = ChatRoomMessageSerializer(messages, many=True)
-        
-        # Determine the next cursor
-        if messages:
-            next_cursor = messages[-1].timestamp.isoformat()
-        else:
-            next_cursor = None
-
-        return {'messages': serializer.data, 'next_cursor': next_cursor}
-
-    except CustomUser.DoesNotExist:
-        return {'error': 'User not found.'}
-    
-    except ChatRoom.DoesNotExist:
-        return {'error': 'Chat room not found.'}
-    
-    except Exception as e:
-        return {'error': str(e)}
-    
 
 @database_sync_to_async
 def search_chat_room(user, details):
@@ -1345,6 +1303,62 @@ def search_chat_room(user, details):
     
     except Exception as e:
         # Handle any other unexpected errors
+        return {'error': str(e)}
+    
+
+@database_sync_to_async
+def search_chat_room_messages(user, details):
+    """
+    Fetch messages from a chat room with pagination support.
+
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing the details of the request, including:
+            - 'chatroom_id' (str): The ID of the chat room.
+            - 'cursor' (str, optional): The timestamp to fetch messages before.
+
+    Returns:
+        dict: A dictionary containing the serialized messages and the next cursor for pagination, or an error message.
+    """
+    try:
+        # Fetch user and chat room
+        account = CustomUser.objects.get(account_id=user)
+        chat_room = ChatRoom.objects.get(id=details.get('chatroom_id'))
+
+        # Check if the user is part of the chat room
+        if account != chat_room.user_one and account != chat_room.user_two:
+            return {"error": 'Unauthorized request. Only the users linked to this chat room can access its messages.'}
+
+        # Retrieve the cursor from the request
+        cursor = details.get('cursor')
+        if cursor:
+            # Fetch messages with a timestamp less than the cursor (if cursor is present)
+            messages = ChatRoomMessage.objects.filter(chat_room=chat_room, timestamp__lt=cursor).order_by('-timestamp')[:20]
+        else:
+            # Fetch the latest messages if no cursor is provided
+            messages = ChatRoomMessage.objects.filter(chat_room=chat_room).order_by('-timestamp')[:20]
+
+        # Convert QuerySet to a list to support negative indexing
+        messages_list = list(messages)
+
+        # Serialize the messages
+        serializer = ChatRoomMessageSerializer(messages_list, many=True)
+        
+        # Determine the next cursor
+        if messages_list:
+            next_cursor = messages_list[-1].timestamp.isoformat()
+        else:
+            next_cursor = None
+
+        return {'messages': serializer.data, 'next_cursor': next_cursor}
+
+    except CustomUser.DoesNotExist:
+        return {'error': 'User not found.'}
+    
+    except ChatRoom.DoesNotExist:
+        return {'error': 'Chat room not found.'}
+    
+    except Exception as e:
         return {'error': str(e)}
     
 
