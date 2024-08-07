@@ -1346,12 +1346,15 @@ def search_chat_room_messages(user, details):
             # Fetch the latest messages if no cursor is provided
             messages = ChatRoomMessage.objects.filter(chat_room=chat_room).order_by('-timestamp')[:20]
 
+        # Slice and then reverse the order to get the correct ascending order
+        messages = list(messages)[::-1]
+
         # Serialize the messages
-        serializer = ChatRoomMessageSerializer(messages[::-1], many=True)
+        serializer = ChatRoomMessageSerializer(messages, many=True)
         
         # Determine the next cursor
         if messages:
-            next_cursor = messages.last().timestamp.isoformat()
+            next_cursor = messages[0].timestamp.isoformat()
         else:
             next_cursor = None
 
