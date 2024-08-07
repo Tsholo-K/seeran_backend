@@ -8,8 +8,31 @@
 from rest_framework import serializers
 
 # models
-from .models import ChatRoomMessage
+from .models import ChatRoom, ChatRoomMessage
 
+
+class ChatRoomSerializer(serializers.ModelSerializer):
+    
+    user = serializers.SerializerMethodField()
+    last_message = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ChatRoom
+        fields = ['user', 'last_message']
+    
+    def get_user(self, obj):
+        # Access the user from the context and determine the sender
+        user = self.context['user']
+        return { 'name' : obj.user_two.name.title() , 'surname' : obj.user_two.surname.title(), 'image' : '/default-user-image.svg'} \
+            if obj.user_one.account_id == user else \
+            {'name' : obj.user_one.name.title(), 'surname' : obj.user_one.surname.title(), 'image' : '/default-user-image.svg'}
+
+    def get_last_message(self, obj):
+        # Fetch the latest messages if no cursor is provided
+        message = ChatRoomMessage.objects.filter(chat_room=obj).order_by('-timestamp').first()
+        serializer = ChatRoomMessageSerializer(message, context={'user': self.context['user']})
+        return serializer.data
+    
 
 class ChatRoomMessageCreationSerializer(serializers.ModelSerializer):
     

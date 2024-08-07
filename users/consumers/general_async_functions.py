@@ -272,6 +272,30 @@ def verify_email_revalidate_otp(user, details):
 
 
 @database_sync_to_async
+def fetch_chats(user):
+
+    try:
+        # Retrieve the account making the request
+        account = CustomUser.objects.get(account_id=user)
+        
+        # Check if a chat room exists between the two users
+        chat_rooms = ChatRoom.objects.filter(Q(user_one=account) | Q(user_two=account))
+
+        # Serialize the requested user's data
+        serializer = ChatroomSerializer(chat_rooms, many=True, context={'user' : user})
+        
+        return {'chats': serializer.data}
+
+    except CustomUser.DoesNotExist:
+        # Handle case where the user does not exist
+        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+    
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
+
+@database_sync_to_async
 def search_account_profile(user, details):
     """
     Function to search and retrieve the profile of a user based on the access control logic.
@@ -1259,7 +1283,7 @@ def text(user, details):
 
         # Serialize the new message
         serializer = ChatRoomMessageSerializer(new_message, context={'user': user})
-        return {'message': serializer.data}
+        return {'message': [serializer.data]}
 
     except CustomUser.DoesNotExist:
         # Handle case where the user does not exist

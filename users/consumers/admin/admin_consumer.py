@@ -73,6 +73,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'grades': admin_async_functions.fetch_grades,
             'grades_with_student_count': admin_async_functions.fetch_grades_with_student_count,
 
+            'chats': general_async_functions.fetch_chats,
+
             'announcements': general_async_functions.fetch_announcements,
 
             'log_out': general_async_functions.log_out,
