@@ -1315,7 +1315,7 @@ def search_chat_room(user, details):
             - 'account_id' (str): The account ID of the user to search for.
 
     Returns:
-        dict: A dictionary containing the serialized requested user's data, a flag indicating if a chat room exists, or an error message.
+        dict: A dictionary containing the serialized requested user's data, a flag indicating if a chat room exists, the chat room ID if it exists, or an error message.
     """
     try:
         # Retrieve the account making the request
@@ -1329,12 +1329,15 @@ def search_chat_room(user, details):
             return {'error': permission_error}
         
         # Check if a chat room exists between the two users
-        chat_room_exists = ChatRoom.objects.filter(Q(user_one=account, user_two=requested_user) | Q(user_one=requested_user, user_two=account)).exists()
+        chat_room = ChatRoom.objects.filter(Q(user_one=account, user_two=requested_user) | Q(user_one=requested_user, user_two=account)).first()
+        
+        chat_room_exists = bool(chat_room)
+        chat_room_id = chat_room.chatroom_id if chat_room_exists else None
 
         # Serialize the requested user's data
         serializer = ChatroomSerializer(requested_user)
         
-        return {'user': serializer.data, 'chat': chat_room_exists}
+        return {'user': serializer.data, 'chat': chat_room_exists, 'chatroom_id': chat_room_id}
 
     except CustomUser.DoesNotExist:
         # Handle case where the user does not exist

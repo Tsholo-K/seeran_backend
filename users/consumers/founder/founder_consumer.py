@@ -72,7 +72,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         elif description == 'schools':
             return await founder_async_functions.fetch_schools()
         
-        elif description == 'log_me_out':
+        elif description == 'log_out':
             return await general_async_functions.log_out(access_token)
         
         else:
