@@ -28,6 +28,6 @@ class ChatRoomMessageSerializer(serializers.ModelSerializer):
 
     def get_whos(self, obj):
         # Access the user from the context and determine the sender
-        user = self.context['user'].user
+        user = self.context['user']
         return 'mine' if obj.sender.account_id == user else 'theirs'
     
