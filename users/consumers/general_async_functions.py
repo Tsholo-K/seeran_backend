@@ -41,7 +41,7 @@ from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
 from timetables.serializers import SessoinsSerializer, ScheduleSerializer
 from timetables.serializers import GroupScheduleSerializer
 from announcements.serializers import AnnouncementsSerializer, AnnouncementSerializer
-from chats.serializers import ChatRoomMessageSerializer
+from chats.serializers import ChatRoomMessageSerializer, ChatRoomSerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
@@ -282,7 +282,7 @@ def fetch_chats(user):
         chat_rooms = ChatRoom.objects.filter(Q(user_one=account) | Q(user_two=account))
 
         # Serialize the requested user's data
-        serializer = ChatroomSerializer(chat_rooms, many=True, context={'user' : user})
+        serializer = ChatRoomSerializer(chat_rooms, many=True, context={'user' : user})
         
         return {'chats': serializer.data}
 
