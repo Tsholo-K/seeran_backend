@@ -4,6 +4,9 @@ import json
 # channels
 from channels.generic.websocket import AsyncWebsocketConsumer
 
+# websocket manager
+from seeran_backend.middleware import  connection_manager
+
 # utility functions
 from authentication.utils import validate_access_token
 
@@ -21,11 +24,15 @@ class AdminConsumer(AsyncWebsocketConsumer):
         if role not in ['ADMIN', 'PRINCIPAL']:
             return await self.close()
         
+        account_id = self.scope['user']
+        await connection_manager.connect(account_id, self)
+
         await self.accept()
         return await self.send(text_data=json.dumps({'message': 'Welcome Back'}))
 
     async def disconnect(self, close_code):
-        pass
+        account_id = self.scope['user']
+        await connection_manager.disconnect(account_id, self)
 
     async def receive(self, text_data):
         user = self.scope.get('user')
@@ -233,8 +240,16 @@ class AdminConsumer(AsyncWebsocketConsumer):
         if func:
             response = await func(user, details)
 
+            if response.get('other_user') and description in ['text']:
+                recipient_account_id = response['other_user']
+                recipient_connections = connection_manager.get_active_connections().get(recipient_account_id, [])
+                for connection in recipient_connections:
+                    await connection.send_json({'message': response['message']})
+
+                response = {'message': response['message']}
+
             if response.get('user') and description in ['create_account', 'create_student_account', 'link_parent']:
-                return await general_async_functions.send_account_confirmation_email(response.get('user'))
+                return await general_async_functions.send_account_confirmation_email(response['user'])
             
             return response
         

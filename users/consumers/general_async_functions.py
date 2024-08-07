@@ -8,6 +8,9 @@ import httpx
 # channels
 from channels.db import database_sync_to_async
 
+# websocket manager
+from seeran_backend.middleware import  connection_manager
+
 # django
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -54,245 +57,406 @@ from users.checks import permission_checks
 @database_sync_to_async
 def fetch_my_security_information(user):
     """
-    Function to fetch security-related information for a given user.
+    Retrieves security-related information for a given user.
 
-    This function retrieves the multi-factor authentication status and event email settings for the specified user.
+    This function fetches the multi-factor authentication (MFA) status and event email settings
+    for the user identified by `user`. The retrieved information includes whether MFA is enabled
+    and the settings for event-related emails.
 
     Args:
-        user (str): The account ID of the user making the request.
+        user (str): The account ID of the user whose security information is to be fetched.
 
     Returns:
-        dict: A dictionary containing the user's security information or an error message.
+        dict: A dictionary containing:
+            - 'multifactor_authentication': A boolean indicating whether multi-factor authentication is enabled for the user.
+            - 'event_emails': A boolean indicating whether event-related emails are enabled for the user.
+            - 'error': A string containing an error message if an exception is raised.
 
     Raises:
-        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
-        Exception: For any other unexpected errors.
+        CustomUser.DoesNotExist: If no user is found with the provided account ID.
+        Exception: For any other errors that occur during the process.
 
     Example:
         response = await fetch_my_security_information(request.user.account_id)
         if 'error' in response:
-            # Handle error
+            # Handle error, e.g., display error message to the user
         else:
             security_info = response
             # Process security information
     """
     try:
-        # Retrieve the account making the request
-        account = CustomUser.objects.get(account_id=user)
+        # Retrieve the user's security settings from the database
+        account = CustomUser.objects.values('multifactor_authentication', 'event_emails').get(account_id=user)
         
-        # Return security-related information
-        return {'multifactor_authentication': account.multifactor_authentication, 'event_emails': account.event_emails}
-        
+        # Return the retrieved security information
+        return {
+            'multifactor_authentication': account['multifactor_authentication'],  # MFA status
+            'event_emails': account['event_emails']  # Event email settings
+        }
+
     except CustomUser.DoesNotExist:
-        # Handle case where the user account does not exist
-        return {'error': 'User with the provided credentials does not exist'}
+        # Handle the case where no user is found with the provided account ID
+        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
     
     except Exception as e:
-        # Handle any other unexpected errors
+        # Handle any other unexpected errors and return a descriptive error message
         return {'error': str(e)}
 
 
 @database_sync_to_async
-def fetch_my_email_information(user):
+def get_user_info(user):
     """
-    Function to fetch email-related information for a given user.
+    Retrieves user information and associated email ban records.
 
-    This function retrieves email ban records and email ban status for the specified user.
+    This function fetches specific fields for the user identified by `user`. 
+    It retrieves the user's email address, the number of email bans, 
+    and whether the email is currently banned. It also fetches and serializes
+    all email ban records associated with the user's email address.
+
+    Args:
+        user (str): The account ID of the user whose information is to be retrieved.
+
+    Returns:
+        dict: A dictionary containing:
+            - 'information': A dictionary with the following keys:
+                - 'email_bans': A list of serialized email ban records associated with the user's email address.
+                - 'strikes': The number of email bans associated with the user's email.
+                - 'banned': A boolean indicating whether the user's email is currently banned.
+            - 'error': A string containing an error message if an exception is raised.
+    
+    Raises:
+        CustomUser.DoesNotExist: If no user is found with the provided account ID.
+        Exception: For any other errors that occur during the process.
+    """
+    try:
+        # Retrieve the user's email address and email ban details
+        account = CustomUser.objects.values('email', 'email_ban_amount', 'email_banned').get(account_id=user)
+        
+        # Retrieve email ban records for the user's email address, ordered by the most recent ban first
+        email_bans = EmailBan.objects.filter(email=account['email']).order_by('-banned_at')
+        
+        # Serialize the email ban records for easier consumption by the frontend or API
+        serializer = EmailBansSerializer(email_bans, many=True)
+    
+        # Construct and return the response containing user information and email ban details
+        return {
+            'information': {
+                'email_bans': serializer.data,  # Serialized data for email bans
+                'strikes': account['email_ban_amount'],  # Number of times the email has been banned
+                'banned': account['email_banned']  # Whether the email is currently banned
+            }
+        }
+
+    except CustomUser.DoesNotExist:
+        # Handle the case where no user is found with the provided account ID
+        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
+    
+    except Exception as e:
+        # Handle any unexpected errors that occur during the process
+        return {'error': f'An unexpected error occurred while retrieving user information: {str(e)}'}
+
+
+@database_sync_to_async
+def search_my_email_ban(details):
+    """
+    Retrieves information about a specific email ban based on the provided details.
+
+    This function fetches the details of an email ban using the provided `email_ban_id` and checks
+    whether a new OTP can be requested for the given email. 
+
+    Args:
+        details (dict): A dictionary containing:
+            - 'email_ban_id': The ID of the email ban to be retrieved.
+            - 'email': The email address to check if OTP can be requested.
+
+    Returns:
+        dict: A dictionary containing:
+            - 'email_ban': Serialized data of the email ban if it exists.
+            - 'can_request': A boolean indicating whether a new OTP request is allowed.
+            - 'error': A string containing an error message if an exception is raised.
+
+    Raises:
+        EmailBan.DoesNotExist: If no email ban is found with the provided ID.
+        Exception: For any other unexpected errors.
+
+    Example:
+        response = await search_my_email_ban({'email_ban_id': 123, 'email': 'user@example.com'})
+        if 'error' in response:
+            # Handle error
+        else:
+            email_ban_info = response
+            # Process email ban information
+    """
+    try:
+        # Retrieve the email ban record from the database
+        email_ban = EmailBan.objects.get(ban_id=details.get('email_ban_id'))
+
+        # Determine if a new OTP request can be made
+        can_request = not cache.get(details.get('email') + 'email_revalidation_otp')
+        
+        # Serialize the email ban record
+        serializer = EmailBanSerializer(email_ban)
+        
+        return {"email_ban": serializer.data, "can_request": can_request}
+        
+    except EmailBan.DoesNotExist:
+        return {'error': 'Email ban with the provided ID does not exist. Please verify the ID and try again.'}
+    
+    except Exception as e:
+        return {'error': f'An unexpected error occurred while retrieving the email ban: {str(e)}'}
+
+
+@database_sync_to_async
+def validate_email_revalidation(user, details):
+    """
+    Validates whether a user can appeal an email ban and handles OTP limits.
+
+    This function checks if the email ban can be appealed based on the user's account email and
+    current status of the email ban. It also updates the email ban status if OTP limits are exceeded.
 
     Args:
         user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing:
+            - 'email_ban_id': The ID of the email ban to be validated.
 
     Returns:
-        dict: A dictionary containing the user's email information or an error message.
+        dict: A dictionary containing:
+            - 'user': The user account information if the email ban can be appealed.
+            - 'error': A string containing an error message if the appeal is not possible.
+            - 'denied': A string containing a denial message if OTP limits are exceeded.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
+        EmailBan.DoesNotExist: If the email ban with the provided ID does not exist.
+        Exception: For any other unexpected errors.
+
+    Example:
+        response = await validate_email_revalidation('user123', {'email_ban_id': 123})
+        if 'error' in response:
+            # Handle error
+        elif 'denied' in response:
+            # Handle denial
+        else:
+            user_info = response['user']
+            # Process user information
+    """
+    try:
+        # Retrieve the user account
+        account = CustomUser.objects.get(account_id=user)
+
+        # Retrieve the email ban record
+        email_ban = EmailBan.objects.get(ban_id=details.get('email_ban_id'))
+        
+        # Check if the email in the ban matches the user's email
+        if email_ban.email != account.email:
+            return {"error": "Invalid request: the banned email differs from the account email."}
+
+        # Check the status and appeal possibility of the email ban
+        if email_ban.status == 'APPEALED':
+            return {"error": "The email ban has already been appealed."}
+
+        if not email_ban.can_appeal:
+            return {"error": "This email ban cannot be appealed."}
+        
+        # Check if the maximum OTP sends have been reached
+        if email_ban.otp_send >= 3:
+            email_ban.can_appeal = False
+            email_ban.status = 'BANNED'
+            email_ban.save()
+            return {"denied": "Maximum number of OTP sends reached. The email is now permanently banned."}
+        
+        return {'user': account}
+
+    except CustomUser.DoesNotExist:
+        return {'error': 'An account with the provided ID does not exist. Please check the account details and try again.'}
+
+    except EmailBan.DoesNotExist:
+        return {'error': 'Email ban with the provided ID does not exist. Please verify the ID and try again.'}
+    
+    except Exception as e:
+        return {'error': f'An unexpected error occurred while validating email revalidation: {str(e)}'}
+
+
+@database_sync_to_async
+def update_email_ban_otp_sends(email_ban_id):
+    """
+    Updates the OTP sends count for a specific email ban and sets the ban status to 'PENDING'.
+
+    This function increments the count of OTP sends for the specified email ban and updates the status
+    to 'PENDING' if it is not already set to that status.
+
+    Args:
+        email_ban_id (int): The ID of the email ban to be updated.
+
+    Returns:
+        dict: A dictionary containing:
+            - 'message': A message indicating that a new OTP has been sent.
+            - 'error': A string containing an error message if an exception is raised.
+
+    Raises:
+        EmailBan.DoesNotExist: If the email ban with the provided ID does not exist.
+        Exception: For any other unexpected errors.
+
+    Example:
+        response = await update_email_ban_otp_sends(123)
+        if 'error' in response:
+            # Handle error
+        else:
+            message = response['message']
+            # Process OTP update
+    """
+    try:
+        # Retrieve the email ban record
+        email_ban = EmailBan.objects.get(ban_id=email_ban_id)
+        
+        # Increment the OTP sends count and update status
+        email_ban.otp_send += 1
+        if email_ban.status != 'PENDING':
+            email_ban.status = 'PENDING'
+        email_ban.save()
+        
+        return {"message": "A new OTP has been sent to your email address."}
+
+    except EmailBan.DoesNotExist:
+        return {'error': 'Email ban with the provided ID does not exist. Please verify the ID and try again.'}
+    
+    except Exception as e:
+        return {'error': f'An unexpected error occurred while updating OTP sends: {str(e)}'}
+
+
+@database_sync_to_async
+def verify_email_revalidate_otp(user, details):
+    """
+    Verifies the OTP for email revalidation and updates the email ban status accordingly.
+
+    This function checks if the provided OTP is correct and matches the OTP stored in cache.
+    If the OTP is valid, it updates the email ban status to 'APPEALED' and unbans the email. 
+    If the OTP is invalid or the maximum number of attempts is reached, it updates the ban status as needed.
+
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing:
+            - 'email_ban_id': The ID of the email ban.
+            - 'otp': The OTP provided by the user.
+
+    Returns:
+        dict: A dictionary containing:
+            - 'message': A message indicating the success of email revalidation or a denial message if OTP limits are exceeded.
+            - 'error': A string containing an error message if OTP verification fails.
+            - 'denied': A string containing a denial message if OTP limits are exceeded.
+
+    Raises:
+        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
+        EmailBan.DoesNotExist: If the email ban with the provided ID does not exist.
+        Exception: For any other unexpected errors.
+
+    Example:
+        response = await verify_email_revalidate_otp('user123', {'email_ban_id': 123, 'otp': '456789'})
+        if 'error' in response:
+            # Handle error
+        elif 'denied' in response:
+            # Handle denial
+        else:
+            message = response['message']
+            # Process successful OTP verification
+    """
+    try:
+        # Retrieve the user account
+        account = CustomUser.objects.get(account_id=user)
+
+        # Retrieve the email ban record
+        email_ban = EmailBan.objects.get(ban_id=details.get('email_ban_id'))
+        
+        # Retrieve the OTP from cache
+        hashed_otp = cache.get(account.email + 'email_revalidation_otp')
+        if not hashed_otp:
+            cache.delete(account.email + 'email_revalidation_attempts')
+            return {"error": "OTP expired. Please request a new OTP."}
+
+        # Verify the provided OTP
+        if verify_user_otp(user_otp=details.get('otp'), stored_hashed_otp_and_salt=hashed_otp):
+            # OTP is valid, update ban status and user account
+            email_ban.status = 'APPEALED'
+            account.email_banned = False
+            account.save()
+            email_ban.save()
+
+            return {"message": "Email successfully revalidated. The email ban has been lifted.", 'status': email_ban.status.title()}
+
+        else:
+            # OTP is invalid, update remaining attempts and handle expiration
+            attempts = cache.get(account.email + 'email_revalidation_attempts', 3)
+            attempts -= 1
+            
+            if attempts <= 0:
+                cache.delete(account.email + 'email_revalidation_otp')
+                cache.delete(account.email + 'email_revalidation_attempts')
+                
+                if email_ban.otp_send >= 3:
+                    email_ban.can_appeal = False
+                    email_ban.status = 'BANNED'
+                    email_ban.save()
+                
+                return {"denied": "Maximum OTP verification attempts exceeded. The email ban remains in place."}
+            
+            cache.set(account.email + 'email_revalidation_attempts', attempts, timeout=300)  # Update attempts with expiration
+
+            return {"error": f"Revalidation error: incorrect OTP. {attempts} attempts remaining."}
+
+    except CustomUser.DoesNotExist:
+        return {'error': 'An account with the provided ID does not exist. Please check the account details and try again.'}
+
+    except EmailBan.DoesNotExist:
+        return {'error': 'Email ban with the provided ID does not exist. Please verify the ID and try again.'}
+    
+    except Exception as e:
+        return {'error': f'An unexpected error occurred while verifying OTP: {str(e)}'}
+
+
+@database_sync_to_async
+def fetch_chats(user):
+    """
+    Retrieves chat rooms associated with the user.
+
+    This function fetches all chat rooms where the user is either `user_one` or `user_two`.
+
+    Args:
+        user (str): The account ID of the user whose chat rooms are to be fetched.
+
+    Returns:
+        dict: A dictionary containing:
+            - 'chats': Serialized data of chat rooms associated with the user.
+            - 'error': A string containing an error message if an exception is raised.
 
     Raises:
         CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
         Exception: For any other unexpected errors.
 
     Example:
-        response = await fetch_my_email_information(request.user.account_id)
+        response = await fetch_chats('user123')
         if 'error' in response:
             # Handle error
         else:
-            email_info = response['information']
-            # Process email information
+            chat_rooms = response['chats']
+            # Process chat rooms
     """
     try:
-        # Retrieve the account making the request
+        # Retrieve the user account
         account = CustomUser.objects.get(account_id=user)
         
-        # Retrieve email ban records for the user's email address
-        email_bans = EmailBan.objects.filter(email=account.email).order_by('-banned_at')
-        # Serialize the email ban records
-        serializer = EmailBansSerializer(email_bans, many=True)
-    
-        # Return email-related information
-        return {'information': {'email_bans': serializer.data, 'strikes': account.email_ban_amount, 'banned': account.email_banned}}
-        
-    except CustomUser.DoesNotExist:
-        # Handle case where the user account does not exist
-        return {'error': 'User with the provided credentials does not exist'}
-    
-    except Exception as e:
-        # Handle any other unexpected errors
-        return {'error': str(e)}
-
-
-@database_sync_to_async
-def search_my_email_ban(details):
-
-    try:
-        email_ban = EmailBan.objects.get(ban_id=details.get('email_ban_id'))
-
-        if cache.get(details.get('email') + 'email_revalidation_otp'):
-            can_request = False
-        else:
-            can_request = True
-            
-        serializer = EmailBanSerializer(email_ban)
-        return { "email_ban" : serializer.data , 'can_request': can_request}
-        
-    except EmailBan.DoesNotExist:
-        return { 'error': 'ban with the provided credentials does not exist' }
-    
-    except Exception as e:
-        return { 'error': str(e) }
-
-
-@database_sync_to_async
-def validate_email_revalidation(user, details):
-
-    try:
-        account = CustomUser.objects.get(account_id=user)
-
-        email_ban = EmailBan.objects.get(ban_id=details.get('email_ban_id'))
-        
-        if not email_ban.email == account.email:
-            return { "error" : "invalid request, banned email different from account email" }
-
-        if email_ban.status == 'APPEALED':
-            return { "error" : "ban already appealed" }
-
-        if not email_ban.can_appeal:
-            return { "error" : "can not appeal this email ban" }
-        
-        if email_ban.otp_send >= 3 :
-            email_ban.can_appeal = False
-            email_ban.status = 'BANNED'
-            email_ban.save()
-            
-            return { "denied" : "maximum amount of OTP sends reached, email permanently banned",  }
-        
-        return {'user' : account}
-    
-    except CustomUser.DoesNotExist:
-        return {'error': 'user with the provided credentials does not exist'}
-
-    except EmailBan.DoesNotExist:
-        return {'error': 'ban with the provided credentials does not exist'}
-    
-    except Exception as e:
-        return {'error': str(e)}
-
-
-@database_sync_to_async
-def update_email_ban_otp_sends(email_ban_id):
-
-    try:
-        email_ban = EmailBan.objects.get(ban_id=email_ban_id)
-        
-        email_ban.otp_send += 1
-        if email_ban.status != 'PENDING':
-            email_ban.status = 'PENDING'
-        email_ban.save()
-        
-        return {"message": "a new OTP has been sent to your email address"}
-
-    except EmailBan.DoesNotExist:
-        return {'error': 'email ban with the provided credentials does not exist'}
-    
-    except Exception as e:
-        return {'error': str(e)}
-
-
-@database_sync_to_async
-def verify_email_revalidate_otp(user, details):
-
-    try:
-        account = CustomUser.objects.get(account_id=user)
-        email_ban = EmailBan.objects.get(ban_id=details.get('email_ban_id'))
-        
-        # try to get revalidation otp from cache
-        hashed_otp = cache.get(account.email + 'email_revalidation_otp')
-        if not hashed_otp:
-            cache.delete(account.email + 'email_revalidation_attempts')
-            return {"error": "OTP expired"}
-
-        # check if both otps are valid
-        if verify_user_otp(user_otp=details.get('otp'), stored_hashed_otp_and_salt=hashed_otp):
-            
-            
-            email_ban.status = 'APPEALED'
-            account.email_banned = False
-            account.save()
-            email_ban.save()
-
-            return {"message": "email successfully revalidated email ban lifted", 'status' : email_ban.status.title()}
-
-        else:
-            attempts = cache.get(account.email + 'email_revalidation_attempts', 3)
-            
-            # Incorrect OTP, decrement attempts and handle expiration
-            attempts -= 1
-            
-            if attempts <= 0:
-
-                cache.delete(account.email + 'email_revalidation_otp')
-                cache.delete(account.email + 'email_revalidation_attempts')
-                
-                if email_ban.otp_send >= 3 :
-                    email_ban.can_appeal = False
-                    email_ban.status = 'BANNED'
-                    email_ban.save()
-                
-                return {"denied": "maximum OTP verification attempts exceeded.."}
-            
-            cache.set(account.email + 'email_revalidation_attempts', attempts, timeout=300)  # Update attempts with expiration
-
-            return {"error": f"revalidation error, incorrect OTP.. {attempts} attempts remaining"}
-    
-    except CustomUser.DoesNotExist:
-        return {'error': 'user with the provided credentials does not exist'}
-
-    except EmailBan.DoesNotExist:
-        return {'error': 'ban with the provided credentials does not exist'}
-    
-    except Exception as e:
-        return {'error': str(e)}
-
-
-@database_sync_to_async
-def fetch_chats(user):
-
-    try:
-        # Retrieve the account making the request
-        account = CustomUser.objects.get(account_id=user)
-        
-        # Check if a chat room exists between the two users
+        # Fetch chat rooms where the user is involved
         chat_rooms = ChatRoom.objects.filter(Q(user_one=account) | Q(user_two=account))
 
-        # Serialize the requested user's data
-        serializer = ChatSerializer(chat_rooms, many=True, context={'user' : user})
+        # Serialize chat room data
+        serializer = ChatSerializer(chat_rooms, many=True, context={'user': user})
         
         return {'chats': serializer.data}
 
     except CustomUser.DoesNotExist:
-        # Handle case where the user does not exist
-        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+        return {'error': 'An account with the provided ID does not exist. Please check the account details and try again.'}
     
     except Exception as e:
-        # Handle any other unexpected errors
-        return {'error': str(e)}
+        return {'error': f'An unexpected error occurred while fetching chat rooms: {str(e)}'}
 
 
 @database_sync_to_async
@@ -1246,6 +1410,7 @@ def text(user, details):
     4. Checks the last message and updates its 'last' field if necessary.
     5. Creates and saves a new message in the chat room.
     6. Serializes the new message and returns it.
+    7. Includes the recipient's account ID in the response for further processing.
 
     Args:
         user (str): The account ID of the user sending the message.
@@ -1254,10 +1419,10 @@ def text(user, details):
             - 'message' (str): The content of the message.
 
     Returns:
-        dict: A dictionary containing the serialized message data or an error message.
+        dict: A dictionary containing the serialized message data and the recipient's account ID or an error message.
     """
     try:
-        # Retrieve the account making the request
+        # Retrieve the user making the request
         account = CustomUser.objects.get(account_id=user)
         # Retrieve the requested user's account
         requested_user = CustomUser.objects.get(account_id=details.get('account_id'))
@@ -1273,7 +1438,7 @@ def text(user, details):
         with transaction.atomic():
             # Retrieve the last message in the chat room
             last_message = ChatRoomMessage.objects.filter(chat_room=chat_room).order_by('-timestamp').first()
-            # Check if the last message is from the same sender and update its 'last' field if necessary
+            # Update the last message's 'last' field if it's from the same sender
             if last_message and last_message.sender == account:
                 last_message.last = False
                 last_message.save()
@@ -1283,15 +1448,17 @@ def text(user, details):
 
         # Serialize the new message
         serializer = ChatRoomMessageSerializer(new_message, context={'user': user})
-        return {'message': [serializer.data]}
+        message_data = serializer.data
+
+        return {'message': message_data, 'other_user': requested_user.account_id}
 
     except CustomUser.DoesNotExist:
-        # Handle case where the user does not exist
-        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+        return {'error': 'User account not found. Please verify the account details.'}
     
     except Exception as e:
-        # Handle any other unexpected errors
         return {'error': str(e)}
+
+
 
 
 @database_sync_to_async
