@@ -1450,6 +1450,8 @@ def text(user, details):
         serializer = ChatRoomMessageSerializer(new_message, context={'user': user})
         message_data = serializer.data
 
+        message_data['whos'] = 'theirs'
+
         return {'message': message_data, 'from': f'{requested_user.surname.title()} {requested_user.name.title()}', 'chat_id': requested_user.account_id}
 
     except CustomUser.DoesNotExist:
