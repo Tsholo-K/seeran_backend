@@ -104,7 +104,7 @@ def fetch_my_security_information(user):
 
 
 @database_sync_to_async
-def get_user_info(user):
+def fetch_my_email_information(user):
     """
     Retrieves user information and associated email ban records.
 
