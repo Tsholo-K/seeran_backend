@@ -41,7 +41,7 @@ from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
 from timetables.serializers import SessoinsSerializer, ScheduleSerializer
 from timetables.serializers import GroupScheduleSerializer
 from announcements.serializers import AnnouncementsSerializer, AnnouncementSerializer
-from chats.serializers import ChatRoomMessageSerializer, ChatRoomSerializer
+from chats.serializers import ChatRoomMessageSerializer, ChatSerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
@@ -282,7 +282,7 @@ def fetch_chats(user):
         chat_rooms = ChatRoom.objects.filter(Q(user_one=account) | Q(user_two=account))
 
         # Serialize the requested user's data
-        serializer = ChatRoomSerializer(chat_rooms, many=True, context={'user' : user})
+        serializer = ChatSerializer(chat_rooms, many=True, context={'user' : user})
         
         return {'chats': serializer.data}
 
@@ -1341,7 +1341,7 @@ def search_chat_room(user, details):
 @database_sync_to_async
 def search_chat_room_messages(user, details):
     """
-    Fetch messages from a chat room with pagination support.
+    Fetch messages from a chat room with pagination support and mark unread messages as read.
 
     Args:
         user (str): The account ID of the user making the request.
@@ -1373,6 +1373,9 @@ def search_chat_room_messages(user, details):
         # Slice and then reverse the order to get the correct ascending order
         messages = list(messages)[::-1]
 
+        # Mark messages as read
+        ChatRoomMessage.objects.filter(chat_room=chat_room, sender__ne=account, read_receipt=False).update(read_receipt=True)
+
         # Serialize the messages
         serializer = ChatRoomMessageSerializer(messages, many=True, context={'user': user})
         
@@ -1392,6 +1395,7 @@ def search_chat_room_messages(user, details):
     
     except Exception as e:
         return {'error': str(e)}
+
     
 
 @database_sync_to_async

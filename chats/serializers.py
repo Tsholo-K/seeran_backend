@@ -11,14 +11,15 @@ from rest_framework import serializers
 from .models import ChatRoom, ChatRoomMessage
 
 
-class ChatRoomSerializer(serializers.ModelSerializer):
+class ChatSerializer(serializers.ModelSerializer):
     
     user = serializers.SerializerMethodField()
     last_message = serializers.SerializerMethodField()
+    unread = serializers.SerializerMethodField()
 
     class Meta:
         model = ChatRoom
-        fields = ['user', 'last_message']
+        fields = ['user', 'last_message', 'unread']
     
     def get_user(self, obj):
         # Access the user from the context and determine the sender
@@ -30,8 +31,26 @@ class ChatRoomSerializer(serializers.ModelSerializer):
     def get_last_message(self, obj):
         # Fetch the latest messages if no cursor is provided
         message = ChatRoomMessage.objects.filter(chat_room=obj).order_by('-timestamp').first()
-        serializer = ChatRoomMessageSerializer(message, context={'user': self.context['user']})
+        serializer = ChatMessageSerializer(message, context={'user': self.context['user']})
         return serializer.data
+    
+    def get_unread(self, obj):
+        user = self.context['user']
+        return ChatRoomMessage.objects.filter(chat_room=obj, read_receipt=False, sender__ne=user).count()
+
+
+class ChatMessageSerializer(serializers.ModelSerializer):
+    
+    read_receipt = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ChatRoomMessage
+        fields = ['content', 'timestamp', 'read_receipt']
+
+    def get_read_receipt(self, obj):
+        # Access the user from the context and determine the sender
+        user = self.context['user']
+        return True if obj.sender.account_id == user else obj.read_receipt
     
 
 class ChatRoomMessageCreationSerializer(serializers.ModelSerializer):
@@ -43,11 +62,17 @@ class ChatRoomMessageCreationSerializer(serializers.ModelSerializer):
 
 class ChatRoomMessageSerializer(serializers.ModelSerializer):
     
+    read_receipt = serializers.SerializerMethodField()
     whos = serializers.SerializerMethodField()
 
     class Meta:
         model = ChatRoomMessage
         fields = ['content', 'timestamp', 'read_receipt', 'edited', 'last', 'whos']
+
+    def get_read_receipt(self, obj):
+        # Access the user from the context and determine the sender
+        user = self.context['user']
+        return True if obj.sender.account_id == user else obj.read_receipt
 
     def get_whos(self, obj):
         # Access the user from the context and determine the sender
