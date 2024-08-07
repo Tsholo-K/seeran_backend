@@ -1243,7 +1243,7 @@ def text(user, details):
             return {'error': permission_error}
 
         # Retrieve or create the chat room
-        chat_room, created = ChatRoom.objects.get_or_create(Q(user_one=account, user_two=requested_user) | Q(user_one=requested_user, user_two=account), defaults={'user_one': account, 'user_two': requested_user})
+        chat_room, created = ChatRoom.objects.get_or_create(defaults={'user_one': account, 'user_two': requested_user}, **({'user_one': account, 'user_two': requested_user} if account.pk < requested_user.pk else {'user_one': requested_user, 'user_two': account}))
 
         # Use a transaction to ensure atomicity of the message creation
         with transaction.atomic():
@@ -1255,11 +1255,12 @@ def text(user, details):
 
     except CustomUser.DoesNotExist:
         # Handle case where the user does not exist
-        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
+        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
     
     except Exception as e:
         # Handle any other unexpected errors
         return {'error': str(e)}
+
     
 
 @database_sync_to_async

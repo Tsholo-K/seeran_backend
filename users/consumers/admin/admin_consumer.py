@@ -107,8 +107,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'announcement': general_async_functions.search_announcement,
 
-            'chat_room_messages': general_async_functions.search_chat_room_messages,
             'chat_room': general_async_functions.search_chat_room,
+            'chat_room_messages': general_async_functions.search_chat_room_messages,
 
             'grade': admin_async_functions.search_grade,
             'subject': admin_async_functions.search_subject,
