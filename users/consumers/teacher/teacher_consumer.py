@@ -11,6 +11,7 @@ from authentication.utils import validate_access_token
 from users.consumers import general_async_functions
 from . import teacher_async_functions
 
+
 class TeacherConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
@@ -18,232 +19,170 @@ class TeacherConsumer(AsyncWebsocketConsumer):
         role = self.scope.get('role')
 
         # Check if the user has the required role
-        if role != 'TEACHER':
+        if role not in ['ADMIN', 'PRINCIPAL']:
             return await self.close()
         
         await self.accept()
-        return await self.send(text_data=json.dumps({ 'message': 'Welcome Back' }))
-
+        return await self.send(text_data=json.dumps({'message': 'Welcome Back'}))
 
     async def disconnect(self, close_code):
         pass
 
-
     async def receive(self, text_data):
-        
         user = self.scope.get('user')
         access_token = self.scope.get('access_token')
+
+        if not (user and access_token and validate_access_token(access_token)):
+            return await self.send(text_data=json.dumps({'error': 'request not authenticated.. access denied'}))
+
+        data = json.loads(text_data)
+        action = data.get('action')
+        description = data.get('description')
+        details = data.get('details')
+
+        if not action or not description:
+            return await self.send(text_data=json.dumps({'error': 'invalid request..'}))
+
+        response = await self.handle_request(action, description, details, user, access_token)
         
-        if user and access_token and (validate_access_token(access_token) is not None):
-            
-            response = None
+        if response is not None:
+            return await self.send(text_data=json.dumps(response))
+        
+        return await self.send(text_data=json.dumps({'error': 'provided information is invalid.. request revoked'}))
 
-            action = json.loads(text_data).get('action')
-            description = json.loads(text_data).get('description')
-            
-            if not ( action or description ):
-                return await self.send(text_data=json.dumps({ 'error': 'invalid request..' }))
+    async def handle_request(self, action, description, details, user, access_token):
+        action_map = {
+            'GET': self.handle_get,
+            'SEARCH': self.handle_search,
+            'VERIFY': self.handle_verify,
+            'FORM DATA': self.handle_form_data,
+            'PUT': self.handle_put,
+            'POST': self.handle_post,
+        }
 
+        handler = action_map.get(action)
+        if handler:
+            return await handler(description, details, user, access_token)
+        
+        return {'error': 'Invalid action'}
 
-            ################################################ GET #######################################################
+    async def handle_get(self, description, details, user, access_token):
+        get_map = {
+            'my_security_information': general_async_functions.fetch_my_security_information,
+            'email_information': general_async_functions.fetch_my_email_information,
 
+            'chats': general_async_functions.fetch_chats,
 
-            if action == 'GET':
-                
-                # return users security information
-                if description == 'my_security_information':
-                    response = await general_async_functions.fetch_my_security_information(user)
-                    
-                # return user email information
-                if description == 'email_information':
-                    response = await general_async_functions.fetch_my_email_information(user)
+            'announcements': general_async_functions.fetch_announcements,
 
-                # log user out of the system
-                if description == 'log_me_out':
-                    response = await general_async_functions.log_user_out(access_token)
+            'log_out': general_async_functions.log_out,
+        }
 
+        func = get_map.get(description)
+        if func:
+            return await func(user) if description != 'log_me_out' else await func(access_token)
+        
+        return {'error': 'Invalid get description'}
 
-            ##############################################################################################################
+    async def handle_search(self, description, details, user, access_token):
+        search_map = {
+            'parents': general_async_functions.search_parents,
 
+            'account_profile': general_async_functions.search_account_profile,
+            'account_id': general_async_functions.search_account_id,
 
-                if response is not None:
-                    return await self.send(text_data=json.dumps(response))
-                
-                return await self.send(text_data=json.dumps({ 'error': 'provided information is invalid.. request revoked' }))
-            
-            details = json.loads(text_data).get('details')
-            
-            if not details:
-                return await self.send(text_data=json.dumps({ 'error': 'invalid request.. request denied' }))
+            'teacher_schedule_schedules': general_async_functions.search_teacher_schedule_schedules,
+            'group_schedule_schedules': general_async_functions.search_group_schedule_schedules,
+            'group_schedules': general_async_functions.search_group_schedules,
+            'schedule_sessions': general_async_functions.search_for_schedule_sessions,
 
+            'month_attendance_records': general_async_functions.search_month_attendance_records,
 
-            ############################################## SEARCH ########################################################
+            'announcement': general_async_functions.search_announcement,
 
+            'chat_room': general_async_functions.search_chat_room,
+            'chat_room_messages': general_async_functions.search_chat_room_messages,
 
-            if action == 'SEARCH':
-                
-                # return email ban with the provided id
-                if description == 'email_ban':
-                    email_ban_id = details.get('email_ban_id')
-                    email = details.get('email')
-                    if (email_ban_id and email) is not None:
-                        response = await general_async_functions.search_my_email_ban(email, email_ban_id)
-                        
-                # return account profile with the provided id
-                if description == 'account_profile':
-                    account_id = details.get('account_id')
-                    if account_id is not None:
-                        response = await general_async_functions.search_account_profile(user, account_id)
-                
-                # return account id with the provided id
-                if description == 'account_id':
-                    account_id = details.get('account_id')
-                    if account_id is not None:
-                        response = await general_async_functions.search_account_id(user, account_id)
-                        
-                # return attendance records for the specified month
-                if description == 'my_register_class':
-                    response = await teacher_async_functions.search_my_register_class(user)
+            'email_ban': general_async_functions.search_my_email_ban,
+        }
 
-                # return schedule sessions with the provided id
-                if description == 'schedule':
-                    schedule_id = details.get('schedule_id')
-                    if schedule_id is not None:
-                        response = await general_async_functions.search_for_schedule(schedule_id)
+        func = search_map.get(description)
+        
+        if func:
+            response = await func(details) if description in ['schedule_sessions'] else await func(user, details)
+            return response
+        
+        return {'error': 'Invalid search description'}
 
-                # return attendance records for the specified month
-                if description == 'search_month_attendance_records':
-                    class_id = details.get('class_id')
-                    month_name = details.get('month_name')
-                    if (class_id and month_name) is not None:
-                        response = await general_async_functions.search_month_attendance_records(user, class_id, month_name)
+    async def handle_verify(self, description, details, user, access_token):
+        verify_map = {
+            'verify_email': general_async_functions.verify_email,
+            'verify_password': general_async_functions.verify_password,
+            'verify_otp': general_async_functions.verify_otp,
+            'verify_email_revalidation_otp': general_async_functions.verify_email_revalidate_otp,
+        }
 
-
-            ##############################################################################################################
-
-            ############################################## VERIFY ########################################################
-
-
-            if action == 'VERIFY':
-                        
-                # verify email before email update
-                if description == 'verify_email':
-                    email = details.get('email')
-                    if email is not None:
-                        status = await general_async_functions.verify_email(email)
-                        if status.get('user'):
-                            response = await general_async_functions.send_one_time_pin_email(status.get('user'), reason='This OTP was generated in response to your email update request..')
-                        else:
-                            response = status
-                
-                # verify password before password update
-                if description == 'verify_password':
-                    password = details.get('password')
-                    if password is not None:
-                        status = await general_async_functions.verify_password(user, password)
-                        if status.get('user'):
-                            response = await general_async_functions.send_one_time_pin_email(status.get('user'), reason='This OTP was generated in response to your password update request..')
-                        else:
-                            response = status
-                
-                # verify otp
-                if description == 'verify_otp':
-                    otp = details.get('otp')
-                    if otp is not None:
-                        response = await general_async_functions.verify_otp(user, otp)
-                
-                # verify email revalidation otp
+        func = verify_map.get(description)
+        if func:
+            response = await func(details) if description == 'verify_email' else await func(user, details)
+            if response.get('user'):
+                if description == 'verify_email' or description == 'verify_password':
+                    return await general_async_functions.send_one_time_pin_email(response.get('user'), reason='This OTP was generated in response to your request.')
                 if description == 'verify_email_revalidation_otp':
-                    otp = details.get('otp')
-                    email_ban_id = details.get('email_ban_id')
-                    if (otp and email_ban_id) is not None:
-                        response = await general_async_functions.verify_email_revalidate_otp(user, otp, email_ban_id)
-
-
-            ################################################################################################################                
-
-            ############################################## FORM DATA #######################################################
-
-
-            if action == 'FORM DATA':
-
-                # return all student accounts in register class
-                if description == 'attendance_register':
-                    class_id = details.get('class_id')
-                    if class_id is not None:
-                        response = await general_async_functions.form_data_for_attendance_register(user, class_id)
-
-
-            ################################################################################################################                
-                        
-            ################################################ PUT ##########################################################
-
-
-            if action == 'PUT':
-                
-                # update users email
-                if description == 'update_email':
-                    new_email = details.get('new_email')
-                    authorization_otp = details.get('authorization_otp')
-                    if (new_email and authorization_otp) is not None:
-                        response = await general_async_functions.update_email(user, new_email, authorization_otp, access_token)
-                
-                # update users password
-                if description == 'update_password':
-                    new_password = details.get('new_password')
-                    authorization_otp = details.get('authorization_otp')
-                    if (new_password and authorization_otp) is not None:
-                        response = await general_async_functions.update_password(user, new_password, authorization_otp, access_token)
-
-                # toggle  multi-factor authentication option for user
-                if description == 'update_multi_factor_authentication':
-                    toggle = details.get('toggle')
-                    if toggle is not None:
-                        response = await general_async_functions.update_multi_factor_authentication(user, toggle)
-                        
-                # send email revalidation otp
-                if description == 'send_email_revalidation_otp':
-                    email_ban_id = details.get('email_ban_id')
-                    if email_ban_id is not None:
-                        status = await general_async_functions.validate_email_revalidation(user, email_ban_id)
-                        if status.get('user'):
-                            status = await general_async_functions.send_email_revalidation_one_time_pin_email(status.get('user'))
-                            if status.get('message'):
-                                response = await general_async_functions.update_email_ban_otp_sends(email_ban_id)
-                            else:
-                                response = status
-                        else:
-                            response = status
-
-
-            ################################################################################################################                
-                        
-            ################################################# POST ##########################################################
-
-
-            if action == 'POST':
-                
-                # submit absentes
-                if description == 'submit_absentes':
-                    class_id = details.get('class_id')
-                    students = details.get('students')
-                    if (class_id and students) is not None:
-                        response = await general_async_functions.submit_absentes(user, class_id, students)
-
-                # subimit late arrivals
-                if description == 'submit_late_arrivals':
-                    class_id = details.get('class_id')
-                    students = details.get('students')
-                    if (class_id and students) is not None:
-                        response = await general_async_functions.submit_late_arrivals(user, class_id, students)
-
-
-            ###############################################################################################################
+                    return await general_async_functions.send_email_revalidation_one_time_pin_email(response.get('user'))
+            return response
         
-                        
-            if response is not None:
-                return await self.send(text_data=json.dumps(response))
+        return {'error': 'Invalid verify description'}
+
+    async def handle_form_data(self, description, details, user, access_token):
+        form_data_map = {
+            'attendance_register': general_async_functions.form_data_for_attendance_register,
+        }
+
+        func = form_data_map.get(description)
+        if func:
+            response = await func(user, details)
+            return response
+        
+        return {'error': 'Invalid form data description'}
+
+    async def handle_put(self, description, details, user, access_token):
+        put_map = {
+            'update_email': general_async_functions.update_email,
+            'update_password': general_async_functions.update_password,
+
+            'update_multi_factor_authentication': general_async_functions.update_multi_factor_authentication,
+
+            'send_email_revalidation_otp': general_async_functions.validate_email_revalidation,
+        }
+
+        func = put_map.get(description)
+        if func:
+            response = await func(user, details, access_token) if description in ['update_email', 'update_password'] else await func(user, details)
             
-            return await self.send(text_data=json.dumps({ 'error': 'provided information is invalid.. request revoked' }))
+            if description == 'send_email_revalidation_otp' and response.get('user'):
+                response = await general_async_functions.send_email_revalidation_one_time_pin_email(response.get('user'))
+
+                if response.get('message'):
+                    return await general_async_functions.update_email_ban_otp_sends(details)
+                
+            return response
         
-        return await self.send(text_data=json.dumps({ 'error': 'request not authenticated.. access denied' }))
+        return {'error': 'Invalid put description'}
+
+    async def handle_post(self, description, details, user, access_token):
+        post_map = {
+            'text': general_async_functions.text,
+
+            'submit_absentes': general_async_functions.submit_absentes,
+            'submit_late_arrivals': general_async_functions.submit_late_arrivals,
+        }
+
+        func = post_map.get(description)
+
+        if func:
+            response = await func(user, details)
+            
+            return response
+        
+        return {'error': 'Invalid post description'}
