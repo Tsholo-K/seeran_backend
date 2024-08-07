@@ -243,7 +243,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             response = await func(user, details)
 
             if response.get('chat_id') and description in ['text']:
-                await connection_manager.send_message(response['chat_id'], json.dumps({'description': 'text_message', 'message': response['message'], 'from': response['from'], 'chat_id': response.get('chat_id')}))
+                await connection_manager.send_message(response['chat_id'], json.dumps({'description': 'text_message', 'message': [response['message']], 'from': response['from'], 'chat_id': response.get('chat_id')}))
                 
                 response = {'message': response['message']}
 
