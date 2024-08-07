@@ -1350,7 +1350,7 @@ def search_chat_room_messages(user, details):
         messages = list(messages)[::-1]
 
         # Serialize the messages
-        serializer = ChatRoomMessageSerializer(messages, many=True)
+        serializer = ChatRoomMessageSerializer(messages, many=True, context={'user': user})
         
         # Determine the next cursor
         if messages:
