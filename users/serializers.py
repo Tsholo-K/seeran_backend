@@ -54,6 +54,38 @@ class MyAccountDetailsSerializer(serializers.ModelSerializer):
         return obj.email
 
 
+class AccountSerializer(serializers.ModelSerializer):
+
+    name = serializers.SerializerMethodField()
+    surname = serializers.SerializerMethodField()
+    identifier = serializers.SerializerMethodField()
+    id = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CustomUser
+        fields = [ 'name', 'surname', 'identifier', 'id', 'image' ]
+    
+    def get_id(self, obj):
+        return obj.account_id
+    
+    def get_name(self, obj):
+        return obj.name.title()
+    
+    def get_surname(self, obj):
+        return obj.surname.title()
+            
+    def get_image(self, obj):
+        return '/default-user-image.svg'
+    
+    def get_identifier(self, obj):
+        if obj.id_number:
+            return obj.id_number
+        if obj.passport_number:
+            return obj.passport_number
+        return obj.email
+
+
 class AccountProfileSerializer(serializers.ModelSerializer):
 
     name = serializers.SerializerMethodField()
@@ -203,20 +235,15 @@ class AccountUpdateSerializer(serializers.ModelSerializer):
         fields = ['name', 'surname', 'id_number', 'email', 'grade']
 
 
-class AccountSerializer(serializers.ModelSerializer):
+class ChatroomSerializer(serializers.ModelSerializer):
 
     name = serializers.SerializerMethodField()
     surname = serializers.SerializerMethodField()
-    identifier = serializers.SerializerMethodField()
-    id = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
-        fields = [ 'name', 'surname', 'identifier', 'id', 'image' ]
-    
-    def get_id(self, obj):
-        return obj.account_id
+        fields = [ 'name', 'surname', 'image' ]
     
     def get_name(self, obj):
         return obj.name.title()
@@ -226,13 +253,6 @@ class AccountSerializer(serializers.ModelSerializer):
             
     def get_image(self, obj):
         return '/default-user-image.svg'
-    
-    def get_identifier(self, obj):
-        if obj.id_number:
-            return obj.id_number
-        if obj.passport_number:
-            return obj.passport_number
-        return obj.email
 
 
 class StudentAccountAttendanceRecordSerializer(serializers.ModelSerializer):

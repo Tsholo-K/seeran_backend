@@ -107,6 +107,9 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'announcement': general_async_functions.search_announcement,
 
+            'chat_room_messages': general_async_functions.search_chat_room_messages,
+            'chat_room': general_async_functions.search_chat_room,
+
             'grade': admin_async_functions.search_grade,
             'subject': admin_async_functions.search_subject,
             'class': admin_async_functions.search_class,
@@ -216,6 +219,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'delete_group_schedule': admin_async_functions.delete_group_schedule,
 
             'announce': admin_async_functions.announce,
+
+            'text': general_async_functions.text,
 
             'submit_absentes': general_async_functions.submit_absentes,
             'submit_late_arrivals': general_async_functions.submit_late_arrivals,

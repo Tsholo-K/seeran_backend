@@ -13,6 +13,8 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.db import  transaction
 from django.db.models import Q
+from django.core.paginator import Paginator
+from django.core.paginator import EmptyPage
 from django.contrib.auth.password_validation import validate_password
 from django.core.cache import cache
 from django.core.validators import validate_email
@@ -31,13 +33,16 @@ from classes.models import Classroom
 from attendances.models import Absent, Late
 from grades.models import Grade
 from announcements.models import Announcement
+from chats.models import ChatRoom, ChatRoomMessage
 
 # serializers
-from users.serializers import AccountSerializer, StudentAccountAttendanceRecordSerializer, AccountProfileSerializer, AccountIDSerializer
+from users.serializers import AccountSerializer, StudentAccountAttendanceRecordSerializer, AccountProfileSerializer, AccountIDSerializer, ChatroomSerializer
 from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
 from timetables.serializers import SessoinsSerializer, ScheduleSerializer
 from timetables.serializers import GroupScheduleSerializer
 from announcements.serializers import AnnouncementsSerializer, AnnouncementSerializer
+from chats.serializers import ChatRoomMessageSerializer
+
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
 from attendances.utility_functions import get_month_dates
@@ -1198,6 +1203,140 @@ def search_announcement(user, details):
 
     except CustomUser.DoesNotExist:
         # Handle case where the user or announcement does not exist
+        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+    
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+    
+
+@database_sync_to_async
+def text(user, details):
+    """
+    Handle sending a text message. 
+    
+    This function performs the following steps:
+    1. Retrieves the user making the request and the requested user's account.
+    2. Checks if the user has the necessary permissions to send the message.
+    3. Retrieves or creates a chat room between the two users.
+    4. Creates and saves a new message in the chat room.
+    5. Serializes the new message and returns it.
+
+    Args:
+        user (str): The account ID of the user sending the message.
+        details (dict): A dictionary containing the details of the message, including:
+            - 'account_id' (str): The account ID of the user to whom the message is sent.
+            - 'message' (str): The content of the message.
+
+    Returns:
+        dict: A dictionary containing the serialized message data or an error message.
+    """
+    try:
+        # Retrieve the account making the request
+        account = CustomUser.objects.get(account_id=user)
+        # Retrieve the requested user's account
+        requested_user = CustomUser.objects.get(account_id=details.get('account_id'))
+        
+        # Check permissions
+        permission_error = permission_checks.check_message_permissions(account, requested_user)
+        if permission_error:
+            return {'error': permission_error}
+
+        # Retrieve or create the chat room
+        chat_room, created = ChatRoom.objects.get_or_create(Q(user_one=account, user_two=requested_user) | Q(user_one=requested_user, user_two=account), defaults={'user_one': account, 'user_two': requested_user})
+
+        # Use a transaction to ensure atomicity of the message creation
+        with transaction.atomic():
+            new_message = ChatRoomMessage.objects.create(sender=account, content=details.get('message'), chat_room=chat_room)
+
+        # Serialize the new message
+        serializer = ChatRoomMessageSerializer(new_message)
+        return {'messages': serializer.data}
+
+    except CustomUser.DoesNotExist:
+        # Handle case where the user does not exist
+        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
+    
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+    
+
+@database_sync_to_async
+def search_chat_room_messages(user, details):
+    try:
+        # Fetch user and chat room
+        account = CustomUser.objects.get(account_id=user)
+        chat_room = ChatRoom.objects.get(chatroom_id=details.get('chatroom_id'))
+
+        # Check if the user is part of the chat room
+        if account != chat_room.user_one and account != chat_room.user_two:
+            return {"error": 'Unauthorized request. Only the users linked to this chat room can access its messages.'}
+
+        # Retrieve the cursor from the request
+        cursor = details.get('cursor')
+        if cursor:
+            # Fetch messages with a timestamp less than the cursor (if cursor is present)
+            messages = ChatRoomMessage.objects.filter(chat_room=chat_room, timestamp__lt=cursor).order_by('-timestamp')[:20]
+        else:
+            # Fetch the latest messages if no cursor is provided
+            messages = ChatRoomMessage.objects.filter(chat_room=chat_room).order_by('-timestamp')[:20]
+
+        # Serialize the messages
+        serializer = ChatRoomMessageSerializer(messages, many=True)
+        
+        # Determine the next cursor
+        if messages:
+            next_cursor = messages[-1].timestamp.isoformat()
+        else:
+            next_cursor = None
+
+        return {'messages': serializer.data, 'next_cursor': next_cursor}
+
+    except CustomUser.DoesNotExist:
+        return {'error': 'User not found.'}
+    
+    except ChatRoom.DoesNotExist:
+        return {'error': 'Chat room not found.'}
+    
+    except Exception as e:
+        return {'error': str(e)}
+    
+
+@database_sync_to_async
+def search_chat_room(user, details):
+    """
+    Search for an existing chat room between two users and return the requested user's details.
+
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing the details of the request, including:
+            - 'account_id' (str): The account ID of the user to search for.
+
+    Returns:
+        dict: A dictionary containing the serialized requested user's data, a flag indicating if a chat room exists, or an error message.
+    """
+    try:
+        # Retrieve the account making the request
+        account = CustomUser.objects.get(account_id=user)
+        # Retrieve the requested user's account
+        requested_user = CustomUser.objects.get(account_id=details.get('account_id'))
+        
+        # Check permissions
+        permission_error = permission_checks.check_message_permissions(account, requested_user)
+        if permission_error:
+            return {'error': permission_error}
+        
+        # Check if a chat room exists between the two users
+        chat_room_exists = ChatRoom.objects.filter(Q(user_one=account, user_two=requested_user) | Q(user_one=requested_user, user_two=account)).exists()
+
+        # Serialize the requested user's data
+        serializer = ChatroomSerializer(requested_user)
+        
+        return {'user': serializer.data, 'chat': chat_room_exists}
+
+    except CustomUser.DoesNotExist:
+        # Handle case where the user does not exist
         return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
     
     except Exception as e:

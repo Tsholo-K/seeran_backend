@@ -48,7 +48,10 @@ class ChatRoomMessage(models.Model):
     chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
     
     sender = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING)
+
+    edited = models.BooleanField(default=False)
     content = models.TextField()
+    
     timestamp = models.DateTimeField(auto_now_add=True)
     
     read_receipt = models.BooleanField(default=False)
