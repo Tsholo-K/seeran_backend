@@ -51,7 +51,8 @@ class ChatRoomMessage(models.Model):
 
     edited = models.BooleanField(default=False)
     content = models.TextField()
-    
+
+    last = models.BooleanField(default=True)
     timestamp = models.DateTimeField(auto_now_add=True)
     
     read_receipt = models.BooleanField(default=False)

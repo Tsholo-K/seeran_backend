@@ -1219,8 +1219,9 @@ def text(user, details):
     1. Retrieves the user making the request and the requested user's account.
     2. Checks if the user has the necessary permissions to send the message.
     3. Retrieves or creates a chat room between the two users.
-    4. Creates and saves a new message in the chat room.
-    5. Serializes the new message and returns it.
+    4. Checks the last message and updates its 'last' field if necessary.
+    5. Creates and saves a new message in the chat room.
+    6. Serializes the new message and returns it.
 
     Args:
         user (str): The account ID of the user sending the message.
@@ -1245,13 +1246,20 @@ def text(user, details):
         # Retrieve or create the chat room
         chat_room, created = ChatRoom.objects.get_or_create(defaults={'user_one': account, 'user_two': requested_user}, **({'user_one': account, 'user_two': requested_user} if account.pk < requested_user.pk else {'user_one': requested_user, 'user_two': account}))
 
-        # Use a transaction to ensure atomicity of the message creation
         with transaction.atomic():
+            # Retrieve the last message in the chat room
+            last_message = ChatRoomMessage.objects.filter(chat_room=chat_room).order_by('-timestamp').first()
+            # Check if the last message is from the same sender and update its 'last' field if necessary
+            if last_message and last_message.sender == account:
+                last_message.last = False
+                last_message.save()
+
+            # Create the new message
             new_message = ChatRoomMessage.objects.create(sender=account, content=details.get('message'), chat_room=chat_room)
 
         # Serialize the new message
-        serializer = ChatRoomMessageSerializer(new_message)
-        return {'messages': serializer.data}
+        serializer = ChatRoomMessageSerializer(new_message, context={'request': {'user': account}})
+        return {'message': serializer.data}
 
     except CustomUser.DoesNotExist:
         # Handle case where the user does not exist
@@ -1323,7 +1331,7 @@ def search_chat_room_messages(user, details):
     try:
         # Fetch user and chat room
         account = CustomUser.objects.get(account_id=user)
-        chat_room = ChatRoom.objects.get(chatroom_id=details.get('chatroom_id'))
+        chat_room = ChatRoom.objects.get(id=details.get('chatroom_id'))
 
         # Check if the user is part of the chat room
         if account != chat_room.user_one and account != chat_room.user_two:
@@ -1341,8 +1349,9 @@ def search_chat_room_messages(user, details):
         # Convert QuerySet to a list to support negative indexing
         messages_list = list(messages)
 
-        # Serialize the messages
-        serializer = ChatRoomMessageSerializer(messages_list, many=True)
+        # Serialize the messages, passing the request user context
+        context = {'request': {'user': account}}  # Simulate request context
+        serializer = ChatRoomMessageSerializer(messages_list, many=True, context=context)
         
         # Determine the next cursor
         if messages_list:
