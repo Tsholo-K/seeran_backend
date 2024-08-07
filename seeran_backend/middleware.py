@@ -137,6 +137,8 @@ class ConnectionManager:
 
         self.active_connections[account_id].append(websocket)
 
+
+
     async def disconnect(self, account_id, websocket):
         """
         Removes a WebSocket connection for a user.
@@ -146,9 +148,11 @@ class ConnectionManager:
             websocket (WebSocket): The WebSocket connection instance.
         """
         if account_id in self.active_connections:
-            self.active_connections[account_id].remove(websocket)
+            if websocket in self.active_connections[account_id]:
+                self.active_connections[account_id].remove(websocket)
             if not self.active_connections[account_id]:
                 del self.active_connections[account_id]
+
 
     async def send_message(self, account_id, message):
         """
