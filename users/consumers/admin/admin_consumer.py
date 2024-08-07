@@ -244,7 +244,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
                 recipient_account_id = response['other_user']
                 recipient_connections = connection_manager.get_active_connections().get(recipient_account_id, [])
                 for connection in recipient_connections:
-                    await connection.send(text_data=json.dumps({'message': response['message']}))
+                    await connection.send(text_data=json.dumps({'description': 'text_message', 'message': response['message'], 'from': response['from'], 'chat_id': response['other_user']}))
 
                 response = {'message': response['message']}
 
