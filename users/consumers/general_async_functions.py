@@ -1323,7 +1323,7 @@ def search_chat_room_messages(user, details):
     try:
         # Fetch user and chat room
         account = CustomUser.objects.get(account_id=user)
-        chat_room = ChatRoom.objects.get(id=details.get('chatroom_id'))
+        chat_room = ChatRoom.objects.get(chatroom_id=details.get('chatroom_id'))
 
         # Check if the user is part of the chat room
         if account != chat_room.user_one and account != chat_room.user_two:
