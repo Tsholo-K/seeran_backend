@@ -30,9 +30,11 @@ class AdminConsumer(AsyncWebsocketConsumer):
         await self.accept()
         return await self.send(text_data=json.dumps({'message': 'Welcome Back'}))
 
+
     async def disconnect(self, close_code):
         account_id = self.scope['user']
         await connection_manager.disconnect(account_id, self)
+
 
     async def receive(self, text_data):
         user = self.scope.get('user')
@@ -241,8 +243,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             response = await func(user, details)
 
             if response.get('other_user') and description in ['text']:
-                recipient_account_id = response['other_user']
-                recipient_connections = connection_manager.get_active_connections().get(recipient_account_id, [])
+                recipient_connections = connection_manager.get_active_connections().get(response['other_user'], [])
                 for connection in recipient_connections:
                     await connection.send(text_data=json.dumps({'description': 'text_message', 'message': response['message'], 'from': response['from'], 'chat_id': response['other_user']}))
 

@@ -72,14 +72,14 @@ class TokenAuthMiddleware:
 
                 # Check if the access token is in cache (indicating it might be invalid)
                 if not access_token or cache.get(access_token):
-                    return await send({'type': 'websocket.close', 'code': 1000, 'error': 'Request not authenticated.. access denied'})
+                    return None
 
                 # Validate the access token
                 authorized = validate_access_token(access_token)
 
                 # If the token is not valid, close the connection
                 if authorized is None:
-                    return await send({'type': 'websocket.close', 'code': 1000, 'error': 'Invalid security credentials.. request revoked'})
+                    return None
 
                 # Decode the access token to get the user ID
                 decoded_token = AccessToken(access_token)
@@ -90,11 +90,11 @@ class TokenAuthMiddleware:
 
             except ObjectDoesNotExist:
                 # If the user does not exist, close the connection
-                return await send({'type': 'websocket.close', 'code': 1000, 'error': 'Invalid credentials.. no such user exists'})
+                    return None
 
             # If any other exception occurs, close the connection and send the error message
             except Exception as e:
-                return await send({'type': 'websocket.close', 'code': 1000, 'error': str(e)})
+                    return None
 
         # Call the next application/middleware in the stack
         return await self.app(scope, receive, send)
