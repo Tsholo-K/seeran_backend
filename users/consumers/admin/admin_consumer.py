@@ -91,7 +91,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         func = get_map.get(description)
         if func:
-            return await func(user) if description != 'log_me_out' else await func(access_token)
+            return await func(user) if description != 'log_out' else await func(access_token)
         
         return {'error': 'Invalid get description'}
 

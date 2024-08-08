@@ -131,7 +131,7 @@ class ConnectionManager:
             self.active_connections[account_id] = []
 
         # Check if the user already has 3 or more connections
-        if len(self.active_connections[account_id]) >= 3:
+        if len(self.active_connections[account_id]) > 2:
             await websocket.close()
             return
 
@@ -175,6 +175,6 @@ class ConnectionManager:
         for connection in connections:
             await connection.send(text_data=message)
 
-            
+
 # Initialize the ConnectionManager instance
 connection_manager = ConnectionManager()
