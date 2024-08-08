@@ -1433,7 +1433,7 @@ def text(user, details):
             return {'error': permission_error}
 
         # Retrieve or create the chat room
-        chat_room, created = ChatRoom.objects.get_or_create(defaults={'user_one': account, 'user_two': requested_user}, **({'user_one': account, 'user_two': requested_user} if account.pk < requested_user.pk else {'user_one': requested_user, 'user_two': account}))
+        chat_room, created = ChatRoom.objects.get_or_create(user_one=account if account.pk < requested_user.pk else requested_user, user_two=requested_user if account.pk < requested_user.pk else account, defaults={'user_one': account, 'user_two': requested_user})
 
         with transaction.atomic():
             # Retrieve the last message in the chat room
@@ -1450,7 +1450,7 @@ def text(user, details):
         serializer = ChatRoomMessageSerializer(new_message, context={'user': user})
         message_data = serializer.data
 
-        return {'message': message_data, 'from': f'{requested_user.surname.title()} {requested_user.name.title()}', 'reciever': requested_user.account_id, 'sender': account.account_id}
+        return {'message': message_data, 'sender': { 'name' : account.name.title() , 'surname' : account.surname.title(), 'image' : '/default-user-image.svg', 'id' : account.account_id}, 'reciever': { 'name' : requested_user.name.title() , 'surname' : requested_user.surname.title(), 'image' : '/default-user-image.svg', 'id' : requested_user.account_id}}
 
     except CustomUser.DoesNotExist:
         return {'error': 'User account not found. Please verify the account details.'}

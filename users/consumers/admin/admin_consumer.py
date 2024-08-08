@@ -245,9 +245,10 @@ class AdminConsumer(AsyncWebsocketConsumer):
             response = await func(user, details)
 
             if response.get('reciever') and description in ['text']:
-                await connection_manager.send_message(response['reciever'], json.dumps({'description': 'text_message', 'message': response['message'], 'from': response['from'], 'sender': response['sender']}))
-                
-                response = {'message': response['message']}
+                await connection_manager.send_message(response['reciever'], json.dumps({'description': 'text_message', 'message': response['message'], 'sender': response['sender']}))
+                await connection_manager.send_message(response['sender'], json.dumps({'description': 'text_message_fan', 'message': response['message'], 'reciever': response['reciever']}))
+
+                return
 
             if response.get('user') and description in ['create_account', 'create_student_account', 'link_parent']:
                 return await general_async_functions.send_account_confirmation_email(response['user'])
