@@ -245,8 +245,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
             response = await func(user, details)
 
             if response.get('reciever') and description in ['text']:
-                await connection_manager.send_message(response['reciever'].account_id, json.dumps({'description': 'text_message', 'message': response['message'], 'sender': response['sender']}))
-                await connection_manager.send_message(response['sender'].account_id, json.dumps({'description': 'text_message_fan', 'message': response['message'], 'reciever': response['reciever']}))
+                await connection_manager.send_message(response['reciever']['id'], json.dumps({'description': 'text_message', 'message': response['message'], 'sender': response['sender']}))
+                await connection_manager.send_message(response['sender']['id'], json.dumps({'description': 'text_message_fan', 'message': response['message'], 'reciever': response['reciever']}))
 
                 return
 
