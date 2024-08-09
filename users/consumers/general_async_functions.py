@@ -1449,7 +1449,7 @@ def text(user, details):
             # Update the chat room's latest message timestamp
             chat_room.latest_message_timestamp = new_message.timestamp
             chat_room.save()
-            
+
         # Serialize the new message
         serializer = ChatRoomMessageSerializer(new_message, context={'user': user})
         message_data = serializer.data
@@ -1556,7 +1556,7 @@ def search_chat_room_messages(user, details):
         else:
             next_cursor = None
 
-        return {'messages': serializer.data, 'next_cursor': next_cursor}
+        return {'messages': serializer.data, 'next_cursor': next_cursor, 'user': requested_user.account_id, 'chat': account.account_id}
 
     except CustomUser.DoesNotExist:
         # Handle case where the user does not exist
@@ -1584,7 +1584,7 @@ def mark_messages_as_read(user, details):
             # Mark messages as read
             ChatRoomMessage.objects.filter(chat_room=chat_room, read_receipt=False).exclude(sender=account).update(read_receipt=True)
 
-            return {"read": True}
+            return {"read": True, 'user': requested_user.account_id, 'chat': account.account_id}
         
         return {"error": 'no such chat room exists'}
 

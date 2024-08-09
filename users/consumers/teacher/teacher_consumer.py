@@ -119,6 +119,10 @@ class TeacherConsumer(AsyncWebsocketConsumer):
         
         if func:
             response = await func(details) if description in ['schedule_sessions'] else await func(user, details)
+            
+            if response.get('user') and description in ['chat_room_messages']:
+                await connection_manager.send_message(response['user'], json.dumps({'description': 'read_receipt', 'chat': response['message']}))
+
             return response
         
         return {'error': 'Invalid search description'}
@@ -170,7 +174,12 @@ class TeacherConsumer(AsyncWebsocketConsumer):
         func = put_map.get(description)
         if func:
             response = await func(user, details, access_token) if description in ['update_email', 'update_password'] else await func(user, details)
-            
+                        
+            if response.get('user') and description in ['mark_messages_as_read']:
+                await connection_manager.send_message(response['user'], json.dumps({'description': 'read_receipt', 'chat': response['message']}))
+
+                return {'message': 'read receipt sent'}
+
             if description == 'send_email_revalidation_otp' and response.get('user'):
                 response = await general_async_functions.send_email_revalidation_one_time_pin_email(response.get('user'))
 
