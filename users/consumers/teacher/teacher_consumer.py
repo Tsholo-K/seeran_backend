@@ -198,7 +198,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
                 await connection_manager.send_message(response['reciever']['id'], json.dumps({'description': 'text_message', 'message': response['message'], 'sender': response['sender']}))
                 await connection_manager.send_message(response['sender']['id'], json.dumps({'description': 'text_message_fan', 'message': response['message'], 'reciever': response['reciever']}))
 
-                return
+                return {'message': 'text message sent'}
 
             return response 
         
