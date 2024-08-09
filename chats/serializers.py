@@ -47,15 +47,10 @@ class ChatMessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ChatRoomMessage
-        fields = ['content', 'timestamp', 'read_receipt', 'whos']
+        fields = ['content', 'timestamp', 'read_receipt']
 
     def get_read_receipt(self, obj):
         return obj.read_receipt
-    
-    def get_whos(self, obj):
-        # Access the user from the context and determine the sender
-        user = self.context['user']
-        return 'mine' if obj.sender.account_id == user else 'theirs'
 
 
 class ChatRoomMessageCreationSerializer(serializers.ModelSerializer):
@@ -75,9 +70,7 @@ class ChatRoomMessageSerializer(serializers.ModelSerializer):
         fields = ['content', 'timestamp', 'read_receipt', 'edited', 'last', 'whos']
 
     def get_read_receipt(self, obj):
-        # Access the user from the context and determine the sender
-        user = self.context['user']
-        return True if obj.sender.account_id == user else obj.read_receipt
+        return obj.read_receipt
 
     def get_whos(self, obj):
         # Access the user from the context and determine the sender
