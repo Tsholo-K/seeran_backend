@@ -200,6 +200,6 @@ class TeacherConsumer(AsyncWebsocketConsumer):
 
                 return
 
-            return response
+            return response 
         
         return {'error': 'Invalid post description'}

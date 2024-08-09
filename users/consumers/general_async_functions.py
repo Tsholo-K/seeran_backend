@@ -444,8 +444,8 @@ def fetch_chats(user):
         # Retrieve the user account
         account = CustomUser.objects.get(account_id=user)
         
-        # Fetch chat rooms where the user is involved
-        chat_rooms = ChatRoom.objects.filter(Q(user_one=account) | Q(user_two=account))
+        # Fetch chat rooms where the user is involved and order by latest message timestamp
+        chat_rooms = ChatRoom.objects.filter(Q(user_one=account) | Q(user_two=account)).order_by('-latest_message_timestamp')
 
         # Serialize chat room data
         serializer = ChatSerializer(chat_rooms, many=True, context={'user': user})
@@ -1446,6 +1446,10 @@ def text(user, details):
             # Create the new message
             new_message = ChatRoomMessage.objects.create(sender=account, content=details.get('message'), chat_room=chat_room)
 
+            # Update the chat room's latest message timestamp
+            chat_room.latest_message_timestamp = new_message.timestamp
+            chat_room.save()
+            
         # Serialize the new message
         serializer = ChatRoomMessageSerializer(new_message, context={'user': user})
         message_data = serializer.data
