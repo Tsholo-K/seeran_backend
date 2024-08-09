@@ -121,7 +121,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             response = await func(details) if description in ['schedule_sessions'] else await func(user, details)
             
             if response.get('user') and description in ['chat_room_messages']:
-                await connection_manager.send_message(response['user'], json.dumps({'description': 'read_receipt', 'chat': response['message']}))
+                await connection_manager.send_message(response['user'], json.dumps({'description': 'read_receipt', 'chat': response['chat']}))
 
             return response
         
@@ -176,7 +176,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             response = await func(user, details, access_token) if description in ['update_email', 'update_password'] else await func(user, details)
                         
             if response.get('user') and description in ['mark_messages_as_read']:
-                await connection_manager.send_message(response['user'], json.dumps({'description': 'read_receipt', 'chat': response['message']}))
+                await connection_manager.send_message(response['user'], json.dumps({'description': 'read_receipt', 'chat': response['chat']}))
 
                 return {'message': 'read receipt sent'}
 
