@@ -1557,18 +1557,9 @@ def search_chat_room_messages(user, details):
             next_cursor = None
 
         # Query for messages that need to be marked as read
-        messages_to_update = ChatRoomMessage.objects.filter(chat_room=chat_room, read_receipt=False).exclude(sender=account)
-
-        # Check if there are any messages that match the criteria
-        if messages_to_update.exists():
-
-            # Mark the messages as read
-            messages_to_update.update(read_receipt=True)
-            return {'messages': serializer.data, 'next_cursor': next_cursor, 'user': requested_user.account_id, 'chat': account.account_id}
+        ChatRoomMessage.objects.filter(chat_room=chat_room, read_receipt=False).exclude(sender=account)
         
-        else:
-            # Handle the case where no messages need to be updated (optional)
-            return {'messages': serializer.data, 'next_cursor': next_cursor}
+        return {'messages': serializer.data, 'next_cursor': next_cursor, 'user': requested_user.account_id, 'chat': account.account_id}
 
     except CustomUser.DoesNotExist:
         # Handle case where the user does not exist
