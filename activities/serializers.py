@@ -8,6 +8,7 @@ from rest_framework import serializers
 # models
 from .models import Activity
 from users.models import CustomUser
+from classes.models import Classroom
 
 # serilializers
 from users.serializers import AccountSerializer
@@ -15,9 +16,11 @@ from users.serializers import AccountSerializer
 
 class ActivityCreationSerializer(serializers.ModelSerializer):
 
+    classroom = serializers.PrimaryKeyRelatedField(queryset=Classroom.objects.all(), required=False, allow_null=True)
+
     class Meta:
         model = Activity
-        fields = ['offence', 'details', 'logger', 'recipient', 'school']
+        fields = ['offence', 'details', 'logger', 'recipient', 'school', 'classroom']
 
 
 class ActivitySerializer(serializers.ModelSerializer):
