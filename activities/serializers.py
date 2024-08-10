@@ -44,6 +44,7 @@ class ActivitySerializer(serializers.ModelSerializer):
 class ActivitiesSerializer(serializers.ModelSerializer):
 
     id = serializers.SerializerMethodField()
+    offence = serializers.SerializerMethodField()
 
     class Meta:
         model = Activity
@@ -51,6 +52,9 @@ class ActivitiesSerializer(serializers.ModelSerializer):
 
     def get_id(self, obj):
         return  obj.activity_id
+
+    def get_offence(self, obj):
+        return  obj.offence.title()
 
 
 class ClassUpdateSerializer(serializers.ModelSerializer):
