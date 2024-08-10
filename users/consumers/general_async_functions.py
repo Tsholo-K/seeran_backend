@@ -1530,7 +1530,7 @@ def search_chat_room_messages(user, details):
         chat_room = ChatRoom.objects.filter(Q(user_one=account, user_two=requested_user) | Q(user_one=requested_user, user_two=account)).first()
         
         if not chat_room:
-            return {"error": 'no such chat room exists'}
+            return {"not_found": 'no such chat room exists'}
 
         # Retrieve the cursor from the request
         cursor = details.get('cursor')
