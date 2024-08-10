@@ -113,6 +113,8 @@ class TeacherConsumer(AsyncWebsocketConsumer):
 
             'chat_room': general_async_functions.search_chat_room,
             'chat_room_messages': general_async_functions.search_chat_room_messages,
+            
+            'class': general_async_functions.search_class,
 
             'email_ban': general_async_functions.search_my_email_ban,
         }

@@ -123,7 +123,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'grade': admin_async_functions.search_grade,
             'subject': admin_async_functions.search_subject,
-            'class': admin_async_functions.search_class,
+            'class': general_async_functions.search_class,
 
             'email_ban': general_async_functions.search_my_email_ban,
         }
