@@ -12,6 +12,9 @@ def check_profile_or_id_view_permissions(account, requested_user):
         dict: A dictionary containing an error message if the user doesn't have permission,
               or None if the user has permission.
     """
+    if account.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'PARENT', 'STUDENT']:
+        return {"error": "unauthorized access. invalid role provided"}
+
     # No one can view the profile of a user with role not in ['PARENT', 'STUDENT', 'PRINCIPAL', 'ADMIN', 'TEACHER']
     if requested_user.role not in ['PARENT', 'STUDENT', 'PRINCIPAL', 'ADMIN', 'TEACHER']:
         return {"error": "unauthorized access. you are not permitted to view profiles outside of parents, students, principals, admins, and teachers"}
@@ -58,6 +61,47 @@ def check_profile_or_id_view_permissions(account, requested_user):
     return None
 
 
+def check_class_permissions(account, classroom):
+    """
+    Check if the account has permission to access class details.
+
+    Args:
+        account (CustomUser): The user making the request.
+        classroom (Classroom): The classroom being requested.
+
+    Returns:
+        dict: A dictionary containing an error message if the user doesn't have permission,
+              or None if the user has permission.
+    """
+    # Ensure the account has a valid role
+    if account.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'PARENT', 'STUDENT']:
+        return {"error": "Unauthorized access. Invalid role provided."}
+
+    # Admins and principals can only access classrooms within their own school
+    if account.role in ['PRINCIPAL', 'ADMIN']:
+        if account.school != classroom.school:
+            return {"error": "Unauthorized access. You are not permitted to access classroom information outside your own school."}
+
+    # Teachers can access classrooms they teach, within their own school
+    if account.role == 'TEACHER':
+        if account.school != classroom.school or not classroom in account.taught_classes.all():
+            return {"error": "Unauthorized access. You can only access classroom information of classes you teach."}
+
+    # Parents can access classrooms their children are part of, within their children's school
+    if account.role == 'PARENT':
+        # Check if any of the parent's children are in the classroom
+        if not account.children.filter(id__in=classroom.students.values_list('id', flat=True)).exists():
+            return {"error": "Unauthorized access. You are not permitted to access classroom information of classes your children are not part of."}
+
+    # Students can access classrooms they are part of, within their own school
+    if account.role == 'STUDENT':
+        if account.school != classroom.school or not classroom.students.filter(id=account.id).exists():
+            return {"error": "Unauthorized access. You can only access classroom information of classes you are part of."}
+
+    # If no errors, return None indicating permission granted
+    return None
+
+
 def check_message_permissions(account, requested_user):
     """
     Check if the account has permission to message the requested user.
@@ -70,6 +114,9 @@ def check_message_permissions(account, requested_user):
         dict: A dictionary containing an error message if the user doesn't have permission,
               or None if the user has permission.
     """
+    if account.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'PARENT', 'STUDENT']:
+        return {"error": "unauthorized access. invalid role provided"}
+
     # No one can message a user with role not in ['PARENT', 'STUDENT', 'PRINCIPAL', 'ADMIN', 'TEACHER']
     if requested_user.role not in ['PARENT', 'STUDENT', 'PRINCIPAL', 'ADMIN', 'TEACHER']:
         return {"error": "unauthorized access. you are not permitted to view profiles outside of parents, students, principals, admins, and teachers"}

@@ -6,9 +6,8 @@
 from channels.db import database_sync_to_async
 
 # django
-from django.core.exceptions import ValidationError
 from django.db.models import Q
-from django.db import IntegrityError, transaction
+from django.db import transaction
 from django.utils.dateparse import parse_time
 
 # simple jwt
@@ -18,18 +17,15 @@ from users.models import CustomUser
 from timetables.models import Session, Schedule, TeacherSchedule, GroupSchedule
 from grades.models import Grade, Subject
 from classes.models import Classroom
-from attendances.models import Absent
-from announcements.models import Announcement
 
 # serilializers
 from users.serializers import AccountUpdateSerializer, AccountIDSerializer, AccountSerializer, AccountCreationSerializer, StudentAccountCreationSerializer, ParentAccountCreationSerializer
 from grades.serializers import GradesSerializer, GradeSerializer, SubjectDetailSerializer, ClassesSerializer
-from classes.serializers import ClassSerializer, ClassUpdateSerializer
+from classes.serializers import ClassUpdateSerializer
 from announcements.serializers import AnnouncementCreationSerializer
 
 # utility functions 
-from authentication.utils import generate_otp, verify_user_otp, validate_user_email
-from attendances.utility_functions import get_month_dates
+from authentication.utils import validate_user_email
     
     
 @database_sync_to_async
@@ -672,29 +668,6 @@ def update_class(user, details):
         # Handle case where the classroom does not exist
         return {'error': 'a classroom with the provided credentials does not exist. please check the classroom details and try again.'}
 
-    except Exception as e:
-        return { 'error': str(e) }
-    
-
-@database_sync_to_async
-def search_class(user, details):
-
-    try:
-        account = CustomUser.objects.get(account_id=user)
-        classroom = Classroom.objects.get(class_id=details.get('class_id'), school=account.school)
-
-        serializer = ClassSerializer(classroom)
-
-        return {"class": serializer.data}
-
-    except CustomUser.DoesNotExist:
-        # Handle case where the user account does not exist
-        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
-    
-    except Classroom.DoesNotExist:
-        # Handle case where the classroom does not exist
-        return {'error': 'a classroom with the provided credentials does not exist. please check the classroom details and try again.'}
-    
     except Exception as e:
         return { 'error': str(e) }
     

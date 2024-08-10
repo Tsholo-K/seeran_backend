@@ -45,7 +45,7 @@ from timetables.serializers import SessoinsSerializer, ScheduleSerializer
 from timetables.serializers import GroupScheduleSerializer
 from announcements.serializers import AnnouncementsSerializer, AnnouncementSerializer
 from chats.serializers import ChatRoomMessageSerializer, ChatSerializer
-from classes.serializers import TeacherClassesSerializer
+from classes.serializers import TeacherClassesSerializer, ClassSerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
@@ -645,7 +645,35 @@ def search_parents(user, details):
     except Exception as e:
         # Handle any other unexpected errors
         return {'error': str(e)}
+    
 
+@database_sync_to_async
+def search_class(user, details):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+        classroom = Classroom.objects.get(class_id=details.get('class_id'), school=account.school)
+        
+        # Check permissions
+        permission_error = permission_checks.check_class_permissions(account, classroom)
+        if permission_error:
+            return permission_error
+
+        serializer = ClassSerializer(classroom)
+
+        return {"class": serializer.data}
+
+    except CustomUser.DoesNotExist:
+        # Handle case where the user account does not exist
+        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
+    
+    except Classroom.DoesNotExist:
+        # Handle case where the classroom does not exist
+        return {'error': 'a classroom with the provided credentials does not exist. please check the classroom details and try again.'}
+    
+    except Exception as e:
+        return { 'error': str(e) }
+    
 
 @database_sync_to_async
 def search_teacher_classes(user, details):
