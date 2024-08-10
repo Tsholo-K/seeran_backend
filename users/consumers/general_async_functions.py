@@ -1551,7 +1551,7 @@ def search_chat_room_messages(user, details):
         serializer = ChatRoomMessageSerializer(messages, many=True, context={'user': user})
         
         # Determine the next cursor
-        if messages:
+        if len(messages) > 19:
             next_cursor = messages[0].timestamp.isoformat()
         else:
             next_cursor = None
