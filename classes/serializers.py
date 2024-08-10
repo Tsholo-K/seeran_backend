@@ -19,6 +19,7 @@ class ClassSerializer(serializers.ModelSerializer):
     teacher = serializers.SerializerMethodField()
     students = serializers.SerializerMethodField()
     student_count = serializers.SerializerMethodField()
+    subject = serializers.SerializerMethodField()
 
     class Meta:
         model = Classroom
@@ -37,7 +38,10 @@ class ClassSerializer(serializers.ModelSerializer):
     
     def get_student_count(self, obj):
         return obj.students.count()
-    
+        
+    def get_subject(self, obj):
+        return obj.subject.subject.title()
+
 
 class ClassUpdateSerializer(serializers.ModelSerializer):
 
