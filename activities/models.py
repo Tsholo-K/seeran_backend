@@ -7,6 +7,8 @@ from django.utils.translation import gettext_lazy as _
 
 # models
 from users.models import CustomUser
+from schools.models import School
+from classes.models import Classroom
 
 
 class Activity(models.Model):
@@ -33,8 +35,8 @@ class Activity(models.Model):
 
     date_logged = models.DateTimeField(auto_now_add=True)
 
-    classroom = models.ForeignKey('Classroom', on_delete=models.SET_NULL, related_name='classroom_activities', null=True, blank=True)
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='school_activities')
+    classroom = models.ForeignKey(Classroom, on_delete=models.SET_NULL, related_name='classroom_activities', null=True, blank=True)
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='school_activities')
 
     # Prevent the activity ID from being edited after creation
     activity_id = models.CharField(max_length=15, unique=True, editable=False)
