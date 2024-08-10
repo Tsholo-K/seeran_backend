@@ -122,7 +122,8 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             
             if response.get('user') and description in ['chat_room_messages']:
                 await connection_manager.send_message(response['user'], json.dumps({'description': 'read_receipt', 'chat': response['chat']}))
-
+                response = {'messages': response['messages'], 'next_cursor': response['next_cursor']}
+                
             return response
         
         return {'error': 'Invalid search description'}
