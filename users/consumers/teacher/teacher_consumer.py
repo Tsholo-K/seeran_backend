@@ -113,7 +113,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
 
             'chat_room': general_async_functions.search_chat_room,
             'chat_room_messages': general_async_functions.search_chat_room_messages,
-            
+
             'class': general_async_functions.search_class,
 
             'email_ban': general_async_functions.search_my_email_ban,
@@ -201,6 +201,8 @@ class TeacherConsumer(AsyncWebsocketConsumer):
 
             'submit_absentes': general_async_functions.submit_absentes,
             'submit_late_arrivals': general_async_functions.submit_late_arrivals,
+            
+            'log_activity': general_async_functions.log_activity,
         }
 
         func = post_map.get(description)

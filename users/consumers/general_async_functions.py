@@ -8,19 +8,13 @@ import httpx
 # channels
 from channels.db import database_sync_to_async
 
-# websocket manager
-from seeran_backend.middleware import  connection_manager
-
 # django
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.db import  transaction
 from django.db.models import Q
-from django.core.paginator import Paginator
-from django.core.paginator import EmptyPage
 from django.contrib.auth.password_validation import validate_password
 from django.core.cache import cache
-from django.core.validators import validate_email
 from django.contrib.auth.hashers import check_password
 
 # simple jwt
@@ -46,6 +40,7 @@ from timetables.serializers import GroupScheduleSerializer
 from announcements.serializers import AnnouncementsSerializer, AnnouncementSerializer
 from chats.serializers import ChatRoomMessageSerializer, ChatSerializer
 from classes.serializers import TeacherClassesSerializer, ClassSerializer
+from activities.serializers import ActivityCreationSerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
@@ -1100,6 +1095,66 @@ def search_month_attendance_records(user, details):
 
     except Exception as e:
         return { 'error': str(e) }
+
+
+@database_sync_to_async
+def log_activity(user, details):
+    """
+    Log an activity for a student by an authorized user (Principal, Admin, Teacher).
+
+    Args:
+        user (str): The account ID of the user logging the activity.
+        details (dict): A dictionary containing the details of the activity. It should include:
+            - 'recipient' (str): The account ID of the student for whom the activity is being logged.
+            - Additional fields required by the ActivityCreationSerializer.
+
+    Returns:
+        dict: A dictionary containing a success message if the activity was logged successfully,
+              or an error message if there was an issue.
+    """
+    try:
+        # Retrieve the user account and the student account using select_related to minimize database hits
+        account = CustomUser.objects.select_related('school').get(account_id=user)
+        student = CustomUser.objects.select_related('school').get(account_id=details.get('recipient'))
+
+        # Ensure the account has a valid role to log activities
+        if account.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
+            return {"error": "unauthorized request. you do not have sufficient permissions to log activities."}
+
+        # If the account is a teacher, ensure they are teaching the student
+        if account.role == 'TEACHER' and not account.taught_classes.filter(students=student).exists():
+            return {"error": "unauthorized access. you can only log activities for students you teach."}
+
+        # Ensure the student belongs to the same school and has the 'STUDENT' role
+        if account.school != student.school or student.role != 'STUDENT':
+            return {"error": "unauthorized request. the provided student account is either not a student or does not belong to your school. Please check the account details and try again."}
+
+        # Prepare the data for serialization
+        details['recipient'] = student.pk
+        details['logger'] = account.pk
+        details['school'] = account.school.pk
+
+        # Initialize the serializer with the prepared data
+        serializer = ActivityCreationSerializer(data=details)
+
+        # Validate the serializer data and save the activity within an atomic transaction
+        if serializer.is_valid():
+            with transaction.atomic():
+                serializer.save()
+
+            return {'message': 'activity successfully logged. the activity is now available to everyone with access to the student\'s data.'}
+
+        # Return validation errors if the serializer is not valid
+        return {"error": serializer.errors}
+
+    except CustomUser.DoesNotExist:
+        # Handle case where the user or student account does not exist
+        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
+
+    except Exception as e:
+        # Handle any other unexpected exceptions
+        return {'error': str(e)}
+
     
 
 @database_sync_to_async
