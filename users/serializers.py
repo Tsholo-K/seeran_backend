@@ -283,7 +283,6 @@ class StudentAccountClassCardSerializer(serializers.ModelSerializer):
 
     name = serializers.SerializerMethodField()
     surname = serializers.SerializerMethodField()
-    id = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
     identifier = serializers.SerializerMethodField()
 
