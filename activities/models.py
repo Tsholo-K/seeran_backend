@@ -30,8 +30,8 @@ class Activity(models.Model):
     logger = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, related_name='logged_activities', null=True, blank=True)
     recipient = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='my_activities')
 
-    offence = models.CharField(_('offence'), max_length=2)
-    details = models.TextField(_('more details about the offence'), max_length=300)
+    offence = models.CharField(_('offence'), max_length=124)
+    details = models.TextField(_('more details about the offence'), max_length=1024)
 
     date_logged = models.DateTimeField(auto_now_add=True)
 
