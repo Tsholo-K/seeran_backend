@@ -1544,9 +1544,6 @@ def search_chat_room_messages(user, details):
         # Slice and then reverse the order to get the correct ascending order
         messages = list(messages)[::-1]
 
-        # Mark messages as read
-        ChatRoomMessage.objects.filter(chat_room=chat_room, read_receipt=False).exclude(sender=account).update(read_receipt=True)
-
         # Serialize the messages
         serializer = ChatRoomMessageSerializer(messages, many=True, context={'user': user})
         
@@ -1557,9 +1554,18 @@ def search_chat_room_messages(user, details):
             next_cursor = None
 
         # Query for messages that need to be marked as read
-        ChatRoomMessage.objects.filter(chat_room=chat_room, read_receipt=False).exclude(sender=account)
+        messages_to_update = ChatRoomMessage.objects.filter(chat_room=chat_room, read_receipt=False).exclude(sender=account)
+
+        # Check if there are any messages that match the criteria
+        if messages_to_update.exists():
+
+            # Mark the messages as read
+            messages_to_update.update(read_receipt=True)
+            return {'messages': serializer.data, 'next_cursor': next_cursor, 'user': requested_user.account_id, 'chat': account.account_id}
         
-        return {'messages': serializer.data, 'next_cursor': next_cursor, 'user': requested_user.account_id, 'chat': account.account_id}
+        else:
+            # Handle the case where no messages need to be updated (optional)
+            return {'messages': serializer.data, 'next_cursor': next_cursor}
 
     except CustomUser.DoesNotExist:
         # Handle case where the user does not exist
