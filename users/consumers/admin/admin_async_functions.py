@@ -24,7 +24,7 @@ from announcements.models import Announcement
 # serilializers
 from users.serializers import AccountUpdateSerializer, AccountIDSerializer, AccountSerializer, AccountCreationSerializer, StudentAccountCreationSerializer, ParentAccountCreationSerializer
 from grades.serializers import GradesSerializer, GradeSerializer, SubjectDetailSerializer, ClassesSerializer
-from classes.serializers import ClassSerializer, ClassUpdateSerializer, TeacherClassesSerializer
+from classes.serializers import ClassSerializer, ClassUpdateSerializer
 from announcements.serializers import AnnouncementCreationSerializer
 
 # utility functions 
@@ -686,29 +686,6 @@ def search_class(user, details):
         serializer = ClassSerializer(classroom)
 
         return {"class": serializer.data}
-
-    except CustomUser.DoesNotExist:
-        # Handle case where the user account does not exist
-        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
-    
-    except Classroom.DoesNotExist:
-        # Handle case where the classroom does not exist
-        return {'error': 'a classroom with the provided credentials does not exist. please check the classroom details and try again.'}
-    
-    except Exception as e:
-        return { 'error': str(e) }
-
-
-@database_sync_to_async
-def search_teacher_classes(user, details):
-
-    try:
-        account = CustomUser.objects.get(account_id=user)
-        classes = CustomUser.objects.get(account_id=details.get('teacher_id'), school=account.school).taught_classes.all()
-
-        serializer = TeacherClassesSerializer(classes, many=True)
-
-        return {"classes": serializer.data}
 
     except CustomUser.DoesNotExist:
         # Handle case where the user account does not exist

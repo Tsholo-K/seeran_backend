@@ -45,6 +45,7 @@ from timetables.serializers import SessoinsSerializer, ScheduleSerializer
 from timetables.serializers import GroupScheduleSerializer
 from announcements.serializers import AnnouncementsSerializer, AnnouncementSerializer
 from chats.serializers import ChatRoomMessageSerializer, ChatSerializer
+from classes.serializers import TeacherClassesSerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
@@ -645,6 +646,39 @@ def search_parents(user, details):
         # Handle any other unexpected errors
         return {'error': str(e)}
 
+
+@database_sync_to_async
+def search_teacher_classes(user, details):
+
+    try:
+        account = CustomUser.objects.get(account_id=user)
+
+        # If the requesting user is looking for their own classes
+        if details.get('teacher_id') == 'requesting_my_own_classes':
+            classes = account.taught_classes.all()
+
+        else:
+            if account.role not in ['ADMIN', 'PRINCIPAL']:
+                return {"error": "unauthorized access. you are not permitted to access classes of any teacher account with your role"}
+
+            teacher = CustomUser.objects.get(account_id=details.get('teacher_id'))
+
+            if teacher.role != 'TEACHER' or account.school != teacher.school:
+                return {"error": "unauthorized access. you are not permitted to view classses of teacher accounts outside your own school"}
+
+            classes = teacher.taught_classes.all()
+
+        serializer = TeacherClassesSerializer(classes, many=True)
+
+        return {"classes": serializer.data}
+
+    except CustomUser.DoesNotExist:
+        # Handle case where the user account does not exist
+        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
+    
+    except Exception as e:
+        return { 'error': str(e) }
+    
     
 @database_sync_to_async
 def search_teacher_schedule_schedules(user, details):

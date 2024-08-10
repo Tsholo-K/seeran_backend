@@ -100,6 +100,8 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             'account_profile': general_async_functions.search_account_profile,
             'account_id': general_async_functions.search_account_id,
 
+            'teacher_classes': general_async_functions.search_teacher_classes,
+
             'teacher_schedule_schedules': general_async_functions.search_teacher_schedule_schedules,
             'group_schedule_schedules': general_async_functions.search_group_schedule_schedules,
             'group_schedules': general_async_functions.search_group_schedules,
@@ -123,7 +125,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             if response.get('user') and description in ['chat_room_messages']:
                 await connection_manager.send_message(response['user'], json.dumps({'description': 'read_receipt', 'chat': response['chat']}))
                 response = {'messages': response['messages'], 'next_cursor': response['next_cursor']}
-                
+
             return response
         
         return {'error': 'Invalid search description'}
