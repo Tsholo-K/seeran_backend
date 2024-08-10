@@ -1164,13 +1164,22 @@ def log_activity(user, details):
         if account.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
             return {"error": "unauthorized request. you do not have sufficient permissions to log activities."}
 
-        # If the account is a teacher, ensure they are teaching the student
-        if account.role == 'TEACHER' and not account.taught_classes.filter(students=student).exists():
-            return {"error": "unauthorized access. you can only log activities for students you teach."}
-
         # Ensure the student belongs to the same school and has the 'STUDENT' role
         if account.school != student.school or student.role != 'STUDENT':
             return {"error": "unauthorized request. the provided student account is either not a student or does not belong to your school. Please check the account details and try again."}
+        
+        # Retrieve the requested user's account
+        classroom = Classroom.objects.get(class_id=details.get('class_id'))
+        
+        if account.school != classroom.school:
+            return {"error": "unauthorized access. you are not permitted to access information about classses outside your own school or those you do not teacher"}
+
+        # If the account is a teacher, ensure they are teaching the student and the teacher of hte class
+        if account.role == 'TEACHER':
+            if classroom not in account.taught_classes.all() or not account.taught_classes.filter(students=student).exists():
+                return {"error": "unauthorized access. you can only log activities for classrooms and students you teach."}
+  
+            details['classroom'] = classroom.pk
 
         # Prepare the data for serialization
         details['recipient'] = student.pk
