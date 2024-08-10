@@ -55,7 +55,6 @@ class MyAccountDetailsSerializer(serializers.ModelSerializer):
 
 
 class AccountSerializer(serializers.ModelSerializer):
-
     name = serializers.SerializerMethodField()
     surname = serializers.SerializerMethodField()
     identifier = serializers.SerializerMethodField()
@@ -64,26 +63,29 @@ class AccountSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = [ 'name', 'surname', 'identifier', 'id', 'image' ]
+        fields = ['name', 'surname', 'id', 'identifier', 'image']
     
     def get_id(self, obj):
+        """Return the account ID of the user."""
         return obj.account_id
     
     def get_name(self, obj):
+        """Return the formatted name of the user."""
         return obj.name.title()
-    
+
     def get_surname(self, obj):
+        """Return the formatted surname of the user."""
         return obj.surname.title()
             
     def get_image(self, obj):
+        """Return the URL of the user's image or a default image."""
+        # return obj.profile_picture.url if obj.image else '/default-user-image.svg'
         return '/default-user-image.svg'
-    
+
     def get_identifier(self, obj):
-        if obj.id_number:
-            return obj.id_number
-        if obj.passport_number:
-            return obj.passport_number
-        return obj.email
+        """Return the identifier for the user: ID number, passport number, or email."""
+        return obj.id_number or obj.passport_number or obj.email
+
 
 
 class AccountProfileSerializer(serializers.ModelSerializer):

@@ -164,11 +164,10 @@ class AdminConsumer(AsyncWebsocketConsumer):
     async def handle_form_data(self, description, details, user, access_token):
         form_data_map = {
 
-            'class_creation': admin_async_functions.form_data_for_class_creation,
-            'class_update': admin_async_functions.form_data_for_class_update,
+            'class_creation': admin_async_functions.form_data_for_creating_class,
+            'class_update': admin_async_functions.form_data_for_updating_class,
 
-            'add_students_to_register_class': admin_async_functions.form_data_for_adding_students_to_register_class,
-            'add_students_to_subject_class': admin_async_functions.form_data_for_adding_students_to_subject_class,
+            'add_students_to_class': admin_async_functions.form_data_for_adding_students_to_class,
 
             'attendance_register': general_async_functions.form_data_for_attendance_register,
 
@@ -177,7 +176,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         func = form_data_map.get(description)
         if func:
-            response = await func(user) if description in ['class_creation'] else await func(user, details)
+            response = await func(user, details)
             return response
         
         return {'error': 'Invalid form data description'}
