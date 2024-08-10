@@ -67,7 +67,7 @@ class TeacherRegisterClassSerializer(serializers.ModelSerializer):
     id = serializers.SerializerMethodField()
 
     class Meta:
-        model = Classroom
+        model = Activity
         fields = ['classroom_identifier', 'student_count', 'group', 'id']
 
     def get_student_count(self, obj):
