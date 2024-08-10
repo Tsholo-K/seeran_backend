@@ -686,7 +686,7 @@ def search_student_class_card(user, details):
             return permission_error
         
         # Retrieve the requested user's account
-        classroom = Classroom.objects.get(account_id=details.get('class_id'))
+        classroom = Classroom.objects.get(class_id=details.get('class_id'))
         
         if account.school != classroom.school:
             return {"error": "unauthorized access. you are not permitted to view information about classses outside your own school"}
