@@ -20,10 +20,11 @@ class ClassSerializer(serializers.ModelSerializer):
     students = serializers.SerializerMethodField()
     student_count = serializers.SerializerMethodField()
     subject = serializers.SerializerMethodField()
+    grade = serializers.SerializerMethodField()
 
     class Meta:
         model = Classroom
-        fields = ['classroom_identifier', 'teacher', 'students', 'student_count', 'group', 'subject']
+        fields = ['classroom_identifier', 'teacher', 'students', 'student_count', 'group', 'subject', 'grade']
 
     def get_teacher(self, obj):
         if obj.teacher:
@@ -41,6 +42,9 @@ class ClassSerializer(serializers.ModelSerializer):
         
     def get_subject(self, obj):
         return obj.subject.subject.title()
+        
+    def get_grade(self, obj):
+        return obj.grade.grade
 
 
 class ClassUpdateSerializer(serializers.ModelSerializer):
