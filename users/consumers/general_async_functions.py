@@ -31,16 +31,17 @@ from attendances.models import Absent, Late
 from grades.models import Grade
 from announcements.models import Announcement
 from chats.models import ChatRoom, ChatRoomMessage
+from activities.models import Activity
 
 # serializers
-from users.serializers import AccountSerializer, StudentAccountAttendanceRecordSerializer, AccountProfileSerializer, AccountIDSerializer, ChatroomSerializer
+from users.serializers import AccountSerializer, StudentAccountAttendanceRecordSerializer, AccountProfileSerializer, AccountIDSerializer, ChatroomSerializer, StudentAccountClassCardSerializer
 from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
 from timetables.serializers import SessoinsSerializer, ScheduleSerializer
 from timetables.serializers import GroupScheduleSerializer
 from announcements.serializers import AnnouncementsSerializer, AnnouncementSerializer
 from chats.serializers import ChatRoomMessageSerializer, ChatSerializer
 from classes.serializers import TeacherClassesSerializer, ClassSerializer
-from activities.serializers import ActivityCreationSerializer
+from activities.serializers import ActivityCreationSerializer, ActivitiesSerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
@@ -668,7 +669,49 @@ def search_class(user, details):
     
     except Exception as e:
         return { 'error': str(e) }
-    
+
+
+@database_sync_to_async
+def search_student_class_card(user, details):
+
+    try:
+        # Retrieve the account making the request
+        account = CustomUser.objects.get(account_id=user)
+        # Retrieve the requested user's account
+        student = CustomUser.objects.get(account_id=details.get('account_id'))
+
+        # Check permissions
+        permission_error = permission_checks.check_profile_or_id_view_permissions(account, student)
+        if permission_error:
+            return permission_error
+        
+        # Retrieve the requested user's account
+        classroom = Classroom.objects.get(account_id=details.get('class_id'))
+        
+        if account.school != classroom.school:
+            return {"error": "unauthorized access. you are not permitted to view information about classses outside your own school"}
+
+        # Serialize the requested user's account ID
+        serializer = StudentAccountClassCardSerializer(instance=student).data
+
+        # Serialize the activities 
+        activities = Activity.objects.filter(classroom=classroom, recipient=student)
+        serializer2 = ActivitiesSerializer(activities, many=True).data
+
+        return {"user": serializer, 'activities' : serializer2}
+
+    except CustomUser.DoesNotExist:
+        # Handle case where the user or requested user account does not exist
+        return {'error': 'an account with the provided credentials does not exist, please check the account details and try again'}
+        
+    except Classroom.DoesNotExist:
+        # Handle case where the classroom does not exist
+        return {'error': 'a classroom with the provided credentials does not exist. please check the classroom details and try again.'}
+
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
 
 @database_sync_to_async
 def search_teacher_classes(user, details):

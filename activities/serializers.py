@@ -20,6 +20,36 @@ class ActivityCreationSerializer(serializers.ModelSerializer):
         fields = ['offence', 'details', 'logger', 'recipient', 'school']
 
 
+class ActivitySerializer(serializers.ModelSerializer):
+
+    logger = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Activity
+        fields = ['offence', 'details', 'logger', 'school']
+
+    def get_logger(self, obj):
+        if  obj.register_class:
+            return 'Register Class'
+        
+        if obj.subject:
+            return f'{obj.subject}'.title()
+        
+        return None
+
+
+class ActivitiesSerializer(serializers.ModelSerializer):
+
+    id = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Activity
+        fields = ['offence', 'date_logged', 'id']
+
+    def get_id(self, obj):
+        return  obj.activity_id
+
+
 class ClassUpdateSerializer(serializers.ModelSerializer):
 
     teacher = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all(), required=False, allow_null=True)
@@ -33,7 +63,7 @@ class ClassUpdateSerializer(serializers.ModelSerializer):
 
 class TeacherClassesSerializer(serializers.ModelSerializer):
 
-    subject = serializers.SerializerMethodField()
+    logger = serializers.SerializerMethodField()
     grade = serializers.SerializerMethodField()
     student_count = serializers.SerializerMethodField()
     id = serializers.SerializerMethodField()

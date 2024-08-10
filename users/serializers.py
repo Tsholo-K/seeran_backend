@@ -1,14 +1,44 @@
 # python 
-from decouple import config
 
 # django
-from django.core.cache import cache
 
 # rest framework
 from rest_framework import serializers
 
 # models
 from .models import CustomUser
+
+
+class PrincipalAccountCreationSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = CustomUser
+        fields = [ 'name', 'surname', 'phone_number', 'email', 'school', 'role' ]
+
+
+class StudentAccountCreationSerializer(serializers.ModelSerializer):
+
+    email = serializers.EmailField(required=False, allow_blank=True)  # Make optional
+    id_number = serializers.CharField(required=False, allow_blank=True)  # Make optional
+    passport_number = serializers.CharField(required=False, allow_blank=True)  # Make optional
+
+    class Meta:
+        model = CustomUser
+        fields = [ 'name', 'surname', 'id_number', 'passport_number', 'email', 'school', 'role', 'grade' ]
+
+
+class ParentAccountCreationSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = CustomUser
+        fields = [ 'name', 'surname', 'email',  'role' ]
+
+
+class AccountCreationSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = CustomUser
+        fields = [ 'name', 'surname', 'email', 'school', 'role', ]
 
 
 class MySecurityInformationSerializer(serializers.ModelSerializer):
@@ -178,38 +208,6 @@ class PrincipalIDSerializer(serializers.ModelSerializer):
     
     def get_identifier(self, obj):
         return obj.email
-
-
-class PrincipalAccountCreationSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = CustomUser
-        fields = [ 'name', 'surname', 'phone_number', 'email', 'school', 'role' ]
-
-
-class StudentAccountCreationSerializer(serializers.ModelSerializer):
-
-    email = serializers.EmailField(required=False, allow_blank=True)  # Make optional
-    id_number = serializers.CharField(required=False, allow_blank=True)  # Make optional
-    passport_number = serializers.CharField(required=False, allow_blank=True)  # Make optional
-
-    class Meta:
-        model = CustomUser
-        fields = [ 'name', 'surname', 'id_number', 'passport_number', 'email', 'school', 'role', 'grade' ]
-
-
-class ParentAccountCreationSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = CustomUser
-        fields = [ 'name', 'surname', 'email',  'role' ]
-
-
-class AccountCreationSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = CustomUser
-        fields = [ 'name', 'surname', 'email', 'school', 'role', ]
         
 
 class PrincipalAccountUpdateSerializer(serializers.ModelSerializer):
@@ -279,3 +277,32 @@ class StudentAccountAttendanceRecordSerializer(serializers.ModelSerializer):
         if obj.passport_number:
             return obj.passport_number
         return None
+
+
+class StudentAccountClassCardSerializer(serializers.ModelSerializer):
+
+    name = serializers.SerializerMethodField()
+    surname = serializers.SerializerMethodField()
+    id = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
+    identifier = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CustomUser
+        fields = [ 'name', 'surname', 'identifier', 'image' ]
+    
+    def get_name(self, obj):
+        return obj.name.title()
+    
+    def get_surname(self, obj):
+        return obj.surname.title()
+
+    def get_image(self, obj):
+        return '/default-user-image.svg'
+
+    def get_identifier(self, obj):
+        if obj.id_number:
+            return obj.id_number
+        if obj.passport_number:
+            return obj.passport_number
+        return obj.email
