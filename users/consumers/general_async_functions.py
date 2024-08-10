@@ -655,7 +655,7 @@ def search_teacher_classes(user, details):
 
         # If the requesting user is looking for their own classes
         if details.get('teacher_id') == 'requesting_my_own_classes':
-            classes = account.taught_classes.all()
+            classes = account.taught_classes.all().exclude(register_class=True)
 
         else:
             if account.role not in ['ADMIN', 'PRINCIPAL']:
