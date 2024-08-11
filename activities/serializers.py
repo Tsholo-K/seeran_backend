@@ -22,11 +22,15 @@ class ActivityCreationSerializer(serializers.ModelSerializer):
 
 class ActivitySerializer(serializers.ModelSerializer):
 
+    offence = serializers.SerializerMethodField()
     logger = serializers.SerializerMethodField()
 
     class Meta:
         model = Activity
         fields = ['offence', 'details', 'date_logged', 'logger']
+
+    def get_offence(self, obj):
+        return  obj.offence.title()
 
     def get_logger(self, obj):
         if  obj.logger:
