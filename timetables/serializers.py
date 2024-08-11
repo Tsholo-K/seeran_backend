@@ -5,9 +5,6 @@ from rest_framework import serializers
 from .models import GroupSchedule, Schedule, Session
 
 
-############################################ general serializer ##################################################
-
-
 class GroupScheduleSerializer(serializers.ModelSerializer):
     
     id = serializers.SerializerMethodField()
@@ -20,7 +17,7 @@ class GroupScheduleSerializer(serializers.ModelSerializer):
         fields = [ 'id', 'group_name', 'students_count', 'schedules_count' ]
     
     def get_id(self, obj):
-        return obj.group_schedule_id
+        return str(obj.group_schedule_id)
     
     def get_group_name(self, obj):
         return obj.group_name.title()
@@ -43,7 +40,7 @@ class ScheduleSerializer(serializers.ModelSerializer):
         fields = [ 'day', 'id' ]
     
     def get_id(self, obj):
-        return obj.schedule_id
+        return str(obj.schedule_id)
     
     def get_day(self, obj):
         return obj.day.title()
@@ -59,5 +56,3 @@ class SessoinsSerializer(serializers.ModelSerializer):
         model = Session
         fields = [ 'type', 'classroom', 'session_from', 'session_till' ]
 
-
-##################################################################################################################
