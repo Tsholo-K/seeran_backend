@@ -17,20 +17,6 @@ class EmailBan(models.Model):
     
     banned_at = models.DateTimeField(_('the date the email was banned'), auto_now_add=True)
 
-    ban_id = models.CharField(_('email ban id'), max_length=15, unique=True)
+    ban_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     
-    def save(self, *args, **kwargs):
-        if not self.ban_id:
-            self.ban_id = self.generate_unique_id('EB')
-
-        super(EmailBan, self).save(*args, **kwargs)
-
-    @staticmethod
-    def generate_unique_id(prefix=''):
-        max_attempts = 50
-        for _ in range(max_attempts):
-            unique_part = uuid.uuid4().hex[:13]  # Take only the first 13 characters
-            id = f"{prefix}{unique_part}"
-            if not EmailBan.objects.filter(ban_id=id).exists():
-                return id
-        raise ValueError('failed to generate a unique email ban ID after 10 attempts, please try again later.')            
+       

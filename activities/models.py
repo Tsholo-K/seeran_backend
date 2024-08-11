@@ -39,7 +39,7 @@ class Activity(models.Model):
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='school_activities')
 
     # Prevent the activity ID from being edited after creation
-    activity_id = models.CharField(max_length=15, unique=True, editable=False)
+    activity_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
         verbose_name = _('activity')
@@ -49,34 +49,4 @@ class Activity(models.Model):
     def __str__(self):
         return f"{self.offence} logged by {self.logger} for {self.recipient}"
 
-    def save(self, *args, **kwargs):
-        """
-        Override save method to generate a unique activity_id if it doesn't already exist.
-        This ensures that each activity has a unique identifier.
-        """
-        if not self.activity_id:
-            self.activity_id = self.generate_unique_id('AI')
-        super().save(*args, **kwargs)
 
-    @staticmethod
-    def generate_unique_id(prefix=''):
-        """
-        Generate a unique activity_id using UUID.
-        
-        Args:
-            prefix (str): An optional prefix to add to the unique ID.
-
-        Returns:
-            str: A unique activity ID.
-        
-        Raises:
-            ValueError: If unable to generate a unique ID after multiple attempts.
-        """
-        max_attempts = 10
-        for _ in range(max_attempts):
-            unique_part = uuid.uuid4().hex[:13]  # Use the first 13 characters of a UUID
-            id = f"{prefix}{unique_part}"
-            if not Activity.objects.filter(activity_id=id).exists():
-                return id
-
-        raise ValueError('Failed to generate a unique activity ID after 10 attempts. Please try again later.')

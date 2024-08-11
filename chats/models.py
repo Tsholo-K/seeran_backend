@@ -15,35 +15,10 @@ class ChatRoom(models.Model):
 
     latest_message_timestamp = models.DateTimeField(null=True, blank=True, default=None)
 
-    chatroom_id = models.CharField(max_length=15, unique=True)
+    chatroom_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     def __str__(self):
         return f"Chat between {self.user_one.surname + ' ' + self.user_one.name} and {self.user_two.surname + ' ' + self.user_two.name}"
-    
-    def save(self, *args, **kwargs):
-        """
-        Override save method to generate account_id if not provided.
-        """
-
-        if not self.chatroom_id:
-            self.chatroom_id = self.generate_unique_id('CT')
-
-        super().save(*args, **kwargs)
-
-    @staticmethod
-    def generate_unique_id(prefix=''):
-        """
-        Generate a unique account_id using UUID.
-        """
-
-        max_attempts = 10
-        for _ in range(max_attempts):
-            unique_part = uuid.uuid4().hex[:13]  # Take only the first 13 characters
-            id = f"{prefix}{unique_part}"
-            if not ChatRoom.objects.filter(chatroom_id=id).exists():
-                return id
-
-        raise ValueError('Failed to generate a unique account ID after 10 attempts.')
     
 
 class ChatRoomMessage(models.Model):

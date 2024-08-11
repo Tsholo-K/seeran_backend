@@ -166,7 +166,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     surname = models.CharField(_('surname'), max_length=32)
     phone_number = models.CharField(_('phone number'), max_length=9, unique=True, blank=True, null=True)
 
-    account_id = models.CharField(max_length=15, unique=True)
+    account_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='students', blank=True, null=True)
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='users', blank=True, null=True)
@@ -207,29 +207,5 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.name + ' ' + self.surname
 
-    def save(self, *args, **kwargs):
-        """
-        Override save method to generate account_id if not provided.
-        """
-
-        if not self.account_id:
-            self.account_id = self.generate_unique_id('UA')
-
-        super().save(*args, **kwargs)
-
-    @staticmethod
-    def generate_unique_id(prefix=''):
-        """
-        Generate a unique account_id using UUID.
-        """
-
-        max_attempts = 10
-        for _ in range(max_attempts):
-            unique_part = uuid.uuid4().hex[:13]  # Take only the first 13 characters
-            id = f"{prefix}{unique_part}"
-            if not CustomUser.objects.filter(account_id=id).exists():
-                return id
-
-        raise ValueError('Failed to generate a unique account ID after 10 attempts.')
 
             

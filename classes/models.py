@@ -53,7 +53,7 @@ class Classroom(models.Model):
 
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='classes', help_text='School to which the classroom belongs.')
 
-    class_id = models.CharField(_('classroom identifier'), max_length=15, unique=True, help_text='Unique identifier for the classroom.')
+    class_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
         verbose_name = _('classroom')
@@ -61,38 +61,5 @@ class Classroom(models.Model):
 
     def __str__(self):
         return f"{self.school} - Grade {self.grade} - {self.classroom_identifier}"
-
-    def save(self, *args, **kwargs):
-        """
-        Override save method to generate class_id if not provided before saving.
-        """
-        if not self.class_id:
-            self.class_id = self.generate_unique_id('CR')
-
-        super().save(*args, **kwargs)
-
-    @staticmethod
-    def generate_unique_id(prefix=''):
-        """
-        Generate a unique class_id using UUID.
-        
-        Args:
-            prefix (str): Prefix to prepend to the generated ID.
-
-        Returns:
-            str: Unique class_id.
-        
-        Raises:
-            ValueError: If unable to generate a unique ID after multiple attempts.
-        """
-        max_attempts = 10
-     
-        for _ in range(max_attempts):
-            unique_part = uuid.uuid4().hex[:13]  # Take only the first 13 characters
-            id = f"{prefix}{unique_part}"
-            if not Classroom.objects.filter(class_id=id).exists():
-                return id
-      
-        raise ValueError('Failed to generate a unique classroom ID after 10 attempts.')
 
 

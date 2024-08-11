@@ -18,7 +18,7 @@ class Grade(models.Model):
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='school_grades')
 
     # grade  id 
-    grade_id = models.CharField(max_length=15, unique=True)
+    grade_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
         verbose_name = _('grade')
@@ -28,23 +28,6 @@ class Grade(models.Model):
         
     def __str__(self):
         return self.grade_id
-
-    # grade id creation handler
-    def save(self, *args, **kwargs):
-        if not self.grade_id:
-            self.grade_id = self.generate_unique_id('GR')
-
-        super(Grade, self).save(*args, **kwargs)
-
-    @staticmethod
-    def generate_unique_id(prefix=''):
-        max_attempts = 10
-        for _ in range(max_attempts):
-            unique_part = uuid.uuid4().hex[:13]  # Take only the first 13 characters
-            id = f"{prefix}{unique_part}"
-            if not Grade.objects.filter(grade_id=id).exists():
-                return id
-        raise ValueError('failed to generate a unique grade ID after 10 attempts, please try again later.')
             
 
 class Subject(models.Model):
@@ -75,7 +58,7 @@ class Subject(models.Model):
     subject = models.CharField(_('grade subject'), max_length=100, choices=SCHOOL_SUBJECTS_CHOICES, default="ENGLISH")
 
     # class account id 
-    subject_id = models.CharField(max_length=15, unique=True)
+    subject_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
         verbose_name = _('subject')
@@ -84,20 +67,3 @@ class Subject(models.Model):
 
     def __str__(self):
         return self.subject
-
-    # class account id creation handler
-    def save(self, *args, **kwargs):
-        if not self.subject_id:
-            self.subject_id = self.generate_unique_id('SB')
-
-        super(Subject, self).save(*args, **kwargs)
-
-    @staticmethod
-    def generate_unique_id(prefix=''):
-        max_attempts = 10
-        for _ in range(max_attempts):
-            unique_part = uuid.uuid4().hex[:13]  # Take only the first 13 characters
-            id = f"{prefix}{unique_part}"
-            if not Subject.objects.filter(subject_id=id).exists():
-                return id
-        raise ValueError('failed to generate a unique subject ID after 10 attempts, please try again later.')
