@@ -30,7 +30,7 @@ class ActivitySerializer(serializers.ModelSerializer):
 
     def get_logger(self, obj):
         if  obj.logger:
-            return {'name': obj.logger.name.title(), 'surname': obj.logger.surname.title(), 'id': obj.logger.account_id, 'image': '/default-user-image.svg'}
+            return {'name': obj.logger.name.title(), 'surname': obj.logger.surname.title(), 'identifier': obj.logger.account_id, 'image': '/default-user-image.svg'}
         
         return None
 
