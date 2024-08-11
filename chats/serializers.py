@@ -10,6 +10,9 @@ from rest_framework import serializers
 # models
 from .models import ChatRoom, ChatRoomMessage
 
+# serializers
+from users.serializers import ChatAccountSerializer
+
 
 class ChatSerializer(serializers.ModelSerializer):
     
@@ -24,9 +27,7 @@ class ChatSerializer(serializers.ModelSerializer):
     def get_user(self, obj):
         # Access the user from the context and determine the sender
         user = self.context['user']
-        return { 'name' : obj.user_two.name.title() , 'surname' : obj.user_two.surname.title(), 'image' : '/default-user-image.svg', 'id' : obj.user_two.account_id} \
-            if obj.user_one.account_id == user else \
-            {'name' : obj.user_one.name.title(), 'surname' : obj.user_one.surname.title(), 'image' : '/default-user-image.svg', 'id' : obj.user_one.account_id}
+        return ChatAccountSerializer(obj.user_two).data if obj.user_one.account_id == user else ChatAccountSerializer(obj.user_one).data
 
     def get_last_message(self, obj):
         # Fetch the latest messages if no cursor is provided

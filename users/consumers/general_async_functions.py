@@ -34,7 +34,7 @@ from chats.models import ChatRoom, ChatRoomMessage
 from activities.models import Activity
 
 # serializers
-from users.serializers import AccountSerializer, StudentAccountAttendanceRecordSerializer, AccountProfileSerializer, AccountIDSerializer, ChatroomSerializer, BySerializer
+from users.serializers import AccountSerializer, StudentAccountAttendanceRecordSerializer, AccountProfileSerializer, AccountIDSerializer, ChatroomSerializer, BySerializer, ChatAccountSerializer
 from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
 from timetables.serializers import SessoinsSerializer, ScheduleSerializer
 from timetables.serializers import GroupScheduleSerializer
@@ -1700,7 +1700,7 @@ def text(user, details):
         serializer = ChatRoomMessageSerializer(new_message, context={'user': user})
         message_data = serializer.data
 
-        return {'message': message_data, 'sender': { 'name' : account.name.title() , 'surname' : account.surname.title(), 'image' : '/default-user-image.svg', 'id' : account.account_id}, 'reciever': { 'name' : requested_user.name.title() , 'surname' : requested_user.surname.title(), 'image' : '/default-user-image.svg', 'id' : requested_user.account_id}}
+        return {'message': message_data, 'sender': ChatAccountSerializer(account).data, 'reciever':  ChatAccountSerializer(requested_user).data}
 
     except CustomUser.DoesNotExist:
         return {'error': 'User account not found. Please verify the account details.'}
@@ -1845,7 +1845,7 @@ def mark_messages_as_read(user, details):
 
                 # Mark the messages as read
                 messages_to_update.update(read_receipt=True)
-                return {"read": True, 'user': requested_user.account_id, 'chat': account.account_id}
+                return {"read": True, 'user': str(requested_user.account_id), 'chat': str(account.account_id)}
             
             else:
                 # Handle the case where no messages need to be updated (optional)

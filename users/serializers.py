@@ -145,6 +145,34 @@ class BySerializer(serializers.ModelSerializer):
         return obj.id_number or obj.passport_number or obj.email
 
 
+class ChatAccountSerializer(serializers.ModelSerializer):
+
+    name = serializers.SerializerMethodField()
+    surname = serializers.SerializerMethodField()
+    id = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CustomUser
+        fields = ['name', 'surname', 'id', 'image']
+    
+    def get_name(self, obj):
+        """Return the formatted name of the user."""
+        return obj.name.title()
+
+    def get_surname(self, obj):
+        """Return the formatted surname of the user."""
+        return obj.surname.title()
+            
+    def get_image(self, obj):
+        """Return the URL of the user's image or a default image."""
+        return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
+
+    def get_id(self, obj):
+        """Return the users account_id"""
+        return str(obj.account_id)
+
+
 class AccountProfileSerializer(serializers.ModelSerializer):
 
     name = serializers.SerializerMethodField()
@@ -167,7 +195,7 @@ class AccountProfileSerializer(serializers.ModelSerializer):
         return str(obj.account_id)
 
     def get_image(self, obj):
-        return '/default-user-image.svg'
+        return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
 
     def get_identifier(self, obj):
         if obj.id_number:
@@ -277,7 +305,7 @@ class ChatroomSerializer(serializers.ModelSerializer):
         return obj.surname.title()
             
     def get_image(self, obj):
-        return '/default-user-image.svg'
+        return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
 
 
 class StudentAccountAttendanceRecordSerializer(serializers.ModelSerializer):
