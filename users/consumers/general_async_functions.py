@@ -1670,6 +1670,7 @@ def text(user, details):
     try:
         # Retrieve the user making the request
         account = CustomUser.objects.get(account_id=user)
+        
         # Retrieve the requested user's account
         requested_user = CustomUser.objects.get(account_id=details.get('account_id'))
         
@@ -1725,6 +1726,7 @@ def search_chat_room(user, details):
     try:
         # Retrieve the account making the request
         account = CustomUser.objects.get(account_id=user)
+
         # Retrieve the requested user's account
         requested_user = CustomUser.objects.get(account_id=details.get('account_id'))
         
@@ -1739,9 +1741,7 @@ def search_chat_room(user, details):
         chat_room_exists = bool(chat_room)
 
         # Serialize the requested user's data
-        serializer = ChatroomSerializer(requested_user)
-        
-        return {'user': serializer.data, 'chat': chat_room_exists}
+        return {'user': ChatroomSerializer(requested_user).data, 'chat': chat_room_exists}
 
     except CustomUser.DoesNotExist:
         # Handle case where the user does not exist
