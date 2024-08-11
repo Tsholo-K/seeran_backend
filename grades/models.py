@@ -12,7 +12,7 @@ class Grade(models.Model):
 
     # grade choices
     SCHOOL_GRADES_CHOICES = [('000', 'Grade 000'), ('00', 'Grade 00'), ('R', 'Grade R'), ('1', 'Grade 1'), ('2', 'Grade 2'), ('3', 'Grade 3'), ('4', 'Grade 4'), ('5', 'Grade 5'), ('6', 'Grade 6'), ('7', 'Grade 7'), ('8', 'Grade 8'), ('9', 'Grade 9'), ('10', 'Grade 10'), ('11', 'Grade 11'), ('12', 'Grade 12')]
-    grade = models.CharField(_('school grade'), choices=SCHOOL_GRADES_CHOICES, default="8")
+    grade = models.CharField(_('school grade'), choices=SCHOOL_GRADES_CHOICES, max_length=4, default="8")
     grade_order = models.PositiveIntegerField()
 
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='school_grades')
