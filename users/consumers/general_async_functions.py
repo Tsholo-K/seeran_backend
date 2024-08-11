@@ -1074,10 +1074,18 @@ def submit_absentes(user, details):
 
     try:
         account = CustomUser.objects.get(account_id=user)
-        classroom = Classroom.objects.get(class_id=details.get('class_id'), school=account.school, register_class=True)
-        
-        if account.role not in ['ADMIN', 'PRINCIPAL'] and classroom.teacher != account:
-            return { "error" : 'unauthorized request.. only the class teacher or school admin can submit the attendance register for this class' }
+
+        if details.get('class_id') == 'requesting_my_own_class':
+            classroom = Classroom.objects.select_related('school').get(teacher=account, register_class=True)
+
+            if account.role != 'TEACHER' or classroom.school != account.school:
+                return {"error": "unauthorized access. the account making the request has an invalid role or the classroom you are trying to access is not from your school"}
+
+        else:
+            if account.role not in ['ADMIN', 'PRINCIPAL']:
+                return { "error" : 'unauthorized request.. only the class teacher or school admin can view the attendance records for a class' }
+
+            classroom = Classroom.objects.get(class_id=details.get('class_id'), school=account.school, register_class=True)
 
         today = timezone.localdate()
 
@@ -1114,10 +1122,18 @@ def submit_late_arrivals(user, details):
             return {"error" : 'invalid request.. no students provided.. at least one student is needed to be marked as late'}
 
         account = CustomUser.objects.get(account_id=user)
-        classroom = Classroom.objects.get(class_id=details.get('class_id'), school=account.school, register_class=True)
-        
-        if account.role not in ['ADMIN', 'PRINCIPAL'] and classroom.teacher != account:
-            return { "error" : 'unauthorized request.. only the class teacher or school admin can submit the attendance register for this class' }
+
+        if details.get('class_id') == 'requesting_my_own_class':
+            classroom = Classroom.objects.select_related('school').get(teacher=account, register_class=True)
+
+            if account.role != 'TEACHER' or classroom.school != account.school:
+                return {"error": "unauthorized access. the account making the request has an invalid role or the classroom you are trying to access is not from your school"}
+
+        else:
+            if account.role not in ['ADMIN', 'PRINCIPAL']:
+                return { "error" : 'unauthorized request.. only the class teacher or school admin can view the attendance records for a class' }
+
+            classroom = Classroom.objects.get(class_id=details.get('class_id'), school=account.school, register_class=True)
 
         today = timezone.localdate()
 
@@ -1159,8 +1175,7 @@ def search_month_attendance_records(user, details):
 
     try:
         account = CustomUser.objects.get(account_id=user)
-
-        
+ 
         if details.get('class_id') == 'requesting_my_own_class':
             classroom = Classroom.objects.select_related('school').get(teacher=account, register_class=True)
 
