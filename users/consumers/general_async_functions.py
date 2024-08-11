@@ -739,7 +739,7 @@ def search_activity(user, details):
             return permission_error
         
         # Serialize the activity data
-        serializer = ActivitiesSerializer(activity).data
+        serializer = ActivitySerializer(activity).data
 
         return {"activity": serializer}
 
