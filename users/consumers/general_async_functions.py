@@ -1844,10 +1844,18 @@ def form_data_for_attendance_register(user, details):
 
     try:
         account = CustomUser.objects.get(account_id=user)
-        classroom = Classroom.objects.get(class_id=details.get('class_id'), register_class=True, school=account.school)
+
+        if details.get('class_id') == 'requesting_my_own_class':
+            classroom = Classroom.objects.select_related('school').get(teacher=account, register_class=True)
+
+            if account.role != 'TEACHER' or classroom.school != account.school:
+                return {"error": "unauthorized access. the account making the request has an invalid role or the classroom you are trying to access is not from your school"}
+
+        else:
+            classroom = Classroom.objects.get(class_id=details.get('class_id'), register_class=True, school=account.school)
         
-        if account.role not in ['ADMIN', 'PRINCIPAL'] and classroom.teacher != account:
-            return { "error" : 'unauthorized request.. only the class teacher or school admin can submit the attendance register for this class' }
+            if account.role not in ['ADMIN', 'PRINCIPAL']:
+                return { "error" : 'unauthorized request.. only the class teacher or school admin can submit the attendance register for this class' }
         
         # Get today's date
         today = timezone.localdate()
