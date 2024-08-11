@@ -11,6 +11,9 @@ from .models import School
 from users.models import CustomUser
 from balances.models import Balance
 
+# serializers
+from users.serializers import AccountSerializer
+
 
 
 class SchoolCreationSerializer(serializers.ModelSerializer):
@@ -52,7 +55,7 @@ class SchoolSerializer(serializers.ModelSerializer):
       
             if principal:
                         
-                return { "name" : principal.name.title(), "surname" : principal.surname.title(), "id" : principal.account_id, "email" : principal.email, 'image': '/default-user-image.svg' }
+                return AccountSerializer(principal).data
             
             else:
                 return None
