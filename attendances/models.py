@@ -9,8 +9,9 @@ class Absent(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     classroom = models.ForeignKey(Classroom, on_delete=models.SET_NULL, null=True, related_name='attendances')
-
+    
     absent_students = models.ManyToManyField(CustomUser, related_name='absences')
+    absentes = models.BooleanField(default=False)
 
     submitted_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, related_name='submitted_attendances')
 
