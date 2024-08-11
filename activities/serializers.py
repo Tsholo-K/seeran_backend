@@ -7,11 +7,8 @@ from rest_framework import serializers
 
 # models
 from .models import Activity
-from users.models import CustomUser
 from classes.models import Classroom
 
-# serilializers
-from users.serializers import AccountSerializer
 
 
 class ActivityCreationSerializer(serializers.ModelSerializer):

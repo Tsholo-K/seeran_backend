@@ -731,7 +731,7 @@ def search_activity(user, details):
         account = CustomUser.objects.select_related('school').get(account_id=user)
 
         # Retrieve the activity based on the provided activity_id
-        activity = Activity.objects.select_related('school', 'logger', 'recipient', 'classroom', 'offence', 'details', 'date_logged').get(activity_id=details.get('activity_id'))
+        activity = Activity.objects.select_related('school', 'logger', 'recipient', 'classroom').get(activity_id=details.get('activity_id'))
 
         # Check permissions
         permission_error = permission_checks.check_activity_permissions(account, activity)
