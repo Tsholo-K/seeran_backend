@@ -27,7 +27,7 @@ class ChatSerializer(serializers.ModelSerializer):
     def get_user(self, obj):
         # Access the user from the context and determine the sender
         user = self.context['user']
-        return ChatAccountSerializer(obj.user_two).data if obj.user_one.account_id == user else ChatAccountSerializer(obj.user_one).data
+        return ChatAccountSerializer(obj.user_two).data if str(obj.user_one.account_id) == user else ChatAccountSerializer(obj.user_one).data
 
     def get_last_message(self, obj):
         # Fetch the latest messages if no cursor is provided
