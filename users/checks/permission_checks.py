@@ -161,3 +161,43 @@ def check_message_permissions(account, requested_user):
 
     # If no errors, return None indicating permission granted
     return None
+
+
+def check_activity_permissions(account, activity):
+    """
+    Check if the account has permission to access an activity's details.
+
+    Args:
+        account (CustomUser): The user making the request.
+        activity (Activity): The activity being requested.
+
+    Returns:
+        dict: A dictionary containing an error message if the user doesn't have permission,
+              or None if the user has permission.
+    """
+    # Ensure the account has a valid role
+    if account.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'PARENT', 'STUDENT']:
+        return {"error": "Unauthorized access. Invalid role provided."}
+
+    # Admins and principals can only access activities within their own school
+    if account.role in ['PRINCIPAL', 'ADMIN']:
+        if account.school != activity.school:
+            return {"error": "Unauthorized access. You are not permitted to access activities outside your own school."}
+
+    # Teachers can only access activities they have logged, within their own school
+    if account.role == 'TEACHER':
+        if account.school != activity.school or not activity.logger == account:
+            return {"error": "Unauthorized access. You can only access activities that you have logged."}
+
+    # Parents can access activities where their children are the recipient, within their children's school
+    if account.role == 'PARENT':
+        if account.school != activity.school or not account.children.filter(id=activity.recipient.id).exists():
+            return {"error": "Unauthorized access. You are not permitted to access activities involving students who are not your children."}
+
+    # Students can only access activities where they are the recipient, within their own school
+    if account.role == 'STUDENT':
+        if account.school != activity.school or activity.recipient != account:
+            return {"error": "Unauthorized access. You can only access activities that involve you as the recipient."}
+
+    # If no errors, return None indicating permission granted
+    return None

@@ -41,7 +41,7 @@ from timetables.serializers import GroupScheduleSerializer
 from announcements.serializers import AnnouncementsSerializer, AnnouncementSerializer
 from chats.serializers import ChatRoomMessageSerializer, ChatSerializer
 from classes.serializers import TeacherClassesSerializer, ClassSerializer
-from activities.serializers import ActivityCreationSerializer, ActivitiesSerializer
+from activities.serializers import ActivityCreationSerializer, ActivitiesSerializer, ActivitySerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
@@ -712,6 +712,50 @@ def search_student_class_card(user, details):
         # Handle any other unexpected errors
         return {'error': str(e)}
 
+
+@database_sync_to_async
+def search_activity(user, details):
+    """
+    Search for an activity by its ID and check if the user has the necessary permissions to access it.
+
+    Args:
+        user (int): The ID of the user making the request.
+        details (dict): A dictionary containing the details of the activity being requested, including the 'activity_id'.
+
+    Returns:
+        dict: A dictionary containing the serialized activity data if the user has permission,
+              or an error message if there was an issue.
+    """
+    try:
+        # Retrieve the account making the request
+        account = CustomUser.objects.select_related('school').get(account_id=user)
+
+        # Retrieve the activity based on the provided activity_id
+        activity = Activity.objects.select_related('school', 'logger', 'recipient', 'classroom', 'offence', 'details', 'date_logged').get(activity_id=details.get('activity_id'))
+
+        # Check permissions
+        permission_error = permission_checks.check_activity_permissions(account, activity)
+        if permission_error:
+            return permission_error
+        
+        # Serialize the activity data
+        serializer = ActivitiesSerializer(activity).data
+
+        return {"activity": serializer}
+
+    except CustomUser.DoesNotExist:
+        # Handle case where the user does not exist
+        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+
+    except Activity.DoesNotExist:
+        # Handle case where the activity does not exist
+        return {'error': 'An activity with the provided ID does not exist. Please check the activity details and try again.'}
+
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
+    
 
 @database_sync_to_async
 def search_teacher_classes(user, details):

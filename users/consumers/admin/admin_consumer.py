@@ -123,9 +123,11 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'grade': admin_async_functions.search_grade,
             'subject': admin_async_functions.search_subject,
-            
+
             'class': general_async_functions.search_class,
             'student_class_card': general_async_functions.search_student_class_card,
+
+            'activity': general_async_functions.search_activity,
 
             'email_ban': general_async_functions.search_my_email_ban,
         }
