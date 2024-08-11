@@ -44,7 +44,7 @@ class TokenAuthMiddleware:
             CustomUser.DoesNotExist: If the user does not exist.
         """
         user = CustomUser.objects.values('account_id', 'role').get(pk=user_id)
-        return (user['account_id'], user['role'])
+        return (str(user['account_id']), user['role'])
 
     async def __call__(self, scope, receive, send):
         """
