@@ -833,7 +833,7 @@ def search_teacher_schedule_schedules(user, details):
     """
     try:
         # Check if the user is requesting their own schedule
-        if user == details.get('account_id'):
+        if details.get('account_id') == 'requesting_my_own_schedule':
             # Retrieve the teacher's account
             teacher = CustomUser.objects.get(account_id=user)
 
@@ -844,6 +844,7 @@ def search_teacher_schedule_schedules(user, details):
         else:
             # Retrieve the account making the request
             account = CustomUser.objects.get(account_id=user)
+            
             # Retrieve the teacher's account
             teacher = CustomUser.objects.get(account_id=details.get('account_id'))
 
