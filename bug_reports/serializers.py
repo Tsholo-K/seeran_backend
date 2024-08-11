@@ -8,6 +8,9 @@ from rest_framework import serializers
 # models
 from .models import BugReport
 
+# serializers
+from users.serializers import AccountSerializer
+
 
 ### users balance serilizers ###
 
@@ -68,16 +71,7 @@ class BugReportSerializer(serializers.ModelSerializer):
         return obj.status.replace("_", " ").title()
     
     def get_user(self, obj):
-        user = obj.user
-
-        if user is not None:
-            return {
-                'name': user.name.title(),
-                'surname': user.surname.title(),
-                'email': user.email,
-                'picture': user.profile_picture.url if user.profile_picture else None,
-                'id' : user.account_id,
-            }
-        
+        if obj.user:
+            return AccountSerializer(obj.user).data
         else:
             return None

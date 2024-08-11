@@ -85,7 +85,7 @@ class TeacherClassesSerializer(serializers.ModelSerializer):
         return obj.students.count()
     
     def get_id(self, obj):
-        return obj.class_id
+        return str(obj.class_id)
 
 
 class TeacherRegisterClassSerializer(serializers.ModelSerializer):
@@ -101,4 +101,4 @@ class TeacherRegisterClassSerializer(serializers.ModelSerializer):
         return obj.students.count()
     
     def get_id(self, obj):
-        return obj.class_id
+        return str(obj.class_id)

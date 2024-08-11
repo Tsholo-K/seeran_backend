@@ -19,7 +19,7 @@ class GradesSerializer(serializers.ModelSerializer):
         fields = [ 'grade', 'id' ]
 
     def get_id(self, obj):
-        return obj.grade_id
+        return str(obj.grade_id)
 
 
 class GradeSerializer(serializers.ModelSerializer):
@@ -31,9 +31,8 @@ class GradeSerializer(serializers.ModelSerializer):
         fields = [ 'subjects' ]
 
     def get_subjects(self, obj):
-        subjects = obj.grade_subjects.all()
-        serializer = SubjectsSerializer(subjects, many=True)
-        return serializer.data
+        return SubjectsSerializer(obj.grade_subjects.all(), many=True).data
+        
 
 
 class SubjectsSerializer(serializers.ModelSerializer):
@@ -77,9 +76,7 @@ class SubjectDetailSerializer(serializers.ModelSerializer):
         fields = ['classes']
     
     def get_classes(self, obj):
-        classes = obj.subject_classes.all()
-        serializer = ClassesSerializer(classes, many=True)
-        return serializer.data
+        return ClassesSerializer(obj.subject_classes.all(), many=True).data
 
 
 class ClassesSerializer(serializers.ModelSerializer):
@@ -102,4 +99,4 @@ class ClassesSerializer(serializers.ModelSerializer):
         return obj.students.count()
     
     def get_id(self, obj):
-        return obj.class_id
+        return str(obj.class_id)

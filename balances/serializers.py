@@ -4,6 +4,9 @@ from rest_framework import serializers
 # models
 from .models import Balance, Bill
 
+# serializers
+from users.serializers import BySerializer
+
 
 ### users balance serilizers ###
 
@@ -33,16 +36,8 @@ class BillSerializer(serializers.ModelSerializer):
         fields = ['user', 'amount', 'date_billed', 'is_paid']
 
     def get_user(self, obj):
-        user = obj.user
-
-        if user is not None:
-            return {
-                'name': user.name,
-                'surname': user.surname,
-                'email': user.email,
-                'picture': user.profile_picture.url if user.profile_picture else None,
-            }
-        
+        if obj.user:
+            return BySerializer(obj.user).data
         else:
             return None
                 

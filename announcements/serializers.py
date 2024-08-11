@@ -50,7 +50,7 @@ class AnnouncementsSerializer(serializers.ModelSerializer):
         return obj.title.title()
     
     def get_id(self, obj):
-        return obj.announcement_id
+        return str(obj.announcement_id)
     
     def get_seen(self, obj):
         user = self.context.get('user')

@@ -51,7 +51,7 @@ class ActivitiesSerializer(serializers.ModelSerializer):
         fields = ['offence', 'date_logged', 'id']
 
     def get_id(self, obj):
-        return  obj.activity_id
+        return  str(obj.activity_id)
 
     def get_offence(self, obj):
         return  obj.offence.title()
