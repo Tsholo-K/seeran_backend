@@ -9,6 +9,9 @@ from rest_framework import serializers
 from .models import Activity
 from classes.models import Classroom
 
+# serializers
+from users.serializers import BySerializer
+
 
 
 class ActivityCreationSerializer(serializers.ModelSerializer):
@@ -34,8 +37,7 @@ class ActivitySerializer(serializers.ModelSerializer):
 
     def get_logger(self, obj):
         if  obj.logger:
-            return {'name': obj.logger.name.title(), 'surname': obj.logger.surname.title(), 'identifier': obj.logger.account_id, 'image': '/default-user-image.svg'}
-        
+            return BySerializer(obj.logger).data
         return None
 
 

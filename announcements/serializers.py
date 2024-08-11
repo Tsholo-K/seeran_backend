@@ -4,6 +4,8 @@ from rest_framework import serializers
 # models
 from .models import Announcement
 
+# serializers
+from users.serializers import BySerializer
 
 ############################################ general serializer ##################################################
 
@@ -29,12 +31,7 @@ class AnnouncementSerializer(serializers.ModelSerializer):
 
     def get_announce_by(self, obj):    
         if obj.announce_by:
-            return { 
-                "name" : obj.announce_by.name.title(), 
-                "surname" : obj.announce_by.surname.title(), 
-                "identifier" : obj.announce_by.account_id, 
-                'image': '/default-user-image.svg' 
-            }
+            return BySerializer(obj.announce_by).data
         else:
             return None
 
