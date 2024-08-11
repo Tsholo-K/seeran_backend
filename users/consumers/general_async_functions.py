@@ -1668,9 +1668,13 @@ def text(user, details):
         dict: A dictionary containing the serialized message data and the recipient's account ID or an error message.
     """
     try:
+        # Validate users
+        if user == details.get('account_id'):
+            return {"error": "validation error. you can not send a text message to yourself, it violates database constraints and is therefore not allowed."}
+
         # Retrieve the user making the request
         account = CustomUser.objects.get(account_id=user)
-        
+
         # Retrieve the requested user's account
         requested_user = CustomUser.objects.get(account_id=details.get('account_id'))
         
