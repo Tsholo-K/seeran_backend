@@ -34,7 +34,7 @@ from chats.models import ChatRoom, ChatRoomMessage
 from activities.models import Activity
 
 # serializers
-from users.serializers import AccountSerializer, StudentAccountAttendanceRecordSerializer, AccountProfileSerializer, AccountIDSerializer, ChatroomSerializer, StudentAccountClassCardSerializer
+from users.serializers import AccountSerializer, StudentAccountAttendanceRecordSerializer, AccountProfileSerializer, AccountIDSerializer, ChatroomSerializer, BySerializer
 from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
 from timetables.serializers import SessoinsSerializer, ScheduleSerializer
 from timetables.serializers import GroupScheduleSerializer
@@ -700,7 +700,7 @@ def search_student_class_card(user, details):
             return {"error": "unauthorized access. you are not permitted to view information about classses outside your own school"}
 
         # Serialize the requested user's account ID
-        serializer = StudentAccountClassCardSerializer(instance=student).data
+        serializer = BySerializer(instance=student).data
 
         # Serialize the activities 
         activities = Activity.objects.filter(classroom=classroom, recipient=student)
