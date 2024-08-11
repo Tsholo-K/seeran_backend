@@ -41,7 +41,7 @@ class ClassSerializer(serializers.ModelSerializer):
         return obj.students.count()
         
     def get_subject(self, obj):
-        return obj.subject.subject.title()
+        return obj.subject.subject.title() if obj.subject else 'Register Class'
         
     def get_grade(self, obj):
         return obj.grade.grade
