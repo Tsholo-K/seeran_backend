@@ -71,7 +71,7 @@ class MyAccountDetailsSerializer(serializers.ModelSerializer):
         return obj.role.title()
     
     def get_id(self, obj):
-        return obj.account_id
+        return str(obj.account_id)
             
     def get_image(self, obj):
         return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
@@ -98,7 +98,7 @@ class AccountSerializer(serializers.ModelSerializer):
     
     def get_id(self, obj):
         """Return the account ID of the user."""
-        return obj.account_id
+        return str(obj.account_id)
     
     def get_name(self, obj):
         """Return the formatted name of the user."""
@@ -164,7 +164,7 @@ class AccountProfileSerializer(serializers.ModelSerializer):
         return obj.surname.title()
                 
     def get_id(self, obj):
-        return obj.account_id
+        return str(obj.account_id)
 
     def get_image(self, obj):
         return '/default-user-image.svg'
@@ -199,7 +199,7 @@ class AccountIDSerializer(serializers.ModelSerializer):
         return obj.role.title()
     
     def get_id(self, obj):
-        return obj.account_id
+        return str(obj.account_id)
     
     def get_identifier(self, obj):
         if obj.id_number:
@@ -231,7 +231,7 @@ class PrincipalIDSerializer(serializers.ModelSerializer):
         return obj.role.title()
     
     def get_id(self, obj):
-        return obj.account_id
+        return str(obj.account_id)
     
     def get_identifier(self, obj):
         return obj.email
@@ -252,14 +252,12 @@ class PrincipalAccountUpdateSerializer(serializers.ModelSerializer):
 class AccountUpdateSerializer(serializers.ModelSerializer):
 
     email = serializers.EmailField(required=False)  # Make email optional
-    id_number = serializers.CharField(required=False)  # Make id number optional
-    grade = serializers.IntegerField(required=False)  # Make grade number optional
     name = serializers.CharField(required=False)
     surname = serializers.CharField(required=False)
 
     class Meta:
         model = CustomUser
-        fields = ['name', 'surname', 'id_number', 'email', 'grade']
+        fields = ['name', 'surname', 'email']
 
 
 class ChatroomSerializer(serializers.ModelSerializer):

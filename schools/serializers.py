@@ -52,30 +52,20 @@ class SchoolSerializer(serializers.ModelSerializer):
     
         try:
             principal = CustomUser.objects.get(school=obj, role='PRINCIPAL')
-      
             if principal:
-                        
                 return AccountSerializer(principal).data
             
-            else:
-                return None
-     
         except CustomUser.DoesNotExist:
             return None
     
     def get_balance(self, obj):
-
         try:
             principal = CustomUser.objects.get(school=obj, role='PRINCIPAL')
+            if principal:
+                balance = Balance.objects.get(user=principal)
+                return { "amount" : str(balance.amount), "last_updated" : balance.last_updated.isoformat() }
   
         except CustomUser.DoesNotExist:
-            return None
- 
-        if principal:
-            balance = Balance.objects.get(user=principal)
-            return { "amount" : str(balance.amount), "last_updated" : balance.last_updated.isoformat() }
-    
-        else:
             return None
     
     def get_name(self, obj):
