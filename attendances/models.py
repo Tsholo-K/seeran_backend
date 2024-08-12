@@ -11,7 +11,7 @@ class Absent(models.Model):
     classroom = models.ForeignKey(Classroom, on_delete=models.SET_NULL, null=True, related_name='attendances')
     
     absent_students = models.ManyToManyField(CustomUser, related_name='absences')
-    absentes = models.BooleanField(default=False)
+    absentes = models.BooleanField(default=False) # helps in querying 
 
     submitted_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, related_name='submitted_attendances')
 
