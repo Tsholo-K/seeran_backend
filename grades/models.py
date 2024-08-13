@@ -2,7 +2,7 @@
 import uuid
 
 # django 
-from django.db import models
+from django.db import models, IntegrityError
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 
@@ -73,7 +73,7 @@ class Grade(models.Model):
         indexes = [models.Index(fields=['grade', 'school'])]  # Index for performance
 
     def __str__(self):
-        return self.grade_id
+        return f"Grade {self.grade} (Order: {self.grade_order})"
     
     def clean(self):
         """
@@ -101,10 +101,13 @@ class Grade(models.Model):
                 raise ValidationError(_('a grade cannot have an empty level.'))
 
         self.clean()
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"Grade {self.grade} (Order: {self.grade_order})"
+        try:
+            super().save(*args, **kwargs)
+        except IntegrityError as e:
+            if 'unique constraint' in str(e):
+                raise ValidationError(_('Duplicate grade entry for this school.'))
+            else:
+                raise
     
     
 class Subject(models.Model):
@@ -141,4 +144,10 @@ class Subject(models.Model):
         Override save method to validate incoming data.
         """
         self.clean()
-        super().save(*args, **kwargs)
+        try:
+            super().save(*args, **kwargs)
+        except IntegrityError as e:
+            if 'unique constraint' in str(e):
+                raise ValidationError(_('Duplicate subject entry for this grade.'))
+            else:
+                raise

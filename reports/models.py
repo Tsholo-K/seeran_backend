@@ -43,7 +43,7 @@ class StudentSubjectScore(models.Model):
     score_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
 
     class Meta:
-        unique_together = ['student', 'subject', 'term', 'school']
+        unique_together = ('student', 'subject', 'term', 'school')
 
     def __str__(self):
         return f"{self.subject} - {self.student} - Term {self.term}"
@@ -129,7 +129,7 @@ class ReportCard(models.Model):
     report_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
 
     class Meta:
-        unique_together = ['student', 'term', 'school']
+        unique_together = ('student', 'term', 'school')
         ordering = ['-term__start_date']
         indexes = [models.Index(fields=['student', 'term', 'school'])]  # Index for performance
 

@@ -78,7 +78,7 @@ class Assessment(models.Model):
     assessment_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
-        unique_together = ['unique_identifier', 'grade', 'classroom']
+        unique_together = ('unique_identifier', 'grade', 'classroom')
         ordering = ['-due_date']
         indexes = [models.Index(fields=['title', 'due_date', 'subject', 'grade', 'school'])]  # Index for performance
 
