@@ -10,13 +10,21 @@ from django.utils import timezone
 # models
 from .models import Assessment, Transcript
 from users.models import CustomUser
-from schools.models import Term
+from schools.models import Term, School
 from grades.models import Subject, Grade
 
 
 class AssessmentModelTests(TestCase):
 
     def setUp(self):
+        self.school = School.objects.create(
+            name="test school",
+            email="info@testschool.com",
+            contact_number="123456789",
+            school_type="PRIMARY",
+            province="GAUTENG",
+            school_district="EKURHULENI NORTH"
+        )
         self.grade = Grade.objects.create(
             school=self.school,
             grade="8",
@@ -66,6 +74,14 @@ class AssessmentModelTests(TestCase):
 class TranscriptModelTests(TestCase):
 
     def setUp(self):
+        self.school = School.objects.create(
+            name="test school",
+            email="info@testschool.com",
+            contact_number="123456789",
+            school_type="PRIMARY",
+            province="GAUTENG",
+            school_district="EKURHULENI NORTH"
+        )
         self.student = CustomUser.objects.create(name="peter", surname='parker', email='example@example.com', role='STUDENT', passport_number='548672159', school=self.school)
         self.term = Term.objects.create(
             school=self.school,

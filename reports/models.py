@@ -24,7 +24,7 @@ class StudentSubjectScore(models.Model):
     # field to indicate if the student passed the subject for the specified term
     passed = models.BooleanField(default=False)
     # The academic term for which this score applies
-    term = models.ForeignKey(Term, related_name='scores')
+    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='scores')
 
     # The score the student achieved in the subject
     score = models.DecimalField(max_digits=5, decimal_places=2)
