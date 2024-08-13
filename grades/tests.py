@@ -84,6 +84,14 @@ class GradeModelTests(TestCase):
 class SubjectModelTests(TestCase):
 
     def setUp(self):
+        self.school  = School.objects.create(
+            name="test school",
+            email="info@testschool.com",
+            contact_number="123456789",
+            school_type="PRIMARY",
+            province="GAUTENG",
+            school_district="EKURHULENI NORTH"
+        )
         self.grade = Grade.objects.create(
             school=self.school,
             grade="8",
