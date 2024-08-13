@@ -56,6 +56,7 @@ class StudentSubjectScoreModelTests(TestCase):
         score = StudentSubjectScore.objects.create(
             student=self.student,
             term=self.term,
+            grade=self.grade,
             subject=self.subject,
             score=75.0,
             weighted_score=18.75
@@ -99,6 +100,20 @@ class ReportCardModelTests(TestCase):
             weight=25,
             start_date=timezone.now().date(),
             end_date=timezone.now().date() + timedelta(days=30)
+        )
+        self.grade = Grade.objects.create(
+            school=self.school,
+            grade="8",
+            major_subjects=1,
+            none_major_subjects=2
+        )
+        self.score = StudentSubjectScore.objects.create(
+            student=self.student,
+            term=self.term,
+            grade=self.grade,
+            subject=self.subject,
+            score=75.0,
+            weighted_score=18.75
         )
         self.report_card = ReportCard.objects.create(
             student=self.student,

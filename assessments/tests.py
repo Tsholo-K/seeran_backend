@@ -49,7 +49,7 @@ class AssessmentModelTests(TestCase):
             title="Midterm Exam",
             subject=self.subject,
             total=100.0,
-            due_date=timezone.now().date(),
+            due_date=timezone.now().date() + timedelta(days=7),
             collected=False,
             released=False
         )
@@ -82,7 +82,33 @@ class TranscriptModelTests(TestCase):
             province="GAUTENG",
             school_district="EKURHULENI NORTH"
         )
-        self.student = CustomUser.objects.create(name="peter", surname='parker', email='example@example.com', role='STUDENT', passport_number='548672159', school=self.school)
+        self.student = CustomUser.objects.create(
+            name="peter", 
+            surname='parker', 
+            email='example@example.com', 
+            role='STUDENT', 
+            passport_number='548672159', 
+            school=self.school
+        )
+        self.term = Term.objects.create(
+            school=self.school,
+            term=1,
+            weight=25.0,
+            start_date=timezone.now().date(),
+            end_date=timezone.now().date() + timedelta(days=30),
+        )
+        self.grade = Grade.objects.create(
+            school=self.school,
+            grade="8",
+            major_subjects=1,
+            none_major_subjects=2
+        )
+        self.subject = Subject.objects.create(
+            grade=self.grade,
+            subject="ENGLISH",
+            major_subject=True,
+            pass_mark=40.0
+        )
         self.assessment = Assessment.objects.create(
             term=self.term,
             title="Midterm Exam",

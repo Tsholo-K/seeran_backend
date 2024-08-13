@@ -46,11 +46,13 @@ class Assessment(models.Model):
 
     # Indicates if the assessment has been collected
     collected = models.BooleanField(default=False)
+    # Date and time when the assessment was collected
+    date_collected = models.DateTimeField(null=True, blank=True)
 
     # Indicates if the assessment results have been released
     released = models.BooleanField(default=False)
     # Date and time when results were released
-    date_released = models.DateTimeField()
+    date_released = models.DateTimeField(null=True, blank=True)
 
     # The user who moderated the assessment
     moderator = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, related_name='assessments_moderated', null=True)
@@ -93,7 +95,7 @@ class Assessment(models.Model):
         total_percentage = self.term.assessment_set.aggregate(total_percentage=models.Sum('percentage_towards_term_mark'))['total_percentage'] or 0
         
         if self.percentage_towards_term_mark is None:
-            self.percentage_towards_term_mark = 0.0
+            self.percentage_towards_term_mark = 0.00
 
         if total_percentage + self.percentage_towards_term_mark > 100.00:
             raise ValidationError('the total percentage towards the term of all assessments in a term cannot exceed 100%')
