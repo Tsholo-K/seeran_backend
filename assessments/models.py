@@ -86,7 +86,7 @@ class Assessment(models.Model):
         return self.unique_identifier
 
     def clean(self):
-        if self.due_date < timezone.now().date():
+        if self.due_date.date() < timezone.now().date():
             raise ValidationError('an assessments due date must be in the future')
         
         if self.date_released and self.date_released < self.due_date:
