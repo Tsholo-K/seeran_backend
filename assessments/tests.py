@@ -83,16 +83,9 @@ class TranscriptModelTests(TestCase):
             school_district="EKURHULENI NORTH"
         )
         self.student = CustomUser.objects.create(name="peter", surname='parker', email='example@example.com', role='STUDENT', passport_number='548672159', school=self.school)
-        self.term = Term.objects.create(
-            school=self.school,
-            term=1,
-            weight=25,
-            start_date=timezone.now().date(),
-            end_date=timezone.now().date() + timedelta(days=30)
-        )
+
         self.transcript = Transcript.objects.create(
             student=self.student,
-            term=self.term,
             score=80.0,
             moderated_score=85.0
         )
@@ -104,7 +97,6 @@ class TranscriptModelTests(TestCase):
     def test_invalid_scores(self):
         transcript = Transcript(
             student=self.student,
-            term=self.term,
             score=110.0,
             moderated_score=120.0
         )

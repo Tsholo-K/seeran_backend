@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'auth_tokens',
     'uploads',
     'announcements',
+    'reports',
     
     # third party apps
     'corsheaders', # handle cors 
