@@ -48,7 +48,7 @@ class SchoolModelTest(TestCase):
     def test_invalid_email(self):
         self.school.email = "invalidemail"
         with self.assertRaises(ValidationError):
-            self.school.clean()  # This should raise ValidationError
+            self.school.full_clean()  # This should raise ValidationError
 
     def test_school_motto_empty(self):
         self.assertEqual(self.school.school_motto, None)

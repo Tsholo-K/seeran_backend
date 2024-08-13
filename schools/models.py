@@ -151,6 +151,10 @@ class Term(models.Model):
             raise ValidationError(_('the provided start and end dates for the term overlap with one or more existing terms'))
         
         total_weight = Term.objects.filter(school=self.school).exclude(pk=self.pk).aggregate(models.Sum('weight'))['weight__sum'] or 0
+
+        # Convert total_weight to Decimal if it's not already
+        total_weight = Decimal(total_weight)
+
         if total_weight + self.weight > Decimal('100.00') or total_weight + self.weight < Decimal('0.00'):
             raise ValidationError(_(f'the total weight of all terms aggregated cannot exceed 100% or be less than 0% for any given school year'))
 
