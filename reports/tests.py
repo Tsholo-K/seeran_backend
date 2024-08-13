@@ -199,15 +199,6 @@ class ReportCardTest(TestCase):
             total=100.00,
             percentage_towards_term_mark=50.00
         )
-        # self.score = StudentSubjectScore.objects.create(
-        #     student=self.student, 
-        #     term=self.term, 
-        #     score=75.00, 
-        #     weighted_score=15.00, 
-        #     subject=self.subject, 
-        #     grade=self.grade, 
-        #     school=self.school
-        # )
         self.report = ReportCard.objects.create(
             student=self.student, 
             term=self.term, 
@@ -236,16 +227,6 @@ class ReportCardTest(TestCase):
 
     def test_unique_constraint(self):
         """ Test that duplicate ReportCard raises an IntegrityError. """
-        ReportCard.objects.create(
-            student=self.student, 
-            term=self.term, 
-            days_absent=1, 
-            days_late=0, 
-            attendance_percentage=95.00, 
-            passed=True, 
-            year_end_report=False, 
-            school=self.school
-        )
         with self.assertRaises(IntegrityError):
             ReportCard.objects.create(
                 student=self.student, 
