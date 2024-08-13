@@ -2,7 +2,7 @@
 import uuid
 
 # django 
-from django.db import models
+from django.db import models, IntegrityError
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 
@@ -65,7 +65,13 @@ class StudentSubjectScore(models.Model):
             self.passed = self.score >= self.subject.pass_mark
 
         self.clean()
-        super().save(*args, **kwargs)
+        try:
+            super().save(*args, **kwargs)
+        except IntegrityError as e:
+            if 'unique constraint' in str(e):
+                raise ValidationError(_('a student can not have dupliate subject scores for the same subject in the same term, concider regenerating new subject scores for the term which will discard the current ones'))
+            else:
+                raise
 
     def calculate_term_score(self):
         """
@@ -93,7 +99,7 @@ class StudentSubjectScore(models.Model):
         Calculate the weighted score the student acheived for this subject in the specified term.
         """
         term_weight = float(self.term.weight) / 100
-        self.weighted_score = self.score * term_weight
+        self.weighted_score = float(self.score) * term_weight
 
 
 class ReportCard(models.Model):
@@ -157,7 +163,13 @@ class ReportCard(models.Model):
         # self.calculate_attendance_percentage()
 
         self.clean()
-        super().save(*args, **kwargs)
+        try:
+            super().save(*args, **kwargs)
+        except IntegrityError as e:
+            if 'unique constraint' in str(e):
+                raise ValidationError(_('a student can not have dupliate report cards for the same term, concider regenerating a new report card for the term which will discard the current one'))
+            else:
+                raise
 
     def generate_subject_scores(self):
         """
