@@ -4,205 +4,247 @@ import uuid
 # django 
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.core.exceptions import ValidationError
 
 # models
 from users.models import CustomUser
-from schools.models import School
+from schools.models import School, Term
 from grades.models import Grade, Subject
+from assessments.models import Assessment, Transcript
+from attendances.models import Absent, Late
 
 
-class SubjectScore(models.Model):
+class StudentSubjectScore(models.Model):
     """
     Model to represent the score a student has achieved in a specific subject during a term.
-
-    Attributes:
-        student (CustomUser): The student whose score is being recorded.
-        subject (Subject): The subject for which the score is recorded.
-        term (Integer): The academic term for which this score applies.
-        score (Float): The score the student achieved in the subject.
-        total_score (Float): The total possible score for the subject.
-        grade (Grade): The grade to which this score belongs.
-        school (School): The school where the assessment was conducted.
-        score_id (UUIDField): A unique identifier for each subject score record.
     """
-
-    # Foreign key to the CustomUser model, representing the student. If the student is deleted, this record will be deleted as well.
+    # The student whose score is being recorded
     student = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='subject_scores')
-    
-    # Foreign key to the Subject model, representing the subject. If the subject is deleted, this record will be deleted as well.
+
+    # field to indicate if the student passed the subject for the specified term
+    passed = models.BooleanField(default=False)
+    # The academic term for which this score applies
+    term = models.ForeignKey(Term, related_name='scores')
+
+    # The score the student achieved in the subject
+    score = models.DecimalField(max_digits=5, decimal_places=2)
+    # the weighted score the student acheived for this subject in the given term
+    weighted_score = models.DecimalField(max_digits=5, decimal_places=2)
+
+    # The subject for which the score is recorded
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='student_scores')
-    
-    # Integer field to store the academic term for which this score applies.
-    term = models.IntegerField()
 
-    # Float field to store the actual score achieved by the student in the subject.
-    score = models.FloatField()
-    
-    # Float field to store the total possible score for the subject.
-    total_score = models.FloatField()
-
-    # Foreign key to the Grade model, representing the grade to which this score belongs. If the grade is deleted, this record will be deleted as well.
+    #The grade to which this score belongs
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='grade_subject_scores')
-
-    # Foreign key to the School model, representing the school where the assessment was conducted. If the school is deleted, this record will be deleted as well.
+    # The school where the assessment was conducted
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='school_subject_scores')
 
-    # UUID field to store a unique identifier for each subject score record. Automatically generates a UUID upon creation.
+    # subject score id
     score_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
 
     class Meta:
-        verbose_name = _('Subject Score')
-        verbose_name_plural = _('Subject Scores')
-        unique_together = ['student', 'subject', 'term', 'school'] # Ensures that each combination of student, subject, term, and school is unique.
+        unique_together = ['student', 'subject', 'term', 'school']
 
     def __str__(self):
-        """
-        String representation of the SubjectScore model.
-        """
         return f"{self.subject} - {self.student} - Term {self.term}"
-
-
-class Report(models.Model):
-    """
-    Model to represent a student's report for a specific term.
-
-    Attributes:
-        student (CustomUser): The student whose report is being generated.
-        term (Integer): The academic term for which the report is created.
-        school (School): The school where the report is generated.
-        subject_scores (ManyToManyField): The subject scores associated with this report.
-        total_score (Float): The aggregated score for all subjects in this term.
-        attendance_percentage (Float): The percentage of school days the student attended.
-        days_absent (Integer): The total number of days the student was absent.
-        days_late (Integer): The total number of days the student was late.
-        passed (Boolean): Whether the student passed the term based on their scores.
-        year_end_score (Float): The aggregated score for the year if this is the final term report.
-        year_end_report (Boolean): Indicates whether this is the year-end report.
-        report_id (UUIDField): A unique identifier for each report record.
-    """
-
-    # Foreign key to the CustomUser model, representing the student. If the student is deleted, this record will be deleted as well.
-    student = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='term_reports')
     
-    # Integer field to store the academic term for which the report is created.
-    term = models.IntegerField()
+    def clean(self):
+        """
+        Ensure that score and weighted_score are within valid ranges.
+        """
+        if not (0 <= self.score <= 100):
+            raise ValidationError(_('students subject score for any given term must be between 0 and 100'))
+        if not (0 <= self.weighted_score <= 100):
+            raise ValidationError(_('a students subject weighted score for any given term must be between 0 and 100'))
+        
+    def save(self, *args, **kwargs):
+        if self.score is None or self.weighted_score is None:
+            self.calculate_term_score()
+            self.calculate_weighted_score()
 
-    # Foreign key to the School model, representing the school where the report is generated. If the school is deleted, this record will be deleted as well.
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='term_reports')
+            self.passed = self.score >= self.subject.pass_mark
 
-    # Many-to-many relationship with the SubjectScore model, allowing multiple subject scores to be associated with a report.
-    subject_scores = models.ManyToManyField(SubjectScore, related_name='reports')
+        self.clean()
+        super().save(*args, **kwargs)
 
-    # Float field to store the aggregated score for all subjects in this term. Can be null or blank.
-    total_score = models.FloatField(null=True, blank=True)
+    def calculate_term_score(self):
+        """
+        Calculate the score the student acheived for this subject in the given term, using the moderated_score if provided.
+        """
+        total_score = 0
+        assessments = Assessment.objects.filter(subject=self.subject, term=self.term, formal=True)
+        
+        if not assessments.exists():
+            self.score = 0
+            return
+    
+        for assessment in assessments:
+            try:
+                transcript = Transcript.objects.get(student=self.student, assessment=assessment)
+                weight = assessment.percentage_towards_term_mark / 100
+                total_score += transcript.moderated_score * weight if transcript.moderated_score else transcript.score * weight
+            except Transcript.DoesNotExist:
+                continue
 
-    # Float field to store the percentage of school days the student attended. Can be null or blank.
-    attendance_percentage = models.FloatField(null=True, blank=True)
+        self.score = total_score
 
-    # Integer field to store the total number of days the student was absent, with a default value of 0.
+    def calculate_weighted_score(self):
+        """
+        Calculate the weighted score the student acheived for this subject in the specified term.
+        """
+        term_weight = self.term.weight / 100
+        self.weighted_score = self.score * term_weight
+
+
+class ReportCard(models.Model):
+    """
+    Model to represent a student's report card for a specific term.
+    """
+    # The student whose report is being generated
+    student = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='term_reports')
+
+    # The subject scores associated with this report
+    subject_scores = models.ManyToManyField(StudentSubjectScore, related_name='reports')
+    # The academic term for which the report is for
+    term = models.ForeignKey(Term, related_name='reports')
+    
+    # The total number of days the student was absent
     days_absent = models.IntegerField(default=0)
-
-    # Integer field to store the total number of days the student was late, with a default value of 0.
+    # The total number of days the student was late
     days_late = models.IntegerField(default=0)
 
-    # Boolean field to indicate whether the student passed the term based on their scores. Default is False.
+    # The percentage of school days the student attended
+    attendance_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+    # Whether the student passed the term based on their subject scores
     passed = models.BooleanField(default=False)
 
-    # Float field to store the aggregated score for the year if this is the final term report. Can be null or blank.
-    year_end_score = models.FloatField(null=True, blank=True)
-
-    # Boolean field to indicate whether this is the year-end report. Default is False.
+    # Indicates whether this is the year-end report
     year_end_report = models.BooleanField(default=False)
 
-    # UUID field to store a unique identifier for each report record. Automatically generates a UUID upon creation.
+    # The school where the report is generated
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='term_reports')
+
+    # report card id
     report_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
 
     class Meta:
-        verbose_name = _('Report')
-        verbose_name_plural = _('Reports')
         unique_together = ['student', 'term', 'school']
-        # Ensures that each combination of student, term, and school is unique.
+        ordering = ['-term__start_date']
+        indexes = [models.Index(fields=['student', 'term', 'school'])]  # Index for performance
 
     def __str__(self):
-        """
-        String representation of the Report model.
-        """
         return f"Report - {self.student} - Term {self.term}"
+
+    def clean(self):
+        """
+        Ensure attendance and pass status calculations are accurate.
+        """
+        if self.attendance_percentage is not None and not (0 <= self.attendance_percentage <= 100):
+            raise ValidationError(_('a studends attendance percentage must be between 0 and 100 for any given term'))
 
     def save(self, *args, **kwargs):
         """
         Override save method to calculate total_score, attendance_percentage,
         and year_end_score if applicable, before saving the report.
         """
-        # Recalculate fields if the report already exists (updating)
-        if self.pk:
-            self.calculate_total_score()  # Calculate the total score based on subject scores.
-            self.calculate_attendance_percentage()  # Calculate attendance percentage.
-            self.determine_pass_status()  # Determine if the student passed based on total score.
+        if not self.pk:
+            self.generate_subject_scores()
+        
+        self.determine_pass_status()
+        self.calculate_days_absent()
+        self.calculate_days_late()
+        self.calculate_attendance_percentage()
 
-            if self.term == 4:  # Assuming term 4 is the final term
-                self.calculate_year_end_score()  # Calculate year-end score if this is the final term.
+        self.clean()
 
         super().save(*args, **kwargs)
 
-    def calculate_total_score(self):
+    def generate_subject_scores(self):
         """
-        Calculate the total score for this report by summing the scores of all related SubjectScores.
+        Create subject scores for each subject the student is enrolled in for the current term,
+        and add these scores to the report's subject_scores field.
         """
-        self.total_score = sum(score.score for score in self.subject_scores.all())
-
-    def calculate_attendance_percentage(self):
-        """
-        Calculate the student's attendance percentage for the term.
-
-        This is calculated as:
-        (Total Days Attended / Total School Days) * 100
-        """
-        total_school_days = self.get_total_school_days()  # Retrieve the total number of school days.
-        days_attended = total_school_days - self.days_absent  # Calculate days attended.
-
-        if total_school_days > 0:
-            self.attendance_percentage = (days_attended / total_school_days) * 100
-        else:
-            self.attendance_percentage = 0
-
-    def get_total_school_days(self):
-        """
-        Retrieve the total number of school days for the term.
-
-        This might be implemented to fetch data from a school calendar model or another data source.
-
-        Returns:
-            int: Total number of school days in the term.
-        """
-        # Example static return; replace with actual logic to retrieve total school days
-        return 90  # Example: Assume 90 school days in the term
+        # Get the list of subjects the student is enrolled in
+        subjects = self.student.enrolled_classes.values_list('subject', flat=True).distinct()
+        
+        # Create and collect SubjectScore instances for each subject
+        subject_scores = []
+        for subject in subjects:
+            # Get or create a SubjectScore instance
+            subject_score, created = StudentSubjectScore.objects.get_or_create(student=self.student, term=self.term, subject=subject, defaults={'grade': self.student.grade, 'school': self.student.school})
+            
+            # Collect the created or existing SubjectScore instance
+            subject_scores.append(subject_score)
+        
+        # Add the generated SubjectScore instances to the report's subject_scores field
+        self.subject_scores.set(subject_scores)
 
     def determine_pass_status(self):
         """
-        Determine whether the student passed the term based on their total score.
-
-        This logic can be adjusted based on the school's pass criteria.
+        Determine if the student has passed the term based on their subject scores and pass mark.
+        If it's a year-end report, consider all terms in the current academic year.
         """
-        self.passed = self.total_score >= 50  # Example threshold, adjust as needed
+        failed_subjects = 0
+        failed_major_subjects = 0
 
-    def calculate_year_end_score(self):
+        if self.year_end_report:
+            # Get all subjects the student is enrolled in
+            subjects = self.student.enrolled_classes.values_list('subject', flat=True).distinct()
+
+            for subject in subjects:
+                total_weighted_score = 0
+                total_weight = 0
+
+                # Calculate total weighted score for each subject across all terms
+                terms = Term.objects.filter(start_date__year=self.term.start_date.year, school=self.school)
+                for term in terms:
+                    try:
+                        subject_score = StudentSubjectScore.objects.get(student=self.student, term=term, subject=subject)
+                        total_weighted_score += subject_score.weighted_score
+                        total_weight += term.weight
+                    except StudentSubjectScore.DoesNotExist:
+                        continue
+
+                # Determine if the subject has been failed based on the aggregated weighted score
+                if total_weight > 0 and total_weighted_score / total_weight < subject.pass_mark:
+                    failed_subjects += 1
+                    if subject.major_subject:
+                        failed_major_subjects += 1
+        else:
+            for subject_score in self.subject_scores.all():
+                if not subject_score.passed:
+                    failed_subjects += 1
+                    if subject_score.subject.major_subject:
+                        failed_major_subjects += 1
+
+        if failed_major_subjects > 0 or failed_subjects >= 2:
+            self.passed = False
+        else:
+            self.passed = True
+
+    def calculate_days_absent(self):
         """
-        Calculate the year-end score by weighting the scores of all terms.
-
-        This is typically done at the end of the academic year.
+        Calculate the total number of days a student was absent during the term.
         """
-        if self.term == 4:  # Assuming term 4 is the final term
-            reports = Report.objects.filter(student=self.student, school=self.school, year_end_report=False)
-            # Collect term scores from existing reports
-            term_scores = {report.term: report.total_score for report in reports}
+        absences = Absent.objects.filter(absent_students=self.student, date__date__range=(self.term.start_date.date(), self.term.end_date.date())).values('date').distinct()
+        self.days_absent = absences.count()
 
-            # Calculate year-end score based on available term scores
-            self.year_end_score = (
-                term_scores.get(1, 0) * 0.2 +  # Example weight for term 1
-                term_scores.get(2, 0) * 0.2 +  # Example weight for term 2
-                term_scores.get(3, 0) * 0.2 +  # Example weight for term 3
-                self.total_score * 0.4  # Weight for the final term
-            )
-            self.year_end_report = True
+    def calculate_days_late(self):
+        """
+        Calculate the total number of days a student was late during the term.
+        """
+        # Assuming term has start_date and end_date fields
+        late_arrivals = Late.objects.filter(late_students=self.student, date__date__range=(self.term.start_date.date(), self.term.end_date.date())).values('date').distinct()
+        self.days_late = late_arrivals.count()
+
+    def calculate_attendance_percentage(self):
+        """
+        Calculate the attendance percentage for this report based on days absent and total school days.
+        """
+        total_school_days = self.term.school_days
+        if total_school_days > 0:
+            self.attendance_percentage = (1 - (self.days_absent / total_school_days)) * 100
+        else:
+            self.attendance_percentage = 0
 

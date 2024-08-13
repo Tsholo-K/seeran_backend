@@ -1,99 +1,175 @@
 # python 
 import uuid
+from django.utils import timezone
 
 # django 
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.core.exceptions import ValidationError
 
 # models
 from users.models import CustomUser
 from classes.models import Classroom
-from grades.models import Grade
-from schools.models import School
+from grades.models import Grade, Subject
+from schools.models import School, Term
 
 
 class Assessment(models.Model):
     """
     Model to represent an assessment.
-
-    Attributes:
-        set_by (ForeignKey): The user who set the assessment.
-        due_date (DateTimeField): The date and time when the assessment is due.
-        total (IntegerField): The total score possible for the assessment.
-        formal (BooleanField): Indicates if the assessment is formal.
-        percentage_towards_term_mark (IntegerField): The percentage weight of the assessment towards the term mark.
-        term (IntegerField): The term during which the assessment is given.
-        students_assessed (ManyToManyField): The students who are assessed.
-        collected (BooleanField): Indicates if the assessment has been collected from students.
-        released (BooleanField): Indicates if the assessment results have been released.
-        date_released (DateTimeField): The date and time when the assessment results were released.
-        unique_identifier (CharField): A unique identifier for the assessment.
-        moderator (ForeignKey): The user who moderated the assessment.
-        classroom (ForeignKey): The classroom where the assessment was conducted.
-        grade (ForeignKey): The grade to which the assessment belongs.
-        school (ForeignKey): The school where the assessment was conducted.
-        assessment_id (UUIDField): A unique identifier for the assessment.
     """
+    title = models.CharField(max_length=124)
 
-    # User who set the assessment
+    # The user who set the assessment
     set_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, related_name='assessments_set', null=True)
 
-    # Date and time details
-    due_date = models.DateTimeField()  # Allowed format: yyyy-mm-ddThh:mm
-    total = models.IntegerField()  # Total score possible for the assessment
-    formal = models.BooleanField(default=False)  # Indicates if the assessment is formal
+    # Total score possible for the assessment
+    total = models.IntegerField()
 
-    # Assessment details
-    percentage_towards_term_mark = models.IntegerField()  # Percentage weight towards the term mark
-    term = models.IntegerField()  # Term during which the assessment is given
+    # Indicates if the assessment is formal
+    formal = models.BooleanField(default=False)
+    # Percentage weight towards the term mark
+    percentage_towards_term_mark = models.DecimalField(max_digits=5, decimal_places=2)
 
-    # Relationship fields
+    # Term during which the assessment is given
+    term = models.ForeignKey(Term, on_delete=models.CASCADE)
+    
+    # The students who are assessed
     students_assessed = models.ManyToManyField(CustomUser, related_name='assessments_taken')
-    collected = models.BooleanField(default=False)  # Indicates if the assessment has been collected
-    released = models.BooleanField(default=False)  # Indicates if the assessment results have been released
-    date_released = models.DateTimeField()  # Date and time when results were released
-    unique_identifier = models.CharField(max_length=15)  # Unique identifier for the assessment
+    # the students who submitted the assessment before the due date elapsed
+    ontime_submission = models.ManyToManyField(CustomUser, related_name='ontime_submissions', blank=True)
+    # the students who submitted the assessment after the due date elapsed
+    late_submission = models.ManyToManyField(CustomUser, related_name='late_submissions', blank=True)
 
+    # the students who have been allowed to retake the assessment after the due date elapsed
+    retake_submission = models.ManyToManyField(CustomUser, related_name='retake_submissions', blank=True)
+
+    # Indicates if the assessment has been collected
+    collected = models.BooleanField(default=False)
+
+    # Indicates if the assessment results have been released
+    released = models.BooleanField(default=False)
+    # Date and time when results were released
+    date_released = models.DateTimeField()
+
+    # The user who moderated the assessment
     moderator = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, related_name='assessments_moderated', null=True)
+    # The classroom where the assessment was conducted
     classroom = models.ForeignKey(Classroom, on_delete=models.SET_NULL, related_name='class_assessments', null=True, blank=True)
+
+    # the subject the assessment is for
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='subject_assessments')
+    # the grade the assessment is for
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='grade_assessments')
+    # The school where the assessment was conducted
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='school_assessments')
 
-    # Unique assessment ID
+    # The date and time when the assessment is due
+    due_date = models.DateTimeField()  # Allowed format: yyyy-mm-ddThh:mm
+
+    # Unique identifier for the assessment
+    unique_identifier = models.CharField(max_length=15)
+    # Type of the assessment (e.g., practical, exam, test)
+    assessment_type = models.CharField(max_length=124, default='EXAMINATION')
+
+    # assessment id 
     assessment_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
-        verbose_name = _('assessment')
-        verbose_name_plural = _('assessments')
         unique_together = ['unique_identifier', 'grade', 'classroom']
+        ordering = ['-due_date']
+        indexes = [models.Index(fields=['title', 'due_date', 'subject', 'grade', 'school'])]  # Index for performance
 
     def __str__(self):
         return self.unique_identifier
+
+    def clean(self):
+        if self.due_date < timezone.now():
+            raise ValidationError('an assessments due date must be in the future')
+        
+        if self.date_released and self.date_released < self.due_date:
+            raise ValidationError('an assessments date released cannot be before its due date')
+
+        total_percentage = self.term.assessment_set.aggregate(total_percentage=models.Sum('percentage_towards_term_mark'))['total_percentage'] or 0
+        if total_percentage + self.percentage_towards_term_mark > 100.00:
+            raise ValidationError('the total percentage towards the term of all assessments in a term cannot exceed 100%')
+        
+        if not (0.00 <= self.percentage_towards_term_mark <= 100.00):
+            raise ValidationError('percentage towards term mark for an given assessment must be between 0 and 100')
+        
+    def save(self, *args, **kwargs):
+        """
+        Override save method to validate incoming data
+        """
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def mark_as_collected(self, submitted_students_list=None):
+        """
+        Mark the assessment as collected and manage submissions and late submissions.
+        """
+        # Move students who submitted the assessment from students_assessed to ontime_submission
+        self.ontime_submission.set(submitted_students_list)
+
+        # Find students who haven't submitted and move them to late_submission
+        non_submitted_students = self.students_assessed.exclude(id__in=submitted_students_list)
+        self.late_submission.set(non_submitted_students)
+
+    def mark_as_released(self):
+        """
+        Mark the assessment as released and assign zero scores to students who did not submit.
+        """
+        if not self.collected:
+            raise ValidationError('assessment must be collected before it can be released.')
+        
+        # Get the list of students who haven't submitted
+        students_to_assign_zero = self.students_assessed.exclude(id__in=self.ontime_submission.values_list('id', flat=True))
+        
+        # Assign zero score to these students
+        for student in students_to_assign_zero:
+            Transcript.objects.update_or_create(student=student, assessment=self, defaults={'score': 0})
 
 
 class Transcript(models.Model):
     """
     Model to represent a student's transcript for a specific assessment.
-
-    Attributes:
-        student (ForeignKey): The student who received the score.
-        score (IntegerField): The score the student received in the assessment.
-        assessment (ForeignKey): The assessment for which the score is recorded.
-        transcript_id (UUIDField): A unique identifier for the transcript.
     """
-
-    # Relationship fields
+    # The student who received the score
     student = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='my_transcripts')
-    score = models.IntegerField()  # The score received by the student
+
+    # The score the student received in the assessment
+    score = models.DecimalField(max_digits=5, decimal_places=2)
+
+    # The score recieved by the student after moderation
+    moderated_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    # the date the score was updated from the intital score
+    moderated_date = models.DateTimeField(null=True, blank=True)
+
+    # The assessment for which the score is recorded
     assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='student_scores')
 
-    # Unique transcript ID
+    # transcript id
     transcript_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
-        verbose_name = _('transcript')
-        verbose_name_plural = _('transcripts')
+        ordering = ['-assessment__due_date']
+        indexes = [models.Index(fields=['student', 'assessment', 'grade', 'school'])]  # Index for performance
 
     def __str__(self):
-        return f"{self.assessment.unique_identifier} - {self.student.username}"
+        return f"{self.assessment.unique_identifier} - {self.student.name}"
+
+    def clean(self):
+        if self.moderated_score is not None and (self.moderated_score < 0 or self.moderated_score > self.assessment.total):
+            raise ValidationError(f'the students moderated score must be within the range of 0 to {self.assessment.total}')
+
+        if self.score < 0 or self.score > self.assessment.total:
+            raise ValidationError(f'the students score must be within the range of 0 to {self.assessment.total}')
+        
+    def save(self, *args, **kwargs):
+        """
+        Override save method to validate incoming data
+        """
+        self.clean()
+        super().save(*args, **kwargs)
+
 

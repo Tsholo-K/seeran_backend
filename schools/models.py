@@ -1,82 +1,181 @@
 # python 
 import uuid
+from datetime import timedelta
 
 # django 
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.core.exceptions import ValidationError
 
+
+# school district choices
+SCHOOL_DISTRICT_CHOICES = [
+    # gauteng districts
+    ('GAUTENG EAST', 'Gauteng East'),
+    ('GAUTENG NORTH', 'Gauteng North'),
+    ('GAUTENG WEST', 'Gauteng West'),
+    ('JHB CENTRAL DISTRICT D14', 'JHB Central District D14'),
+    ('JHB NORTH', 'JHB North'),
+    ('JHB WEST', 'JHB West'),
+    ('JHB SOUTH', 'JHB South'),
+    ('JHB EAST', 'JHB EAST'),
+    ('EKURHULENI SOUTH', 'Ekurhuleni South'),
+    ('EKURHULENI NORTH', 'Ekurhuleni North'),
+    ('TSHWANE SOUTH', 'Tshwane South'),
+    ('TSHWANE NORTH', 'Tshwane North'),
+    ('TSHWANE WEST', 'Tshwane West'),
+    ('SEDIBENG EAST', 'Sedibeng East'),
+    ('SEDIBENG WEST', 'Sedibeng West'),
+    # Add more districts as needed
+]
+
+# school type choices
+SCHOOL_TYPE_CHOICES = [
+    ('PRIMARY', 'Primary'),
+    ('SECONDARY', 'Secondary'),
+    ('HYBRID', 'Hybrid'),
+    ('TERTIARY', 'Tertiary'),
+    # Add more types as needed
+]
+
+# province choices
+PROVINCE_CHOICES = [
+    ('GAUTENG', 'Gauteng'),
+]
 
 class School(models.Model):
     
-    name = models.CharField(_('school name'), max_length=100)
-    email = models.EmailField(_('school email address'), max_length=255)
-    contact_number = models.CharField(_('school contact number'), max_length=15)
+    name = models.CharField(_('school name'), max_length=64)
+    email = models.EmailField(_('school email address'), max_length=64, unique=True)
+    contact_number = models.CharField(_('school contact number'), max_length=15, unique=True)
     
     in_arrears = models.BooleanField(_('school bill'), default=False)
     none_compliant = models.BooleanField(_('school denied access'), default=False)
-
-    # school type choices
-    SCHOOL_TYPE_CHOICES = [
-        ('PRIMARY', 'Primary'),
-        ('SECONDARY', 'Secondary'),
-        ('HYBRID', 'Hybrid'),
-        ('TERTIARY', 'Tertiary'),
-        # Add more types as needed
-    ]
-    school_type = models.CharField(_('school type'), max_length=50, choices=SCHOOL_TYPE_CHOICES, default="PRIMARY")  # e.g., Primary, Secondary, High School, etc.
     
-    # province choices
-    PROVINCE_CHOICES = [
-        ('GAUTENG', 'Gauteng'),
-    ]
-    province = models.CharField(_('province'), max_length=100, choices=PROVINCE_CHOICES, default="GAUTENG")  # School District or Region
-
-    # school district choices
-    SCHOOL_DISTRICT_CHOICES = [
-        # gauteng districts
-        ('GAUTENG EAST', 'Gauteng East'),
-        ('GAUTENG NORTH', 'Gauteng North'),
-        ('GAUTENG WEST', 'Gauteng West'),
-        ('JHB CENTRAL DISTRICT D14', 'JHB Central District D14'),
-        ('JHB NORTH', 'JHB North'),
-        ('JHB WEST', 'JHB West'),
-        ('JHB SOUTH', 'JHB South'),
-        ('JHB EAST', 'JHB EAST'),
-        ('EKURHULENI SOUTH', 'Ekurhuleni South'),
-        ('EKURHULENI NORTH', 'Ekurhuleni North'),
-        ('TSHWANE SOUTH', 'Tshwane South'),
-        ('TSHWANE NORTH', 'Tshwane North'),
-        ('TSHWANE WEST', 'Tshwane West'),
-        ('SEDIBENG EAST', 'Sedibeng East'),
-        ('SEDIBENG WEST', 'Sedibeng West'),
-        # Add more districts as needed
-    ]
-    school_district = models.CharField(_('school district'), max_length=100, choices=SCHOOL_DISTRICT_CHOICES, default="")  # School District or Region
-
-    # school account id 
-    school_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    # e.g., Primary, Secondary, High School, etc.
+    school_type = models.CharField(_('school type'), max_length=50, choices=SCHOOL_TYPE_CHOICES, default="PRIMARY")
+    # School District or Region
+    province = models.CharField(_('province'), max_length=100, choices=PROVINCE_CHOICES, default="GAUTENG")
+    # School District or Region
+    school_district = models.CharField(_('school district'), max_length=100, choices=SCHOOL_DISTRICT_CHOICES, default="")
     
-    # fields set by school
-    grading_system = models.TextField(blank=True, null=True)  # Grading System Details
-    library_details = models.TextField(blank=True, null=True)  # Library Details
-    laboratory_details = models.TextField(blank=True, null=True)  # Laboratory Details
-    sports_facilities = models.TextField(blank=True, null=True)  # Sports Facilities Details
+    # Grading System Details
+    grading_system = models.TextField(blank=True, null=True)
+
+    # Library Details
+    library_details = models.TextField(blank=True, null=True)
+    # Laboratory Details
+    laboratory_details = models.TextField(blank=True, null=True)
+    # Sports Facilities Details
+    sports_facilities = models.TextField(blank=True, null=True)
+
     operating_hours = models.CharField(max_length=100, blank=True, null=True)
     location = models.CharField(_('school location'), max_length=100, blank=True, null=True)
 
     # others
     website = models.URLField(max_length=200, blank=True, null=True)
     logo = models.ImageField(upload_to='school_logos/', blank=True, null=True)
+
     established_date = models.DateField(blank=True, null=True)
+
     accreditation = models.CharField(max_length=100, blank=True, null=True)
-    academic_calendar = models.TextField(blank=True, null=True)
-    curriculum_details = models.TextField(blank=True, null=True)  # Curriculum Details
-    school_motto = models.CharField(max_length=255, blank=True, null=True)  # School Motto or Mission Statement
+    # Curriculum Details
+    curriculum_details = models.TextField(blank=True, null=True)
+    # School Motto or Mission Statement
+    school_motto = models.CharField(max_length=255, blank=True, null=True)
+
+    # school account id 
+    school_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     
     class Meta:
-        verbose_name = _('school')
-        verbose_name_plural = _('schools')
+        ordering = ['name']
 
     def __str__(self):
         return self.name
 
+    def clean(self):
+        """
+        Perform custom validation for the School model.
+        """
+        if self.contact_number and not self.contact_number.isdigit():
+            raise ValidationError(_('contact number should contain only digits'))
+        if self.logo and not self.logo.name.endswith(('.png', '.jpg', '.jpeg')):
+            raise ValidationError(_('Logo must be a PNG or JPG/JPEG image'))
+
+    def save(self, *args, **kwargs):
+        """
+        Override save method to handle custom validation and additional processing.
+        """
+        self.clean()
+        super().save(*args, **kwargs)
+
+
+class Term(models.Model):
+
+    # the term number
+    term = models.IntegerField(max_length=2)
+    # Weight of the term in final year calculations in relation to other terms
+    weight = models.DecimalField(max_digits=5, decimal_places=2)
+
+    # The first day of the term
+    start_date = models.DateField()
+    # The final day of the term
+    end_date = models.DateField()
+
+    # number of school days in the term
+    school_days = models.IntegerField(default=0)
+
+    # The school the term is linked to
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='school_terms')
+
+    # term id 
+    term_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+
+    class Meta:
+        unique_together = ['term', 'school']
+        indexes = [models.Index(fields=['term', 'school', 'start_date'])]  # Index for performance
+
+    def __str__(self):
+        return f"Term {self.term}"
+    
+    def clean(self):
+        """
+        Ensure that the term dates do not overlap with other terms in the same school and validate term dates.
+        """
+        if self.start_date >= self.end_date:
+            raise ValidationError(_('a terms start date must be before it\'s end date'))
+
+        overlapping_terms = Term.objects.filter(school=self.school, start_date__lt=self.end_date, end_date__gt=self.start_date).exclude(pk=self.pk)
+        if overlapping_terms.exists():
+            raise ValidationError(_('the provided start and end dates for the term overlap with one or more existing terms'))
+        
+        total_weight = Term.objects.filter(school=self.school).exclude(pk=self.pk).aggregate(models.Sum('weight'))['weight__sum'] or 0
+        if total_weight + self.weight > 100.00 or total_weight + self.weight < 0.00:
+            raise ValidationError(_(f'the total weight of all terms aggregated cannot exceed 100% or be less than 0% for any given school year'))
+
+    def save(self, *args, **kwargs):
+        """
+        Override save method to calculate the total amount of school days in the term if not provided.
+        """
+        if not self.school_days:
+            self.school_days = self.calculate_total_school_days()
+
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def calculate_total_school_days(self):
+        """
+        Calculate the total number of school days (weekdays) between start_date and end_date, excluding weekends.
+        """
+        start_date = self.start_date
+        end_date = self.end_date
+
+        total_days = 0
+        current_date = start_date
+
+        while current_date <= end_date:
+            if current_date.weekday() < 5:  # Monday to Friday are considered school days
+                total_days += 1
+            current_date += timedelta(days=1)
+
+        return total_days

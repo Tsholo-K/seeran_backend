@@ -1,5 +1,6 @@
 # django
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 # models
 from classes.models import Classroom
@@ -15,6 +16,10 @@ class Absent(models.Model):
 
     submitted_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, related_name='submitted_attendances')
 
+    class Meta:
+        unique_together = ('date', 'classroom') # this will prevent the creation of duplicate instances
+        ordering = ['-date']
+        indexes = [models.Index(fields=['date'])]  # Index for performance
 
 class Late(models.Model):
     date = models.DateTimeField(auto_now_add=True)
@@ -24,6 +29,10 @@ class Late(models.Model):
 
     submitted_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, related_name='submitted_late_arrivals')
 
+    class Meta:
+        unique_together = ('date', 'classroom') # this will prevent the creation of duplicate instances
+        ordering = ['-date']
+        indexes = [models.Index(fields=['date'])]  # Index for performance
 
 class Emergency(models.Model):
     date = models.DateTimeField(auto_now_add=True)
@@ -39,3 +48,9 @@ class Emergency(models.Model):
     missing = models.BooleanField(default=False)
 
     submitted_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, related_name='submitted_emergencies')
+
+    class Meta:
+        verbose_name = _('emergency')
+        verbose_name_plural = _('emergencies')
+        ordering = ['-date']
+        indexes = [models.Index(fields=['date'])]  # Index for performance

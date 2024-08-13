@@ -354,19 +354,10 @@ def create_grade(user, details):
         if Grade.objects.filter(grade=details.get('grade'), school=account.school).exists():
             return {"error": f"grade {details.get('grade')} already exists for the school, duplicate grades is not allowed"}
         
-        # Calculate the grade order
-        grade_order = [choice[0] for choice in SCHOOL_GRADES_CHOICES].index(details.get('grade'))
-
         with transaction.atomic():
             # Include the grade_order when creating the Grade instance
-            grad = Grade.objects.create(grade=details.get('grade'), grade_order=grade_order, school=account.school)
+            grad = Grade.objects.create(grade=details.get('grade'), major_subjects=details.get('major_subjects'), none_major_subjects=details.get('none_major_subjects'), school=account.school)
             grad.save()
-
-            if details.get('subjects'):
-                subject_list = details.get('subjects').split(', ')
-                for sub in subject_list:
-                    ject = Subject.objects.create(subject=sub, grade=grad)
-                    ject.save()
             
         return { 'message': 'you can now add student accounts, subjects, classes and much more..' }
                
