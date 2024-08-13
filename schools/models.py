@@ -153,11 +153,12 @@ class Term(models.Model):
         total_weight = Term.objects.filter(school=self.school).exclude(pk=self.pk).aggregate(models.Sum('weight'))['weight__sum'] or 0
 
         # Convert total_weight to Decimal if it's not already
-        total_weight = Decimal(str(total_weight))
+        total_weight = float(total_weight)
 
-        if total_weight + self.weight > Decimal('100.00') or total_weight + self.weight < Decimal('0.00'):
-            raise ValidationError(_(f'the total weight of all terms aggregated cannot exceed 100% or be less than 0% for any given school year'))
-
+        # Ensure the total weight does not exceed 100%
+        if total_weight + self.weight > 100.0 or total_weight + self.weight < 0.0:
+            raise ValidationError('The total weight of all terms should be between 0% and 100%.')
+        
     def save(self, *args, **kwargs):
         """
         Override save method to calculate the total amount of school days in the term if not provided.
