@@ -192,6 +192,7 @@ class AssessmentTest(TestCase):
             title='Release Test',
             set_by=self.teacher,
             total=100,
+            collected=True,
             percentage_towards_term_mark=10.00,
             term=self.term,
             due_date=timezone.now() + timezone.timedelta(days=10),

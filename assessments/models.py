@@ -86,7 +86,7 @@ class Assessment(models.Model):
         return self.unique_identifier
 
     def clean(self):
-        if self.due_date < timezone.now():
+        if self.due_date < timezone.now().date():
             raise ValidationError('an assessments due date must be in the future')
         
         if self.date_released and self.date_released < self.due_date:
@@ -97,7 +97,7 @@ class Assessment(models.Model):
         if self.percentage_towards_term_mark is None:
             self.percentage_towards_term_mark = 0.00
 
-        if total_percentage + self.percentage_towards_term_mark > 100.00:
+        if float(total_percentage) + self.percentage_towards_term_mark > 100.00:
             raise ValidationError('the total percentage towards the term of all assessments in a term cannot exceed 100%')
         
         if not (0.00 <= self.percentage_towards_term_mark <= 100.00):
