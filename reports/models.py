@@ -58,6 +58,11 @@ class StudentSubjectScore(models.Model):
             raise ValidationError(_('a students subject weighted score for any given term must be between 0 and 100'))
         
     def save(self, *args, **kwargs):
+
+        if not self.pk:
+            if StudentSubjectScore.objects.filter(student=self.student, term=self.term, school=self.school, subject=self.subject).exists():
+                raise IntegrityError(_('a student can not have dupliate subject scores for the same subject in the same term, concider regenerating new subject scores for the term which will discard the current ones'))
+
         if self.score is None or self.weighted_score is None:
             self.calculate_term_score()
             self.calculate_weighted_score()
@@ -65,13 +70,7 @@ class StudentSubjectScore(models.Model):
             self.passed = self.score >= self.subject.pass_mark
 
         self.clean()
-        try:
-            super().save(*args, **kwargs)
-        except IntegrityError as e:
-            if 'unique constraint' in str(e):
-                raise ValidationError(_('a student can not have dupliate subject scores for the same subject in the same term, concider regenerating new subject scores for the term which will discard the current ones'))
-            else:
-                raise
+        super().save(*args, **kwargs)
 
     def calculate_term_score(self):
         """
@@ -156,7 +155,7 @@ class ReportCard(models.Model):
         """
         if not self.pk:
             if ReportCard.objects.filter(student=self.student, term=self.term, school=self.school).exists():
-                raise ValidationError(_('a student can not have dupliate report cards for the same term, concider regenerating a new report card for the term which will discard the current one'))
+                raise IntegrityError(_('a student can not have dupliate report cards for the same term, concider regenerating a new report card for the term which will discard the current one'))
         
         # self.generate_subject_scores()
         # self.determine_pass_status()
