@@ -114,7 +114,7 @@ class School(models.Model):
 class Term(models.Model):
 
     # the term number
-    term = models.IntegerField()
+    term = models.IntegerField(editable=False)
     # Weight of the term in final year calculations in relation to other terms
     weight = models.DecimalField(max_digits=5, decimal_places=2)
 
@@ -133,7 +133,7 @@ class Term(models.Model):
     term_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
-        unique_together = ['term', 'school']
+        unique_together = ('term', 'school')
         indexes = [models.Index(fields=['term', 'school', 'start_date'])]  # Index for performance
 
     def __str__(self):
