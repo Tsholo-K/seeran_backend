@@ -184,11 +184,11 @@ class ReportCardTest(TestCase):
         self.classroom = Classroom.objects.create(
             classroom_identifier='124',
             group='A',
-            students=[self.student],
             grade=self.grade,
             subject=self.subject,
             school=self.school,
         )
+        self.classroom.students.set([self.student])
         self.assessment = Assessment.objects.create(
             subject=self.subject, 
             term=self.term,
