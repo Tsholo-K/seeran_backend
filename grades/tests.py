@@ -4,7 +4,8 @@ from django.core.exceptions import ValidationError
 
 
 # models
-from schools.models import School, Grade, Subject
+from schools.models import School
+from grades.models import Grade, Subject
 
 
 SCHOOL_GRADES_CHOICES = [
@@ -39,8 +40,8 @@ class GradeModelTest(TestCase):
         )
         self.grade = Grade.objects.create(
             grade='8',
-            major_subjects=2,
-            none_major_subjects=1,
+            major_subjects=1,
+            none_major_subjects=2,
             school=self.school
         )
 
@@ -48,8 +49,8 @@ class GradeModelTest(TestCase):
         """Test that a grade instance is created successfully."""
         self.assertEqual(Grade.objects.count(), 1)
         self.assertEqual(self.grade.grade, '8')
-        self.assertEqual(self.grade.major_subjects, 2)
-        self.assertEqual(self.grade.none_major_subjects, 1)
+        self.assertEqual(self.grade.major_subjects, 1)
+        self.assertEqual(self.grade.none_major_subjects, 2)
 
     def test_grade_order(self):
         """Test that the grade_order is set correctly based on the grade."""
@@ -93,11 +94,12 @@ class GradeModelTest(TestCase):
         with self.assertRaises(ValidationError):
             duplicate_grade = Grade(
                 grade='8',
-                major_subjects=3,
+                major_subjects=1,
                 none_major_subjects=2,
                 school=self.school
             )
             duplicate_grade.save()  # This should raise ValidationError
+
 
 class SubjectModelTest(TestCase):
     def setUp(self):

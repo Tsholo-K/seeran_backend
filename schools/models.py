@@ -1,7 +1,6 @@
 # python 
 import uuid
 from datetime import timedelta
-from decimal import Decimal
 
 # django 
 from django.db import models
