@@ -133,14 +133,14 @@ class StudentSubjectScoreTest(TestCase):
         score = StudentSubjectScore.objects.create(
             student=self.student, 
             term=self.term, 
-            score=70, 
+            score=35.00, 
             weighted_score=None, 
             subject=self.subject, 
             grade=self.grade, 
             school=self.school
         )
         score.calculate_weighted_score()
-        self.assertEqual(score.weighted_score, 14.00)  # Assuming term weight is 100
+        self.assertEqual(score.weighted_score, 7.00)  # Assuming term weight is 100
 
 
 class ReportCardTest(TestCase):
@@ -184,7 +184,7 @@ class ReportCardTest(TestCase):
             student=self.student, 
             term=self.term, 
             score=75.00, 
-            weighted_score=45.00, 
+            weighted_score=15.00, 
             subject=self.subject, 
             grade=self.grade, 
             school=self.school
