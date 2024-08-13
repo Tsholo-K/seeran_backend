@@ -143,7 +143,7 @@ class TermModelTest(TestCase):
                 end_date=self.term.end_date + timedelta(days=180),
                 school=self.school
             )
-            duplicate_term.save()  # This should raise ValidationError
+            duplicate_term.clean()  # This should raise ValidationError
 
     def test_term_id_is_unique(self):
         term_2 = Term.objects.create(
