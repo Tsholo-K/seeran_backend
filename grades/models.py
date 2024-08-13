@@ -124,7 +124,7 @@ class Subject(models.Model):
     class Meta:
         unique_together = ('grade', 'subject')
         ordering = ['subject']
-        indexes = [models.Index(fields=['subject', 'grade', 'school'])]  # Index for performance
+        indexes = [models.Index(fields=['subject', 'grade'])]  # Index for performance
 
     def __str__(self):
         return self.subject
