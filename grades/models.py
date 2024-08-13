@@ -148,6 +148,6 @@ class Subject(models.Model):
             super().save(*args, **kwargs)
         except IntegrityError as e:
             if 'unique constraint' in str(e):
-                raise ValidationError(_('Duplicate subject entry for this grade.'))
+                raise ValidationError(_('duplicate subject entry for this grade.'))
             else:
                 raise
