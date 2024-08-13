@@ -1,6 +1,7 @@
 # python 
 import uuid
 from datetime import timedelta
+from decimal import Decimal
 
 # django 
 from django.db import models
@@ -150,7 +151,7 @@ class Term(models.Model):
             raise ValidationError(_('the provided start and end dates for the term overlap with one or more existing terms'))
         
         total_weight = Term.objects.filter(school=self.school).exclude(pk=self.pk).aggregate(models.Sum('weight'))['weight__sum'] or 0
-        if total_weight + self.weight > 100.00 or total_weight + self.weight < 0.00:
+        if total_weight + self.weight > Decimal('100.00') or total_weight + self.weight < Decimal('0.00'):
             raise ValidationError(_(f'the total weight of all terms aggregated cannot exceed 100% or be less than 0% for any given school year'))
 
     def save(self, *args, **kwargs):
