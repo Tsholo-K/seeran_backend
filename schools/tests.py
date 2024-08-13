@@ -12,6 +12,7 @@ from .models import Term, School
 
 class SchoolModelTest(TestCase):
     def setUp(self):
+        """Set up a sample school instance for use in the tests."""
         self.school = School.objects.create(
             name="Test School",
             email="testschool@example.com",
@@ -22,38 +23,46 @@ class SchoolModelTest(TestCase):
         )
 
     def test_school_creation(self):
+        """Test that a school instance is created successfully."""
         self.assertEqual(School.objects.count(), 1)
         self.assertEqual(self.school.name, "Test School")
         self.assertEqual(self.school.email, "testschool@example.com")
 
     def test_contact_number_validation(self):
+        """Test that an invalid contact number raises a ValidationError."""
         with self.assertRaises(ValidationError):
-            self.school.contact_number = "123ABC"
-            self.school.clean()  # This should raise ValidationError
+            self.school.contact_number = "123ABC"  # Invalid contact number
+            self.school.clean()  # Trigger validation
 
     def test_logo_validation(self):
+        """Test that an invalid logo file extension raises a ValidationError."""
         with self.assertRaises(ValidationError):
-            self.school.logo = 'path/to/logo.txt'  # Invalid extension
-            self.school.clean()  # This should raise ValidationError
+            self.school.logo = 'path/to/logo.txt'  # Invalid file extension for a logo
+            self.school.clean()  # Trigger validation
 
     def test_default_values(self):
+        """Test that default values for 'in_arrears' and 'none_compliant' fields are set correctly."""
         self.assertFalse(self.school.in_arrears)
         self.assertFalse(self.school.none_compliant)
 
     def test_school_update(self):
+        """Test that a school instance can be updated successfully."""
         self.school.name = "Updated School"
         self.school.save()
         self.assertEqual(School.objects.get(pk=self.school.pk).name, "Updated School")
 
     def test_invalid_email(self):
-        self.school.email = "invalidemail"
+        """Test that an invalid email address raises a ValidationError."""
+        self.school.email = "invalidemail"  # Invalid email format
         with self.assertRaises(ValidationError):
-            self.school.full_clean()  # This should raise ValidationError
+            self.school.full_clean()  # Trigger validation
 
     def test_school_motto_empty(self):
+        """Test that the 'school_motto' field is empty by default."""
         self.assertEqual(self.school.school_motto, None)
 
     def test_unique_school_id(self):
+        """Test that each school instance has a unique 'school_id'."""
         school_2 = School.objects.create(
             name="Another Test School",
             email="another@example.com",
@@ -65,17 +74,20 @@ class SchoolModelTest(TestCase):
         self.assertNotEqual(self.school.school_id, school_2.school_id)
 
     def test_school_accreditation_field(self):
+        """Test that the 'accreditation' field can be set and saved correctly."""
         self.school.accreditation = "Department of Education"
         self.school.save()
         self.assertEqual(self.school.accreditation, "Department of Education")
 
     def test_school_field_defaults(self):
+        """Test that the default values for 'school_type' and 'province' fields are set correctly."""
         self.assertEqual(self.school.school_type, "PRIMARY")
         self.assertEqual(self.school.province, "GAUTENG")
 
 
 class TermModelTest(TestCase):
     def setUp(self):
+        """Set up a sample school and term instance for use in the tests."""
         self.school = School.objects.create(
             name="Test School",
             email="testschool@example.com",
@@ -93,17 +105,20 @@ class TermModelTest(TestCase):
         )
 
     def test_term_creation(self):
+        """Test that a term instance is created successfully."""
         self.assertEqual(Term.objects.count(), 1)
         self.assertEqual(self.term.term, 1)
         self.assertEqual(self.term.weight, 30.00)
 
     def test_term_start_date_before_end_date(self):
+        """Test that a term's start date cannot be after its end date, raising a ValidationError."""
         with self.assertRaises(ValidationError):
             self.term.start_date = timezone.now().date() + timedelta(days=61)
             self.term.end_date = timezone.now().date() + timedelta(days=60)
-            self.term.clean()  # This should raise ValidationError
+            self.term.clean()  # Trigger validation
 
     def test_term_overlapping_dates(self):
+        """Test that overlapping term dates raise a ValidationError."""
         overlapping_term = Term(
             term=2,
             weight=20.00,
@@ -112,9 +127,10 @@ class TermModelTest(TestCase):
             school=self.school
         )
         with self.assertRaises(ValidationError):
-            overlapping_term.clean()  # This should raise ValidationError
+            overlapping_term.clean()  # Trigger validation
 
     def test_term_weight_exceeding_100(self):
+        """Test that a term's total weight exceeding 100% raises a ValidationError."""
         term_2 = Term.objects.create(
             term=2,
             weight=60.00,
@@ -123,18 +139,21 @@ class TermModelTest(TestCase):
             school=self.school
         )
         with self.assertRaises(ValidationError):
-            term_2.weight = 80.00
-            term_2.clean()  # This should raise ValidationError
+            term_2.weight = 80.00  # Total weight would exceed 100%
+            term_2.clean()  # Trigger validation
 
     def test_term_school_days_calculation(self):
+        """Test that the school days for a term are calculated correctly."""
         self.assertEqual(self.term.school_days, 44)  # Assuming there are 44 weekdays in a 60-day period
 
     def test_term_update(self):
+        """Test that a term instance can be updated successfully."""
         self.term.term = 2
         self.term.save()
         self.assertEqual(Term.objects.get(pk=self.term.pk).term, 2)
 
     def test_term_unique_constraint(self):
+        """Test that a duplicate term for the same school raises a ValidationError."""
         with self.assertRaises(ValidationError):
             duplicate_term = Term(
                 term=1,
@@ -143,9 +162,10 @@ class TermModelTest(TestCase):
                 end_date=self.term.end_date + timedelta(days=180),
                 school=self.school
             )
-            duplicate_term.clean()  # This should raise ValidationError
+            duplicate_term.clean()  # Trigger validation
 
     def test_term_id_is_unique(self):
+        """Test that each term instance has a unique 'term_id'."""
         term_2 = Term.objects.create(
             term=2,
             weight=50.00,
@@ -154,4 +174,5 @@ class TermModelTest(TestCase):
             school=self.school
         )
         self.assertNotEqual(self.term.term_id, term_2.term_id)
+
 
