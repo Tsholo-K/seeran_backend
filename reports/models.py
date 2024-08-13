@@ -154,22 +154,18 @@ class ReportCard(models.Model):
         Override save method to calculate total_score, attendance_percentage,
         and year_end_score if applicable, before saving the report.
         """
-        # if not self.pk:
-        #     self.generate_subject_scores()
+        if not self.pk:
+            if ReportCard.objects.filter(student=self.student, term=self.term, school=self.school).exists():
+                raise ValidationError(_('a student can not have dupliate report cards for the same term, concider regenerating a new report card for the term which will discard the current one'))
         
+        # self.generate_subject_scores()
         # self.determine_pass_status()
         # self.calculate_days_absent()
         # self.calculate_days_late()
         # self.calculate_attendance_percentage()
 
         self.clean()
-        try:
-            super().save(*args, **kwargs)
-        except IntegrityError as e:
-            if 'unique constraint' in str(e):
-                raise ValidationError(_('a student can not have dupliate report cards for the same term, concider regenerating a new report card for the term which will discard the current one'))
-            else:
-                raise
+        super().save(*args, **kwargs)
 
     def generate_subject_scores(self):
         """
