@@ -227,7 +227,7 @@ class ReportCardTest(TestCase):
             year_end_report=False, 
             school=self.school
         )
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(IntegrityError):
             ReportCard.objects.create(
                 student=self.student, 
                 term=self.term, 
