@@ -15,6 +15,7 @@ from schools.models import School, Term
 from grades.models import Grade, Subject
 from attendances.models import Absent, Late
 from assessments.models import Assessment, Transcript
+from classes.models import Classroom
 
 
 class StudentSubjectScoreTest(TestCase):
@@ -180,15 +181,35 @@ class ReportCardTest(TestCase):
             grade=self.grade,
             passport_number='845751548'
         )
-        self.score = StudentSubjectScore.objects.create(
-            student=self.student, 
-            term=self.term, 
-            score=75.00, 
-            weighted_score=15.00, 
-            subject=self.subject, 
-            grade=self.grade, 
-            school=self.school
+        self.classroom = Classroom.objects.create(
+            classroom_identifier='124',
+            group='A',
+            students=[self.student],
+            grade=self.grade,
+            subject=self.subject,
+            school=self.school,
         )
+        self.assessment = Assessment.objects.create(
+            subject=self.subject, 
+            term=self.term,
+            school=self.school,
+            grade=self.grade,
+            assessment_type='EXAMINATION',
+            unique_identifier='exam1',
+            due_date=timezone.now().date() + timedelta(days=7),
+            formal=True,
+            total=100.00,
+            percentage_towards_term_mark=50.00
+        )
+        # self.score = StudentSubjectScore.objects.create(
+        #     student=self.student, 
+        #     term=self.term, 
+        #     score=75.00, 
+        #     weighted_score=15.00, 
+        #     subject=self.subject, 
+        #     grade=self.grade, 
+        #     school=self.school
+        # )
         self.report = ReportCard.objects.create(
             student=self.student, 
             term=self.term, 
