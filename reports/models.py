@@ -177,14 +177,23 @@ class ReportCard(models.Model):
         # Create and collect SubjectScore instances for each subject
         subject_scores = []
         for subject in subjects:
+            # Ensure that `subject` is a Subject instance
+            subject_instance = Subject.objects.get(id=subject)
+            
             # Get or create a SubjectScore instance
-            subject_score, created = StudentSubjectScore.objects.get_or_create(student=self.student, term=self.term, subject=subject, defaults={'grade': self.student.grade, 'school': self.student.school})
+            subject_score, created = StudentSubjectScore.objects.get_or_create(
+                student=self.student,
+                term=self.term,
+                subject=subject_instance,
+                defaults={'grade': self.student.grade, 'school': self.student.school}
+            )
             
             # Collect the created or existing SubjectScore instance
             subject_scores.append(subject_score)
         
         # Add the generated SubjectScore instances to the report's subject_scores field
         self.subject_scores.set(subject_scores)
+
 
     def determine_pass_status(self):
         """
