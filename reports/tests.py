@@ -19,18 +19,70 @@ from assessments.models import Assessment, Transcript
 
 class StudentSubjectScoreTest(TestCase):
     def setUp(self):
-        self.school = School.objects.create(name="Test School")
-        self.grade = Grade.objects.create(grade="8", grade_order=1, major_subjects=1, none_major_subjects=1, school=self.school)
-        self.term = Term.objects.create(name="Term 1", start_date=timezone.now(), end_date=timezone.now() + timedelta(days=30), weight=100, school=self.school)
-        self.subject = Subject.objects.create(grade=self.grade, subject="Math", major_subject=True, pass_mark=50, school=self.school)
-        self.student = CustomUser.objects.create(username="student1", grade=self.grade, school=self.school)
-        self.assessment = Assessment.objects.create(subject=self.subject, term=self.term, formal=True, percentage_towards_term_mark=50)
-        self.transcript = Transcript.objects.create(student=self.student, assessment=self.assessment, score=70, moderated_score=None)
+        self.school = School.objects.create(
+            name="Test School",
+            email="testschool@example.com",
+            contact_number="1234567890",
+            school_type="PRIMARY",
+            province="GAUTENG",
+            school_district="District 1"
+        )
+        self.grade = Grade.objects.create(
+            grade='8',
+            major_subjects=2,
+            none_major_subjects=1,
+            school=self.school
+        )
+        self.term = Term.objects.create(
+            term=1,
+            start_date=timezone.now().date(),
+            end_date=timezone.now().date() + timedelta(days=30),
+            weight=20.00,
+            school=self.school
+        )
+        self.subject = Subject.objects.create(
+            grade=self.grade,
+            subject='ENGLISH',
+            major_subject=True,
+            pass_mark=50.00
+        )
+        self.student = CustomUser.objects.create_user(
+            name="John",
+            surname="Doe",
+            role="STUDENT",
+            school=self.school,
+            grade=self.grade,
+            passport_number='845751548'
+        )
+        self.assessment = Assessment.objects.create(
+            subject=self.subject, 
+            term=self.term,
+            school=self.school,
+            grade=self.grade,
+            assessment_type='EXAMINATION',
+            unique_identifier='exam1',
+            due_date=timezone.now().date() + timedelta(days=7),
+            formal=True,
+            total=100.00,
+            percentage_towards_term_mark=50.00
+        )
+        self.transcript = Transcript.objects.create(
+            student=self.student,
+            assessment=self.assessment,
+            score=70.00, 
+            moderated_score=None
+        )
     
     def test_score_range_validation(self):
         """ Test that score and weighted_score are within valid ranges. """
         score = StudentSubjectScore(
-            student=self.student, term=self.term, score=105, weighted_score=50, subject=self.subject, grade=self.grade, school=self.school
+            student=self.student, 
+            term=self.term, 
+            score=105, 
+            weighted_score=50, 
+            subject=self.subject, 
+            grade=self.grade, 
+            school=self.school
         )
         with self.assertRaises(ValidationError):
             score.clean()
@@ -66,18 +118,62 @@ class StudentSubjectScoreTest(TestCase):
         score.calculate_weighted_score()
         self.assertEqual(score.weighted_score, 70)  # Assuming term weight is 100
 
+
 class ReportCardTest(TestCase):
     def setUp(self):
-        self.school = School.objects.create(name="Test School")
-        self.grade = Grade.objects.create(grade="8", grade_order=1, major_subjects=1, none_major_subjects=1, school=self.school)
-        self.term = Term.objects.create(name="Term 1", start_date=timezone.now(), end_date=timezone.now() + timedelta(days=30), weight=100, school=self.school)
-        self.subject = Subject.objects.create(grade=self.grade, subject="Math", major_subject=True, pass_mark=50, school=self.school)
-        self.student = CustomUser.objects.create(username="student1", grade=self.grade, school=self.school)
+        self.school = School.objects.create(
+            name="Test School",
+            email="testschool@example.com",
+            contact_number="1234567890",
+            school_type="PRIMARY",
+            province="GAUTENG",
+            school_district="District 1"
+        )
+        self.grade = Grade.objects.create(
+            grade='8',
+            major_subjects=1,
+            none_major_subjects=2,
+            school=self.school
+        )
+        self.term = Term.objects.create(
+            term=1,
+            start_date=timezone.now().date(),
+            end_date=timezone.now().date() + timedelta(days=30),
+            weight=20.00,
+            school=self.school
+        )
+        self.subject = Subject.objects.create(
+            grade=self.grade,
+            subject='ENGLISH',
+            major_subject=True,
+            pass_mark=50.00
+        )
+        self.student = CustomUser.objects.create_user(
+            name="John",
+            surname="Doe",
+            role="STUDENT",
+            school=self.school,
+            grade=self.grade,
+            passport_number='845751548'
+        )
         self.score = StudentSubjectScore.objects.create(
-            student=self.student, term=self.term, score=75, weighted_score=75, subject=self.subject, grade=self.grade, school=self.school
+            student=self.student, 
+            term=self.term, 
+            score=75.00, 
+            weighted_score=45.00, 
+            subject=self.subject, 
+            grade=self.grade, 
+            school=self.school
         )
         self.report = ReportCard.objects.create(
-            student=self.student, term=self.term, days_absent=0, days_late=0, attendance_percentage=100, passed=True, year_end_report=False, school=self.school
+            student=self.student, 
+            term=self.term, 
+            days_absent=0, 
+            days_late=0, 
+            attendance_percentage=100, 
+            passed=True, 
+            year_end_report=False, 
+            school=self.school
         )
 
     def test_attendance_percentage(self):
@@ -98,9 +194,23 @@ class ReportCardTest(TestCase):
     def test_unique_constraint(self):
         """ Test that duplicate ReportCard raises an IntegrityError. """
         ReportCard.objects.create(
-            student=self.student, term=self.term, days_absent=1, days_late=0, attendance_percentage=95, passed=True, year_end_report=False, school=self.school
+            student=self.student, 
+            term=self.term, 
+            days_absent=1, 
+            days_late=0, 
+            attendance_percentage=95.00, 
+            passed=True, 
+            year_end_report=False, 
+            school=self.school
         )
         with self.assertRaises(IntegrityError):
             ReportCard.objects.create(
-                student=self.student, term=self.term, days_absent=0, days_late=1, attendance_percentage=90, passed=False, year_end_report=False, school=self.school
+                student=self.student, 
+                term=self.term, 
+                days_absent=0, 
+                days_late=1, 
+                attendance_percentage=90.00, 
+                passed=False, 
+                year_end_report=False, 
+                school=self.school
             )
