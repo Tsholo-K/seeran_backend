@@ -153,7 +153,7 @@ class Transcript(models.Model):
 
     class Meta:
         ordering = ['-assessment__due_date']
-        indexes = [models.Index(fields=['student', 'assessment', 'grade', 'school'])]  # Index for performance
+        indexes = [models.Index(fields=['student', 'assessment'])]  # Index for performance
 
     def __str__(self):
         return f"{self.assessment.unique_identifier} - {self.student.name}"
