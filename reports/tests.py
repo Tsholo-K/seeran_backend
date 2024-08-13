@@ -95,17 +95,35 @@ class StudentSubjectScoreTest(TestCase):
     def test_unique_constraint(self):
         """ Test that duplicate StudentSubjectScore raises an IntegrityError. """
         StudentSubjectScore.objects.create(
-            student=self.student, term=self.term, score=85, weighted_score=90, subject=self.subject, grade=self.grade, school=self.school
+            student=self.student, 
+            term=self.term, 
+            score=85, 
+            weighted_score=90, 
+            subject=self.subject, 
+            grade=self.grade, 
+            school=self.school
         )
         with self.assertRaises(IntegrityError):
             StudentSubjectScore.objects.create(
-                student=self.student, term=self.term, score=75, weighted_score=80, subject=self.subject, grade=self.grade, school=self.school
+                student=self.student, 
+                term=self.term, 
+                score=75, 
+                weighted_score=80, 
+                subject=self.subject, 
+                grade=self.grade, 
+                school=self.school
             )
 
     def test_calculate_term_score(self):
         """ Test that the term score is calculated correctly. """
         score = StudentSubjectScore.objects.create(
-            student=self.student, term=self.term, score=None, weighted_score=None, subject=self.subject, grade=self.grade, school=self.school
+            student=self.student, 
+            term=self.term, 
+            score=None, 
+            weighted_score=None, 
+            subject=self.subject, 
+            grade=self.grade, 
+            school=self.school
         )
         score.calculate_term_score()
         self.assertEqual(score.score, 35)  # Assuming transcript score and weight calculation leads to this result
@@ -113,7 +131,13 @@ class StudentSubjectScoreTest(TestCase):
     def test_calculate_weighted_score(self):
         """ Test that the weighted score is calculated correctly. """
         score = StudentSubjectScore.objects.create(
-            student=self.student, term=self.term, score=70, weighted_score=None, subject=self.subject, grade=self.grade, school=self.school
+            student=self.student, 
+            term=self.term, 
+            score=70, 
+            weighted_score=None, 
+            subject=self.subject, 
+            grade=self.grade, 
+            school=self.school
         )
         score.calculate_weighted_score()
         self.assertEqual(score.weighted_score, 70)  # Assuming term weight is 100
@@ -175,6 +199,7 @@ class ReportCardTest(TestCase):
             year_end_report=False, 
             school=self.school
         )
+        self.report.generate_subject_scores()
 
     def test_attendance_percentage(self):
         """ Test that attendance percentage is calculated correctly. """

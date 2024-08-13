@@ -92,7 +92,7 @@ class StudentSubjectScore(models.Model):
         """
         Calculate the weighted score the student acheived for this subject in the specified term.
         """
-        term_weight = self.term.weight / 100
+        term_weight = float(self.term.weight) / 100
         self.weighted_score = self.score * term_weight
 
 
@@ -148,16 +148,15 @@ class ReportCard(models.Model):
         Override save method to calculate total_score, attendance_percentage,
         and year_end_score if applicable, before saving the report.
         """
-        if not self.pk:
-            self.generate_subject_scores()
+        # if not self.pk:
+        #     self.generate_subject_scores()
         
-        self.determine_pass_status()
-        self.calculate_days_absent()
-        self.calculate_days_late()
-        self.calculate_attendance_percentage()
+        # self.determine_pass_status()
+        # self.calculate_days_absent()
+        # self.calculate_days_late()
+        # self.calculate_attendance_percentage()
 
         self.clean()
-
         super().save(*args, **kwargs)
 
     def generate_subject_scores(self):
