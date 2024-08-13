@@ -91,28 +91,6 @@ class StudentSubjectScoreTest(TestCase):
         with self.assertRaises(ValidationError):
             score.clean()
 
-    def test_unique_constraint(self):
-        """ Test that duplicate StudentSubjectScore raises an IntegrityError. """
-        StudentSubjectScore.objects.create(
-            student=self.student, 
-            term=self.term, 
-            score=85, 
-            weighted_score=90, 
-            subject=self.subject, 
-            grade=self.grade, 
-            school=self.school
-        )
-        with self.assertRaises(IntegrityError):
-            StudentSubjectScore.objects.create(
-                student=self.student, 
-                term=self.term, 
-                score=75, 
-                weighted_score=80, 
-                subject=self.subject, 
-                grade=self.grade, 
-                school=self.school
-            )
-
     def test_calculate_term_score(self):
         """ Test that the term score is calculated correctly. """
         score = StudentSubjectScore.objects.create(
@@ -140,6 +118,28 @@ class StudentSubjectScoreTest(TestCase):
         )
         score.calculate_weighted_score()
         self.assertEqual(score.weighted_score, 7.00)  # Assuming term weight is 100
+
+    def test_unique_constraint(self):
+        """ Test that duplicate StudentSubjectScore raises an IntegrityError. """
+        StudentSubjectScore.objects.create(
+            student=self.student, 
+            term=self.term, 
+            score=85, 
+            weighted_score=90, 
+            subject=self.subject, 
+            grade=self.grade, 
+            school=self.school
+        )
+        with self.assertRaises(IntegrityError):
+            StudentSubjectScore.objects.create(
+                student=self.student, 
+                term=self.term, 
+                score=75, 
+                weighted_score=80, 
+                subject=self.subject, 
+                grade=self.grade, 
+                school=self.school
+            )
 
 
 class ReportCardTest(TestCase):

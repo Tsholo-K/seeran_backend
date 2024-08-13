@@ -57,7 +57,7 @@ class School(models.Model):
     # School District or Region
     province = models.CharField(_('province'), max_length=100, choices=PROVINCE_CHOICES, default="GAUTENG")
     # School District or Region
-    school_district = models.CharField(_('school district'), max_length=100, choices=SCHOOL_DISTRICT_CHOICES, default="")
+    school_district = models.CharField(_('school district'), max_length=100, choices=SCHOOL_DISTRICT_CHOICES, default="GAUTENG NORTH")
     
     # Grading System Details
     grading_system = models.TextField(blank=True, null=True)

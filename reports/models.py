@@ -59,10 +59,6 @@ class StudentSubjectScore(models.Model):
         
     def save(self, *args, **kwargs):
 
-        # if not self.pk:
-        #     if StudentSubjectScore.objects.filter(student=self.student, term=self.term, school=self.school, subject=self.subject).exists():
-        #         raise IntegrityError(_('a student can not have dupliate subject scores for the same subject in the same term, concider regenerating new subject scores for the term which will discard the current ones'))
-
         if self.score is None or self.weighted_score is None:
             self.calculate_term_score()
             self.calculate_weighted_score()
@@ -159,9 +155,6 @@ class ReportCard(models.Model):
         Override save method to calculate total_score, attendance_percentage,
         and year_end_score if applicable, before saving the report.
         """
-        # if not self.pk:
-        #     if ReportCard.objects.filter(student=self.student, term=self.term, school=self.school).exists():
-        #         raise IntegrityError(_('a student cannot have duplicate report cards for the same term. Consider regenerating a new report card for the term, which will discard the current one.'))
 
         # self.generate_subject_scores()
         # self.determine_pass_status()
