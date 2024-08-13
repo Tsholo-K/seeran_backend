@@ -9,13 +9,28 @@ from django.utils import timezone
 # models
 from users.models import CustomUser
 from grades.models import Subject, Grade
-from schools.models import  Term
+from schools.models import School, Term
 from .models import ReportCard, StudentSubjectScore
 
 class StudentSubjectScoreModelTests(TestCase):
 
     def setUp(self):
-        self.student = CustomUser.objects.create(name="peter", surname='parker', email='example@example.com', role='STUDENT', passport_number='548672159', school=self.school)
+        self.school = School.objects.create(
+            name="test school",
+            email="info@testschool.com",
+            contact_number="123456789",
+            school_type="PRIMARY",
+            province="GAUTENG",
+            school_district="EKURHULENI NORTH"
+        )
+        self.student = CustomUser.objects.create(
+            name="peter", 
+            surname='parker', 
+            email='example@example.com', 
+            role='STUDENT', 
+            passport_number='548672159', 
+            school=self.school
+        )
         self.term = Term.objects.create(
             school=self.school,
             term=1,
@@ -23,18 +38,19 @@ class StudentSubjectScoreModelTests(TestCase):
             start_date=timezone.now().date(),
             end_date=timezone.now().date() + timedelta(days=30)
         )
-        self.subject = Subject.objects.create(
-            grade=self.grade,
-            subject="ENGLISH",
-            major_subject=True,
-            pass_mark=40.0
-        )
         self.grade = Grade.objects.create(
             school=self.school,
             grade="8",
             major_subjects=1,
             none_major_subjects=2
         )
+        self.subject = Subject.objects.create(
+            grade=self.grade,
+            subject="ENGLISH",
+            major_subject=True,
+            pass_mark=40.0
+        )
+
 
     def test_student_subject_score_creation(self):
         score = StudentSubjectScore.objects.create(
@@ -61,7 +77,22 @@ class StudentSubjectScoreModelTests(TestCase):
 class ReportCardModelTests(TestCase):
 
     def setUp(self):
-        self.student = CustomUser.objects.create(name="peter", surname='parker', email='example@example.com', role='STUDENT', passport_number='548672159', school=self.school)
+        self.school = School.objects.create(
+            name="test school",
+            email="info@testschool.com",
+            contact_number="123456789",
+            school_type="PRIMARY",
+            province="GAUTENG",
+            school_district="EKURHULENI NORTH"
+        )
+        self.student = CustomUser.objects.create(
+            name="peter", 
+            surname='parker', 
+            email='example@example.com', 
+            role='STUDENT', 
+            passport_number='548672159', 
+            school=self.school
+        )
         self.term = Term.objects.create(
             school=self.school,
             term=1,

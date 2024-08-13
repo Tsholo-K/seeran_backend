@@ -29,7 +29,7 @@ class Assessment(models.Model):
     # Indicates if the assessment is formal
     formal = models.BooleanField(default=False)
     # Percentage weight towards the term mark
-    percentage_towards_term_mark = models.DecimalField(max_digits=5, decimal_places=2)
+    percentage_towards_term_mark = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
 
     # Term during which the assessment is given
     term = models.ForeignKey(Term, on_delete=models.CASCADE)
@@ -91,6 +91,10 @@ class Assessment(models.Model):
             raise ValidationError('an assessments date released cannot be before its due date')
 
         total_percentage = self.term.assessment_set.aggregate(total_percentage=models.Sum('percentage_towards_term_mark'))['total_percentage'] or 0
+        
+        if self.percentage_towards_term_mark is None:
+            self.percentage_towards_term_mark = 0.0
+
         if total_percentage + self.percentage_towards_term_mark > 100.00:
             raise ValidationError('the total percentage towards the term of all assessments in a term cannot exceed 100%')
         
