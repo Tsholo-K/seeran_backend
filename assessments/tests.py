@@ -93,8 +93,8 @@ class AssessmentTest(TestCase):
         """
         Test validation of the due_date field to ensure it is in the future.
         """
-        future_date = timezone.now() + timezone.timedelta(days=10)
-        past_date = timezone.now() - timezone.timedelta(days=10)
+        future_date = timezone.now().date() + timedelta(days=30)
+        past_date = timezone.now().date() - timedelta(days=30)
         
         # Test valid due date
         valid_assessment = Assessment(
