@@ -106,7 +106,7 @@ class ReportCard(models.Model):
     # The subject scores associated with this report
     subject_scores = models.ManyToManyField(StudentSubjectScore, related_name='reports')
     # The academic term for which the report is for
-    term = models.ForeignKey(Term, related_name='reports')
+    term = models.ForeignKey(Term, on_delete=models.SET_NULL, related_name='reports', null=True)
     
     # The total number of days the student was absent
     days_absent = models.IntegerField(default=0)
