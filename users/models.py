@@ -4,6 +4,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from django.db import transaction
 
 # python 
 import uuid
@@ -22,7 +23,8 @@ class CustomUserManager(BaseUserManager):
     Provides methods for creating users and activating accounts.
     """
 
-    # User creation method
+
+    @transaction.atomic
     def create_user(self, email=None, id_number=None, passport_number=None, name=None, surname=None, phone_number=None, role=None, school=None, grade=None, **extra_fields):
         """
         Creates and saves a user with the given parameters.
@@ -116,7 +118,7 @@ class CustomUserManager(BaseUserManager):
 
         return user
 
-    # User activation method
+    @transaction.atomic
     def activate_user(self, email, password):
         """
         Activates a user account with the provided email and sets a password.

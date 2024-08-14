@@ -269,3 +269,144 @@ class CustomUserManagerTest(TestCase):
             thread.join()
 
         self.assertTrue(CustomUser.objects.filter(email="threadeduser@example.com").exists())
+
+    """
+    Additional test cases for CustomUser and CustomUserManager.
+    """
+
+    def setUp(self):
+        """
+        Set up the test environment by creating necessary instances.
+        """
+        self.school = School.objects.create(
+            name="Test School",
+            email="testschool@example.com",
+            contact_number="1234567890",
+            school_type="PRIMARY",
+            province="GAUTENG",
+            school_district="GAUTENG NORTH"
+        )
+        self.grade = Grade.objects.create(
+            grade='8',
+            major_subjects=1,
+            none_major_subjects=2,
+            school=self.school
+        )
+
+    def test_duplicate_email(self):
+        """
+        Test creating a user with a duplicate email address.
+        """
+        CustomUser.objects.create_user(
+            email="duplicate@example.com",
+            name="First",
+            surname="User",
+            role="STUDENT",
+            school=self.school,
+            grade=self.grade,
+        )
+        with self.assertRaises(ValueError):
+            CustomUser.objects.create_user(
+                email="duplicate@example.com",
+                name="Second",
+                surname="User",
+                role="STUDENT",
+                school=self.school,
+                grade=self.grade,
+            )
+
+    def test_role_change(self):
+        """
+        Test changing a user's role and verifying related constraints.
+        """
+        user = CustomUser.objects.create_user(
+            email="change_role@example.com",
+            name="Role",
+            surname="Change",
+            role="STUDENT",
+            school=self.school,
+            grade=self.grade,
+        )
+        user.role = "TEACHER"
+        user.grade = None  # Remove grade since it's not required for TEACHER
+        user.save()
+        self.assertEqual(user.role, "TEACHER")
+        self.assertIsNone(user.grade)
+
+    def test_profile_picture_upload(self):
+        """
+        Test uploading a profile picture with various file sizes and formats.
+        """
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        # Test valid file upload
+        valid_file = SimpleUploadedFile("profile.jpg", b"file_content", content_type="image/jpeg")
+        user = CustomUser.objects.create_user(
+            email="profilepic@example.com",
+            name="Profile",
+            surname="Pic",
+            role="STUDENT",
+            school=self.school,
+            grade=self.grade,
+            profile_picture=valid_file
+        )
+        self.assertTrue(user.profile_picture)
+
+        # Test invalid file upload
+        invalid_file = SimpleUploadedFile("profile.txt", b"file_content", content_type="text/plain")
+        with self.assertRaises(ValueError):
+            CustomUser.objects.create_user(
+                email="invalidpic@example.com",
+                name="Invalid",
+                surname="Pic",
+                role="STUDENT",
+                school=self.school,
+                grade=self.grade,
+                profile_picture=invalid_file
+            )
+
+    def test_account_reactivation(self):
+        """
+        Test reactivating a previously deactivated user.
+        """
+        user = CustomUser.objects.create_user(
+            email="reactivate@example.com",
+            name="Reactivate",
+            surname="User",
+            role="STUDENT",
+            school=self.school,
+            grade=self.grade,
+        )
+        user.activated = False
+        user.save()
+        reactivated_user = CustomUser.objects.activate_user(
+            email="reactivate@example.com",
+            password="ValidPassword123"
+        )
+        self.assertTrue(reactivated_user.activated)
+
+    def test_concurrent_user_creation(self):
+        """
+        Test creating users concurrently to ensure system handles it properly.
+        """
+        from threading import Thread
+
+        def create_user(email):
+            CustomUser.objects.create_user(
+                email=email,
+                name="Concurrent",
+                surname="User",
+                role="STUDENT",
+                school=self.school,
+                grade=self.grade,
+            )
+
+        emails = [f"concurrent{i}@example.com" for i in range(10)]
+        threads = [Thread(target=create_user, args=(email,)) for email in emails]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        for email in emails:
+            self.assertTrue(CustomUser.objects.filter(email=email).exists())
