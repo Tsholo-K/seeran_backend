@@ -120,20 +120,20 @@ class CustomUserManagerTest(TestCase):
         """
         Test handling race conditions when creating users.
         """
-
-        def create_user():
+        def create_user(thread_number):
+            id_number = f'020828{thread_number:05d}'  # Generate a unique 13-character ID number
             with transaction.atomic():
                 CustomUser.objects.create_user(
-                    email=f"raceconditionuser{threading.Thread.current_thread().name}@example.com",
+                    email=f"raceconditionuser{thread_number}@example.com",
                     name="RaceCondition",
                     surname="User",
-                    id_number=f'0208285344080{threading.Thread.current_thread().name}',
+                    id_number=id_number,
                     role="STUDENT",
                     school=self.school,
                     grade=self.grade,
                 )
 
-        threads = [threading.Thread(target=create_user) for _ in range(10)]
+        threads = [threading.Thread(target=create_user, args=(i,)) for i in range(10)]
         for thread in threads:
             thread.start()
         for thread in threads:
@@ -148,11 +148,13 @@ class CustomUserManagerTest(TestCase):
         def create_user(email):
             with transaction.atomic():
                 try:
+                    # Generate a unique 13-character ID number
+                    id_number = f'020828{threading.current_thread().name[-7:].zfill(7)}'
                     CustomUser.objects.create_user(
                         email=email,
                         name="DuplicateEmail",
                         surname="User",
-                        id_number='0208285344080',
+                        id_number=id_number,  # Ensure 13 characters including prefix
                         role="STUDENT",
                         school=self.school,
                         grade=self.grade,
@@ -169,15 +171,16 @@ class CustomUserManagerTest(TestCase):
 
         self.assertEqual(CustomUser.objects.filter(email=email).count(), 1)
 
+
     def test_concurrent_user_creation_with_duplicate_id_numbers(self):
         """
         Test creating multiple users with the same ID number simultaneously.
         """
         def create_user(id_number):
-            with transaction.atomic():
-                try:
+            try:
+                with transaction.atomic():
                     CustomUser.objects.create_user(
-                        email=f"uniqueuser{id_number}@example.com",
+                        email=f"uniqueuser{threading.current_thread().name}@example.com",
                         name="DuplicateID",
                         surname="User",
                         id_number=id_number,
@@ -185,8 +188,8 @@ class CustomUserManagerTest(TestCase):
                         school=self.school,
                         grade=self.grade,
                     )
-                except IntegrityError:
-                    pass
+            except IntegrityError:
+                pass
 
         id_number = '0208285344080'
         threads = [threading.Thread(target=create_user, args=(id_number,)) for _ in range(10)]
@@ -199,22 +202,22 @@ class CustomUserManagerTest(TestCase):
 
     def test_concurrent_user_creation_with_duplicate_passport_number(self):
         """
-        Test creating multiple users with the same email simultaneously.
+        Test creating multiple users with the same passport number simultaneously.
         """
         def create_user(passport_number):
-            with transaction.atomic():
-                try:
+            try:
+                with transaction.atomic():
                     CustomUser.objects.create_user(
-                        email=f"uniqueuser{passport_number}@example.com",
-                        name="DuplicateEmail",
+                        email=f"uniqueuser{threading.current_thread().name}@example.com",
+                        name="DuplicatePassport",
                         surname="User",
                         passport_number=passport_number,
                         role="STUDENT",
                         school=self.school,
                         grade=self.grade,
                     )
-                except IntegrityError:
-                    pass
+            except IntegrityError:
+                pass
 
         passport_number = '1234567890'
         threads = [threading.Thread(target=create_user, args=(passport_number,)) for _ in range(10)]
@@ -286,6 +289,7 @@ class CustomUserManagerTest(TestCase):
                 password=long_password
             )
         self.assertEqual(str(context.exception), "Password cannot exceed 128 characters")
+
 
     def test_user_role_requirements(self):
         """
