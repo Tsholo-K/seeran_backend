@@ -23,7 +23,7 @@ from attendances.models import Absent
 # serilializers
 from users.serializers import AccountSerializer
 from timetables.serializers import ScheduleSerializer
-from reports.serializers import GradesSerializer, GradeSerializer, SubjectDetailSerializer, ClassesSerializer
+from grades.serializers import GradesSerializer, GradeSerializer, SubjectDetailSerializer, ClassesSerializer
 from classes.serializers import ClassSerializer, ClassUpdateSerializer, TeacherClassesSerializer, TeacherRegisterClassSerializer
 
 # utility functions 
