@@ -200,7 +200,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     # for future refrences
     # country = models.CharField(max_length=2, choices=COUNTRY_CHOICES)
 
-    contact_number = models.CharField(_('phone number'), max_length=9, unique=True, blank=True, null=True)
+    contact_number = models.CharField(_('phone number'), max_length=15, unique=True, blank=True, null=True)
 
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='students', blank=True, null=True)
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='users', blank=True, null=True)
