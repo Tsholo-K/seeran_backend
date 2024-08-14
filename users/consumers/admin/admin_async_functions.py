@@ -20,7 +20,7 @@ from classes.models import Classroom
 
 # serilializers
 from users.serializers import AccountUpdateSerializer, AccountIDSerializer, AccountSerializer, AccountCreationSerializer, StudentAccountCreationSerializer, ParentAccountCreationSerializer
-from grades.serializers import GradesSerializer, GradeSerializer, SubjectDetailSerializer, ClassesSerializer
+from reports.serializers import GradesSerializer, GradeSerializer, SubjectDetailSerializer, ClassesSerializer
 from classes.serializers import ClassUpdateSerializer
 from announcements.serializers import AnnouncementCreationSerializer
 

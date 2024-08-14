@@ -6,7 +6,7 @@
 from rest_framework import serializers
 
 # models
-from .models import Grade, Subject
+from ..grades.models import Grade, Subject
 from classes.models import Classroom
 
 
