@@ -132,7 +132,7 @@ class CustomUserManagerTest(TestCase):
         )
 
         # Case 1: Valid password
-        user.objects.activate_user(
+        user = CustomUser.objects.activate_user(
             email="activateuser@example.com",
             password="SecurePassword123!"
         )
@@ -141,7 +141,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 2: Password without an uppercase letter
         with self.assertRaises(ValueError) as context:
-            user.objects.activate_user(
+            CustomUser.objects.activate_user(
                 email="activateuser@example.com",
                 password="securepassword123!"
             )
@@ -149,7 +149,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 3: Password without a number
         with self.assertRaises(ValueError) as context:
-            user.objects.activate_user(
+            CustomUser.objects.activate_user(
                 email="activateuser@example.com",
                 password="SecurePassword!"
             )
@@ -157,7 +157,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 4: Password without a special character
         with self.assertRaises(ValueError) as context:
-            user.objects.activate_user(
+            CustomUser.objects.activate_user(
                 email="activateuser@example.com",
                 password="SecurePassword123"
             )
@@ -165,7 +165,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 5: Password too short (e.g., less than 8 characters)
         with self.assertRaises(ValueError) as context:
-            user.objects.activate_user(
+            CustomUser.objects.activate_user(
                 email="activateuser@example.com",
                 password="S1!"
             )
@@ -174,7 +174,7 @@ class CustomUserManagerTest(TestCase):
         # Case 6: Password too long (e.g., more than 128 characters)
         long_password = "S" + "e" * 127 + "!"
         with self.assertRaises(ValueError) as context:
-            user.objects.activate_user(
+            CustomUser.objects.activate_user(
                 email="activateuser@example.com",
                 password=long_password
             )
