@@ -29,13 +29,15 @@ class CustomUserManagerTest(TestCase):
             school_type="PRIMARY",
             province="GAUTENG",
             school_district="GAUTENG NORTH"
-        ).save
+        )
+        self.school.save
         self.grade = Grade.objects.create(
             grade='8',
             major_subjects=1,
             none_major_subjects=2,
             school=self.school
-        ).save
+        )
+        self.grade.save
 
     def test_create_user_with_email(self):
         """
