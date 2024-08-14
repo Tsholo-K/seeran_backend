@@ -58,7 +58,7 @@ class CustomUserManagerTest(TestCase):
         self.assertTrue(user.password, None)
 
         # Case 2: Email with invalid format
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             CustomUser.objects.create_user(
                 email="invalid-email",
                 name="Invalid",
@@ -150,7 +150,7 @@ class CustomUserManagerTest(TestCase):
             email="activateuser@example.com",
             name="Eve",
             surname="White",
-            contact_number='711740824',
+            contact_number='0711740824',
             role="PRINCIPAL",
             school=self.school,
         )
