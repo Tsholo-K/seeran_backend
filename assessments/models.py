@@ -87,10 +87,11 @@ class Assessment(models.Model):
         return self.unique_identifier
 
     def clean(self):
-        # Convert self.due_date to a timezone-aware datetime if it's naive
-        if self.due_date.tzinfo is None:
-            self.due_date = self.due_date.replace(tzinfo=timezone.utc)
-        
+        # Check if self.due_date is a datetime.date
+        if isinstance(self.due_date, datetime.date):
+            # Convert self.due_date to a datetime.datetime at midnight
+            self.due_date = datetime.combine(self.due_date, datetime.min.time(), tzinfo=timezone.utc)
+
         # Compare with the current time in UTC
         if self.due_date < datetime.now(timezone.utc):
             raise ValidationError('an assessments due date must be in the future')
