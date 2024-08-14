@@ -120,26 +120,27 @@ class CustomUserManagerTest(TestCase):
         """
         Test handling race conditions when creating users.
         """
-        def create_user(thread_number):
-            id_number = f'020828{thread_number:05d}'  # Generate a unique 13-character ID number
+        def create_user(email_suffix):
             with transaction.atomic():
                 CustomUser.objects.create_user(
-                    email=f"raceconditionuser{thread_number}@example.com",
+                    email=f"raceconditionuser{email_suffix}@example.com",
                     name="RaceCondition",
                     surname="User",
-                    id_number=id_number,
+                    id_number=f'020828{email_suffix}',  # Ensure unique ID
                     role="STUDENT",
                     school=self.school,
                     grade=self.grade,
                 )
 
-        threads = [threading.Thread(target=create_user, args=(i,)) for i in range(10)]
+        email_suffixes = [f"{i:03d}" for i in range(10)]
+        threads = [threading.Thread(target=create_user, args=(suffix,)) for suffix in email_suffixes]
         for thread in threads:
             thread.start()
         for thread in threads:
             thread.join()
 
         self.assertEqual(CustomUser.objects.count(), 10)
+
 
     def test_concurrent_user_creation_with_duplicate_emails(self):
         """
@@ -242,7 +243,7 @@ class CustomUserManagerTest(TestCase):
         )
 
         # Case 1: Valid password
-        user = CustomUser.objects.activate_user(
+        user.activate_user(
             email="activateuser@example.com",
             password="SecurePassword123!"
         )
@@ -251,7 +252,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 2: Password without an uppercase letter
         with self.assertRaises(ValueError) as context:
-            CustomUser.objects.activate_user(
+            user.activate_user(
                 email="activateuser@example.com",
                 password="securepassword123!"
             )
@@ -259,7 +260,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 3: Password without a number
         with self.assertRaises(ValueError) as context:
-            CustomUser.objects.activate_user(
+            user.activate_user(
                 email="activateuser@example.com",
                 password="SecurePassword!"
             )
@@ -267,7 +268,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 4: Password without a special character
         with self.assertRaises(ValueError) as context:
-            CustomUser.objects.activate_user(
+            user.activate_user(
                 email="activateuser@example.com",
                 password="SecurePassword123"
             )
@@ -275,7 +276,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 5: Password too short (e.g., less than 8 characters)
         with self.assertRaises(ValueError) as context:
-            CustomUser.objects.activate_user(
+            user.objects.activate_user(
                 email="activateuser@example.com",
                 password="S1!"
             )
@@ -284,7 +285,7 @@ class CustomUserManagerTest(TestCase):
         # Case 6: Password too long (e.g., more than 128 characters)
         long_password = "S" + "e" * 127 + "!"
         with self.assertRaises(ValueError) as context:
-            CustomUser.objects.activate_user(
+            user.objects.activate_user(
                 email="activateuser@example.com",
                 password=long_password
             )
