@@ -185,7 +185,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     activated = models.BooleanField(_('account active or not'), default=False)
     profile_picture = models.ImageField(upload_to=get_upload_path, blank=True, null=True)
 
-    role = models.CharField(choices=ROLE_CHOICES)
+    role = models.CharField(choices=ROLE_CHOICES, editable=False)
 
     children = models.ManyToManyField('self', blank=True)
     event_emails = models.BooleanField(_('email subscription'), default=False)

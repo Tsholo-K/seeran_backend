@@ -43,6 +43,8 @@ class CustomUserManagerTest(TestCase):
         """
         Test creating a user with email.
         """
+
+        # Case 1: Valid email creation
         user = CustomUser.objects.create_user(
             email="testuser@example.com",
             name="John",
@@ -53,53 +55,21 @@ class CustomUserManagerTest(TestCase):
             grade=self.grade,
         )
         self.assertEqual(user.email, "testuser@example.com")
-        self.assertTrue(user.password, None)
+        self.assertTrue(user.password is None)
 
-    def test_create_user_with_id_number(self):
-        """
-        Test creating a user with ID number.
-        """
-        user = CustomUser.objects.create_user(
-            id_number='0208285344080',
-            name="Jane",
-            surname="Doe",
-            role="STUDENT",
-            grade=self.grade,
-            school=self.school,
-        )
-        self.assertEqual(user.id_number, "0208285344080")
-
-    def test_create_user_with_passport_number(self):
-        """
-        Test creating a user with passport number.
-        """
-        user = CustomUser.objects.create_user(
-            passport_number="A12345678",
-            name="Alice",
-            surname="Smith",
-            role="STUDENT",
-            grade=self.grade,
-            school=self.school,
-        )
-        self.assertEqual(user.passport_number, "A12345678")
-
-    def test_create_user_without_email_id_passport(self):
-        """
-        Test creating a user without any identifier.
-        """
+        # Case 2: Email with invalid format
         with self.assertRaises(ValueError):
             CustomUser.objects.create_user(
-                name="Bob",
-                surname="Brown",
+                email="invalid-email",
+                name="Invalid",
+                surname="Email",
+                id_number='0208285344081',
                 role="STUDENT",
                 school=self.school,
                 grade=self.grade,
             )
 
-    def test_create_user_with_existing_email(self):
-        """
-        Test creating a user with an existing email.
-        """
+        # Case 3: Duplicate Emails
         CustomUser.objects.create_user(
             email="existinguser@example.com",
             name="Charlie",
@@ -117,6 +87,60 @@ class CustomUserManagerTest(TestCase):
                 school=self.school,
                 grade=self.grade,
             )
+
+    def test_create_user_with_id_number(self):
+        """
+        Test creating a user with ID number.
+        """
+
+        # Case 1: Valid ID number creation
+        user = CustomUser.objects.create_user(
+            id_number='0208285344080',
+            name="Jane",
+            surname="Doe",
+            role="STUDENT",
+            grade=self.grade,
+            school=self.school,
+        )
+        self.assertEqual(user.id_number, "0208285344080")
+
+        # Case 2: Duplicate ID number
+        with self.assertRaises(ValueError):
+            CustomUser.objects.create_user(
+                id_number='0208285344080',
+                name="Jane",
+                surname="Doe",
+                role="STUDENT",
+                grade=self.grade,
+                school=self.school,
+            )
+
+    def test_create_user_with_passport_number(self):
+        """
+        Test creating a user with passport number.
+        """
+
+        # Case 1: Valid passport number creation
+        user = CustomUser.objects.create_user(
+            passport_number="123456789",
+            name="Alice",
+            surname="Smith",
+            role="STUDENT",
+            grade=self.grade,
+            school=self.school,
+        )
+        self.assertEqual(user.passport_number, "A12345678")
+
+        # Case 2: Duplicate passport number
+        with self.assertRaises(ValueError):
+            CustomUser.objects.create_user(
+                passport_number="123456789",
+                name="Bob",
+                surname="Smith",
+                role="STUDENT",
+                grade=self.grade,
+                school=self.school,
+            )        
 
     def test_activate_user(self):
         """
@@ -184,6 +208,7 @@ class CustomUserManagerTest(TestCase):
         """
         Test role-specific requirements for users.
         """
+        # Case 1: Missing school for roles that require it
         with self.assertRaises(ValueError):
             CustomUser.objects.create_user(
                 email="missinggrade@example.com",
@@ -195,6 +220,7 @@ class CustomUserManagerTest(TestCase):
                 school=self.school
             )
 
+        # Case 2: Missing identifier for STUDENT role
         with self.assertRaises(ValueError):
             CustomUser.objects.create_user(
                 email="missingidentifier@example.com",
@@ -204,7 +230,8 @@ class CustomUserManagerTest(TestCase):
                 grade=self.grade,
                 school=self.school
             )
-            
+
+        # Case 3: Missing required fields for TEACHER role
         with self.assertRaises(ValueError):
             CustomUser.objects.create_user(
                 name="Grace",
@@ -212,41 +239,13 @@ class CustomUserManagerTest(TestCase):
                 role="TEACHER",
                 school=self.school,
             )
-            
+
+        # Case 4: Missing phone number for PRINCIPAL role
         with self.assertRaises(ValueError):
             CustomUser.objects.create_user(
                 email="missingphone@example.com",
                 name="Grace",
                 surname="Gray",
-                role="PRINCIPAL",
-                school=self.school,
-                phone_number=None
-            )
-
-    def test_invalid_email_format(self):
-        """
-        Test creating a user with an invalid email format.
-        """
-        with self.assertRaises(ValueError):
-            CustomUser.objects.create_user(
-                email="invalid-email",
-                name="Invalid",
-                surname="Email",
-                id_number='0208285344080',
-                role="STUDENT",
-                school=self.school,
-                grade=self.grade,
-            )
-
-    def test_missing_phone_number_for_principal(self):
-        """
-        Test creating a principal without a phone number.
-        """
-        with self.assertRaises(ValueError):
-            CustomUser.objects.create_user(
-                email="principal@example.com",
-                name="Missing",
-                surname="Phone",
                 role="PRINCIPAL",
                 school=self.school,
                 phone_number=None
@@ -279,6 +278,7 @@ class CustomUserManagerTest(TestCase):
         too_long_name = "x" * 65
         too_long_surname = "x" * 65
 
+        # Case 1: Long email
         with self.assertRaises(ValidationError) as context:
             CustomUser.objects.create_user(
                 email=too_long_email,
@@ -291,6 +291,7 @@ class CustomUserManagerTest(TestCase):
             )
         self.assertIn("email address cannot exceed 254 characters", str(context.exception))
 
+        # Case 2: Long name
         with self.assertRaises(ValidationError) as context:
             CustomUser.objects.create_user(
                 email="normalemail@example.com",
@@ -303,6 +304,7 @@ class CustomUserManagerTest(TestCase):
             )
         self.assertIn("name cannot exceed 64 characters", str(context.exception))
 
+        # Case 3: Long surname
         with self.assertRaises(ValidationError) as context:
             CustomUser.objects.create_user(
                 email="normalemail@example.com",
@@ -314,37 +316,6 @@ class CustomUserManagerTest(TestCase):
                 grade=self.grade,
             )
         self.assertIn("surname cannot exceed 64 characters", str(context.exception))
-
-    def test_user_without_required_fields(self):
-        """
-        Test creating a user without required fields.
-        """
-        with self.assertRaises(ValueError):
-            CustomUser.objects.create_user(
-                email="incomplete@example.com",
-                name="Incomplete",
-                surname="User",
-                role="STUDENT",
-            )
-
-    def test_role_change(self):
-        """
-        Test changing a user's role and verifying related constraints.
-        """
-        user = CustomUser.objects.create_user(
-            email="change_role@example.com",
-            name="Role",
-            surname="Change",
-            id_number='0208285344080',
-            role="STUDENT",
-            school=self.school,
-            grade=self.grade,
-        )
-        user.role = "TEACHER"
-        user.grade = None  # Remove grade since it's not required for TEACHER
-        user.save()
-        self.assertEqual(user.role, "TEACHER")
-        self.assertIsNone(user.grade)
 
     def test_profile_picture_upload(self):
         """
