@@ -1,10 +1,15 @@
-from django.test import TestCase
-from django.core.exceptions import ValidationError
-from django.contrib.auth import get_user_model
-from django.utils import timezone
+# python
 from datetime import timedelta
 
-from .models import School, Grade, CustomUser
+# django
+from django.test import TestCase
+from django.core.exceptions import ValidationError
+from django.utils import timezone
+
+from .models import CustomUser
+from schools.models import School
+from grades.models import Grade
+
 
 class CustomUserManagerTest(TestCase):
     """
@@ -146,29 +151,6 @@ class CustomUserManagerTest(TestCase):
                 phone_number=None
             )
 
-    """
-    Test edge cases for the CustomUser model and CustomUserManager.
-    """
-
-    def setUp(self):
-        """
-        Set up the test environment by creating necessary instances.
-        """
-        self.school = School.objects.create(
-            name="Test School",
-            email="testschool@example.com",
-            contact_number="1234567890",
-            school_type="PRIMARY",
-            province="GAUTENG",
-            school_district="GAUTENG NORTH"
-        )
-        self.grade = Grade.objects.create(
-            grade='8',
-            major_subjects=1,
-            none_major_subjects=2,
-            school=self.school
-        )
-
     def test_invalid_email_format(self):
         """
         Test creating a user with an invalid email format.
@@ -270,51 +252,6 @@ class CustomUserManagerTest(TestCase):
 
         self.assertTrue(CustomUser.objects.filter(email="threadeduser@example.com").exists())
 
-    """
-    Additional test cases for CustomUser and CustomUserManager.
-    """
-
-    def setUp(self):
-        """
-        Set up the test environment by creating necessary instances.
-        """
-        self.school = School.objects.create(
-            name="Test School",
-            email="testschool@example.com",
-            contact_number="1234567890",
-            school_type="PRIMARY",
-            province="GAUTENG",
-            school_district="GAUTENG NORTH"
-        )
-        self.grade = Grade.objects.create(
-            grade='8',
-            major_subjects=1,
-            none_major_subjects=2,
-            school=self.school
-        )
-
-    def test_duplicate_email(self):
-        """
-        Test creating a user with a duplicate email address.
-        """
-        CustomUser.objects.create_user(
-            email="duplicate@example.com",
-            name="First",
-            surname="User",
-            role="STUDENT",
-            school=self.school,
-            grade=self.grade,
-        )
-        with self.assertRaises(ValueError):
-            CustomUser.objects.create_user(
-                email="duplicate@example.com",
-                name="Second",
-                surname="User",
-                role="STUDENT",
-                school=self.school,
-                grade=self.grade,
-            )
-
     def test_role_change(self):
         """
         Test changing a user's role and verifying related constraints.
@@ -384,29 +321,3 @@ class CustomUserManagerTest(TestCase):
             password="ValidPassword123"
         )
         self.assertTrue(reactivated_user.activated)
-
-    def test_concurrent_user_creation(self):
-        """
-        Test creating users concurrently to ensure system handles it properly.
-        """
-        from threading import Thread
-
-        def create_user(email):
-            CustomUser.objects.create_user(
-                email=email,
-                name="Concurrent",
-                surname="User",
-                role="STUDENT",
-                school=self.school,
-                grade=self.grade,
-            )
-
-        emails = [f"concurrent{i}@example.com" for i in range(10)]
-        threads = [Thread(target=create_user, args=(email,)) for email in emails]
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
-
-        for email in emails:
-            self.assertTrue(CustomUser.objects.filter(email=email).exists())

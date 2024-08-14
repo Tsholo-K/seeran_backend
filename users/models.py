@@ -17,6 +17,15 @@ from grades.models import Grade
 from authentication.utils import get_upload_path, is_phone_number_valid, validate_user_email
 
 
+ROLE_CHOICES = [
+    ('STUDENT', 'Student'),
+    ('TEACHER', 'Teacher'),
+    ('ADMIN', 'Admin'),
+    ('PRINCIPAL', 'Principal'),
+    ('FOUNDER', 'Founder'),
+    ('PARENT', 'Parent'),
+]
+
 class CustomUserManager(BaseUserManager):
     """
     Custom manager for the CustomUser model.
@@ -176,14 +185,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     activated = models.BooleanField(_('account active or not'), default=False)
     profile_picture = models.ImageField(upload_to=get_upload_path, blank=True, null=True)
 
-    ROLE_CHOICES = [
-        ('STUDENT', 'Student'),
-        ('TEACHER', 'Teacher'),
-        ('ADMIN', 'Admin'),
-        ('PRINCIPAL', 'Principal'),
-        ('FOUNDER', 'Founder'),
-        ('PARENT', 'Parent'),
-    ]
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
 
     children = models.ManyToManyField('self', blank=True)
