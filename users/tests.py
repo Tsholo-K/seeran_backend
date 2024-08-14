@@ -43,6 +43,7 @@ class CustomUserManagerTest(TestCase):
             email="testuser@example.com",
             name="John",
             surname="Doe",
+            id_number='0208285344080',
             role="STUDENT",
             school=self.school,
             grade=self.grade,
@@ -55,10 +56,11 @@ class CustomUserManagerTest(TestCase):
         Test creating a user with ID number.
         """
         user = CustomUser.objects.create_user(
-            id_number="1234567890123",
+            id_number='0208285344080',
             name="Jane",
             surname="Doe",
-            role="TEACHER",
+            role="STUDENT",
+            grade=self.grade,
             school=self.school,
         )
         self.assertEqual(user.id_number, "1234567890123")
@@ -71,7 +73,8 @@ class CustomUserManagerTest(TestCase):
             passport_number="A12345678",
             name="Alice",
             surname="Smith",
-            role="ADMIN",
+            role="STUDENT",
+            grade=self.grade,
             school=self.school,
         )
         self.assertEqual(user.passport_number, "A12345678")
@@ -105,6 +108,7 @@ class CustomUserManagerTest(TestCase):
                 email="existinguser@example.com",
                 name="David",
                 surname="Green",
+                id_number='0208285344080',
                 role="STUDENT",
                 school=self.school,
                 grade=self.grade,
@@ -118,6 +122,7 @@ class CustomUserManagerTest(TestCase):
             email="activateuser@example.com",
             name="Eve",
             surname="White",
+            phone_number='711740824',
             role="PRINCIPAL",
             school=self.school,
         )
@@ -134,13 +139,33 @@ class CustomUserManagerTest(TestCase):
         """
         with self.assertRaises(ValueError):
             CustomUser.objects.create_user(
-                email="missingrole@example.com",
+                email="missinggrade@example.com",
+                name="Frank",
+                surname="Black",
+                id_number='0208285344080',
+                role="STUDENT",
+                grade=None,
+                school=self.school
+            )
+
+        with self.assertRaises(ValueError):
+            CustomUser.objects.create_user(
+                email="missingidentifier@example.com",
                 name="Frank",
                 surname="Black",
                 role="STUDENT",
+                grade=self.grade,
                 school=self.school
             )
-        
+            
+        with self.assertRaises(ValueError):
+            CustomUser.objects.create_user(
+                name="Grace",
+                surname="Gray",
+                role="TEACHER",
+                school=self.school,
+            )
+            
         with self.assertRaises(ValueError):
             CustomUser.objects.create_user(
                 email="missingphone@example.com",
@@ -160,6 +185,7 @@ class CustomUserManagerTest(TestCase):
                 email="invalid-email",
                 name="Invalid",
                 surname="Email",
+                id_number='0208285344080',
                 role="STUDENT",
                 school=self.school,
                 grade=self.grade,
@@ -174,6 +200,7 @@ class CustomUserManagerTest(TestCase):
                 email="principal@example.com",
                 name="Missing",
                 surname="Phone",
+                phone_number='711740824',
                 role="PRINCIPAL",
                 school=self.school,
                 phone_number=None
@@ -187,6 +214,7 @@ class CustomUserManagerTest(TestCase):
             email="activateuser@example.com",
             name="Activate",
             surname="User",
+            phone_number='711740824',
             role="PRINCIPAL",
             school=self.school,
         )
@@ -208,6 +236,7 @@ class CustomUserManagerTest(TestCase):
             email=long_email,
             name=long_name,
             surname=long_surname,
+            id_number='0208285344080',
             role="STUDENT",
             school=self.school,
             grade=self.grade,
@@ -239,6 +268,7 @@ class CustomUserManagerTest(TestCase):
                 email="threadeduser@example.com",
                 name="Threaded",
                 surname="User",
+                id_number='0208285344080',
                 role="STUDENT",
                 school=self.school,
                 grade=self.grade,
@@ -260,6 +290,7 @@ class CustomUserManagerTest(TestCase):
             email="change_role@example.com",
             name="Role",
             surname="Change",
+            id_number='0208285344080',
             role="STUDENT",
             school=self.school,
             grade=self.grade,
@@ -282,6 +313,7 @@ class CustomUserManagerTest(TestCase):
             email="profilepic@example.com",
             name="Profile",
             surname="Pic",
+            id_number='0208285344080',
             role="STUDENT",
             school=self.school,
             grade=self.grade,
@@ -296,6 +328,7 @@ class CustomUserManagerTest(TestCase):
                 email="invalidpic@example.com",
                 name="Invalid",
                 surname="Pic",
+                id_number='0208285344080',
                 role="STUDENT",
                 school=self.school,
                 grade=self.grade,
@@ -310,6 +343,7 @@ class CustomUserManagerTest(TestCase):
             email="reactivate@example.com",
             name="Reactivate",
             surname="User",
+                id_number='0208285344080',
             role="STUDENT",
             school=self.school,
             grade=self.grade,
