@@ -32,7 +32,7 @@ class CustomUserManagerTest(TestCase):
         )
         self.school.save()
         self.grade = Grade.objects.create(
-            grade='8',
+            grade='7',
             major_subjects=1,
             none_major_subjects=2,
             school=self.school
@@ -150,7 +150,7 @@ class CustomUserManagerTest(TestCase):
             email="activateuser@example.com",
             name="Eve",
             surname="White",
-            phone_number='711740824',
+            contact_number='711740824',
             role="PRINCIPAL",
             school=self.school,
         )
