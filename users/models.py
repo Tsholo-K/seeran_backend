@@ -206,7 +206,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     activated = models.BooleanField(_('account active or not'), default=False)
     profile_picture = models.ImageField(upload_to=get_upload_path, blank=True, null=True)
 
-    children = models.ManyToManyField('self', blank=True, default=None)
+    children = models.ManyToManyField('self', blank=True)
     event_emails = models.BooleanField(_('email subscription'), default=False)
     multifactor_authentication = models.BooleanField(_('multifactor authentication'), default=False)
     email_banned = models.BooleanField(_('email banned'), default=False)
