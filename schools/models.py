@@ -1,12 +1,16 @@
 # python 
 import uuid
+import datetime
 from datetime import timedelta
+import re
 
 # django 
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
-
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
+from django.core.validators import validate_email, URLValidator
 
 # school district choices
 SCHOOL_DISTRICT_CHOICES = [
@@ -92,15 +96,45 @@ class School(models.Model):
 
     def __str__(self):
         return self.name
-
+    
     def clean(self):
         """
         Perform custom validation for the School model.
         """
-        if self.contact_number and not self.contact_number.isdigit():
-            raise ValidationError(_('contact number should contain only digits'))
+        if self.contact_number:
+            if not self.contact_number.isdigit():
+                raise ValidationError(_('contact number should contain only digits'))
+            if len(self.contact_number) < 10 or len(self.contact_number) > 15:
+                raise ValidationError(_('contact number should be between 10 and 15 digits'))
+        
+        if self.email:
+            try:
+                validate_email(self.email)
+            except ValidationError:
+                raise ValidationError(_('the provided email address is invalid'))
+            if len(self.email) > 254:
+                raise ValidationError(_("email address cannot exceed 254 characters"))
+            
+        if self.website:
+            validator = URLValidator()
+            try:
+                validator(self.website)
+            except ValidationError:
+                raise ValidationError(_('the provided URL format is Invalid'))
+        
         if self.logo and not self.logo.name.endswith(('.png', '.jpg', '.jpeg')):
-            raise ValidationError(_('Logo must be a PNG or JPG/JPEG image'))
+            raise ValidationError(_('school logo must be a PNG or JPG/JPEG image'))
+
+        if self.established_date and self.established_date > datetime.date.today():
+            raise ValidationError(_('established date cannot be in the future'))
+
+        # Validate choice fields
+        if self.school_type not in dict(SCHOOL_TYPE_CHOICES).keys():
+            raise ValidationError(_('provided school type is invalid'))
+        if self.province not in dict(PROVINCE_CHOICES).keys():
+            raise ValidationError(_('provided province is invalid'))
+        if self.school_district not in dict(SCHOOL_DISTRICT_CHOICES).keys():
+            raise ValidationError(_('provided school district is invalid'))
 
     def save(self, *args, **kwargs):
         """

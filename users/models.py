@@ -5,6 +5,7 @@ from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.core.validators import validate_email
 
 # python 
 import uuid
@@ -14,7 +15,7 @@ from schools.models import School
 from grades.models import Grade
 
 # utility functions
-from authentication.utils import get_upload_path, is_phone_number_valid, validate_user_email
+from authentication.utils import get_upload_path, is_phone_number_valid
 
 
 ROLE_CHOICES = [
@@ -26,6 +27,13 @@ ROLE_CHOICES = [
     ('PARENT', 'Parent'),
 ]
 
+# COUNTRY_CHOICES = [
+#     ('ZA', 'South Africa'),
+#     ('US', 'United States'),
+#     ('GB', 'United Kingdom'),
+#     # Add more countries as needed
+# ]
+
 class CustomUserManager(BaseUserManager):
     """
     Custom manager for the CustomUser model.
@@ -34,7 +42,7 @@ class CustomUserManager(BaseUserManager):
 
 
     @transaction.atomic
-    def create_user(self, email=None, id_number=None, passport_number=None, name=None, surname=None, phone_number=None, role=None, school=None, grade=None, **extra_fields):
+    def create_user(self, email=None, id_number=None, passport_number=None, name=None, surname=None, contact_number=None, role=None, school=None, grade=None, **extra_fields):
         """
         Creates and saves a user with the given parameters.
 
@@ -67,10 +75,17 @@ class CustomUserManager(BaseUserManager):
         if not surname:
             raise ValueError(_('invalid information provided, account missing surname. all accounts are required to have a surname associated with them no matter the role'))
 
+        # # Ensure country is provided will be implemeneted later on
+        # if not country:
+        #     raise ValueError(_('invalid information provided, account missing country. all accounts are required to have a country associated with them no matter the role'))
+
         # Check if the email already exists
         if email:
-            if not validate_user_email(email):
-                raise ValueError(_('invalid email address'))
+            try:
+                validate_email(email)
+            except ValidationError:
+                raise ValidationError(_('the provided email address is invalid'))
+
             
             if self.model.objects.filter(email=email).exists():
                 raise ValueError(_('an account with the provided email address already exists'))
@@ -85,6 +100,10 @@ class CustomUserManager(BaseUserManager):
         if passport_number and self.model.objects.filter(passport_number=passport_number).exists():
             raise ValueError(_('an account with the provided Passport number already exists'))
 
+        # Validate role
+        if role not in ['FOUNDER', 'PARENT', 'STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL']:
+            raise ValueError(_('the role specified for the account is invlaid'))
+
         # Validate role-specific requirements
         if role in ['STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL']:
             if school is None:
@@ -94,12 +113,12 @@ class CustomUserManager(BaseUserManager):
 
         # Validate requirements for specific roles
         if role == 'PRINCIPAL':
-            if phone_number is None:
-                raise ValueError(_('Account must have a contact number'))
-            if not is_phone_number_valid(phone_number):
+            if contact_number is None:
+                raise ValueError(_('account must have a contact number'))
+            if not is_phone_number_valid(contact_number):
                 raise ValueError(_('Invalid phone number format'))
         else:
-            phone_number = None
+            contact_number = None
 
         if role == 'STUDENT':
             if not id_number and not passport_number:
@@ -121,7 +140,7 @@ class CustomUserManager(BaseUserManager):
             id_number = None
 
         # Create and save user instance
-        user = self.model(email=email, id_number=id_number, passport_number=passport_number, name=name, surname=surname, grade=grade, phone_number=phone_number, role=role, school=school, **extra_fields)
+        user = self.model(email=email, id_number=id_number, passport_number=passport_number, name=name, surname=surname, grade=grade, contact_number=contact_number, role=role, school=school, **extra_fields)
         user.set_unusable_password()  # Set unusable password until activated
         user.save(using=self._db)
 
@@ -175,7 +194,11 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     name = models.CharField(_('name'), max_length=64)
     surname = models.CharField(_('surname'), max_length=64)
-    phone_number = models.CharField(_('phone number'), max_length=9, unique=True, blank=True, null=True)
+    
+    # for future refrences
+    # country = models.CharField(max_length=2, choices=COUNTRY_CHOICES)
+
+    contact_number = models.CharField(_('phone number'), max_length=9, unique=True, blank=True, null=True)
 
     account_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
@@ -185,7 +208,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     activated = models.BooleanField(_('account active or not'), default=False)
     profile_picture = models.ImageField(upload_to=get_upload_path, blank=True, null=True)
 
-    role = models.CharField(choices=ROLE_CHOICES, editable=False)
+    role = models.CharField(choices=ROLE_CHOICES)
 
     children = models.ManyToManyField('self', blank=True)
     event_emails = models.BooleanField(_('email subscription'), default=False)
@@ -204,21 +227,67 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     class Meta:
         ordering = ['surname', 'name', 'account_id']
+        unique_together = ('name', 'surname', 'id_number')
 
     def __str__(self):
         return self.name + ' ' + self.surname
-
+        
     def clean(self):
-        if self.email and len(self.email) > 254:
-            raise ValidationError("email address cannot exceed 254 characters")
-        if len(self.name) > 64:
-            raise ValidationError("name cannot exceed 64 characters")
-        if len(self.surname) > 64:
-            raise ValidationError("surname cannot exceed 64 characters")
+        # Ensure correct field format
+        if self.email:
+            try:
+                validate_email(self.email)
+            except ValidationError:
+                raise ValidationError(_('the provided email address is invalid'))
+            if len(self.email) > 254:
+                raise ValidationError(_("email address cannot exceed 254 characters"))
+
         if self.id_number and len(self.id_number) > 13:
-            raise ValidationError("ID number cannot exceed 13 characters")
+            raise ValidationError(_("ID number cannot exceed 13 characters"))
         if self.passport_number and len(self.passport_number) > 9:
-            raise ValidationError("passport number cannot exceed 9 characters")
+            raise ValidationError(_("passport number cannot exceed 9 characters"))
+        if len(self.name) > 64:
+            raise ValidationError(_("name cannot exceed 64 characters"))
+        if len(self.surname) > 64:
+            raise ValidationError(_("surname cannot exceed 64 characters"))
+        
+        if self.contact:
+            if self.role != 'PRINCIPAL':
+                raise ValidationError(_('only principal accounts can can contain contact one numbers'))
+            
+            if not self.contact_number.isdigit():
+                raise ValidationError(_('contact number should contain only digits'))
+            if len(self.contact_number) < 10 or len(self.contact_number) > 15:
+                raise ValidationError(_('contact number should be between 10 and 15 digits'))
+
+        # Ensure grade is appropriate for the role
+        if self.role == 'STUDENT':
+            if not self.grade:
+                raise ValidationError(_('student accounts need to be allocated to a grade'))
+            if self.school and self.grade.school != self.school:
+                raise ValidationError(_('the grade must be associated with the school the student account is linked to'))
+            if self.school.school_type == 'PRIMARY' and int(self.grade.grade) > 7:
+                raise ValidationError(_('primary school students cannot be assigned to grades higher than 7'))
+            if self.school.school_type == 'SECONDARY' and int(self.grade.grade) <= 7:
+                raise ValidationError(_('secondary school students must be assigned to grades higher than 7'))
+            
+        elif self.role in ['PARENT', 'FOUNDER', 'PRINCIPAL', 'TEACHER', 'ADMIN']:
+            if self.grade is not None:
+                raise ValidationError(_('only student accounts can be associated with a grade'))
+
+        # Ensure that only PARENT role can have children
+        if self.role != 'PARENT' and self.children.exists():
+            raise ValidationError(_('only parent accounts can be assigned children'))
+        
+        # Ensure that only STUDENT role can have be assigned as children
+        if self.role == 'PARENT':
+            for child in self.children.all():
+                if child.role != 'STUDENT':
+                    raise ValidationError(_('only student accounts can be assigned as children'))
+
+        # Prevent cyclic references in parent-child relationships
+        if self in self.children.all():
+            raise ValidationError(_('an account cannot be their own parent'))
 
     def save(self, *args, **kwargs):
         # Call clean to validate fields

@@ -13,7 +13,7 @@ class PrincipalAccountCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = [ 'name', 'surname', 'phone_number', 'email', 'school', 'role' ]
+        fields = [ 'name', 'surname', 'contact_number', 'email', 'school', 'role' ]
 
 
 class StudentAccountCreationSerializer(serializers.ModelSerializer):
@@ -247,7 +247,7 @@ class PrincipalIDSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = [ 'email', 'name', 'surname', 'phone_number', 'role', 'id', 'identifier' ]
+        fields = [ 'email', 'name', 'surname', 'contact_number', 'role', 'id', 'identifier' ]
     
     def get_name(self, obj):
         return obj.name.title()
@@ -274,7 +274,7 @@ class PrincipalAccountUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['name', 'surname', 'email', 'phone_number']
+        fields = ['name', 'surname', 'email', 'contact_number']
 
 
 class AccountUpdateSerializer(serializers.ModelSerializer):
