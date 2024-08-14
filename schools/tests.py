@@ -89,7 +89,14 @@ class SchoolModelTest(TestCase):
         Test that a valid school district is accepted.
         """
         valid_district = 'GAUTENG NORTH'
-        school = School(school_district=valid_district)
+        school = School(
+            name="Valid District School",
+            email="another@example.com",
+            contact_number="0987654321",
+            school_type="PRIMARY",
+            province="GAUTENG",
+            school_district=valid_district
+        )
         try:
             school.full_clean()  # Calls clean and validates the model
         except ValidationError:
@@ -100,7 +107,14 @@ class SchoolModelTest(TestCase):
         Test that an invalid school district raises a validation error.
         """
         invalid_district = 'INVALID DISTRICT'
-        school = School(school_district=invalid_district)
+        school = School(
+            name="Invalid District School",
+            email="another@example.com",
+            contact_number="0987654321",
+            school_type="PRIMARY",
+            province="GAUTENG",
+            school_district=invalid_district
+        )
         with self.assertRaises(ValidationError):
             school.full_clean()  # Calls clean and validates the model
 
