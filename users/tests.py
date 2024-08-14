@@ -200,7 +200,6 @@ class CustomUserManagerTest(TestCase):
                 email="principal@example.com",
                 name="Missing",
                 surname="Phone",
-                phone_number='711740824',
                 role="PRINCIPAL",
                 school=self.school,
                 phone_number=None
