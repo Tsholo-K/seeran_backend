@@ -278,21 +278,23 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         elif self.role in ['PARENT', 'FOUNDER', 'PRINCIPAL', 'TEACHER', 'ADMIN']:
             if self.grade is not None:
                 raise ValidationError(_('only student accounts can be associated with a grade'))
-
+            
         # Ensure that only PARENT role can have children
-        if self.role != 'PARENT' and self.children.exists():
-            raise ValidationError(_('only parent accounts can be assigned children'))
-        
+        if self.role != 'PARENT':
+                if self.children.exists():
+                    raise ValidationError(_('only parent accounts can be assigned children'))
+                
         # Ensure that only STUDENT role can have be assigned as children
-        if self.role == 'PARENT':
-            for child in self.children.all():
-                if child.role != 'STUDENT':
-                    raise ValidationError(_('only student accounts can be assigned as children'))
-
-        # Prevent cyclic references in parent-child relationships
-        if self in self.children.all():
-            raise ValidationError(_('an account cannot be their own parent'))
-
+        elif self.role == 'PARENT':
+            if self.children.exists():
+                for child in self.children.all():
+                    if child.role != 'STUDENT':
+                        raise ValidationError(_('only student accounts can be assigned as children'))
+                    
+            # Prevent cyclic references in parent-child relationships
+            if self in self.children.all():
+                raise ValidationError(_('an account cannot be their own parent'))
+                
     def save(self, *args, **kwargs):
         # Call clean to validate fields
         self.clean()
