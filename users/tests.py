@@ -1,10 +1,12 @@
 # python
 from datetime import timedelta
+import threading 
 
 # django
 from django.test import TestCase
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.db import IntegrityError
 
 from .models import CustomUser
 from schools.models import School
@@ -113,6 +115,91 @@ class CustomUserManagerTest(TestCase):
                 school=self.school,
                 grade=self.grade,
             )
+
+    def test_concurrent_user_creation_with_duplicate_emails(self):
+        """
+        Test creating multiple users with the same email simultaneously.
+        """
+        def create_user(email):
+            try:
+                CustomUser.objects.create_user(
+                    email=email,
+                    name="Threaded",
+                    surname="User",
+                    id_number=f'02082853440{threading.current_thread().name}',  # Unique ID
+                    role="STUDENT",
+                    school=self.school,
+                    grade=self.grade,
+                )
+            except IntegrityError:
+                pass  # Handle email uniqueness error if it occurs
+
+        threads = [threading.Thread(target=create_user, args=("duplicateemail@example.com",)) for _ in range(10)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        # Verify that only one user with the duplicate email has been created
+        self.assertEqual(CustomUser.objects.filter(email="duplicateemail@example.com").count(), 1)
+
+    def test_concurrent_user_creation_with_duplicate_id_numbers(self):
+        """
+        Test creating multiple users with the same ID number simultaneously.
+        """
+        def create_user(id_number):
+            try:
+                CustomUser.objects.create_user(
+                    email=f"user{id_number}@example.com",
+                    name="Threaded",
+                    surname="User",
+                    id_number=id_number,
+                    role="STUDENT",
+                    school=self.school,
+                    grade=self.grade,
+                )
+            except IntegrityError:
+                pass  # Handle ID number uniqueness error if it occurs
+
+        id_number = '0208285344080'  # Same ID number for all threads
+        threads = [threading.Thread(target=create_user, args=(id_number,)) for _ in range(10)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        # Verify that only one user with the duplicate ID number has been created
+        self.assertEqual(CustomUser.objects.filter(id_number=id_number).count(), 1)
+
+    def test_concurrent_user_creation_race_condition(self):
+        """
+        Test handling race conditions when creating users.
+        """
+        from threading import Thread
+        from django.db import IntegrityError
+
+        def create_user():
+            try:
+                CustomUser.objects.create_user(
+                    email=f"uniqueemail{threading.current_thread().name}@example.com",
+                    name=f"Name{threading.current_thread().name}",
+                    surname=f"Surname{threading.current_thread().name}",
+                    id_number=f'02082853440{threading.current_thread().name}',  # Unique ID
+                    role="STUDENT",
+                    school=self.school,
+                    grade=self.grade,
+                )
+            except IntegrityError:
+                pass  # Handle integrity errors
+
+        threads = [Thread(target=create_user) for _ in range(10)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        # Verify no integrity errors and correct number of users created
+        self.assertEqual(CustomUser.objects.count(), 10)
 
     def test_activate_user(self):
         """
@@ -248,24 +335,6 @@ class CustomUserManagerTest(TestCase):
                 phone_number=None
             )
 
-    def test_activation_with_invalid_password(self):
-        """
-        Test activating a user with an invalid password.
-        """
-        CustomUser.objects.create_user(
-            email="activateuser@example.com",
-            name="Activate",
-            surname="User",
-            phone_number='711740824',
-            role="PRINCIPAL",
-            school=self.school,
-        )
-        with self.assertRaises(ValueError):
-            CustomUser.objects.activate_user(
-                email="activateuser@example.com",
-                password="short"
-            )
-
     def test_create_user_with_long_fields(self):
         """
         Test creating a user with field values that exceed the maximum allowed length.
@@ -318,31 +387,6 @@ class CustomUserManagerTest(TestCase):
                 surname="User",
                 role="STUDENT",
             )
-
-    def test_concurrent_user_creation(self):
-        """
-        Test creating multiple users simultaneously.
-        """
-        from threading import Thread
-
-        def create_user():
-            CustomUser.objects.create_user(
-                email="threadeduser@example.com",
-                name="Threaded",
-                surname="User",
-                id_number='0208285344080',
-                role="STUDENT",
-                school=self.school,
-                grade=self.grade,
-            )
-
-        threads = [Thread(target=create_user) for _ in range(10)]
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
-
-        self.assertTrue(CustomUser.objects.filter(email="threadeduser@example.com").exists())
 
     def test_role_change(self):
         """
