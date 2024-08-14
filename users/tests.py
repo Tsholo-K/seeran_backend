@@ -367,7 +367,7 @@ class CustomUserManagerTest(TestCase):
                 email=too_long_email,
                 name=too_long_name,
                 surname=too_long_surname,
-                id_number='0208285344080',
+                id_number='0208285344081',
                 role="STUDENT",
                 school=self.school,
                 grade=self.grade,
