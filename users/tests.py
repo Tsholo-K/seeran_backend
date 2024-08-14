@@ -51,7 +51,7 @@ class CustomUserManagerTest(TestCase):
             grade=self.grade,
         )
         self.assertEqual(user.email, "testuser@example.com")
-        self.assertTrue(user.set_unusable_password())
+        self.assertTrue(user.password, None)
 
     def test_create_user_with_id_number(self):
         """
