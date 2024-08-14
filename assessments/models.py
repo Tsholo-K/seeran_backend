@@ -87,10 +87,7 @@ class Assessment(models.Model):
         return self.unique_identifier
 
     def clean(self):
-        # Convert due_date to datetime with time set to 00:00:00
-        due_date_time = datetime.datetime.combine(self.due_date, datetime.time.min, tzinfo=timezone.get_current_timezone())
-
-        if self.due_date < timezone.now():
+        if datetime.date(self.due_date) < timezone.now():
             raise ValidationError('an assessments due date must be in the future')
         
         if self.date_released and self.date_released < self.due_date:
