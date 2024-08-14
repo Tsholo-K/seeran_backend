@@ -365,15 +365,37 @@ class CustomUserManagerTest(TestCase):
         with self.assertRaises(ValidationError) as context:
             CustomUser.objects.create_user(
                 email=too_long_email,
-                name=too_long_name,
-                surname=too_long_surname,
+                name='john',
+                surname='doe',
                 id_number='0208285344081',
                 role="STUDENT",
                 school=self.school,
                 grade=self.grade,
             )
         self.assertIn("email address cannot exceed 254 characters", str(context.exception))
+
+        with self.assertRaises(ValidationError) as context:
+            CustomUser.objects.create_user(
+                email="normalemail@example.com",
+                name=too_long_name,
+                surname='doe',
+                id_number='0208285344082',
+                role="STUDENT",
+                school=self.school,
+                grade=self.grade,
+            )
         self.assertIn("name cannot exceed 64 characters", str(context.exception))
+
+        with self.assertRaises(ValidationError) as context:
+            CustomUser.objects.create_user(
+                email="normalemail@example.com",
+                name='john',
+                surname=too_long_surname,
+                id_number='0208285344083',
+                role="STUDENT",
+                school=self.school,
+                grade=self.grade,
+            )
         self.assertIn("surname cannot exceed 64 characters", str(context.exception))
 
     def test_user_without_required_fields(self):
