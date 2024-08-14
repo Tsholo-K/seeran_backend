@@ -1,7 +1,7 @@
 # python 
 import uuid
-from django.utils import timezone
-import datetime
+# from django.utils import timezone
+from datetime import datetime, timezone, timedelta
 
 # django 
 from django.db import models
@@ -87,7 +87,12 @@ class Assessment(models.Model):
         return self.unique_identifier
 
     def clean(self):
-        if datetime.datetime.strptime(self.due_date, '%d%m%Y').date() < timezone.now():
+        # Convert self.due_date to a timezone-aware datetime if it's naive
+        if self.due_date.tzinfo is None:
+            self.due_date = self.due_date.replace(tzinfo=timezone.utc)
+        
+        # Compare with the current time in UTC
+        if self.due_date < datetime.now(timezone.utc):
             raise ValidationError('an assessments due date must be in the future')
         
         if self.date_released and self.date_released < self.due_date:
