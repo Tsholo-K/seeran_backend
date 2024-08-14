@@ -84,6 +84,26 @@ class SchoolModelTest(TestCase):
         self.assertEqual(self.school.school_type, "PRIMARY")
         self.assertEqual(self.school.province, "GAUTENG")
 
+    def test_valid_school_district(self):
+        """
+        Test that a valid school district is accepted.
+        """
+        valid_district = 'GAUTENG NORTH'
+        school = School(school_district=valid_district)
+        try:
+            school.full_clean()  # Calls clean and validates the model
+        except ValidationError:
+            self.fail(f"Validation error raised for valid school district '{valid_district}'")
+
+    def test_invalid_school_district(self):
+        """
+        Test that an invalid school district raises a validation error.
+        """
+        invalid_district = 'INVALID DISTRICT'
+        school = School(school_district=invalid_district)
+        with self.assertRaises(ValidationError):
+            school.full_clean()  # Calls clean and validates the model
+
 
 class TermModelTest(TestCase):
     def setUp(self):
