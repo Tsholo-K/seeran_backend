@@ -86,7 +86,7 @@ class Assessment(models.Model):
         return self.unique_identifier
 
     def clean(self):
-        if self.due_date.date() < timezone.now().date():
+        if self.due_date < timezone.now():
             raise ValidationError('an assessments due date must be in the future')
         
         if self.date_released and self.date_released < self.due_date:
@@ -120,6 +120,9 @@ class Assessment(models.Model):
         # Find students who haven't submitted and move them to late_submission
         non_submitted_students = self.students_assessed.exclude(id__in=submitted_students_list)
         self.late_submission.set(non_submitted_students)
+
+        self.collected =True
+        self.date_collected = timezone.now()
 
     def mark_as_released(self):
         """

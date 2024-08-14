@@ -184,7 +184,7 @@ class AssessmentTest(TestCase):
         self.assertIn(self.teacher, assessment.ontime_submission.all())
         self.assertNotIn(self.teacher, assessment.late_submission.all())
 
-    def test_mark_as_released(self):
+    def test_mark_as_released_without_submition(self):
         """
         Test the functionality of marking an assessment as released.
         """
@@ -192,7 +192,30 @@ class AssessmentTest(TestCase):
             title='Release Test',
             set_by=self.teacher,
             total=100,
-            collected=True,
+            percentage_towards_term_mark=10.00,
+            term=self.term,
+            due_date=timezone.now() + timezone.timedelta(days=10),
+            unique_identifier='RELEASE001',
+            subject=self.subject,
+            grade=self.grade,
+            school=self.school,
+        )
+        assessment.students_assessed.add(self.teacher)
+        assessment.mark_as_collected(submitted_students_list=[])
+        assessment.mark_as_released()
+        
+        # Check that students who didn't submit received a score of 0
+        transcript = Transcript.objects.get(student=self.teacher, assessment=assessment)
+        self.assertEqual(transcript.score, 0)
+
+    def test_mark_as_released_with_submition(self):
+        """
+        Test the functionality of marking an assessment as released.
+        """
+        assessment = Assessment.objects.create(
+            title='Release Test',
+            set_by=self.teacher,
+            total=100,
             percentage_towards_term_mark=10.00,
             term=self.term,
             due_date=timezone.now() + timezone.timedelta(days=10),
@@ -203,11 +226,17 @@ class AssessmentTest(TestCase):
         )
         assessment.students_assessed.add(self.teacher)
         assessment.mark_as_collected(submitted_students_list=[self.teacher.id])
+        self.transcript = Transcript.objects.create(
+            student=self.teacher,
+            assessment=assessment,
+            score=70.00, 
+            moderated_score=None
+        )
         assessment.mark_as_released()
         
         # Check that students who didn't submit received a score of 0
         transcript = Transcript.objects.get(student=self.teacher, assessment=assessment)
-        self.assertEqual(transcript.score, 0)
+        self.assertEqual(transcript.score, 70.00)
 
 
 class TranscriptTest(TestCase):
