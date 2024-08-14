@@ -6,7 +6,7 @@ import threading
 from django.test import TestCase
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from django.db import IntegrityError
+from django.db import transaction, IntegrityError
 
 from .models import CustomUser
 from schools.models import School
@@ -116,90 +116,114 @@ class CustomUserManagerTest(TestCase):
                 grade=self.grade,
             )
 
-    def test_concurrent_user_creation_with_duplicate_emails(self):
+    def test_concurrent_user_creation_race_condition(self):
         """
-        Test creating multiple users with the same email simultaneously.
+        Test handling race conditions when creating users.
         """
-        def create_user(email):
-            try:
+
+        def create_user():
+            with transaction.atomic():
                 CustomUser.objects.create_user(
-                    email=email,
-                    name="Threaded",
+                    email=f"raceconditionuser{threading.Thread.current_thread().name}@example.com",
+                    name="RaceCondition",
                     surname="User",
-                    id_number=f'02082853440{threading.current_thread().name}',  # Unique ID
+                    id_number=f'0208285344080{threading.Thread.current_thread().name}',
                     role="STUDENT",
                     school=self.school,
                     grade=self.grade,
                 )
-            except IntegrityError:
-                pass  # Handle email uniqueness error if it occurs
 
-        threads = [threading.Thread(target=create_user, args=("duplicateemail@example.com",)) for _ in range(10)]
+        threads = [threading.Thread(target=create_user) for _ in range(10)]
         for thread in threads:
             thread.start()
         for thread in threads:
             thread.join()
 
-        # Verify that only one user with the duplicate email has been created
-        self.assertEqual(CustomUser.objects.filter(email="duplicateemail@example.com").count(), 1)
+        self.assertEqual(CustomUser.objects.count(), 10)
+
+    def test_concurrent_user_creation_with_duplicate_emails(self):
+        """
+        Test creating multiple users with the same email simultaneously.
+        """
+        def create_user(email):
+            with transaction.atomic():
+                try:
+                    CustomUser.objects.create_user(
+                        email=email,
+                        name="DuplicateEmail",
+                        surname="User",
+                        id_number='0208285344080',
+                        role="STUDENT",
+                        school=self.school,
+                        grade=self.grade,
+                    )
+                except IntegrityError:
+                    pass
+
+        email = "duplicateemail@example.com"
+        threads = [threading.Thread(target=create_user, args=(email,)) for _ in range(10)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        self.assertEqual(CustomUser.objects.filter(email=email).count(), 1)
 
     def test_concurrent_user_creation_with_duplicate_id_numbers(self):
         """
         Test creating multiple users with the same ID number simultaneously.
         """
         def create_user(id_number):
-            try:
-                CustomUser.objects.create_user(
-                    email=f"user{id_number}@example.com",
-                    name="Threaded",
-                    surname="User",
-                    id_number=id_number,
-                    role="STUDENT",
-                    school=self.school,
-                    grade=self.grade,
-                )
-            except IntegrityError:
-                pass  # Handle ID number uniqueness error if it occurs
+            with transaction.atomic():
+                try:
+                    CustomUser.objects.create_user(
+                        email=f"uniqueuser{id_number}@example.com",
+                        name="DuplicateID",
+                        surname="User",
+                        id_number=id_number,
+                        role="STUDENT",
+                        school=self.school,
+                        grade=self.grade,
+                    )
+                except IntegrityError:
+                    pass
 
-        id_number = '0208285344080'  # Same ID number for all threads
+        id_number = '0208285344080'
         threads = [threading.Thread(target=create_user, args=(id_number,)) for _ in range(10)]
         for thread in threads:
             thread.start()
         for thread in threads:
             thread.join()
 
-        # Verify that only one user with the duplicate ID number has been created
         self.assertEqual(CustomUser.objects.filter(id_number=id_number).count(), 1)
 
-    def test_concurrent_user_creation_race_condition(self):
+    def test_concurrent_user_creation_with_duplicate_passport_number(self):
         """
-        Test handling race conditions when creating users.
+        Test creating multiple users with the same email simultaneously.
         """
-        from threading import Thread
-        from django.db import IntegrityError
+        def create_user(passport_number):
+            with transaction.atomic():
+                try:
+                    CustomUser.objects.create_user(
+                        email=f"uniqueuser{passport_number}@example.com",
+                        name="DuplicateEmail",
+                        surname="User",
+                        passport_number=passport_number,
+                        role="STUDENT",
+                        school=self.school,
+                        grade=self.grade,
+                    )
+                except IntegrityError:
+                    pass
 
-        def create_user():
-            try:
-                CustomUser.objects.create_user(
-                    email=f"uniqueemail{threading.current_thread().name}@example.com",
-                    name=f"Name{threading.current_thread().name}",
-                    surname=f"Surname{threading.current_thread().name}",
-                    id_number=f'02082853440{threading.current_thread().name}',  # Unique ID
-                    role="STUDENT",
-                    school=self.school,
-                    grade=self.grade,
-                )
-            except IntegrityError:
-                pass  # Handle integrity errors
-
-        threads = [Thread(target=create_user) for _ in range(10)]
+        passport_number = '1234567890'
+        threads = [threading.Thread(target=create_user, args=(passport_number,)) for _ in range(10)]
         for thread in threads:
             thread.start()
         for thread in threads:
             thread.join()
 
-        # Verify no integrity errors and correct number of users created
-        self.assertEqual(CustomUser.objects.count(), 10)
+        self.assertEqual(CustomUser.objects.filter(passport_number=passport_number).count(), 1)
 
     def test_activate_user(self):
         """
