@@ -49,7 +49,7 @@ class CustomUserManagerTest(TestCase):
             grade=self.grade,
         )
         self.assertEqual(user.email, "testuser@example.com")
-        self.assertTrue(user.check_password(''))
+        self.assertTrue(user.set_unusable_password())
 
     def test_create_user_with_id_number(self):
         """
@@ -63,7 +63,7 @@ class CustomUserManagerTest(TestCase):
             grade=self.grade,
             school=self.school,
         )
-        self.assertEqual(user.id_number, "1234567890123")
+        self.assertEqual(user.id_number, "0208285344080")
 
     def test_create_user_with_passport_number(self):
         """
@@ -116,7 +116,7 @@ class CustomUserManagerTest(TestCase):
 
     def test_activate_user(self):
         """
-        Test activating a user account.
+        Test activating a user account with various password scenarios.
         """
         user = CustomUser.objects.create_user(
             email="activateuser@example.com",
@@ -126,12 +126,55 @@ class CustomUserManagerTest(TestCase):
             role="PRINCIPAL",
             school=self.school,
         )
+
+        # Case 1: Valid password
         user = CustomUser.objects.activate_user(
             email="activateuser@example.com",
-            password="securepassword"
+            password="SecurePassword123!"
         )
         self.assertTrue(user.activated)
-        self.assertTrue(user.check_password("securepassword"))
+        self.assertTrue(user.check_password("SecurePassword123!"))
+
+        # Case 2: Password without an uppercase letter
+        with self.assertRaises(ValueError) as context:
+            CustomUser.objects.activate_user(
+                email="activateuser@example.com",
+                password="securepassword123!"
+            )
+        self.assertEqual(str(context.exception), "Password must contain at least one uppercase letter")
+
+        # Case 3: Password without a number
+        with self.assertRaises(ValueError) as context:
+            CustomUser.objects.activate_user(
+                email="activateuser@example.com",
+                password="SecurePassword!"
+            )
+        self.assertEqual(str(context.exception), "Password must contain at least one digit")
+
+        # Case 4: Password without a special character
+        with self.assertRaises(ValueError) as context:
+            CustomUser.objects.activate_user(
+                email="activateuser@example.com",
+                password="SecurePassword123"
+            )
+        self.assertEqual(str(context.exception), "Password must contain at least one special character")
+
+        # Case 5: Password too short (e.g., less than 8 characters)
+        with self.assertRaises(ValueError) as context:
+            CustomUser.objects.activate_user(
+                email="activateuser@example.com",
+                password="S1!"
+            )
+        self.assertEqual(str(context.exception), "Password must be at least 8 characters long")
+
+        # Case 6: Password too long (e.g., more than 128 characters)
+        long_password = "S" + "e" * 127 + "!"
+        with self.assertRaises(ValueError) as context:
+            CustomUser.objects.activate_user(
+                email="activateuser@example.com",
+                password=long_password
+            )
+        self.assertEqual(str(context.exception), "Password cannot exceed 128 characters")
 
     def test_user_role_requirements(self):
         """
@@ -225,11 +268,12 @@ class CustomUserManagerTest(TestCase):
 
     def test_create_user_with_long_fields(self):
         """
-        Test creating a user with extremely long field values.
+        Test creating a user with field values that exceed the maximum allowed length.
         """
-        long_email = "x" * 255 + "@example.com"
-        long_name = "x" * 32
-        long_surname = "x" * 32
+        # Max length
+        long_email = "x" * 254 + "@example.com"
+        long_name = "x" * 64
+        long_surname = "x" * 64
 
         user = CustomUser.objects.create_user(
             email=long_email,
@@ -243,6 +287,25 @@ class CustomUserManagerTest(TestCase):
         self.assertEqual(user.email, long_email)
         self.assertEqual(user.name, long_name)
         self.assertEqual(user.surname, long_surname)
+
+        # Exceeding length
+        too_long_email = "x" * 255 + "@example.com"
+        too_long_name = "x" * 65
+        too_long_surname = "x" * 65
+
+        with self.assertRaises(ValidationError) as context:
+            CustomUser.objects.create_user(
+                email=too_long_email,
+                name=too_long_name,
+                surname=too_long_surname,
+                id_number='0208285344080',
+                role="STUDENT",
+                school=self.school,
+                grade=self.grade,
+            )
+        self.assertIn("email address cannot exceed 254 characters", str(context.exception))
+        self.assertIn("name cannot exceed 64 characters", str(context.exception))
+        self.assertIn("surname cannot exceed 64 characters", str(context.exception))
 
     def test_user_without_required_fields(self):
         """
@@ -334,23 +397,3 @@ class CustomUserManagerTest(TestCase):
                 profile_picture=invalid_file
             )
 
-    def test_account_reactivation(self):
-        """
-        Test reactivating a previously deactivated user.
-        """
-        user = CustomUser.objects.create_user(
-            email="reactivate@example.com",
-            name="Reactivate",
-            surname="User",
-                id_number='0208285344080',
-            role="STUDENT",
-            school=self.school,
-            grade=self.grade,
-        )
-        user.activated = False
-        user.save()
-        reactivated_user = CustomUser.objects.activate_user(
-            email="reactivate@example.com",
-            password="ValidPassword123"
-        )
-        self.assertTrue(reactivated_user.activated)

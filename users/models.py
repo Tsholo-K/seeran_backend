@@ -173,8 +173,8 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     id_number = models.CharField(_('ID number'), max_length=13, unique=True, blank=True, null=True)
     passport_number = models.CharField(_('passport number'), max_length=9, unique=True, blank=True, null=True)
 
-    name = models.CharField(_('name'), max_length=32)
-    surname = models.CharField(_('surname'), max_length=32)
+    name = models.CharField(_('name'), max_length=64)
+    surname = models.CharField(_('surname'), max_length=64)
     phone_number = models.CharField(_('phone number'), max_length=9, unique=True, blank=True, null=True)
 
     account_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -185,7 +185,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     activated = models.BooleanField(_('account active or not'), default=False)
     profile_picture = models.ImageField(upload_to=get_upload_path, blank=True, null=True)
 
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    role = models.CharField(choices=ROLE_CHOICES)
 
     children = models.ManyToManyField('self', blank=True)
     event_emails = models.BooleanField(_('email subscription'), default=False)
@@ -203,12 +203,25 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     objects = CustomUserManager()
 
     class Meta:
-        verbose_name = _('user')
-        verbose_name_plural = _('users')
         ordering = ['surname', 'name', 'account_id']
 
     def __str__(self):
         return self.name + ' ' + self.surname
 
+    def clean(self):
+        if self.email and len(self.email) > 254:
+            raise ValidationError("email address cannot exceed 254 characters")
+        if len(self.name) > 64:
+            raise ValidationError("name cannot exceed 64 characters")
+        if len(self.surname) > 64:
+            raise ValidationError("surname cannot exceed 64 characters")
+        if self.id_number and len(self.id_number) > 13:
+            raise ValidationError("ID number cannot exceed 13 characters")
+        if self.passport_number and len(self.passport_number) > 9:
+            raise ValidationError("passport number cannot exceed 9 characters")
 
+    def save(self, *args, **kwargs):
+        # Call clean to validate fields
+        self.clean()
+        super().save(*args, **kwargs)
             
