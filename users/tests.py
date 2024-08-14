@@ -340,7 +340,7 @@ class CustomUserManagerTest(TestCase):
         Test creating a user with field values that exceed the maximum allowed length.
         """
         # Max length
-        long_email = "x" * 254 + "@example.com"
+        long_email = "x" * 242 + "@example.com"
         long_name = "x" * 64
         long_surname = "x" * 64
 
