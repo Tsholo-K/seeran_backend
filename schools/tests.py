@@ -144,7 +144,18 @@ class TermModelTest(TestCase):
 
     def test_term_school_days_calculation(self):
         """Test that the school days for a term are calculated correctly."""
-        self.assertEqual(self.term.school_days, 44)  # Assuming there are 44 weekdays in a 60-day period
+        start_date = self.term.start_date
+        end_date = self.term.end_date
+
+        total_days = 0
+        current_date = start_date
+
+        while current_date <= end_date:
+            if current_date.weekday() < 5:  # Monday to Friday are considered school days
+                total_days += 1
+            current_date += timedelta(days=1)
+
+        self.assertEqual(self.term.school_days, total_days)  # Assuming there are 44 weekdays in a 60-day period
 
     def test_term_update(self):
         """Test that a term instance can be updated successfully."""
