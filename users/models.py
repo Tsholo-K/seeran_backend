@@ -255,7 +255,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         if len(self.surname) > 64:
             raise ValidationError(_("surname cannot exceed 64 characters"))
         
-        if self.contact:
+        if self.contact_number:
             if self.role != 'PRINCIPAL':
                 raise ValidationError(_('only principal accounts can can contain contact one numbers'))
             
