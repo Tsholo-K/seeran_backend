@@ -102,7 +102,7 @@ class CustomUserManager(BaseUserManager):
 
         # Validate role
         if role not in ['FOUNDER', 'PARENT', 'STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL']:
-            raise ValueError(_('the role specified for the account is invlaid'))
+            raise ValueError(_('the role specified for the account is invalid'))
 
         # Validate role-specific requirements
         if role in ['STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL']:
@@ -200,15 +200,11 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     contact_number = models.CharField(_('phone number'), max_length=9, unique=True, blank=True, null=True)
 
-    account_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='students', blank=True, null=True)
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='users', blank=True, null=True)
     
     activated = models.BooleanField(_('account active or not'), default=False)
     profile_picture = models.ImageField(upload_to=get_upload_path, blank=True, null=True)
-
-    role = models.CharField(choices=ROLE_CHOICES)
 
     children = models.ManyToManyField('self', blank=True)
     event_emails = models.BooleanField(_('email subscription'), default=False)
@@ -219,6 +215,10 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(_('active'), default=True)
     is_staff = models.BooleanField(_('staff status'), default=False)
     is_superuser = models.BooleanField(_('superuser status'), default=False)
+
+    role = models.CharField(choices=ROLE_CHOICES)
+
+    account_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['name', 'surname', 'role']
@@ -233,6 +233,10 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         return self.name + ' ' + self.surname
         
     def clean(self):
+        # Validate choice fields
+        if self.role not in dict(ROLE_CHOICES).keys():
+            raise ValidationError(_('the role specified for the account is invalid'))
+
         # Ensure correct field format
         if self.email:
             try:

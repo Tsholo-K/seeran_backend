@@ -19,7 +19,7 @@ class SchoolModelTest(TestCase):
             contact_number="1234567890",
             school_type="PRIMARY",
             province="GAUTENG",
-            school_district="District 1"
+            school_district="JHB NORTH"
         )
 
     def test_school_creation(self):
@@ -69,7 +69,7 @@ class SchoolModelTest(TestCase):
             contact_number="0987654321",
             school_type="PRIMARY",
             province="GAUTENG",
-            school_district="District 2"
+            school_district="JHB NORTH"
         )
         self.assertNotEqual(self.school.school_id, school_2.school_id)
 
@@ -128,7 +128,7 @@ class TermModelTest(TestCase):
             contact_number="1234567890",
             school_type="PRIMARY",
             province="GAUTENG",
-            school_district="District 1"
+            school_district="JHB NORTH"
         )
         self.term = Term.objects.create(
             term=1,

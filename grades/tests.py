@@ -36,7 +36,7 @@ class GradeModelTest(TestCase):
             contact_number="1234567890",
             school_type="PRIMARY",
             province="GAUTENG",
-            school_district="District 1"
+            school_district="JHB NORTH"
         )
         self.grade = Grade.objects.create(
             grade='8',
@@ -110,7 +110,7 @@ class SubjectModelTest(TestCase):
             contact_number="1234567890",
             school_type="PRIMARY",
             province="GAUTENG",
-            school_district="District 1"
+            school_district="JHB NORTH"
         )
         self.grade = Grade.objects.create(
             grade='8',

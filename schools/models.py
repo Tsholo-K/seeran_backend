@@ -132,7 +132,7 @@ class School(models.Model):
         if self.school_type not in dict(SCHOOL_TYPE_CHOICES).keys():
             raise ValidationError(_('provided school type is invalid'))
         if self.province not in dict(PROVINCE_CHOICES).keys():
-            raise ValidationError(_('provided province is invalid'))
+            raise ValidationError(_('provided school province is invalid'))
         if self.school_district not in dict(SCHOOL_DISTRICT_CHOICES).keys():
             raise ValidationError(_('provided school district is invalid'))
 
