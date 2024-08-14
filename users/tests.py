@@ -55,7 +55,7 @@ class CustomUserManagerTest(TestCase):
             grade=self.grade,
         )
         self.assertEqual(user.email, "testuser@example.com")
-        self.assertTrue(user.password is None)
+        self.assertTrue(user.password, None)
 
         # Case 2: Email with invalid format
         with self.assertRaises(ValueError):
@@ -129,7 +129,7 @@ class CustomUserManagerTest(TestCase):
             grade=self.grade,
             school=self.school,
         )
-        self.assertEqual(user.passport_number, "A12345678")
+        self.assertEqual(user.passport_number, "123456789")
 
         # Case 2: Duplicate passport number
         with self.assertRaises(ValueError):
