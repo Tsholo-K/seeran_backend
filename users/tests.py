@@ -132,7 +132,7 @@ class CustomUserManagerTest(TestCase):
         )
 
         # Case 1: Valid password
-        user.activate_user(
+        user.objects.activate_user(
             email="activateuser@example.com",
             password="SecurePassword123!"
         )
@@ -141,7 +141,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 2: Password without an uppercase letter
         with self.assertRaises(ValueError) as context:
-            user.activate_user(
+            user.objects.activate_user(
                 email="activateuser@example.com",
                 password="securepassword123!"
             )
@@ -149,7 +149,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 3: Password without a number
         with self.assertRaises(ValueError) as context:
-            user.activate_user(
+            user.objects.activate_user(
                 email="activateuser@example.com",
                 password="SecurePassword!"
             )
@@ -157,7 +157,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 4: Password without a special character
         with self.assertRaises(ValueError) as context:
-            user.activate_user(
+            user.objects.activate_user(
                 email="activateuser@example.com",
                 password="SecurePassword123"
             )
