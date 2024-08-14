@@ -115,8 +115,10 @@ class CustomUserManager(BaseUserManager):
         if role == 'PRINCIPAL':
             if contact_number is None:
                 raise ValueError(_('account must have a contact number'))
-            if not is_phone_number_valid(contact_number):
-                raise ValueError(_('Invalid phone number format'))
+            if not self.contact_number.isdigit():
+                raise ValidationError(_('contact number should contain only digits'))
+            if len(self.contact_number) < 10 or len(self.contact_number) > 15:
+                raise ValidationError(_('contact number should be between 10 and 15 digits'))
         else:
             contact_number = None
 
