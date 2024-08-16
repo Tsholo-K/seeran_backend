@@ -1870,48 +1870,47 @@ def search_chat_room_messages(user, details):
     try:
         # Retrieve the account making the request
         account = CustomUser.objects.get(account_id=user)
-        # Retrieve the requested user's account
         requested_user = CustomUser.objects.get(account_id=details.get('account_id'))
         
         # Check if a chat room exists between the two users
-        chat_room = ChatRoom.objects.filter(Q(user_one=account, user_two=requested_user) | Q(user_one=requested_user, user_two=account)).first()
+        chat_room = ChatRoom.objects.filter(Q(user_one=account, user_two=requested_user) | Q(user_one=requested_user, user_two=account)).select_related('user_one', 'user_two').first()
         
         if not chat_room:
-            return {"not_found": 'no such chat room exists'}
-
+            return {"not_found": 'No such chat room exists'}
+        
         # Retrieve the cursor from the request
         cursor = details.get('cursor')
         if cursor:
-            # Fetch messages with a timestamp less than the cursor (if cursor is present)
+            # Fetch messages before the cursor with a limit of 20
             messages = ChatRoomMessage.objects.filter(chat_room=chat_room, timestamp__lt=cursor).order_by('-timestamp')[:20]
         else:
-            # Fetch the latest messages if no cursor is provided
+            # Fetch the latest 20 messages
             messages = ChatRoomMessage.objects.filter(chat_room=chat_room).order_by('-timestamp')[:20]
 
-        # Slice and then reverse the order to get the correct ascending order
+        if not messages.exists():
+            return {'messages': [], 'next_cursor': None, 'unread_messages': 0}
+
+        # Convert messages to a list and reverse for correct ascending order
         messages = list(messages)[::-1]
 
         # Serialize the messages
         serializer = ChatRoomMessageSerializer(messages, many=True, context={'user': user})
         
         # Determine the next cursor
-        if len(messages) > 19:
-            next_cursor = messages[0].timestamp.isoformat()
-        else:
-            next_cursor = None
+        next_cursor = messages[0].timestamp.isoformat() if len(messages) > 19 else None
 
-        # Query for messages that need to be marked as read
-        messages_to_update = ChatRoomMessage.objects.filter(chat_room=chat_room, read_receipt=False).exclude(sender=account)
+        # Mark unread messages as read and count them in one query
+        unread_messages = ChatRoomMessage.objects.filter(chat_room=chat_room, read_receipt=False).exclude(sender=account)
 
         # Check if there are any messages that match the criteria
-        if messages_to_update.exists():
-
+        unread_count = unread_messages.count()
+        if unread_count > 0:
             # Mark the messages as read
-            messages_to_update.update(read_receipt=True)
-            return {'messages': serializer.data, 'next_cursor': next_cursor, 'user': str(requested_user.account_id), 'chat': str(account.account_id)}
+            unread_messages.update(read_receipt=True)
+            return {'messages': serializer.data, 'next_cursor': next_cursor, 'unread_messages': unread_messages, 'user': str(requested_user.account_id), 'chat': str(account.account_id)}
         
         else:
-            # Handle the case where no messages need to be updated (optional)
+            # Handle the case where no messages need to be updated
             return {'messages': serializer.data, 'next_cursor': next_cursor}
 
     except CustomUser.DoesNotExist:
