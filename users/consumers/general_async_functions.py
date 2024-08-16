@@ -1907,7 +1907,7 @@ def search_chat_room_messages(user, details):
         if unread_count > 0:
             # Mark the messages as read
             unread_messages.update(read_receipt=True)
-            return {'messages': serializer.data, 'next_cursor': next_cursor, 'unread_messages': unread_messages, 'user': str(requested_user.account_id), 'chat': str(account.account_id)}
+            return {'messages': serializer.data, 'next_cursor': next_cursor, 'unread_messages': unread_count, 'user': str(requested_user.account_id), 'chat': str(account.account_id)}
         
         else:
             # Handle the case where no messages need to be updated
