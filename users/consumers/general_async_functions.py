@@ -1911,7 +1911,7 @@ def search_chat_room_messages(user, details):
         
         else:
             # Handle the case where no messages need to be updated
-            return {'messages': serializer.data, 'next_cursor': next_cursor}
+            return {'messages': serializer.data, 'next_cursor': next_cursor, 'unread_messages': 0}
 
     except CustomUser.DoesNotExist:
         # Handle case where the user does not exist
