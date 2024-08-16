@@ -14,13 +14,19 @@ from classes.models import Classroom
 from grades.models import Grade, Subject
 from schools.models import School, Term
 
+class Topic(models.Model):
+    name = models.CharField(max_length=124, unique=True)
 
+    def __str__(self):
+        return self.name
+    
 class Assessment(models.Model):
     """
     Model to represent an assessment.
     """
     title = models.CharField(max_length=124)
-
+    topics = models.ManyToManyField(Topic, related_name='assessments')
+    
     # The user who set the assessment
     set_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, related_name='assessments_set', null=True)
 
@@ -145,7 +151,17 @@ class Assessment(models.Model):
         # Assign zero score to these students
         for student in students_to_assign_zero:
             Transcript.objects.update_or_create(student=student, assessment=self, defaults={'score': 0})
+            
+    def set_topics(self, topic_names):
+        """
+        Set topics for the assessment. Creates new topics if they don't exist.
+        """
+        topics = []
+        for name in topic_names:
+            topic, _ = Topic.objects.get_or_create(name=name)
+            topics.append(topic)
 
+        self.topics.set(topics)  # Replace the current topics with the new list
 
 class Transcript(models.Model):
     """

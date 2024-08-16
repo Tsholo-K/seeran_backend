@@ -23,15 +23,17 @@ from rest_framework_simplejwt.exceptions import TokenError
 
 # models 
 from users.models import CustomUser
+from schools.models import Term
 from auth_tokens.models import AccessToken
 from email_bans.models import EmailBan
 from timetables.models import Schedule, TeacherSchedule, GroupSchedule
 from classes.models import Classroom
 from attendances.models import Absent, Late
-from grades.models import Grade
+from grades.models import Grade, Subject
 from announcements.models import Announcement
 from chats.models import ChatRoom, ChatRoomMessage
 from activities.models import Activity
+from assessments.models import Assessment, Transcript, Topic
 
 # serializers
 from users.serializers import AccountSerializer, StudentAccountAttendanceRecordSerializer, AccountProfileSerializer, AccountIDSerializer, ChatroomSerializer, BySerializer, ChatAccountSerializer
@@ -42,6 +44,7 @@ from announcements.serializers import AnnouncementsSerializer, AnnouncementSeria
 from chats.serializers import ChatRoomMessageSerializer, ChatSerializer
 from classes.serializers import TeacherClassesSerializer, ClassSerializer
 from activities.serializers import ActivityCreationSerializer, ActivitiesSerializer, ActivitySerializer
+from assessments.serializers import AssessmentCreationSerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
@@ -1250,7 +1253,7 @@ def log_activity(user, details):
             # Retrieve the classroom
             classroom = Classroom.objects.get(class_id=details.get('class_id'))
             
-            if account.school != classroom.school:
+            if account.school != classroom.school or classroom.teacher != account:
                 return {"error": "unauthorized access. you are not permitted to access information about classses outside your own school or those you do not teacher"}
 
             if classroom not in account.taught_classes.all() or not account.taught_classes.filter(students=student).exists():
@@ -1283,6 +1286,100 @@ def log_activity(user, details):
     except Exception as e:
         # Handle any other unexpected exceptions
         return {'error': str(e)}
+
+
+@database_sync_to_async
+def set_assessment(user, details):
+    """
+    Sets an assessment based on the provided details and user account.
+
+    Args:
+        user (str): The account ID of the user setting the assessment.
+        details (dict): A dictionary containing all the necessary details to create the assessment.
+
+    Returns:
+        dict: A dictionary containing either a success message or an error message.
+    """
+    try:
+        # Retrieve the user's account, including the related school in one query.
+        account = CustomUser.objects.select_related('school').get(account_id=user)
+
+        # Ensure the user has the correct role to set an assessment.
+        if account.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
+            return {"error": "Unauthorized request. You do not have sufficient permissions to set an assessment."}
+
+        # If the user is a teacher, validate their permissions for the specific classroom.
+        if account.role == 'TEACHER':
+            # Retrieve the classroom and its related grade, subject, and school.
+            classroom = Classroom.objects.select_related('grade', 'subject', 'school').get(class_id=details.get('class_id'))
+
+            # Ensure the teacher is setting the assessment for their own class in their own school.
+            if account.school != classroom.school or classroom.teacher != account:
+                return {"error": "Unauthorized access. You are not permitted to access or update information about classes outside your own school or those you do not teach."}
+
+            # Update the details dictionary with the related IDs from the classroom.
+            details.update({
+                'classroom': classroom.pk,
+                'grade': classroom.grade.pk,
+                'subject': classroom.subject.pk,
+            })
+
+        else:
+            # For non-teacher roles, retrieve and set the grade and subject IDs from the provided details.
+            details.update({
+                'grade': Grade.objects.values_list('pk', flat=True).get(grade_id=details.get('grade_id')),
+                'subject': Subject.objects.values_list('pk', flat=True).get(subject_id=details.get('subject_id')),
+            })
+
+        # Update the details dictionary with the user's ID, the term ID, and the school ID.
+        details.update({
+            'set_by': account.pk,
+            'term': Term.objects.values_list('pk', flat=True).get(term=details.get('term'), school=account.school),
+            'school': account.school.pk,
+        })
+
+        # Initialize the serializer with the prepared data.
+        serializer = AssessmentCreationSerializer(data=details)
+
+        # Validate the serializer data and save the assessment within an atomic transaction.
+        if serializer.is_valid():
+            with transaction.atomic():
+                assessment = serializer.save()
+
+                # Retrieve or create topics based on the provided list of topic names.
+                topic_names = details.get('topics', [])
+                existing_topics = Topic.objects.filter(name__in=topic_names)
+
+                # Determine which topics are new and need to be created.
+                new_topic_names = set(topic_names) - set(existing_topics.values_list('name', flat=True))
+                new_topics = [Topic(name=name) for name in new_topic_names]
+                Topic.objects.bulk_create(new_topics)  # Create new topics in bulk.
+
+                # Combine existing and new topics and set them for the assessment.
+                all_topics = list(existing_topics) + new_topics
+                assessment.topics.set(all_topics)
+
+            return {'message': 'Assessment successfully set. The assessment is now available to everyone affected by its creation.'}
+
+        # Return validation errors if the serializer is not valid.
+        return {"error": serializer.errors}
+
+    except CustomUser.DoesNotExist:
+        # Handle case where the user or student account does not exist
+        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
+
+    except Term.DoesNotExist:
+        # Handle case where the term does not exist
+        return {'error': 'a term with the provided credentials does not exist. Please check the term details and try again.'}
+
+    except Subject.DoesNotExist:
+        # Handle case where the subject does not exist
+        return {'error': 'a subject with the provided credentials does not exist. Please check the subjects details and try again.'}
+
+    except Exception as e:
+        # Handle any other unexpected exceptions
+        return {'error': str(e)}
+
 
     
 

@@ -9,18 +9,17 @@ from rest_framework.response import Response
 from rest_framework import status
 
 # django
-from django.core.cache import cache
-from django.db import transaction
+from django.db.models import Q
 
 # custom decorators
 from authentication.decorators import token_required
-from users.decorators import  admins_only
 
 # models
-from users.models import CustomUser
+from chats.models import ChatRoomMessage
+from announcements.models import Announcement
 
 # serilializers
-from .serializers import MyAccountDetailsSerializer, AccountProfileSerializer
+from .serializers import MyAccountDetailsSerializer
 
 
 ################################################## general views ###########################################################
@@ -28,12 +27,23 @@ from .serializers import MyAccountDetailsSerializer, AccountProfileSerializer
 
 @api_view(["GET"])
 @token_required
-def my_profile(request):
+def my_account_details(request):
    
     # if the user is authenticated, return their profile information 
     if request.user:
+        # Fetch announcements based on role
+        if request.user.role == 'PARENT':
+            children_schools = request.user.children.values_list('school', flat=True)
+            unread_announcements = Announcement.objects.filter(school__in=children_schools).exclude(reached=request.user).count()
+        else:
+            unread_announcements = Announcement.objects.filter(school=request.user.school).exclude(reached=request.user).count()
+
+        # Fetch unread messages
+        unread_messages = ChatRoomMessage.objects.filter(Q(chat_room__user_one=request.user) | Q(chat_room__user_two=request.user), read_receipt=False).count()
+
+        # Serialize user data
         serializer = MyAccountDetailsSerializer(instance=request.user)
-        return Response({"user" : serializer.data}, status=status.HTTP_200_OK)
+        return Response({'user' : serializer.data, 'messages' : unread_messages, 'announcements' : unread_announcements}, status=status.HTTP_200_OK)
 
     else:
         return Response({"error" : "unauthenticated",}, status=status.HTTP_401_UNAUTHORIZED)

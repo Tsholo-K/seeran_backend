@@ -7,8 +7,7 @@ from channels.db import database_sync_to_async
 
 # django
 from django.core.exceptions import ValidationError
-from django.db.models import Q
-from django.db import IntegrityError, transaction
+from django.db import transaction
 from django.utils.dateparse import parse_time
 
 # simple jwt
@@ -16,15 +15,13 @@ from django.utils.dateparse import parse_time
 # models 
 from users.models import CustomUser
 from timetables.models import Session, Schedule, TeacherSchedule, GroupSchedule
-from grades.models import Grade, Subject
+from grades.models import Grade
 from classes.models import Classroom
-from attendances.models import Absent
 
 # serilializers
 from users.serializers import AccountSerializer
 from timetables.serializers import ScheduleSerializer
-from grades.serializers import GradesSerializer, GradeSerializer, SubjectDetailSerializer, ClassesSerializer
-from classes.serializers import ClassSerializer, ClassUpdateSerializer, TeacherClassesSerializer, TeacherRegisterClassSerializer
+from classes.serializers import ClassSerializer, TeacherClassesSerializer, TeacherRegisterClassSerializer
 
 # utility functions 
 

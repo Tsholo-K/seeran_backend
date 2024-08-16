@@ -22,7 +22,7 @@ class ChatRoom(models.Model):
     
 
 class ChatRoomMessage(models.Model):
-    chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE)
+    chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages')
     
     sender = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING)
 
