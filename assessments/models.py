@@ -121,8 +121,13 @@ class Assessment(models.Model):
         """
         Override save method to validate incoming data
         """
-        self.clean()
-        super().save(*args, **kwargs)
+        if not self._state.adding:  # Only validate if the instance is being updated or created
+            self.clean()
+
+        try:
+            super().save(*args, **kwargs)
+        except Exception as e:
+            raise ValidationError(_(str(e).lower()))
 
     def mark_as_collected(self, submitted_students_list=None):
         """
@@ -202,7 +207,12 @@ class Transcript(models.Model):
         """
         Override save method to validate incoming data
         """
-        self.clean()
-        super().save(*args, **kwargs)
+        if not self._state.adding:  # Only validate if the instance is being updated or created
+            self.clean()
+
+        try:
+            super().save(*args, **kwargs)
+        except Exception as e:
+            raise ValidationError(_(str(e).lower()))
 
 

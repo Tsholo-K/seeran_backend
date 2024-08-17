@@ -3,7 +3,7 @@ import uuid
 
 # django
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, IntegrityError
 from django.utils.translation import gettext_lazy as _
 
 # models
@@ -46,6 +46,8 @@ class Classroom(models.Model):
     students = models.ManyToManyField(CustomUser, limit_choices_to={'role': 'student'}, related_name='enrolled_classes', help_text='Students enrolled in the classroom.')
     parents = models.ManyToManyField(CustomUser, related_name='children_classes', help_text='Parents or guardians of students in the classroom.')
 
+    student_count = models.IntegerField(default=0)
+
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='grade_classes', help_text='Grade level associated with the classroom.')
 
     register_class = models.BooleanField(_('is the class a register class'), unique=True, default=False, help_text='Ensure only one register class per teacher.')
@@ -56,43 +58,62 @@ class Classroom(models.Model):
     class_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
-        verbose_name = _('classroom')
-        verbose_name_plural = _('classrooms')
+        unique_together = (
+            ('group', 'grade', 'subject'),
+            ('group', 'grade', 'register_class')
+        )
 
     def __str__(self):
         return f"{self.school} - Grade {self.grade} - {self.classroom_identifier}"
-        
-    def add_students_to_class(self, students_list=None):
+    
+    def save(self, *args, **kwargs):
+        """
+        Override save method to validate incoming data.
+        """
+        try:
+            super().save(*args, **kwargs)
+        except IntegrityError as e:
+            # Check if the error is related to unique constraints
+            if 'unique constraint' in str(e).lower():
+                raise ValidationError(_('The provided classroom information is invalid. A combination of group, grade, subject, and/or register already exists for your school. Duplicate classroom groups in the same grade and subject/register are not permitted.'))
+            else:
+                # Re-raise the original exception if it's not related to unique constraints
+                raise
+
+    def update_students(self, students_list=None, remove=False):
         """
         Add the provided list of students (by account_id) to the class and update the students count.
         """
         if students_list:
             # Retrieve the CustomUser instances corresponding to the account_ids
-            students = CustomUser.objects.filter(account_id__in=students_list, role='student')
+            students = CustomUser.objects.filter(account_id__in=students_list, role='STUDENT')
             
             if not students.exists():
                 raise ValueError("No valid students found with the provided account_ids.")
             
-            # Add all students at once
-            self.students.add(*students)
+            if remove:
+                self.students.remove(*students)
+            else:
+                self.students.add(*students)
+
+            self.students_count = self.students.count()
+
+            if self.subject:
+                self.subject.student_count = self.grade.grade_classes.filter(subject=self).aggregate(count=models.Sum('students__count'))['count'] or 0
+                self.subject.save()
         else:
-            raise ValueError("A list of students must be provided.")
-    
-    def remove_students_from_class(self, students_list=None):
+            raise ValueError("validation error.. no students were provided.")
+
+    def update_teacher(self, teacher=None):
         """
-        Remove the provided list of students (by account_id) from the class and update the students count.
+        Update the classes teacher and update the students count.
         """
-        if students_list:
-            # Retrieve the CustomUser instances corresponding to the account_ids
-            students = CustomUser.objects.filter(account_id__in=students_list, role='student')
-            
-            if not students.exists():
-                raise ValueError("No valid students found with the provided account_ids.")
-            
-            # Remove all students at once
-            self.students.remove(*students)
+        if teacher:
+            self.teacher = teacher
+
         else:
-            raise ValueError("A list of students must be provided.")
+            self.teacher = None
 
-
-
+        # Count the number of unique teachers assigned to classrooms for this subject
+        self.subject.teacher_count = self.grade.grade_classes.filter(subject=self).values_list('teacher', flat=True).distinct().count()
+        self.subject.save()

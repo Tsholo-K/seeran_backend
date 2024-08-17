@@ -40,7 +40,6 @@ class CustomUserManager(BaseUserManager):
     Provides methods for creating users and activating accounts.
     """
 
-
     @transaction.atomic
     def create_user(self, email=None, id_number=None, passport_number=None, name=None, surname=None, contact_number=None, role=None, school=None, grade=None, **extra_fields):
         """
@@ -182,7 +181,7 @@ class CustomUserManager(BaseUserManager):
             raise ValueError("Account with the provided credentials does not exist")
 
         except ValidationError as e:
-            raise ValueError(str(e))
+            raise ValueError(str(e).lower())
 
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
@@ -300,7 +299,15 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
                         raise ValidationError(_('an account cannot be their own parent'))
                 
     def save(self, *args, **kwargs):
+        """
+        indicates whether the model instance is being created (i.e., it is a new instance that has not yet been saved to the database)
+        or updated (i.e., it already exists in the database and is being modified)
+        """
         if not self._state.adding:  # Only validate if the instance is being updated
             self.clean()
-        super().save(*args, **kwargs)
+
+        try:
+            super().save(*args, **kwargs)
+        except Exception as e:
+            raise ValidationError(_(str(e).lower()))
             

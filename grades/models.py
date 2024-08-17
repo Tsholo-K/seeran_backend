@@ -102,15 +102,18 @@ class Grade(models.Model):
                 
             else:
                 raise ValidationError(_('validation error, a grade cannot have an empty level'))
-
-        self.clean()
+            
+        if not self._state.adding:  # Only validate if the instance is being updated or created
+            self.clean()
 
         try:
             super().save(*args, **kwargs)
         except IntegrityError as e:
-            if 'unique constraint' in str(e):
+            # Check if the error is related to unique constraints
+            if 'unique constraint' in str(e).lower():
                 raise ValidationError(_('the provided grade already exists for your school. duplicate grades are not permitted'))
             else:
+                # Re-raise the original exception if it's not related to unique constraints
                 raise
     
     
@@ -121,7 +124,8 @@ class Subject(models.Model):
     subject = models.CharField(_('grade subject'), max_length=64, choices=SCHOOL_SUBJECTS_CHOICES, default="ENGLISH")
 
     student_count = models.IntegerField(default=0)
-    group_count = models.IntegerField(default=0)
+    teacher_count = models.IntegerField(default=0)
+    classes_count = models.IntegerField(default=0)
 
     # field to indicate if it's a major subject
     major_subject = models.BooleanField(default=False)
@@ -134,7 +138,9 @@ class Subject(models.Model):
     class Meta:
         unique_together = ('grade', 'subject')
         ordering = ['subject']
-        indexes = [models.Index(fields=['subject', 'grade'])]  # Index for performance
+        indexes = [
+            models.Index(fields=['subject', 'grade'])
+        ]  # Index for performance
 
     def __str__(self):
         return self.subject
@@ -150,11 +156,16 @@ class Subject(models.Model):
         """
         Override save method to validate incoming data.
         """
-        self.clean()
+        if not self._state.adding:  # Only validate if the instance is being updated or created
+            self.clean()
+            
         try:
             super().save(*args, **kwargs)
         except IntegrityError as e:
-            if 'unique constraint' in str(e):
-                raise ValidationError(_('duplicate subject entry for this grade.'))
+            # Check if the error is related to unique constraints
+            if 'unique constraint' in str(e).lower():
+                raise ValidationError(_('the provided subject already exists for your school. duplicate subjects are not permitted'))
             else:
+                # Re-raise the original exception if it's not related to unique constraints
                 raise
+    
