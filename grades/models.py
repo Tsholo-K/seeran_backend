@@ -86,6 +86,15 @@ class Grade(models.Model):
 
         if self.major_subjects + self.none_major_subjects <= 0:
             raise ValidationError(_('There must be at least one major or non-major subject for the grading criteria.'))
+        
+        # Grade validation
+        if not self.grade:
+            raise ValidationError(_('grades need to have a grade level'))
+        if self.school.school_type == 'PRIMARY' and int(self.grade) > 7:
+            raise ValidationError(_('primary schools cannot assign grades higher than 7'))
+        if self.school.school_type == 'SECONDARY' and int(self.grade) <= 7:
+            raise ValidationError(_('secondary schools must assign grades higher than 7'))
+
 
     def save(self, *args, **kwargs):
         """
