@@ -52,6 +52,11 @@ class School(models.Model):
     name = models.CharField(_('school name'), max_length=64)
     email = models.EmailField(_('school email address'), max_length=64, unique=True)
     contact_number = models.CharField(_('school contact number'), max_length=15, unique=True)
+
+    student_count = models.IntegerField(default=0)
+    parent_count = models.IntegerField(default=0)
+    teacher_count = models.IntegerField(default=0)
+    admin_count = models.IntegerField(default=0)
     
     in_arrears = models.BooleanField(_('school bill'), default=False)
     none_compliant = models.BooleanField(_('school denied access'), default=False)

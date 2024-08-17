@@ -20,7 +20,7 @@ from classes.models import Classroom
 
 # serilializers
 from users.serializers import AccountUpdateSerializer, AccountIDSerializer, AccountSerializer, AccountCreationSerializer, StudentAccountCreationSerializer, ParentAccountCreationSerializer
-from grades.serializers import GradesSerializer, GradeSerializer, SubjectDetailSerializer, ClassesSerializer
+from grades.serializers import GradeCreationSerializer, GradesSerializer, GradeSerializer, SubjectDetailSerializer, ClassesSerializer
 from classes.serializers import ClassUpdateSerializer
 from announcements.serializers import AnnouncementCreationSerializer
 
@@ -343,29 +343,50 @@ def search_subscribed_students(user, details):
         return {'error': str(e)}
 
 
-SCHOOL_GRADES_CHOICES = [('000', 'Grade 000'), ('00', 'Grade 00'), ('R', 'Grade R'), ('1', 'Grade 1'), ('2', 'Grade 2'), ('3', 'Grade 3'), ('4', 'Grade 4'), ('5', 'Grade 5'), ('6', 'Grade 6'), ('7', 'Grade 7'), ('8', 'Grade 8'), ('9', 'Grade 9'), ('10', 'Grade 10'), ('11', 'Grade 11'), ('12', 'Grade 12')]
-
 @database_sync_to_async
 def create_grade(user, details):
+    """
+    Creates a new grade for a school based on the provided details.
 
+    Args:
+        user (str): The account ID of the user attempting to create the grade.
+        details (dict): A dictionary containing grade details, including 'grade' and other necessary fields.
+
+    Returns:
+        dict: A dictionary containing a success message if the grade is created,
+              or an error message if something goes wrong.
+    """
     try:
-        account = CustomUser.objects.get(account_id=user)
+        # Retrieve the user and related school in a single query using select_related
+        account = CustomUser.objects.select_related('school').get(account_id=user)
 
-        if Grade.objects.filter(grade=details.get('grade'), school=account.school).exists():
-            return {"error": f"grade {details.get('grade')} already exists for the school, duplicate grades is not allowed"}
-        
-        with transaction.atomic():
-            # Include the grade_order when creating the Grade instance
-            grad = Grade.objects.create(grade=details.get('grade'), major_subjects=details.get('major_subjects'), none_major_subjects=details.get('none_major_subjects'), school=account.school)
-            grad.save()
+        # Check if the grade already exists for the school using exists() to avoid fetching unnecessary data
+        if Grade.objects.filter(grade=details.get('grade'), school_id=account.school_id).exists():
+            return {"error": f"grade {details.get('grade')} already exists for your school. duplicate grades are not permitted."}
+
+        # Set the school field in the details to the user's school ID
+        details['school'] = account.school_id
+
+        # Serialize the details for grade creation
+        serializer = GradeCreationSerializer(data=details)
+
+        # Validate the serialized data
+        if serializer.is_valid():
+            # Create the grade within a transaction to ensure atomicity
+            with transaction.atomic():
+                Grade.objects.create(**serializer.validated_data)
             
-        return { 'message': 'you can now add student accounts, subjects, classes and much more..' }
-               
+            return {"message": f"Grade {details.get('grade')} has been successfully created for your school."}
+        
+        # Return errors if the serializer validation fails
+        return {"error": serializer.errors}
+
     except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-    
+        # Handle case where the user account does not exist
+        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
+
     except Exception as e:
-        return { 'error': str(e) }
+        return {"error": str(e)}
 
 
 @database_sync_to_async
@@ -391,7 +412,7 @@ def fetch_grades_with_student_count(user):
 
     try:
         account = CustomUser.objects.get(account_id=user)
-        grades = Grade.objects.filter(school=account.school.pk)
+        grades = Grade.objects.filter(school=account.school)
 
         serializer = GradesSerializer(grades, many=True)
         student_count = CustomUser.objects.filter(role='STUDENT', school=account.school).count()

@@ -61,5 +61,38 @@ class Classroom(models.Model):
 
     def __str__(self):
         return f"{self.school} - Grade {self.grade} - {self.classroom_identifier}"
+        
+    def add_students_to_class(self, students_list=None):
+        """
+        Add the provided list of students (by account_id) to the class and update the students count.
+        """
+        if students_list:
+            # Retrieve the CustomUser instances corresponding to the account_ids
+            students = CustomUser.objects.filter(account_id__in=students_list, role='student')
+            
+            if not students.exists():
+                raise ValueError("No valid students found with the provided account_ids.")
+            
+            # Add all students at once
+            self.students.add(*students)
+        else:
+            raise ValueError("A list of students must be provided.")
+    
+    def remove_students_from_class(self, students_list=None):
+        """
+        Remove the provided list of students (by account_id) from the class and update the students count.
+        """
+        if students_list:
+            # Retrieve the CustomUser instances corresponding to the account_ids
+            students = CustomUser.objects.filter(account_id__in=students_list, role='student')
+            
+            if not students.exists():
+                raise ValueError("No valid students found with the provided account_ids.")
+            
+            # Remove all students at once
+            self.students.remove(*students)
+        else:
+            raise ValueError("A list of students must be provided.")
+
 
 

@@ -55,11 +55,13 @@ class Grade(models.Model):
 
     # grade level
     grade = models.CharField(_('school grade'), choices=SCHOOL_GRADES_CHOICES, max_length=4, default="8")
-    grade_order = models.PositiveIntegerField() # used for odering grades 
+    grade_order = models.PositiveIntegerField() # used for odering grades
+
+    student_count = models.IntegerField(default=0)
 
     # set by school
-    major_subjects = models.PositiveIntegerField() # how many major subjects a student in the grade can fail to get a failing grade
-    none_major_subjects = models.PositiveIntegerField() # how many none major subjects a student in the grade can fail to get a failing grade
+    major_subjects = models.PositiveIntegerField() # how many major subjects a student in the grade needs to fail to fail a term
+    none_major_subjects = models.PositiveIntegerField() # how many none major subjects a student in the grade needs to fail to fail a term
     
     # school linked to
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='school_grades')
@@ -93,19 +95,21 @@ class Grade(models.Model):
             # Set grade_order only for new instances
             if self.grade:
                 try:
-                    self.grade_order = [choice[0] for choice in SCHOOL_GRADES_CHOICES].index(self.grade)
+                    grade_keys = [choice[0] for choice in SCHOOL_GRADES_CHOICES]
+                    self.grade_order = grade_keys.index(self.grade)
                 except ValueError:
-                    raise ValidationError(_('Invalid grade value.'))
+                    raise ValidationError(_('the provided grade level is invalid'))
                 
             else:
-                raise ValidationError(_('a grade cannot have an empty level.'))
+                raise ValidationError(_('validation error, a grade cannot have an empty level'))
 
         self.clean()
+
         try:
             super().save(*args, **kwargs)
         except IntegrityError as e:
             if 'unique constraint' in str(e):
-                raise ValidationError(_('Duplicate grade entry for this school.'))
+                raise ValidationError(_('the provided grade already exists for your school. duplicate grades are not permitted'))
             else:
                 raise
     
@@ -115,6 +119,9 @@ class Subject(models.Model):
     # grade linked to
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='grade_subjects')
     subject = models.CharField(_('grade subject'), max_length=64, choices=SCHOOL_SUBJECTS_CHOICES, default="ENGLISH")
+
+    student_count = models.IntegerField(default=0)
+    group_count = models.IntegerField(default=0)
 
     # field to indicate if it's a major subject
     major_subject = models.BooleanField(default=False)

@@ -230,16 +230,20 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     class Meta:
         ordering = ['surname', 'name', 'account_id']
         unique_together = ('name', 'surname', 'id_number')
+        indexes = [
+            models.Index(fields=['role']),
+            models.Index(fields=['grade', 'school']),
+        ]
 
     def __str__(self):
         return self.name + ' ' + self.surname
         
     def clean(self):
-        # Validate choice fields
+        # Role validation
         if self.role not in dict(ROLE_CHOICES).keys():
             raise ValidationError(_('the role specified for the account is invalid'))
 
-        # Ensure correct field format
+        # Email validation
         if self.email:
             try:
                 validate_email(self.email)
@@ -248,25 +252,28 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
             if len(self.email) > 254:
                 raise ValidationError(_("email address cannot exceed 254 characters"))
 
+        # ID number and passport number validation
         if self.id_number and len(self.id_number) > 13:
             raise ValidationError(_("ID number cannot exceed 13 characters"))
         if self.passport_number and len(self.passport_number) > 9:
             raise ValidationError(_("passport number cannot exceed 9 characters"))
+
+        # Name and surname validation
         if len(self.name) > 64:
             raise ValidationError(_("name cannot exceed 64 characters"))
         if len(self.surname) > 64:
             raise ValidationError(_("surname cannot exceed 64 characters"))
-        
+
+        # Contact number validation
         if self.contact_number:
             if self.role != 'PRINCIPAL':
-                raise ValidationError(_('only principal accounts can can contain contact one numbers'))
-            
+                raise ValidationError(_('only principal accounts can contain contact numbers'))
             if not self.contact_number.isdigit():
                 raise ValidationError(_('contact number should contain only digits'))
-            if len(self.contact_number) < 10 or len(self.contact_number) > 15:
+            if not (10 <= len(self.contact_number) <= 15):
                 raise ValidationError(_('contact number should be between 10 and 15 digits'))
 
-        # Ensure grade is appropriate for the role
+        # Grade validation
         if self.role == 'STUDENT':
             if not self.grade:
                 raise ValidationError(_('student accounts need to be allocated to a grade'))
@@ -276,30 +283,24 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
                 raise ValidationError(_('primary school students cannot be assigned to grades higher than 7'))
             if self.school.school_type == 'SECONDARY' and int(self.grade.grade) <= 7:
                 raise ValidationError(_('secondary school students must be assigned to grades higher than 7'))
-            
         elif self.role in ['PARENT', 'FOUNDER', 'PRINCIPAL', 'TEACHER', 'ADMIN']:
             if self.grade is not None:
                 raise ValidationError(_('only student accounts can be associated with a grade'))
-            
+
+        # Children validation
         if self.pk:
-            # Ensure that only PARENT role can have children
             if self.role != 'PARENT':
-                    if self.children.exists():
-                        raise ValidationError(_('only parent accounts can be assigned children'))
-                    
-            # Ensure that only STUDENT role can have be assigned as children
+                if self.children.exists():
+                    raise ValidationError(_('only parent accounts can be assigned children'))
             elif self.role == 'PARENT':
                 if self.children.exists():
-                    for child in self.children.all():
-                        if child.role != 'STUDENT':
-                            raise ValidationError(_('only student accounts can be assigned as children'))
-                        
-                # Prevent cyclic references in parent-child relationships
-                if self in self.children.all():
-                    raise ValidationError(_('an account cannot be their own parent'))
+                    if any(child.role != 'STUDENT' for child in self.children.all()):
+                        raise ValidationError(_('only student accounts can be assigned as children'))
+                    if self in self.children.all():
+                        raise ValidationError(_('an account cannot be their own parent'))
                 
     def save(self, *args, **kwargs):
-        # Call clean to validate fields
-        self.clean()
+        if not self._state.adding:  # Only validate if the instance is being updated
+            self.clean()
         super().save(*args, **kwargs)
             

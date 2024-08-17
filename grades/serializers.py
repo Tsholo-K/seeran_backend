@@ -10,6 +10,13 @@ from grades.models import Grade, Subject
 from classes.models import Classroom
 
 
+class GradeCreationSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Grade
+        fields = ['grade', 'major_subjects', 'none_major_subjects', 'school']
+
+
 class GradesSerializer(serializers.ModelSerializer):
     
     id = serializers.SerializerMethodField()
@@ -33,7 +40,6 @@ class GradeSerializer(serializers.ModelSerializer):
     def get_subjects(self, obj):
         return SubjectsSerializer(obj.grade_subjects.all(), many=True).data
         
-
 
 class SubjectsSerializer(serializers.ModelSerializer):
     

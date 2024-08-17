@@ -19,4 +19,4 @@ class AssessmentCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Assessment
-        fields = ['title', 'set_by', 'total', 'percentage_towards_term_mark', 'term', 'classroom', 'subject', 'grade', 'school', 'due_date', 'unique_identifier', 'assessment_type']
+        fields = ['unique_identifier', 'title', 'assessment_type', 'total', 'percentage_towards_term_mark', 'due_date', 'term', 'classroom', 'set_by', 'subject', 'grade', 'school']
