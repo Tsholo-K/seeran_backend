@@ -54,7 +54,6 @@ class School(models.Model):
     contact_number = models.CharField(_('school contact number'), max_length=15, unique=True)
 
     student_count = models.IntegerField(default=0)
-    parent_count = models.IntegerField(default=0)
     teacher_count = models.IntegerField(default=0)
     admin_count = models.IntegerField(default=0)
     
