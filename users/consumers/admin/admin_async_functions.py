@@ -9,6 +9,7 @@ from channels.db import database_sync_to_async
 from django.db.models import Q
 from django.db import transaction
 from django.utils.dateparse import parse_time
+from django.core.exceptions import ValidationError
 
 # simple jwt
 
@@ -384,7 +385,13 @@ def create_grade(user, details):
     except CustomUser.DoesNotExist:
         # Handle case where the user account does not exist
         return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
-
+    
+    except ValidationError as e:
+        if isinstance(e.messages, list) and e.messages:
+            return {"error": e.messages[0]}  # Return the first error message
+        else:
+            return {"error": str(e)}  # Handle as a single error message
+        
     except Exception as e:
         return {"error": str(e)}
 
