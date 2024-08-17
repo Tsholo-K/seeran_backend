@@ -39,7 +39,7 @@ def my_account_details(request):
             unread_announcements = Announcement.objects.filter(school=request.user.school).exclude(reached=request.user).count()
 
         # Fetch unread messages
-        unread_messages = ChatRoomMessage.objects.filter(Q(chat_room__user_one=request.user) | Q(chat_room__user_two=request.user), read_receipt=False).count()
+        unread_messages = ChatRoomMessage.objects.filter(Q(chat_room__user_one=request.user) | Q(chat_room__user_two=request.user), read_receipt=False, sender__ne=request.user).count()
 
         # Serialize user data
         serializer = MyAccountDetailsSerializer(instance=request.user)
