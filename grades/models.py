@@ -103,8 +103,7 @@ class Grade(models.Model):
             else:
                 raise ValidationError(_('validation error, a grade cannot have an empty level'))
             
-        if not self._state.adding:  # Only validate if the instance is being updated or created
-            self.clean()
+        self.clean()
 
         try:
             super().save(*args, **kwargs)
@@ -156,8 +155,7 @@ class Subject(models.Model):
         """
         Override save method to validate incoming data.
         """
-        if not self._state.adding:  # Only validate if the instance is being updated or created
-            self.clean()
+        self.clean()
             
         try:
             super().save(*args, **kwargs)

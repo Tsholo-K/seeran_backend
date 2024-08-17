@@ -144,8 +144,7 @@ class School(models.Model):
         """
         Override save method to handle custom validation and additional processing.
         """
-        if not self._state.adding:  # Only validate if the instance is being updated or created
-            self.clean()
+        self.clean()
 
         try:
             super().save(*args, **kwargs)
@@ -208,11 +207,10 @@ class Term(models.Model):
         """
         Override save method to calculate the total amount of school days in the term if not provided.
         """
-        if not self._state.adding:  # Only validate if the instance is being updated or created
-            if not self.school_days:
-                self.school_days = self.calculate_total_school_days()
+        if not self.school_days:
+            self.school_days = self.calculate_total_school_days()
 
-            self.clean()
+        self.clean()
 
         try:
             super().save(*args, **kwargs)

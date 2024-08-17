@@ -303,8 +303,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         indicates whether the model instance is being created (i.e., it is a new instance that has not yet been saved to the database)
         or updated (i.e., it already exists in the database and is being modified)
         """
-        if not self._state.adding:  # Only validate if the instance is being updated
-            self.clean()
+        self.clean()
 
         try:
             super().save(*args, **kwargs)

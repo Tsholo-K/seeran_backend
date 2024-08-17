@@ -169,7 +169,7 @@ class CustomUserManagerTest(TestCase):
                 email="activateuser@example.com",
                 password="securepassword123!"
             )
-        self.assertIn("Password must contain at least one uppercase letter", str(context.exception))
+        self.assertIn("password must contain at least one uppercase letter", str(context.exception))
 
         # Case 3: Password without a number
         with self.assertRaises(ValueError) as context:
@@ -177,7 +177,7 @@ class CustomUserManagerTest(TestCase):
                 email="activateuser@example.com",
                 password="SecurePassword!"
             )
-        self.assertIn("Password must contain at least one digit", str(context.exception))
+        self.assertIn("password must contain at least one digit", str(context.exception))
 
         # Case 4: Password without a special character
         with self.assertRaises(ValueError) as context:
@@ -185,7 +185,7 @@ class CustomUserManagerTest(TestCase):
                 email="activateuser@example.com",
                 password="SecurePassword123"
             )
-        self.assertIn("Password must contain at least one special character", str(context.exception))
+        self.assertIn("password must contain at least one special character", str(context.exception))
 
         # Case 5: Password too short (e.g., less than 8 characters)
         with self.assertRaises(ValueError) as context:
@@ -193,7 +193,7 @@ class CustomUserManagerTest(TestCase):
                 email="activateuser@example.com",
                 password="S1!"
             )
-        self.assertIn("Password must be at least 8 characters long", str(context.exception))
+        self.assertIn("password must be at least 8 characters long", str(context.exception))
 
         # Case 6: Password too long (e.g., more than 128 characters)
         long_password = "S" + "e" * 127 + "!"
@@ -202,7 +202,7 @@ class CustomUserManagerTest(TestCase):
                 email="activateuser@example.com",
                 password=long_password
             )
-        self.assertIn("Password cannot exceed 128 characters", str(context.exception))
+        self.assertIn("password cannot exceed 128 characters", str(context.exception))
 
     def test_user_role_requirements(self):
         """

@@ -121,8 +121,7 @@ class Assessment(models.Model):
         """
         Override save method to validate incoming data
         """
-        if not self._state.adding:  # Only validate if the instance is being updated or created
-            self.clean()
+        self.clean()
 
         try:
             super().save(*args, **kwargs)
