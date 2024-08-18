@@ -606,21 +606,21 @@ def create_class(user, details):
 
                 # If a teacher is specified, update the teacher for the class
                 if details.get('teacher'):
-                    teacher = CustomUser.objects.get(account_id=details.get('teacher'), role='TEACHER', school=account.school)
-                    classroom.update_teacher(teacher=teacher)
+                    classroom.update_teacher(teacher=CustomUser.objects.get(account_id=details.get('teacher'), role='TEACHER', school=account.school))
             
             return response
         
         return {"error": serializer.errors}
-    
+
     except CustomUser.DoesNotExist:
-        return {'error': 'an account with the provided credentials does not exist'}
+        # Handle case where the user account does not exist
+        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
     
     except Grade.DoesNotExist:
-        return {'error': 'grade with the provided credentials does not exist'}
+        return {'error': 'a grade with the provided credentials does not exist. please check the grade details and try again.'}
     
     except Subject.DoesNotExist:
-        return {'error': 'subject with the provided credentials does not exist'}
+        return {'error': 'a subject with the provided credentials does not exist. please check the subject details and try again.'}
     
     except ValidationError as e:
         return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
@@ -641,8 +641,10 @@ def delete_class(user, details):
         if account.school != classroom.school:
             return { "error" : 'you do not have permission to perform this action because the specified classroom does not belong to your school. please ensure you are attempting to create a group schedule in a grade within your own school' }
 
+        response = {'message': f'grade {classroom.grade.grade} classroom deleted successfully, the classroom will no longer be accessible or available in your schools data'}
         classroom.delete()
-        return {'message': f'class for grade created successfully. you can now add students, set assessments and track performance in the subject classes page'}
+
+        return response
                
     except CustomUser.DoesNotExist:
         # Handle case where the user or teacher account does not exist
@@ -689,22 +691,19 @@ def update_class(user, details):
         account = CustomUser.objects.get(account_id=user)
         classroom = Classroom.objects.get(class_id=details.get('class_id'), school=account.school)
 
-        new_teacher = updates.get('teacher')
-        if new_teacher:
-            if new_teacher == 'remove teacher':
-                updates['teacher'] = None  # remove the teacher
-
-            else:
-                teacher = CustomUser.objects.get(account_id=new_teacher, school=account.school)
-                updates['teacher'] = teacher.pk
-
         serializer = ClassUpdateSerializer(instance=classroom, data=updates)
 
         if serializer.is_valid():
             with transaction.atomic():
                 serializer.save()
 
-                return {"message" : 'class details have been successfully updated'}
+                if updates.get('teacher'):
+                    if updates.get('teacher') == 'remove teacher':
+                        classroom.update_teacher(teacher=None, school=account.school)
+                    else:
+                        classroom.update_teacher(teacher=CustomUser.objects.get(account_id=updates.get('teacher'), school=account.school))
+
+            return {"message" : 'classroom details have been successfully updated'}
             
         return {"error" : serializer.errors}
 
@@ -742,9 +741,9 @@ def search_students(user, details):
 
 
 @database_sync_to_async
-def add_students_to_class(user, details):
+def update_class_students(user, details):
     """
-    Adds students to a specified classroom.
+    Adds or removes students to/from a specified classroom.
 
     Args:
         user (str): The unique identifier (account_id) of the user making the request.
@@ -771,70 +770,26 @@ def add_students_to_class(user, details):
 
         students_list = details.get('students', '').split(', ')
         if not students_list or students_list == ['']:
-            return {'error': 'Invalid request. No students were provided.'}
+            return {'error': 'invalid request. no students were provided'}
         
-        # Retrieve students already in the class to prevent duplication
-        existing_students = classroom.students.filter(account_id__in=students_list).values_list('account_id', flat=True)
-        if existing_students:
-            return {'error': f'The following students are already in this class: {", ".join(existing_students)}'}
+        if not details.get('remove'):
+            # Retrieve students already in the class to prevent duplication
+            existing_students = classroom.students.filter(account_id__in=students_list).values_list('account_id', flat=True)
+            if existing_students:
+                return {'error': f'The following students are already in this class: {", ".join(existing_students)}'}
 
-        # Retrieve and add students to the class in a single transaction
-        students_to_add = CustomUser.objects.filter(account_id__in=students_list, school=account.school, grade=classroom.grade)
         with transaction.atomic():
-            classroom.students.add(*students_to_add)
+            classroom.update_students(students_list=students_list, remove=details.get('remove'))
         
-        message = f'Students successfully added to the grade {classroom.grade.grade}, group {classroom.group.title()} {"register" if details.get("register") else classroom.subject.subject.lower()} class.'
-        return {'message': message}
+        return {'message': f'Students successfully {"removed from" if details.get("remove") else 'added to'} the grade {classroom.grade.grade}, group {classroom.group} {"register" if classroom.register_class else classroom.subject.subject.lower()} class'}
 
     except CustomUser.DoesNotExist:
-        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+        # Handle case where the user account does not exist
+        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
     
     except Classroom.DoesNotExist:
-        return {'error': 'A classroom with the provided credentials does not exist. Please check the classroom details and try again.'}
-
-    except Exception as e:
-        return {'error': str(e)}
-
-
-@database_sync_to_async
-def remove_student_from_class(user, details):
-    """
-    Removes a single student from a specified classroom.
-
-    Args:
-        user (str): The unique identifier (account_id) of the user making the request.
-        details (dict): A dictionary containing class and student details.
-            - 'class_id' (str): The ID of the classroom.
-            - 'account_id' (str): The ID of the student to be removed.
-
-    Returns:
-        dict: A dictionary containing a success message or an error message.
-    """
-    try:
-        # Retrieve the user account and classroom with related fields
-        account = CustomUser.objects.select_related('school').get(account_id=user)
-        classroom = Classroom.objects.select_related('school', 'grade').get(class_id=details.get('class_id'))
-
-        # Check permission to remove a student from the class
-        if account.school != classroom.school:
-            return {"error": "Permission denied. The provided classroom is not from your school."}
-
-        # Check if the student is part of the classroom
-        student_to_remove = classroom.students.filter(account_id=details.get('account_id')).first()
-        if student_to_remove:
-            # Remove the student within a transaction
-            with transaction.atomic():
-                classroom.students.remove(student_to_remove)
-            
-            return {'message': 'The student has been successfully removed from the class.'}
-        
-        return {'error': 'Cannot remove student. The student with the provided credentials is not part of the class.'}
-
-    except CustomUser.DoesNotExist:
-        return {'error': 'An account with the provided credentials does not exist.'}
-    
-    except Classroom.DoesNotExist:
-        return {'error': 'A classroom with the provided credentials does not exist.'}
+        # Handle case where the classroom does not exist
+        return {'error': 'a classroom with the provided credentials does not exist. please check the classroom details and try again.'}
 
     except Exception as e:
         return {'error': str(e)}
