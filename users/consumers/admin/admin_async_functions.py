@@ -460,24 +460,30 @@ def create_subjects(user, details):
     try:
         # Retrieve the user and related school in a single query using select_related
         account = CustomUser.objects.select_related('school').get(account_id=user)
+        grade = Grade.objects.select_related('school').get(grade_id=details.get('grade'))
+
+        # Check if the grade is from the same school as the user making the request
+        if account.school != grade.school:
+            return {"error": "permission denied. you can only access or update details about grades from your own school"}
 
         # Check if the subject already exists for the school using exists() to avoid fetching unnecessary data
-        if Subject.objects.filter(subject=details.get('subject'), grade=details.get('grade'), school_id=account.school_id).exists():
-            return {"error": f"grade {details.get('grade')} already exists for your school. duplicate grades are not permitted."}
+        if Subject.objects.filter(subject=details.get('subject'), grade=grade, school_id=account.school_id).exists():
+            return {"error": f"{details.get('subject')} subject already exists for grade {grade.grade} in your your school. duplicate subjects in a grade is not permitted."}
 
-        # Set the school field in the details to the user's school ID
+        # Set the school and grade fields
         details['school'] = account.school_id
+        details['grade'] = grade.pk
 
         # Serialize the details for grade creation
-        serializer = GradeCreationSerializer(data=details)
+        serializer = SubjectCreationSerializer(data=details)
 
         # Validate the serialized data
         if serializer.is_valid():
             # Create the grade within a transaction to ensure atomicity
             with transaction.atomic():
-                Grade.objects.create(**serializer.validated_data)
+                Subject.objects.create(**serializer.validated_data)
             
-            return {"message": f"Grade {details.get('grade')} has been successfully created for your school."}
+            return {"message": f"{details.get('subject')} subject has been successfully created for grade {grade.grade} in your school"}
         
         # Return errors if the serializer validation fails
         return {"error": serializer.errors}
