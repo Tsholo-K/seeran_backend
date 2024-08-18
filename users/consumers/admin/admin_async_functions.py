@@ -781,8 +781,7 @@ def update_class_students(user, details):
         with transaction.atomic():
             classroom.update_students(students_list=students_list, remove=details.get('remove'))
         
-        message = f'Students successfully {"removed from" if details.get("remove") else 'added to'} the grade {classroom.grade.grade}, group {classroom.group} {"register" if classroom.register_class else classroom.subject.subject.lower()} class'
-        return {'message': message}
+        return {'message': f'Students successfully {"removed from" if details.get("remove") else "added to"} the grade {classroom.grade.grade}, group {classroom.group} {"register" if classroom.register_class else classroom.subject.subject.lower()} class'}
 
     except CustomUser.DoesNotExist:
         # Handle case where the user account does not exist
