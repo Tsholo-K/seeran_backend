@@ -1224,7 +1224,7 @@ def form_data_for_creating_class(user, details):
         # Determine the query based on the reason for retrieving teachers
         if details.get('reason') == 'subject class':
             # Retrieve the subject and validate it against the grade
-            subject = Subject.get(subject_id=details.get('subject'))
+            subject = Subject.objects.get(subject_id=details.get('subject'))
 
             # Retrieve all teachers in the user's school who are not teaching the specified subject
             teachers = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(taught_classes__subject=subject)
