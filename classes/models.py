@@ -61,13 +61,13 @@ class Classroom(models.Model):
         constraints = [
             # Unique combination for subject classes
             models.UniqueConstraint(
-                fields=['group', 'grade', 'subject'],
+                fields=['group', 'grade', 'subject', 'school'],
                 name='unique_subject_class',
                 condition=models.Q(subject__isnull=False)
             ),
             # Unique combination for register classes
             models.UniqueConstraint(
-                fields=['group', 'grade'],
+                fields=['group', 'grade', 'school'],
                 name='unique_register_class',
                 condition=models.Q(register_class=True)
             ),
