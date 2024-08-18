@@ -583,8 +583,6 @@ def create_class(user, details):
             # Check if a register class with the same group already exists in the grade
             if Classroom.objects.filter(group=details.get('group'), grade=grade, school=account.school, register_class=True).exists():
                 return {"error": "a register class with the same group in the grade already exists.. duplicate groups in the same register and grade is not permitted"}
-            
-            details['subject'] = None
 
             response = {'message': f'register class for grade {grade.grade} created successfully. you can now add students and track attendance.'}
         
@@ -598,7 +596,6 @@ def create_class(user, details):
             if Classroom.objects.filter(group=details.get('group'), grade=grade, school=account.school, subject=subject).exists():
                 return {"error": "a class with the same group in the same subject and grade already exists. duplicate groups in the same subject and grade is not permitted"}
             
-            details['register_class'] = False
             details['subject'] = subject.pk
             response = {'message': f'class for grade {grade.grade} {subject.subject} created successfully.. you can now add students and track performance.'.lower()}
         
@@ -638,7 +635,6 @@ def create_class(user, details):
     
     except Exception as e:
         return {'error': str(e).lower()}
-
 
 
 @database_sync_to_async
