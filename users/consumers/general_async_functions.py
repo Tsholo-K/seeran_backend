@@ -16,6 +16,7 @@ from django.db.models import Q
 from django.contrib.auth.password_validation import validate_password
 from django.core.cache import cache
 from django.contrib.auth.hashers import check_password
+from django.utils.translation import gettext as _
 
 # simple jwt
 from rest_framework_simplejwt.tokens import AccessToken as decode, TokenError
@@ -648,20 +649,32 @@ def search_parents(user, details):
 
 @database_sync_to_async
 def search_class(user, details):
+    """
+    Searches for a classroom based on the user's role and provided details.
 
+    Args:
+        user (str): The account ID of the user making the request.
+        details (dict): A dictionary containing the search criteria, such as 'class_id'.
+
+    Returns:
+        dict: A dictionary containing the search results or error messages.
+    """
     try:
-        account = CustomUser.objects.get(account_id=user)
+        # Retrieve the user account
+        account = CustomUser.objects.select_related('school').get(account_id=user)
 
+        # Determine the classroom based on the request details
         if details.get('class_id') == 'requesting_my_own_class':
+            # Fetch the classroom where the user is the teacher and it is a register class
             classroom = Classroom.objects.select_related('school').filter(teacher=account, register_class=True).first()
-
-            if not classroom:
+            if classroom is None:
                 return {"class": None}
 
             if account.role != 'TEACHER' or classroom.school != account.school:
-                return {"error": "unauthorized access. the account making the request has an invalid role or the classroom you are trying to access is not from your school"}
+                return {"error": _("Unauthorized access. The account making the request has an invalid role or the classroom is not from your school.")}
 
         else:
+            # Fetch the specific classroom based on class_id and school
             classroom = Classroom.objects.get(class_id=details.get('class_id'), school=account.school)
         
         # Check permissions
@@ -669,20 +682,21 @@ def search_class(user, details):
         if permission_error:
             return permission_error
 
+        # Serialize and return the classroom data
         serializer = ClassSerializer(classroom)
-
         return {"class": serializer.data}
 
     except CustomUser.DoesNotExist:
         # Handle case where the user account does not exist
-        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
+        return {'error': _('An account with the provided credentials does not exist. Please check the account details and try again.')}
     
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
-        return {'error': 'a classroom with the provided credentials does not exist. please check the classroom details and try again.'}
+        return {'error': _('A classroom with the provided details does not exist. Please check the classroom details and try again.')}
     
     except Exception as e:
-        return { 'error': str(e) }
+        # Handle any other unexpected errors
+        return {'error': str(e)}
 
 
 @database_sync_to_async
