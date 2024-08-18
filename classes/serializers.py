@@ -27,7 +27,6 @@ class ClassSerializer(serializers.ModelSerializer):
 
     teacher = serializers.SerializerMethodField()
     students = serializers.SerializerMethodField()
-    student_count = serializers.SerializerMethodField()
     subject = serializers.SerializerMethodField()
     grade = serializers.SerializerMethodField()
 
