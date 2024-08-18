@@ -137,6 +137,10 @@ class Classroom(models.Model):
             # Assign the teacher to the classroom
             self.teacher = teacher
         else:
+            # Check if the teacher is already assigned to another register class in the school
+            if self.register_class and teacher.taught_classes.filter(register_class=True).exclude(pk=self.pk).exists():
+                raise ValueError("the provided teacher is already assigned to a register class. teachers can only be assigned to one register class in a school.")
+
             # Remove the teacher assignment
             self.teacher = None
 

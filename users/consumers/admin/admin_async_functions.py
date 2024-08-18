@@ -699,7 +699,7 @@ def update_class(user, details):
 
                 if updates.get('teacher'):
                     if updates.get('teacher') == 'remove teacher':
-                        classroom.update_teacher(teacher=None, school=account.school)
+                        classroom.update_teacher(teacher=None)
                     else:
                         classroom.update_teacher(teacher=CustomUser.objects.get(account_id=updates.get('teacher'), school=account.school))
 
