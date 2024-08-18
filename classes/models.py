@@ -58,20 +58,10 @@ class Classroom(models.Model):
     class_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
-        constraints = [
-            # Unique combination for subject classes
-            models.UniqueConstraint(
-                fields=['group', 'grade', 'subject', 'school'],
-                name='unique_subject_class',
-                condition=models.Q(subject__isnull=False)
-            ),
-            # Unique combination for register classes
-            models.UniqueConstraint(
-                fields=['group', 'grade', 'school'],
-                name='unique_register_class',
-                condition=models.Q(register_class=True)
-            ),
-        ]
+        unique_together = (
+            ('group', 'grade', 'subject'),  # Unique combination in subject classes
+            ('group', 'grade', 'register_class')  # Unique combination in register classes
+        )
 
     def __str__(self):
         return f"{self.school} - Grade {self.grade} - {self.classroom_number}"
