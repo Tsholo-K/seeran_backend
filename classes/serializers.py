@@ -16,12 +16,19 @@ from users.serializers import AccountSerializer
 
 class ClassCreationSerializer(serializers.ModelSerializer):
 
-    subject = serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all(), required=False)
+    subject = serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all(), required=False, allow_null=True)
 
     class Meta:
         model = Classroom
         fields = ['classroom_number', 'group', 'subject', 'register_class', 'grade', 'school']
-
+    
+    def validate(self, data):
+        """
+        Ensure that the subject field is only required when register_class is False.
+        """
+        if not data.get('register_class') and not data.get('subject'):
+            raise serializers.ValidationError({"subject": "This field is required when 'register_class' is False."})
+        return data
 
 class ClassSerializer(serializers.ModelSerializer):
 
