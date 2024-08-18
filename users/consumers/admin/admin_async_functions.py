@@ -1223,8 +1223,11 @@ def form_data_for_creating_class(user, details):
 
         # Determine the query based on the reason for retrieving teachers
         if details.get('reason') == 'subject class':
-            # Retrieve all teachers in the user's school
-            teachers = CustomUser.objects.filter(role='TEACHER', school=account.school)
+            # Retrieve the subject and validate it against the grade
+            subject = Subject.get(subject_id=details.get('subject'))
+
+            # Retrieve all teachers in the user's school who are not teaching the specified subject
+            teachers = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(taught_classes__subject=subject)
 
         elif details.get('reason') == 'register class':
             # Retrieve teachers not currently teaching a register class
@@ -1241,7 +1244,10 @@ def form_data_for_creating_class(user, details):
     except CustomUser.DoesNotExist:
         # Handle case where the user account does not exist
         return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
-    
+        
+    except Subject.DoesNotExist:
+        return {'error': 'subject with the provided credentials does not exist'}
+
     except Exception as e:
         # Handle any other unexpected errors
         return {'error': str(e)}
