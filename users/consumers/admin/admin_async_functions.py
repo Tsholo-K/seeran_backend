@@ -574,81 +574,68 @@ def create_class(user, details):
         # Retrieve the account making the request
         account = CustomUser.objects.select_related('school').get(account_id=user)
 
-        # Retrieve the grade
+        # Retrieve the grade and validate school ownership
         grade = Grade.objects.select_related('school').get(grade_id=details.get('grade'))
-
         if account.school != grade.school:
-            return { "error" : 'you do not have permission to perform this action because the specified grade does not belong to your school. please ensure you are attempting to create a group schedule in a grade within your own school' }
+            return {"error": "permission denied. the specified grade does not belong to your school."}
 
         if details.get('register'):
-            # Check if a register class with the same group already exists in the same grade
+            # Check if a register class with the same group already exists in the grade
             if Classroom.objects.filter(group=details.get('group'), grade=grade, school=account.school, register_class=True).exists():
-                return {"error": "a register class with the provided group in the same grade already exists.. a class group should be unique in the same grade and subject(if applicable)"}
-                
-            response = {'message': f'register class for grade {grade.grade} created successfully. you can now add students and track attendance in the register classes page'}
-
+                return {"error": "a register class with the same group in the grade already exists."}
+            
+            response = {'message': f'register class for grade {grade.grade} created successfully. you can now add students and track attendance.'}
+        
         elif details.get('subject'):
-            # Retrieve the subject
+            # Retrieve the subject and validate it against the grade
             subject = Subject.objects.select_related('grade').get(subject_id=details.get('subject'))
-
-            # Check if the grade is from the same school as the user making the request
             if subject.grade != grade:
-                return { "error" : 'you do not have permission to perform this action because the specified subject does not belong to the specified grade. please ensure you are attempting to create a classroom in a subject within a correctly specified grade' }
+                return {"error": "permission denied. the specified subject does not belong to the specified grade."}
 
-            # Check if a class with the same group already exists in the same subject and grade
+            # Check if a class with the same group already exists in the subject and grade
             if Classroom.objects.filter(group=details.get('group'), grade=grade, school=account.school, subject=subject).exists():
-                return {"error": "a class with the provided group in the same subject and grade already exists.. a class group should be unique in the same grade and subject"}
+                return {"error": "a class with the same group in the subject and grade already exists."}
             
             details['subject'] = subject.pk
-
-            response = {'message': f'class for grade {grade.grade} {subject.subject} created successfully. you can now add students, set assessments and track performance in the subject classes page'.lower()}
-
+            response = {'message': f'class for grade {grade.grade} {subject.subject.lower()} created successfully. you can now add students and track performance.'}
+        
         else:
-            return {"error": "the provided classroom creation information is invalid. please make sure you have provided all required information and try again"}
-      
+            return {"error": "invalid classroom creation details. please provide all required information and try again."}
+
         # Set the school and grade fields
-        details['school'] = account.school.pk
-        details['grade'] = grade.pk
+        details.update({'school': account.school.pk, 'grade': grade.pk})
 
-        # Serialize the details for class creation
+        # Serialize and validate the data
         serializer = ClassCreationSerializer(data=details)
-
-        # Validate the serialized data
         if serializer.is_valid():
-            # Create the class within a transaction to ensure atomicity
+            # Create the class within a transaction
             with transaction.atomic():
-                classroom = Classroom.objects.create(**serializer.validated_data)
+                classroom = serializer.save()
 
-                # Retrieve the teacher if specified
+                # If a teacher is specified, update the teacher for the class
                 if details.get('teacher'):
-                    classroom.update_teacher(teacher=CustomUser.objects.get(account_id=details.get('teacher'), school=account.school))
-           
+                    teacher = CustomUser.objects.get(account_id=details.get('teacher'), role='TEACHER', school=account.school)
+                    classroom.update_teacher(teacher=teacher)
+            
             return response
         
-        # Return errors if the serializer validation fails
         return {"error": serializer.errors}
-               
+    
     except CustomUser.DoesNotExist:
-        # Handle case where the user or teacher account does not exist
         return {'error': 'an account with the provided credentials does not exist'}
     
     except Grade.DoesNotExist:
-        # Handle case where the grade does not exist
         return {'error': 'grade with the provided credentials does not exist'}
     
     except Subject.DoesNotExist:
-        # Handle case where the grade does not exist
         return {'error': 'subject with the provided credentials does not exist'}
     
     except ValidationError as e:
-        if isinstance(e.messages, list) and e.messages:
-            return {"error": e.messages[0].lower()}  # Return the first error message
-        else:
-            return {"error": str(e).lower()}  # Handle as a single error message
-
+        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
+    
     except Exception as e:
-        # Handle any other unexpected errors
         return {'error': str(e).lower()}
+
 
 
 @database_sync_to_async
