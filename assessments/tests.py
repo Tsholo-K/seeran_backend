@@ -33,7 +33,7 @@ class AssessmentTest(TestCase):
             school_district="JHB NORTH"
         )
         self.grade = Grade.objects.create(
-            grade='8',
+            grade='7',
             major_subjects=2,
             none_major_subjects=1,
             school=self.school

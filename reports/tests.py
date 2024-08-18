@@ -180,7 +180,7 @@ class ReportCardTest(TestCase):
             passport_number='845751548'
         )
         self.classroom = Classroom.objects.create(
-            classroom_identifier='124',
+            classroom_number='124',
             group='A',
             grade=self.grade,
             subject=self.subject,
