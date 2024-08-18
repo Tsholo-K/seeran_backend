@@ -467,8 +467,8 @@ def create_subject(user, details):
             return {"error": "permission denied. you can only access or update details about grades from your own school"}
 
         # Check if the subject already exists for the school using exists() to avoid fetching unnecessary data
-        if Subject.objects.filter(subject=details.get('subject'), grade=grade, school=account.school).exists():
-            return {"error": f"{details.get('subject')} subject already exists for grade {grade.grade} in your your school. duplicate subjects in a grade is not permitted."}
+        if Subject.objects.filter(subject=details.get('subject'), grade=grade).exists():
+            return {"error": f"{details.get('subject')} subject already exists for grade {grade.grade} in your school. duplicate subjects in a grade is not permitted."}
 
         # Set the school and grade fields
         details['grade'] = grade.pk
