@@ -134,13 +134,13 @@ class Classroom(models.Model):
             if self.register_class and teacher.taught_classes.filter(register_class=True).exclude(pk=self.pk).exists():
                 raise ValueError("the provided teacher is already assigned to a register class. teachers can only be assigned to one register class in a school")
             
+            # Check if the teacher is already assigned to another class in the subject
+            elif self.subject and teacher.taught_classes.filter(subject=self.subject).exclude(pk=self.pk).exists():
+                raise ValueError("the provided teacher is already assigned to a class in this grade and subject. teachers can not teach more than one class in the same grade and subject")
+            
             # Assign the teacher to the classroom
             self.teacher = teacher
         else:
-            # Check if the teacher is already assigned to another class in the subject
-            if self.subject and teacher.taught_classes.filter(subject=self.subject).exclude(pk=self.pk).exists():
-                raise ValueError("the provided teacher is already assigned to a class in this grade and subject. teachers can not teach more than one class in the same grade and subject")
-
             # Remove the teacher assignment
             self.teacher = None
 
