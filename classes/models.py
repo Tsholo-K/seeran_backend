@@ -138,7 +138,7 @@ class Classroom(models.Model):
             self.teacher = teacher
         else:
             # Check if the teacher is already assigned to another class in the subject
-            if self.register_class and teacher.taught_classes.filter(subject=self.subject).exclude(pk=self.pk).exists():
+            if self.subject and teacher.taught_classes.filter(subject=self.subject).exclude(pk=self.pk).exists():
                 raise ValueError("the provided teacher is already assigned to a class in this grade and subject. teachers can not teach more than one class in the same grade and subject")
 
             # Remove the teacher assignment
