@@ -21,7 +21,7 @@ from classes.models import Classroom
 
 # serilializers
 from users.serializers import AccountUpdateSerializer, AccountIDSerializer, AccountSerializer, AccountCreationSerializer, StudentAccountCreationSerializer, ParentAccountCreationSerializer
-from grades.serializers import GradeCreationSerializer, GradesSerializer, GradeSerializer, SubjectDetailSerializer, ClassesSerializer
+from grades.serializers import GradeCreationSerializer, GradesSerializer, GradeSerializer, SubjectCreationSerializer, SubjectDetailSerializer, ClassesSerializer
 from classes.serializers import ClassUpdateSerializer
 from announcements.serializers import AnnouncementCreationSerializer
 
@@ -458,31 +458,29 @@ def search_grade(user, details):
 def create_subjects(user, details):
 
     try:
-        account = CustomUser.objects.get(account_id=user)
-        grade = Grade.objects.get(grade_id=details.get('grade_id'), school=account.school)
+        # Retrieve the user and related school in a single query using select_related
+        account = CustomUser.objects.select_related('school').get(account_id=user)
 
-        if details.get('subjects') == '':
-            return { 'error': f'invalid request.. no subjects were provided' }
-        
-        subject_list = details.get('subjects').split(', ')
-        
-        existing_subjects = []
-        for sub in subject_list:
-            if Subject.objects.filter(subject=sub, grade=grade).exists():
-                existing_subjects.append(sub.title())
-        
-        if existing_subjects:
-            return {'error' : f'the following subjects have already been created for the current grade: {", ".join(existing_subjects)}.. duplicate subjects is not allowed'}
-    
-        with transaction.atomic():
-            for sub in subject_list:
-                ject = Subject.objects.create(subject=sub, grade=grade)
-                ject.save()
+        # Check if the subject already exists for the school using exists() to avoid fetching unnecessary data
+        if Subject.objects.filter(subject=details.get('subject'), grade=details.get('grade'), school_id=account.school_id).exists():
+            return {"error": f"grade {details.get('grade')} already exists for your school. duplicate grades are not permitted."}
 
-        # Determine the correct word to use based on the number of subjects
-        subject_word = "subject" if len(subject_list) == 1 else "subjects"
+        # Set the school field in the details to the user's school ID
+        details['school'] = account.school_id
 
-        return { 'message': f'{subject_word} for grade created successfully. you can now add classes, set assessments.. etc' }
+        # Serialize the details for grade creation
+        serializer = GradeCreationSerializer(data=details)
+
+        # Validate the serialized data
+        if serializer.is_valid():
+            # Create the grade within a transaction to ensure atomicity
+            with transaction.atomic():
+                Grade.objects.create(**serializer.validated_data)
+            
+            return {"message": f"Grade {details.get('grade')} has been successfully created for your school."}
+        
+        # Return errors if the serializer validation fails
+        return {"error": serializer.errors}
                
     except Grade.DoesNotExist:
         return { 'error': 'grade with the provided credentials does not exist' }

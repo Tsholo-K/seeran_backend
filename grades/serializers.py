@@ -41,6 +41,13 @@ class GradeSerializer(serializers.ModelSerializer):
         return SubjectsSerializer(obj.grade_subjects.all(), many=True).data
         
 
+class SubjectCreationSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Grade
+        fields = ['grade', 'subject', 'major_subject', 'pass_mark']
+
+
 class SubjectsSerializer(serializers.ModelSerializer):
     
     subject = serializers.SerializerMethodField()

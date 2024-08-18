@@ -653,7 +653,10 @@ def search_class(user, details):
         account = CustomUser.objects.get(account_id=user)
 
         if details.get('class_id') == 'requesting_my_own_class':
-            classroom = Classroom.objects.select_related('school').get(teacher=account, register_class=True)
+            classroom = Classroom.objects.select_related('school').filter(teacher=account, register_class=True).first()
+
+            if not classroom:
+                return {"class": None}
 
             if account.role != 'TEACHER' or classroom.school != account.school:
                 return {"error": "unauthorized access. the account making the request has an invalid role or the classroom you are trying to access is not from your school"}
