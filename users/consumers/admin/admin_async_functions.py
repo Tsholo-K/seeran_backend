@@ -575,7 +575,7 @@ def create_class(user, details):
         account = CustomUser.objects.select_related('school').get(account_id=user)
 
         # Retrieve the grade
-        grade = Grade.objects.select_related('school').get(grade_id=details.get('grade_id'))
+        grade = Grade.objects.select_related('school').get(grade_id=details.get('grade'))
 
         if account.school != grade.school:
             return { "error" : 'you do not have permission to perform this action because the specified grade does not belong to your school. please ensure you are attempting to create a group schedule in a grade within your own school' }
@@ -587,9 +587,9 @@ def create_class(user, details):
                 
             response = {'message': f'register class for grade {grade.grade} created successfully. you can now add students and track attendance in the register classes page'}
 
-        elif details.get('subject_id'):
+        elif details.get('subject'):
             # Retrieve the subject
-            subject = Subject.objects.select_related('grade').get(subject_id=details.get('subject_id'))
+            subject = Subject.objects.select_related('grade').get(subject_id=details.get('subject'))
 
             # Check if the grade is from the same school as the user making the request
             if subject.grade != grade:
@@ -620,8 +620,8 @@ def create_class(user, details):
                 classroom = Classroom.objects.create(**serializer.validated_data)
 
                 # Retrieve the teacher if specified
-                if details.get('classroom_teacher'):
-                    classroom.update_teacher(teacher=CustomUser.objects.get(account_id=details.get('classroom_teacher'), school=account.school))
+                if details.get('teacher'):
+                    classroom.update_teacher(teacher=CustomUser.objects.get(account_id=details.get('teacher'), school=account.school))
            
             return response
         
