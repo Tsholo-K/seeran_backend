@@ -639,10 +639,16 @@ def create_class(user, details):
     except Subject.DoesNotExist:
         # Handle case where the grade does not exist
         return {'error': 'subject with the provided credentials does not exist'}
+    
+    except ValidationError as e:
+        if isinstance(e.messages, list) and e.messages:
+            return {"error": e.messages[0].lower()}  # Return the first error message
+        else:
+            return {"error": str(e).lower()}  # Handle as a single error message
 
     except Exception as e:
         # Handle any other unexpected errors
-        return {'error': str(e)}
+        return {'error': str(e).lower()}
 
 
 @database_sync_to_async
@@ -670,7 +676,7 @@ def delete_class(user, details):
 
     except Exception as e:
         # Handle any other unexpected errors
-        return {'error': str(e)}
+        return {'error': str(e).lower()}
 
 
 @database_sync_to_async
@@ -693,7 +699,7 @@ def search_grade_register_classes(user, details):
         return { 'error': 'grade with the provided credentials does not exist' }
     
     except Exception as e:
-        return { 'error': str(e) }
+        return { 'error': str(e).lower()}
 
 
 @database_sync_to_async

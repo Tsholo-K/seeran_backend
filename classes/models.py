@@ -58,10 +58,20 @@ class Classroom(models.Model):
     class_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
-        unique_together = (
-            ('group', 'grade', 'subject'),
-            ('group', 'grade', 'register_class')
-        )
+        constraints = [
+            # Unique combination for subject classes
+            models.UniqueConstraint(
+                fields=['group', 'grade', 'subject'],
+                name='unique_subject_class',
+                condition=models.Q(subject__isnull=False)
+            ),
+            # Unique combination for register classes
+            models.UniqueConstraint(
+                fields=['group', 'grade'],
+                name='unique_register_class',
+                condition=models.Q(register_class=True)
+            ),
+        ]
 
     def __str__(self):
         return f"{self.school} - Grade {self.grade} - {self.classroom_number}"
@@ -75,7 +85,7 @@ class Classroom(models.Model):
         except IntegrityError as e:
             # Check if the error is related to unique constraints
             if 'unique constraint' in str(e).lower():
-                raise ValidationError(_('The provided classroom information is invalid. A combination of group, grade, subject, and/or register already exists for your school. Duplicate classroom groups in the same grade and subject/register are not permitted.'))
+                raise ValidationError(_('a combination of group, grade, subject/register already exists for your school. Duplicate classroom groups in the same grade and subject/register are not permitted.'))
             else:
                 # Re-raise the original exception if it's not related to unique constraints
                 raise
