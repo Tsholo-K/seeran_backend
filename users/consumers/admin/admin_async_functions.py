@@ -455,7 +455,7 @@ def search_grade(user, details):
 
 
 @database_sync_to_async
-def create_subjects(user, details):
+def create_subject(user, details):
 
     try:
         # Retrieve the user and related school in a single query using select_related
@@ -471,7 +471,6 @@ def create_subjects(user, details):
             return {"error": f"{details.get('subject')} subject already exists for grade {grade.grade} in your your school. duplicate subjects in a grade is not permitted."}
 
         # Set the school and grade fields
-        details['school'] = account.school_id
         details['grade'] = grade.pk
 
         # Serialize the details for grade creation
