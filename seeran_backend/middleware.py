@@ -123,17 +123,9 @@ class ConnectionManager:
         Args:
             account_id (str): The account ID of the user.
             websocket (WebSocket): The WebSocket connection instance.
-
-        Raises:
-            ConnectionError: If the user already has 3 or more active connections.
         """
         if account_id not in self.active_connections:
             self.active_connections[account_id] = []
-
-        # Check if the user already has 3 or more connections
-        if len(self.active_connections[account_id]) > 2:
-            await websocket.close()
-            return
 
         self.active_connections[account_id].append(websocket)
 

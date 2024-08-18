@@ -5,11 +5,12 @@ import requests
 import base64
 
 # rest framework
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework.exceptions import AuthenticationFailed
 from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.decorators import api_view, throttle_classes
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.tokens import AccessToken as decode
+from rest_framework.throttling import UserRateThrottle
 
 # django
 from django.db import transaction
@@ -19,7 +20,6 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth.password_validation import validate_password
 from django.core.cache import cache
 from django.core.validators import validate_email
-from django.views.decorators.http import require_POST
 
 # models
 from users.models import CustomUser
@@ -29,17 +29,24 @@ from auth_tokens.models import AccessToken
 from .serializers import CustomTokenObtainPairSerializer
 
 # utility functions 
-from .utils import validate_access_token, generate_access_token, generate_token, generate_otp, verify_user_otp, validate_user_email, validate_names
+from .utils import generate_token, generate_otp, verify_user_otp, validate_user_email, validate_names
 
 # custom decorators
 from .decorators import token_required
 
 
-####################################################### login and authentication views #############################################
-
+class CustomRateThrottle(UserRateThrottle):
+    rate = '5/hour'
+    
+    def throttle_failure(self):
+        """
+        Custom response for rate limit exceeded.
+        """
+        return Response({"error": "too many login attempts. please try again later."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+    
 
 @api_view(['POST'])
-@require_POST
+@throttle_classes([CustomRateThrottle])
 def login(request):
     """
     API endpoint for user login with optional multi-factor authentication (MFA).
@@ -57,13 +64,12 @@ def login(request):
         serializer.is_valid(raise_exception=True)
         token = serializer.validated_data
         
-        # Retrieve user object from database
-        user = CustomUser.objects.get(email=request.data.get('email'))
+        # Retrieve user and related school
+        user = CustomUser.objects.select_related('school').get(email=request.data.get('email'))
         
-        # Deny access for non-founders and non-parents if school is non-compliant
-        if user.role not in ["FOUNDER", "PARENT"]:
-            if user.school.none_compliant:
-                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
+        # Access control based on user role and school compliance
+        if user.role not in ["FOUNDER", "PARENT"] and user.school.none_compliant:
+            return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
      
         # Handle multi-factor authentication (MFA) if enabled for the user
         if user.multifactor_authentication:
@@ -76,21 +82,21 @@ def login(request):
                 if 'access' in token:
                     cutoff_time = timezone.now() - timedelta(hours=24)
                     with transaction.atomic():
-                        AccessToken.objects.filter(user=user, created_at__lt=cutoff_time).delete()
+                        if AccessToken.objects.filter(user=user, created_at__lt=cutoff_time).exists():
+                            AccessToken.objects.filter(user=user, created_at__lt=cutoff_time).delete()
                         access_tokens_count = AccessToken.objects.filter(user=user).count()
                     
                     if access_tokens_count >= 3:
-                        return Response({"error": "maximum number of connected devices reached"}, status=status.HTTP_403_FORBIDDEN)
+                        return Response({"error": "you have reached the maximum number of connected devices. please disconnect another device to proceed"}, status=status.HTTP_403_FORBIDDEN)
                     
-                    response = Response({"message": "login successful", "alert" : "your email address has been blacklisted", "role" : user.role.title()}, status=status.HTTP_200_OK)
-                    access_token = token['access']
-                    AccessToken.objects.create(user=user, token=access_token)
+                    response = Response({"message": "you will have access to your dashboard for the next 24 hours, until your session ends", "alert" : "your email address has been blacklisted", "role" : user.role.title()}, status=status.HTTP_200_OK)
+                    AccessToken.objects.create(user=user, token=token['access'])
                 
                     # Set access token cookie with custom expiration (24 hours)
                     response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
                 
                 else:
-                    response = Response({"error": "couldn't generating authentication tokens foe account"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    response = Response({"error": "server error.. could not generating access token for your account"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 
                 return response
             
@@ -119,31 +125,32 @@ def login(request):
                 login_authorization_otp, hashed_login_authorization_otp, salt = generate_otp()
                 cache.set(user.email+'login_authorization_otp', (hashed_login_authorization_otp, salt), timeout=300)  # Cache auth OTP for 5 mins
 
-                response = Response({"multifactor_authentication": "a new OTP has been sent to your email address"}, status=status.HTTP_200_OK)
+                response = Response({"multifactor_authentication": "a new OTP has been sent to your email address. please check your inbox"}, status=status.HTTP_200_OK)
                 response.set_cookie('login_authorization_otp', login_authorization_otp, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # Set auth OTP cookie (5 mins)
                 return response
         
             # if there was an error sending the email respond accordingly
             if response.status_code in [ 400, 401, 402, 403, 404 ]:
-                return {"error": f"there was an error sending sign-in OTP to your email address.. please open a new bug ticket with the issue. error code {response.status_code}"}
+                return {"error": f"there was an error sending login OTP to your email address.. please open a new bug ticket with the issue, error code {response.status_code}"}
             
             if response.status_code == 429:
-                return {"error": f"there was an error sending sign-in OTP to your email address.. please try again in a few moments"}
+                return {"error": f"there was an error sending login OTP to your email address.. please try again in a few moments"}
 
             else:
-                return {"error": "there was an error sending sign-in OTP to your email address.."}
+                return {"error": "there was an error sending login OTP to your email address.."}
 
         # Handle login without MFA
         if 'access' in token:
             cutoff_time = timezone.now() - timedelta(hours=24)
             with transaction.atomic():
-                AccessToken.objects.filter(user=user, created_at__lt=cutoff_time).delete()
-                refresh_tokens_count = AccessToken.objects.filter(user=user).count()
+                if AccessToken.objects.filter(user=user, created_at__lt=cutoff_time).exists():
+                    AccessToken.objects.filter(user=user, created_at__lt=cutoff_time).delete()
+                access_tokens_count = AccessToken.objects.filter(user=user).count()
             
-            if refresh_tokens_count >= 3:
-                return Response({"error": "maximum number of connected devices reached"}, status=status.HTTP_403_FORBIDDEN)
+            if access_tokens_count >= 3:
+                return Response({"error": "you have reached the maximum number of connected devices. please disconnect another device to proceed"}, status=status.HTTP_403_FORBIDDEN)
             
-            response = Response({"message": "login successful", "role" : user.role.title()}, status=status.HTTP_200_OK)
+            response = Response({"message": "you will have access to your dashboard for the next 24 hours, until your session ends", "role" : user.role.title()}, status=status.HTTP_200_OK)
             access_token = token['access']
             AccessToken.objects.create(user=user, token=access_token)
         
@@ -151,21 +158,19 @@ def login(request):
             response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
         
         else:
-            response = Response({"error": "could not generating access token"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            response = Response({"error": "server error.. could not generating access token for your account"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return response
     
     except ObjectDoesNotExist:
-        return Response({"error": "invalid credentials"}, status=status.HTTP_404_NOT_FOUND)
-    
-    except AuthenticationFailed:
-        return Response({"error": "invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({"error": "the credentials you entered are invalid. please check your email and password and try again"}, status=status.HTTP_404_NOT_FOUND)
     
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])
+@throttle_classes([CustomRateThrottle])
 def multi_factor_authentication_login(request):
     # retrieve the provided email, otp and the authorization otp in the cookie
     email = request.data.get('email')
@@ -263,6 +268,7 @@ def multi_factor_authentication_login(request):
 
 
 @api_view(['POST'])
+@throttle_classes([CustomRateThrottle])
 def signin(request):
 
     """
@@ -291,31 +297,30 @@ def signin(request):
 
         # if there's a missing credential return an error
         if not full_names or not email:
-            return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "sign-in credentials are incomplete. please provide all required information"}, status=status.HTTP_400_BAD_REQUEST)
     
         # validate email format
         validate_email(email)
 
         # validate provided names
         if not validate_names(full_names):
-            return Response({"error": "only provide your first name and surname"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "please enter only your first name and surname"}, status=status.HTTP_400_BAD_REQUEST)
 
         # try to validate the credentials by getting a user with the provided credentials 
         user = CustomUser.objects.get(email=email)
 
-        if user.role not in ["FOUNDER", "PARENT"]:
-            if user.school.none_compliant:
-                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
+        if user.role not in ["FOUNDER", "PARENT"] and user.school.none_compliant:
+            return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
                 
         # check if the provided name and surname are correct
         name, surname = full_names.split(' ', 1)
 
         if not ((user.name.casefold() == name.casefold() and user.surname.casefold() == surname.casefold()) or (user.name.casefold() == surname.casefold() and user.surname.casefold() == name.casefold())):
-            return Response({"error": "provided credentials are invalid"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "the credentials you entered are invalid. please check your full name and email and try again"}, status=status.HTTP_400_BAD_REQUEST)
         
         # if there is a user with the provided credentials check if their account has already been activated 
         if user.activated == True:
-            return Response({"error": "invalid request, access denied"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"error": "your request could not be processed. access has been denied due to invalid or incomplete information"}, status=status.HTTP_403_FORBIDDEN)
         
         # if the users account has'nt been activated yet check if their email address is banned
         if user.email_banned:
@@ -370,13 +375,10 @@ def signin(request):
     
     except ObjectDoesNotExist:
         # if there's no user with the provided credentials return an error 
-        return Response({"error": "account with the provided credentials does not exist"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error": "the credentials you entered are invalid. please check your full name and email and try again"}, status=status.HTTP_404_NOT_FOUND)
     
     except ValidationError:
-        return Response({"error": "invalid email format.. request revoked"}, status=status.HTTP_400_BAD_REQUEST)
-    
-    except ValueError:
-        return Response({"error": "please enter your first name followed by your surname or vice verca"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "the provided email address is not in a valid format. please correct the email address and try again"}, status=status.HTTP_400_BAD_REQUEST)
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -442,7 +444,7 @@ def activate_account(request):
     
     except ObjectDoesNotExist:
         # if theres no user with the provided email return an error
-        return Response({"denied": "user with the provided credentials does not exist."}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"denied": "an account with the provided credentials does not exist. please check the account information and try again"}, status=status.HTTP_404_NOT_FOUND)
   
     except Exception as e:
         # if any exceptions rise during return the response return it as the response
@@ -469,11 +471,6 @@ def authenticate(request):
 
     else:
         return Response({"error" : "request not authenticated.. access denied",}, status=status.HTTP_403_FORBIDDEN)
-
-
-####################################################################################################################################
-
-##################################################### validation and verification views ############################################
 
 
 @api_view(['POST'])
@@ -529,6 +526,7 @@ def verify_otp(request):
 
 # validate email before password reset
 @api_view(['POST'])
+@throttle_classes([CustomRateThrottle])
 def validate_password_reset(request):
     
     try:
@@ -637,12 +635,6 @@ def password_reset_otp_verification(request):
     
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-####################################################################################################################################
-
-
-####################################################### password reset views #######################################################
  
 
 # reset password  used when user has forgotten their password
@@ -708,8 +700,8 @@ def resend_otp(request):
   
     # Send the OTP via email
     try:
-            # cache.set(user.email, hashed_otp, timeout=300)  # 300 seconds = 5 mins
-            return Response({"message": "OTP created and sent to your email"}, status=status.HTTP_200_OK)
+        # cache.set(user.email, hashed_otp, timeout=300)  # 300 seconds = 5 mins
+        return Response({"message": "OTP created and sent to your email"}, status=status.HTTP_200_OK)
     
         # else:
         #     return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -717,5 +709,3 @@ def resend_otp(request):
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-
-####################################################################################################################################

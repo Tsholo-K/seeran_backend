@@ -1,21 +1,17 @@
 # django
 from django.http import JsonResponse
+from django.core.exceptions import ObjectDoesNotExist
+from django.core.cache import cache
+
+# rest framework
+from rest_framework import status
+from rest_framework_simplejwt.tokens import AccessToken
 
 # models
 from users.models import CustomUser
 
-# restframework
-from rest_framework_simplejwt.tokens import AccessToken
-
-# django
-from django.core.exceptions import ObjectDoesNotExist
-from django.core.cache import cache
-
 # utility functions 
-from .utils import validate_access_token, refresh_access_token
-
-# rest framework
-from rest_framework import status
+from .utils import validate_access_token
 
 
 def token_required(view_func):
