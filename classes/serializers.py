@@ -14,6 +14,42 @@ from users.models import CustomUser
 from users.serializers import AccountSerializer
 
 
+class ClassCreationSerializer(serializers.ModelSerializer):
+
+    teacher = serializers.SerializerMethodField()
+    students = serializers.SerializerMethodField()
+    student_count = serializers.SerializerMethodField()
+    subject = serializers.SerializerMethodField()
+    grade = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Classroom
+        fields = ['classroom_identifier', 'teacher', 'students', 'student_count', 'group', 'subject', 'grade']
+
+    def get_teacher(self, obj):
+        if obj.teacher:
+            return f'{obj.teacher.surname} {obj.teacher.name}'.title()
+        else:
+            return None
+
+    def get_students(self, obj):
+        students = obj.students.all()
+        serializer = AccountSerializer(students, many=True)
+        return serializer.data
+            
+    def get_subject(self, obj):
+        if  obj.register_class:
+            return 'Register Class'
+        
+        if obj.subject:
+            return f'{obj.subject}'.title()
+        
+        return None
+            
+    def get_grade(self, obj):
+        return obj.grade.grade
+
+
 class ClassSerializer(serializers.ModelSerializer):
 
     teacher = serializers.SerializerMethodField()
@@ -36,13 +72,16 @@ class ClassSerializer(serializers.ModelSerializer):
         students = obj.students.all()
         serializer = AccountSerializer(students, many=True)
         return serializer.data
-    
-    def get_student_count(self, obj):
-        return obj.students.count()
-        
+            
     def get_subject(self, obj):
-        return obj.subject.subject.title() if obj.subject else 'Register Class'
+        if  obj.register_class:
+            return 'Register Class'
         
+        if obj.subject:
+            return f'{obj.subject}'.title()
+        
+        return None
+            
     def get_grade(self, obj):
         return obj.grade.grade
 
@@ -80,10 +119,7 @@ class TeacherClassesSerializer(serializers.ModelSerializer):
 
     def get_grade(self, obj):
         return obj.grade.grade
-    
-    def get_student_count(self, obj):
-        return obj.students.count()
-    
+        
     def get_id(self, obj):
         return str(obj.class_id)
 
@@ -96,9 +132,6 @@ class TeacherRegisterClassSerializer(serializers.ModelSerializer):
     class Meta:
         model = Classroom
         fields = ['classroom_identifier', 'student_count', 'group', 'id']
-
-    def get_student_count(self, obj):
-        return obj.students.count()
     
     def get_id(self, obj):
         return str(obj.class_id)

@@ -51,33 +51,13 @@ class SubjectCreationSerializer(serializers.ModelSerializer):
 class SubjectsSerializer(serializers.ModelSerializer):
     
     subject = serializers.SerializerMethodField()
-    groups = serializers.SerializerMethodField()
-    teacher_count = serializers.SerializerMethodField()
-    student_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Subject
-        fields = [ 'subject', 'subject_id', 'groups', 'teacher_count', 'student_count' ]
+        fields = [ 'subject', 'subject_id', 'classes_count', 'teacher_count', 'student_count' ]
 
     def get_subject(self, obj):
         return obj.subject.title()
-
-    def get_groups(self, obj):
-        return obj.subject_classes.count()
-
-    def get_teacher_count(self, obj):
-        teachers = set()
-        for classroom in obj.subject_classes.all():
-            if classroom.teacher:
-                teachers.add(classroom.teacher.account_id)
-        return len(teachers)
-
-    def get_student_count(self, obj):
-        students = set()
-        for classroom in obj.subject_classes.all():
-            for student in classroom.students.all():
-                students.add(student.account_id)
-        return len(students)
 
 
 class SubjectDetailSerializer(serializers.ModelSerializer):
@@ -95,21 +75,13 @@ class SubjectDetailSerializer(serializers.ModelSerializer):
 class ClassesSerializer(serializers.ModelSerializer):
 
     teacher = serializers.SerializerMethodField()
-    student_count = serializers.SerializerMethodField()
-    id = serializers.SerializerMethodField()
 
     class Meta:
         model = Classroom
-        fields = ['classroom_identifier', 'teacher', 'student_count', 'group', 'id']
+        fields = ['classroom_identifier', 'teacher', 'student_count', 'group', 'class_id']
 
     def get_teacher(self, obj):
         if obj.teacher:
             return f'{obj.teacher.surname} {obj.teacher.name}'.title()
         else:
             return None
-
-    def get_student_count(self, obj):
-        return obj.students.count()
-    
-    def get_id(self, obj):
-        return str(obj.class_id)
