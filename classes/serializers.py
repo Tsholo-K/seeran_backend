@@ -17,7 +17,6 @@ from users.serializers import AccountSerializer
 class ClassCreationSerializer(serializers.ModelSerializer):
 
     subject = serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all(), required=False)
-    register_class = serializers.BooleanField(required=False)
 
     class Meta:
         model = Classroom
