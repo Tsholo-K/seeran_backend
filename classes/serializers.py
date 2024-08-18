@@ -1,7 +1,6 @@
 # python 
 
 # django
-from django.core.cache import cache
 
 # rest framework
 from rest_framework import serializers
@@ -9,6 +8,7 @@ from rest_framework import serializers
 # models
 from .models import Classroom
 from users.models import CustomUser
+from grades.models import Subject
 
 # serilializers
 from users.serializers import AccountSerializer
@@ -16,38 +16,11 @@ from users.serializers import AccountSerializer
 
 class ClassCreationSerializer(serializers.ModelSerializer):
 
-    teacher = serializers.SerializerMethodField()
-    students = serializers.SerializerMethodField()
-    student_count = serializers.SerializerMethodField()
-    subject = serializers.SerializerMethodField()
-    grade = serializers.SerializerMethodField()
+    subject = serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all(), required=False)
 
     class Meta:
         model = Classroom
-        fields = ['classroom_identifier', 'teacher', 'students', 'student_count', 'group', 'subject', 'grade']
-
-    def get_teacher(self, obj):
-        if obj.teacher:
-            return f'{obj.teacher.surname} {obj.teacher.name}'.title()
-        else:
-            return None
-
-    def get_students(self, obj):
-        students = obj.students.all()
-        serializer = AccountSerializer(students, many=True)
-        return serializer.data
-            
-    def get_subject(self, obj):
-        if  obj.register_class:
-            return 'Register Class'
-        
-        if obj.subject:
-            return f'{obj.subject}'.title()
-        
-        return None
-            
-    def get_grade(self, obj):
-        return obj.grade.grade
+        fields = ['classroom_number', 'group', 'subject', 'register_class', 'grade', 'school']
 
 
 class ClassSerializer(serializers.ModelSerializer):
@@ -60,7 +33,7 @@ class ClassSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Classroom
-        fields = ['classroom_identifier', 'teacher', 'students', 'student_count', 'group', 'subject', 'grade']
+        fields = ['classroom_number', 'teacher', 'students', 'student_count', 'group', 'subject', 'grade']
 
     def get_teacher(self, obj):
         if obj.teacher:
@@ -94,7 +67,7 @@ class ClassUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Classroom
-        fields = ['classroom_identifier', 'teacher', 'group']
+        fields = ['classroom_number', 'teacher', 'group']
 
 
 class TeacherClassesSerializer(serializers.ModelSerializer):
@@ -106,7 +79,7 @@ class TeacherClassesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Classroom
-        fields = ['classroom_identifier', 'subject', 'grade', 'student_count', 'group', 'id']
+        fields = ['classroom_number', 'subject', 'grade', 'student_count', 'group', 'id']
 
     def get_subject(self, obj):
         if  obj.register_class:
@@ -131,7 +104,7 @@ class TeacherRegisterClassSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Classroom
-        fields = ['classroom_identifier', 'student_count', 'group', 'id']
+        fields = ['classroom_number', 'student_count', 'group', 'id']
     
     def get_id(self, obj):
         return str(obj.class_id)

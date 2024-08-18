@@ -39,7 +39,7 @@ class Classroom(models.Model):
 
     """
 
-    classroom_identifier = models.CharField(_('classroom identifier'), max_length=16, default='1')
+    classroom_number = models.CharField(_('classroom identifier'), max_length=16, default='1')
     group = models.CharField(_('class group'), max_length=16, default='A')
 
     teacher = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, limit_choices_to={'role': 'teacher'}, null=True, blank=True, related_name='taught_classes', help_text='The teacher assigned to the classroom.')
@@ -64,7 +64,7 @@ class Classroom(models.Model):
         )
 
     def __str__(self):
-        return f"{self.school} - Grade {self.grade} - {self.classroom_identifier}"
+        return f"{self.school} - Grade {self.grade} - {self.classroom_number}"
     
     def save(self, *args, **kwargs):
         """

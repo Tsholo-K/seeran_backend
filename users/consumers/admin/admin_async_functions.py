@@ -22,7 +22,7 @@ from classes.models import Classroom
 # serilializers
 from users.serializers import AccountUpdateSerializer, AccountIDSerializer, AccountSerializer, AccountCreationSerializer, StudentAccountCreationSerializer, ParentAccountCreationSerializer
 from grades.serializers import GradeCreationSerializer, GradesSerializer, GradeSerializer, SubjectCreationSerializer, SubjectDetailSerializer, ClassesSerializer
-from classes.serializers import ClassUpdateSerializer
+from classes.serializers import ClassCreationSerializer,ClassUpdateSerializer
 from announcements.serializers import AnnouncementCreationSerializer
 
 # utility functions 
@@ -572,16 +572,10 @@ def create_class(user, details):
     """
     try:
         # Retrieve the account making the request
-        account = CustomUser.objects.get(account_id=user)
-
-        # Retrieve the teacher if specified
-        if details.get('classroom_teacher'):
-            teacher = CustomUser.objects.get(account_id=details.get('classroom_teacher'), school=account.school)
-        else:
-            teacher = None
+        account = CustomUser.objects.select_related('school').get(account_id=user)
 
         # Retrieve the grade
-        grade = Grade.objects.get(grade_id=details.get('grade_id'))
+        grade = Grade.objects.select_related('school').get(grade_id=details.get('grade_id'))
 
         if account.school != grade.school:
             return { "error" : 'you do not have permission to perform this action because the specified grade does not belong to your school. please ensure you are attempting to create a group schedule in a grade within your own school' }
@@ -590,36 +584,61 @@ def create_class(user, details):
             # Check if a register class with the same group already exists in the same grade
             if Classroom.objects.filter(group=details.get('group'), grade=grade, school=account.school, register_class=True).exists():
                 return {"error": "a register class with the provided group in the same grade already exists.. a class group should be unique in the same grade and subject(if applicable)"}
-
-            # Create the register class
-            with transaction.atomic():
-                new_class = Classroom.objects.create(classroom_identifier=details.get('classroom'), group=details.get('group'), grade=grade, teacher=teacher, school=account.school, register_class=True)
-                new_class.save()
                 
-            return {'message': f'register class for grade {grade.grade} created successfully. you can now add students and track attendance in the register classes page'}
+            response = {'message': f'register class for grade {grade.grade} created successfully. you can now add students and track attendance in the register classes page'}
 
-        if details.get('subject_id'):
+        elif details.get('subject_id'):
             # Retrieve the subject
-            subject = Subject.objects.get(subject_id=details.get('subject_id'), grade=grade)
+            subject = Subject.objects.select_related('grade').get(subject_id=details.get('subject_id'))
+
+            # Check if the grade is from the same school as the user making the request
+            if subject.grade != grade:
+                return { "error" : 'you do not have permission to perform this action because the specified subject does not belong to the specified grade. please ensure you are attempting to create a classroom in a subject within a correctly specified grade' }
 
             # Check if a class with the same group already exists in the same subject and grade
             if Classroom.objects.filter(group=details.get('group'), grade=grade, school=account.school, subject=subject).exists():
                 return {"error": "a class with the provided group in the same subject and grade already exists.. a class group should be unique in the same grade and subject"}
+            
+            details['subject'] = subject.pk
 
-            # Create the subject class
+            response = {'message': f'class for grade {grade.grade} {subject.subject} created successfully. you can now add students, set assessments and track performance in the subject classes page'.lower()}
+
+        else:
+            return {"error": "the provided classroom creation information is invalid. please make sure you have provided all required information and try again"}
+      
+        # Set the school and grade fields
+        details['school'] = account.school.pk
+        details['grade'] = grade.pk
+
+        # Serialize the details for class creation
+        serializer = ClassCreationSerializer(data=details)
+
+        # Validate the serialized data
+        if serializer.is_valid():
+            # Create the class within a transaction to ensure atomicity
             with transaction.atomic():
-                new_class = Classroom.objects.create(classroom_identifier=details.get('classroom'), group=details.get('group'), grade=grade, teacher=teacher, school=account.school, subject=subject)
-                new_class.save()
-                
-            return {'message': f'class for grade {grade.grade} {subject.subject.lower()} created successfully. you can now add students, set assessments and track performance in the subject classes page'}
+                classroom = Classroom.objects.create(**serializer.validated_data)
+
+                # Retrieve the teacher if specified
+                if details.get('classroom_teacher'):
+                    classroom.update_teacher(CustomUser.objects.get(account_id=details.get('classroom_teacher'), school=account.school))
+           
+            return response
+        
+        # Return errors if the serializer validation fails
+        return {"error": serializer.errors}
                
     except CustomUser.DoesNotExist:
         # Handle case where the user or teacher account does not exist
-        return {'error': 'account with the provided credentials does not exist'}
+        return {'error': 'an account with the provided credentials does not exist'}
     
     except Grade.DoesNotExist:
         # Handle case where the grade does not exist
         return {'error': 'grade with the provided credentials does not exist'}
+    
+    except Subject.DoesNotExist:
+        # Handle case where the grade does not exist
+        return {'error': 'subject with the provided credentials does not exist'}
 
     except Exception as e:
         # Handle any other unexpected errors
