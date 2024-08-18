@@ -109,8 +109,10 @@ class Classroom(models.Model):
             self.students_count = self.students.count()
 
             if self.subject:
-                self.subject.student_count = self.grade.grade_classes.filter(subject=self).aggregate(count=models.Sum('students__count'))['count'] or 0
+                self.subject.student_count = self.grade.grade_classes.filter(subject=self.subject).aggregate(count=models.Sum('students__count'))['count'] or 0
                 self.subject.save()
+            
+            self.save()
         else:
             raise ValueError("validation error.. no students were provided.")
 
@@ -128,3 +130,5 @@ class Classroom(models.Model):
             # Count the number of unique teachers assigned to classrooms for this subject
             self.subject.teacher_count = self.grade.grade_classes.filter(subject=self.subject).values_list('teacher', flat=True).distinct().count()
             self.subject.save()
+
+        self.save()
