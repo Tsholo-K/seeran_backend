@@ -27,7 +27,7 @@ class ClassCreationSerializer(serializers.ModelSerializer):
         Ensure that the subject field is only required when register_class is False.
         """
         if not data.get('register_class') and not data.get('subject'):
-            raise serializers.ValidationError({"subject": "This field is required when 'register_class' is False."})
+            raise serializers.ValidationError({"error": "a subject is required for the classroom when 'register_class' is False"})
         return data
 
 class ClassSerializer(serializers.ModelSerializer):

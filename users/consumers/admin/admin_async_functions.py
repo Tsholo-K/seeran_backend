@@ -580,22 +580,12 @@ def create_class(user, details):
             return {"error": "permission denied. the specified grade does not belong to your school."}
 
         if details.get('register_class'):
-            # Check if a register class with the same group already exists in the grade
-            if Classroom.objects.filter(group=details.get('group'), grade=grade, school=account.school, register_class=True).exists():
-                return {"error": "a register class with the same group in the grade already exists.. duplicate groups in the same register and grade is not permitted"}
-            
             details['subject'] = None
             response = {'message': f'register class for grade {grade.grade} created successfully. you can now add students and track attendance.'}
         
         elif details.get('subject'):
             # Retrieve the subject and validate it against the grade
             subject = Subject.objects.select_related('grade').get(subject_id=details.get('subject'))
-            if subject.grade != grade:
-                return {"error": "permission denied. the specified subject does not belong to the specified grade."}
-
-            # Check if a class with the same group already exists in the subject and grade
-            if Classroom.objects.filter(group=details.get('group'), grade=grade, school=account.school, subject=subject).exists():
-                return {"error": "a class with the same group in the same subject and grade already exists. duplicate groups in the same subject and grade is not permitted"}
             
             details['subject'] = subject.pk
             details['register_class'] = False
