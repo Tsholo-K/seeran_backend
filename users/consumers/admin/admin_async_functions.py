@@ -579,7 +579,7 @@ def create_class(user, details):
         if account.school != grade.school:
             return {"error": "permission denied. the specified grade does not belong to your school."}
 
-        if details.get('register'):
+        if details.get('register_class'):
             # Check if a register class with the same group already exists in the grade
             if Classroom.objects.filter(group=details.get('group'), grade=grade, school=account.school, register_class=True).exists():
                 return {"error": "a register class with the same group in the grade already exists."}
@@ -596,6 +596,7 @@ def create_class(user, details):
             if Classroom.objects.filter(group=details.get('group'), grade=grade, school=account.school, subject=subject).exists():
                 return {"error": "a class with the same group in the subject and grade already exists."}
             
+            details['register_class'] = False
             details['subject'] = subject.pk
             response = {'message': f'class for grade {grade.grade} {subject.subject.lower()} created successfully. you can now add students and track performance.'}
         
@@ -611,7 +612,7 @@ def create_class(user, details):
             # Create the class within a transaction
             with transaction.atomic():
                 classroom = Classroom.objects.create(**serializer.validated_data)
-                
+
                 # If a teacher is specified, update the teacher for the class
                 if details.get('teacher'):
                     teacher = CustomUser.objects.get(account_id=details.get('teacher'), role='TEACHER', school=account.school)
