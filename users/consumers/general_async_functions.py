@@ -668,7 +668,7 @@ def search_class(user, details):
             # Fetch the classroom where the user is the teacher and it is a register class
             classroom = Classroom.objects.select_related('school').filter(teacher=account, register_class=True).first()
             if classroom is None:
-                return {"class": 'not a register class teacher'}
+                return {"class": {'class_not_found' : 'not a register class teacher'}}
 
             if account.role != 'TEACHER' or classroom.school != account.school:
                 return {"error": _("Unauthorized access. The account making the request has an invalid role or the classroom is not from your school.")}
