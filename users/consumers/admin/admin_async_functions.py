@@ -585,7 +585,6 @@ def create_class(user, details):
                 return {"error": "a register class with the same group in the grade already exists.. duplicate groups in the same register and grade is not permitted"}
             
             details['subject'] = None
-
             response = {'message': f'register class for grade {grade.grade} created successfully. you can now add students and track attendance.'}
         
         elif details.get('subject'):
@@ -599,6 +598,7 @@ def create_class(user, details):
                 return {"error": "a class with the same group in the same subject and grade already exists. duplicate groups in the same subject and grade is not permitted"}
             
             details['subject'] = subject.pk
+            details['register_class'] = False
             response = {'message': f'class for grade {grade.grade} {subject.subject} created successfully.. you can now add students and track performance.'.lower()}
         
         else:
