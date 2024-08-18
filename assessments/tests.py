@@ -60,7 +60,7 @@ class AssessmentTest(TestCase):
         )
         self.classroom = Classroom.objects.create(
             teacher=self.teacher,
-            classroom_identifier='124',
+            classroom_number='124',
             group='A',
             grade=self.grade,
             subject=self.subject,

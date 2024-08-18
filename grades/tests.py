@@ -48,13 +48,13 @@ class GradeModelTest(TestCase):
     def test_grade_creation(self):
         """Test that a grade instance is created successfully."""
         self.assertEqual(Grade.objects.count(), 1)
-        self.assertEqual(self.grade.grade, '8')
+        self.assertEqual(self.grade.grade, '7')
         self.assertEqual(self.grade.major_subjects, 1)
         self.assertEqual(self.grade.none_major_subjects, 2)
 
     def test_grade_order(self):
         """Test that the grade_order is set correctly based on the grade."""
-        self.assertEqual(self.grade.grade_order, [choice[0] for choice in SCHOOL_GRADES_CHOICES].index('8'))
+        self.assertEqual(self.grade.grade_order, [choice[0] for choice in SCHOOL_GRADES_CHOICES].index('7'))
 
     def test_invalid_grade_value(self):
         """Test that an invalid grade value raises a ValidationError."""
