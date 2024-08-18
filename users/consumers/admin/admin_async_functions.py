@@ -610,8 +610,8 @@ def create_class(user, details):
         if serializer.is_valid():
             # Create the class within a transaction
             with transaction.atomic():
-                classroom = serializer.save()
-
+                classroom = Classroom.objects.create(**serializer.validated_data)
+                
                 # If a teacher is specified, update the teacher for the class
                 if details.get('teacher'):
                     teacher = CustomUser.objects.get(account_id=details.get('teacher'), role='TEACHER', school=account.school)
