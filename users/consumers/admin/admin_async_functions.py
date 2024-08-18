@@ -637,8 +637,7 @@ def create_class(user, details):
     
     except Exception as e:
         return {'error': str(e).lower()}
-
-
+    
 
 @database_sync_to_async
 def delete_class(user, details):
@@ -1225,11 +1224,11 @@ def form_data_for_creating_class(user, details):
         # Determine the query based on the reason for retrieving teachers
         if details.get('reason') == 'subject class':
             # Retrieve all teachers in the user's school
-            teachers = CustomUser.objects.filter(role='TEACHER', school=account.school).only('account_id', 'name', 'surname', 'email')
+            teachers = CustomUser.objects.filter(role='TEACHER', school=account.school)
 
         elif details.get('reason') == 'register class':
             # Retrieve teachers not currently teaching a register class
-            teachers = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(taught_classes__register_class=True).only('account_id', 'name', 'surname', 'email')
+            teachers = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(taught_classes__register_class=True)
 
         else:
             return {"error": "Invalid reason provided. Expected 'subject class' or 'register class'."}
