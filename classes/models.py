@@ -42,8 +42,8 @@ class Classroom(models.Model):
     classroom_number = models.CharField(_('classroom identifier'), max_length=16, default='1')
     group = models.CharField(_('class group'), max_length=16, default='A')
 
-    teacher = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, limit_choices_to={'role': 'teacher'}, null=True, blank=True, related_name='taught_classes', help_text='The teacher assigned to the classroom.')
-    students = models.ManyToManyField(CustomUser, limit_choices_to={'role': 'student'}, related_name='enrolled_classes', help_text='Students enrolled in the classroom.')
+    teacher = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, limit_choices_to={'role': 'TEACHER'}, null=True, blank=True, related_name='taught_classes', help_text='The teacher assigned to the classroom.')
+    students = models.ManyToManyField(CustomUser, limit_choices_to={'role': 'STUDENT'}, related_name='enrolled_classes', help_text='Students enrolled in the classroom.')
     parents = models.ManyToManyField(CustomUser, related_name='children_classes', help_text='Parents or guardians of students in the classroom.')
 
     student_count = models.IntegerField(default=0)
@@ -58,25 +58,10 @@ class Classroom(models.Model):
     class_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
-        constraints = [
-            # Unique combination for subject classes
-            models.UniqueConstraint(
-                fields=['group', 'grade', 'subject', 'teacher', 'school'],
-                name='unique_subject_class',
-                condition=models.Q(subject__isnull=False)
-            ),
-            # Unique combination for register classes
-            models.UniqueConstraint(
-                fields=['group', 'grade','school'],
-                name='unique_register_class',
-                condition=models.Q(register_class=True)
-            ),
-            models.UniqueConstraint(
-                fields=['teacher', 'school'],
-                name='unique_register_class_per_school',
-                condition=models.Q(register_class=True)
-            ),
-        ]
+        unique_together = (
+            ('group', 'grade', 'subject'),  # Unique combination in subject classes
+            ('group', 'grade', 'register_class')  # Unique combination in register classes
+        ) 
 
     def __str__(self):
         return f"{self.school} - Grade {self.grade} - {self.classroom_number}"

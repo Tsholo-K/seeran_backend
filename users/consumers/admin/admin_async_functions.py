@@ -1280,7 +1280,7 @@ def form_data_for_updating_class(user, details):
         teachers = AccountSerializer(teachers.order_by('name', 'surname', 'account_id'), many=True).data
 
         # Prepare the response data
-        response_data = {'teacher': AccountSerializer(classroom.teacher).data if classroom.teacher else None, "teachers": teachers, 'group': classroom.group, 'classroom_identifier': classroom.classroom_identifier}
+        response_data = {'teacher': AccountSerializer(classroom.teacher).data if classroom.teacher else None, "teachers": teachers, 'group': classroom.group, 'classroom_identifier': classroom.classroom_number}
 
         return response_data
 
