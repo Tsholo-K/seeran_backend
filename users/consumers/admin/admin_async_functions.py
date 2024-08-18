@@ -621,7 +621,7 @@ def create_class(user, details):
 
                 # Retrieve the teacher if specified
                 if details.get('classroom_teacher'):
-                    classroom.update_teacher(CustomUser.objects.get(account_id=details.get('classroom_teacher'), school=account.school))
+                    classroom.update_teacher(teacher=CustomUser.objects.get(account_id=details.get('classroom_teacher'), school=account.school))
            
             return response
         
