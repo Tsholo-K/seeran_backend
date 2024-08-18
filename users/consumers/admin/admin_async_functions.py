@@ -458,6 +458,9 @@ def search_grade(user, details):
 def create_subject(user, details):
 
     try:
+        if not details.get('subject'):
+            return {"error": "could not process request.. no subject was provided"}
+           
         # Retrieve the user and related school in a single query using select_related
         account = CustomUser.objects.select_related('school').get(account_id=user)
         grade = Grade.objects.select_related('school').get(grade_id=details.get('grade'))
@@ -468,7 +471,7 @@ def create_subject(user, details):
 
         # Check if the subject already exists for the school using exists() to avoid fetching unnecessary data
         if Subject.objects.filter(subject=details.get('subject'), grade=grade).exists():
-            return {"error": f"{details.get('subject')} subject already exists for grade {grade.grade} in your school. duplicate subjects in a grade is not permitted."}
+            return {"error": f"{details.get('subject')} subject already exists for grade {grade.grade} in your school. duplicate subjects in a grade is not permitted".lower()}
 
         # Set the school and grade fields
         details['grade'] = grade.pk
@@ -482,7 +485,7 @@ def create_subject(user, details):
             with transaction.atomic():
                 Subject.objects.create(**serializer.validated_data)
             
-            return {"message": f"{details.get('subject')} subject has been successfully created for grade {grade.grade} in your school"}
+            return {"message": f"{details.get('subject')} subject has been successfully created for grade {grade.grade} in your school".lower()}
         
         # Return errors if the serializer validation fails
         return {"error": serializer.errors}
