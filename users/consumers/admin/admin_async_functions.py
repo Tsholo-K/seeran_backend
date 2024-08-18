@@ -598,7 +598,7 @@ def create_class(user, details):
             
             details['register_class'] = False
             details['subject'] = subject.pk
-            response = {'message': f'class for grade {grade.grade} {subject.subject.lower()} created successfully. you can now add students and track performance.'}
+            response = {'message': f'class for grade {grade.grade} {subject.subject} created successfully. you can now add students and track performance.'.lower()}
         
         else:
             return {"error": "invalid classroom creation details. please provide all required information and try again."}

@@ -114,6 +114,7 @@ class Classroom(models.Model):
         else:
             self.teacher = None
 
-        # Count the number of unique teachers assigned to classrooms for this subject
-        self.subject.teacher_count = self.grade.grade_classes.filter(subject=self).values_list('teacher', flat=True).distinct().count()
-        self.subject.save()
+        if self.subject:
+            # Count the number of unique teachers assigned to classrooms for this subject
+            self.subject.teacher_count = self.grade.grade_classes.filter(subject=self.subject).values_list('teacher', flat=True).distinct().count()
+            self.subject.save()
