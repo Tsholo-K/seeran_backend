@@ -768,8 +768,10 @@ def update_class_students(user, details):
         if not students_list or students_list == ['']:
             return {'error': 'your request could not be proccessed.. no students were provided'}
         
-        # Check for validation errors and perform student updates
-        error_message = classroom.update_students(students_list=students_list, remove=details.get('remove'))
+        with transaction.atomic():
+            # Check for validation errors and perform student updates
+            error_message = classroom.update_students(students_list=students_list, remove=details.get('remove'))
+            
         if error_message:
             return {'error': error_message}
 
