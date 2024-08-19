@@ -636,7 +636,7 @@ def delete_class(user, details):
         account = CustomUser.objects.get(account_id=user)
 
         # Retrieve the grade
-        classroom = Classroom.objects.get(grade_id=details.get('class'))
+        classroom = Classroom.objects.get(class_id=details.get('class'))
 
         if account.school != classroom.school:
             return { "error" : 'you do not have permission to perform this action because the specified classroom does not belong to your school. please ensure you are attempting to create a group schedule in a grade within your own school' }
