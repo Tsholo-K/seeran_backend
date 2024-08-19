@@ -115,12 +115,13 @@ class Classroom(models.Model):
                 self.students.add(*students)
 
             self.students_count = self.students.count()
+            
+            self.save()
 
             if self.subject:
                 self.subject.student_count = self.grade.grade_classes.filter(subject=self.subject).aggregate(count=models.Sum('students__count'))['count'] or 0
                 self.subject.save()
             
-            self.save()
         else:
             raise ValueError("validation error.. no students were provided.")
 

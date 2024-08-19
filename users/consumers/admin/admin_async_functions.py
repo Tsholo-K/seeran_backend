@@ -1226,13 +1226,26 @@ def form_data_for_updating_class(user, details):
         if account.school != classroom.school:
             return {"error": "Permission denied. The provided classroom is not from your school. You can only update details of classes from your own school."}
 
-        # Retrieve other teachers in the same school, excluding the current teacher if one is assigned
-        teachers = CustomUser.objects.filter(role='TEACHER', school=account.school).only('account_id', 'name', 'surname', 'email')
-        if classroom.teacher:
-            teachers = teachers.exclude(account_id=classroom.teacher.account_id)
+        # Determine the query based on the reason for retrieving teachers
+        if classroom.subject:
+            # Retrieve other teachers in the same school, excluding the current teacher if one is assigned
+            if classroom.teacher:
+                teachers = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(taught_classes__subject=classroom.subject, account_id=classroom.teacher.account_id)
+            else:
+                teachers = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(taught_classes__subject=classroom.subject)
+
+        elif classroom.register_class:
+            # Retrieve teachers not currently teaching a register class in the school, excluding the current teacher if one is assigned
+            if classroom.teacher:
+                teachers = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(taught_classes__register_class=True, account_id=classroom.teacher.account_id)
+            else:
+                teachers = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(taught_classes__register_class=True)
+
+        else:
+            return {"error": "invalid classroom provided. the classroom in neither a register class or linked to a subject"}
         
         # Fetch teachers and serialize them
-        teachers = AccountSerializer(teachers.order_by('name', 'surname', 'account_id'), many=True).data
+        teachers = AccountSerializer(teachers, many=True).data
 
         # Prepare the response data
         response_data = {'teacher': AccountSerializer(classroom.teacher).data if classroom.teacher else None, "teachers": teachers, 'group': classroom.group, 'classroom_identifier': classroom.classroom_number}
