@@ -151,7 +151,7 @@ class Classroom(models.Model):
             # Update the teacher count in the subject if applicable
             if self.subject:
                 # Count unique teachers assigned to classrooms for this subject
-                self.subject.teacher_count =  self.grade.grade_classes.all().filter(subject=self.subject, register_class=False).exclude(teacher=None).values_list('teacher', flat=True).distinct().count()
+                self.subject.teacher_count =  self.subject.subject_classes.all().exclude(teacher=None).values_list('teacher', flat=True).distinct().count()
                 self.subject.save()
 
             # Save the classroom instance with the updated teacher
