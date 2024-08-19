@@ -48,7 +48,7 @@ class ClassSerializer(serializers.ModelSerializer):
         return None
 
     def get_students(self, obj):
-        return AccountSerializer(obj.students.all(), many=True).data
+        return AccountSerializer(obj.students, many=True).data
             
     def get_subject(self, obj):
         if  obj.register_class:
