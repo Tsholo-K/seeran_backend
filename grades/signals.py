@@ -34,7 +34,7 @@ def update_class_counts_on_create_or_update(sender, instance, created, **kwargs)
 
         # Update the count of unique teachers for this subject
         if instance.teacher:
-            instance.subject.teacher_count = instance.grade.grade_classes.filter(subject=instance.subject).exclude(teacher=None).values_list('teacher', flat=True).distinct().count()
+            instance.subject.teacher_count = instance.grade.grade_classes.all().filter(subject=instance.subject).values_list('teacher', flat=True).distinct().count()
 
         # Save the updated subject instance
         instance.subject.save()
@@ -47,7 +47,7 @@ def update_class_counts_on_delete(sender, instance, **kwargs):
 
         # Update the count of unique teachers for this subject
         if instance.teacher:
-            instance.subject.teacher_count = instance.grade.grade_classes.filter(subject=instance.subject).exclude(teacher=None).values_list('teacher', flat=True).distinct().count()
+            instance.subject.teacher_count = instance.grade.grade_classes.all().filter(subject=instance.subject).values_list('teacher', flat=True).distinct().count()
         
         # Update the count of students for this subject
         if instance.students:

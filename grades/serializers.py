@@ -23,10 +23,7 @@ class GradesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Grade
-        fields = [ 'grade', 'id' ]
-
-    def get_id(self, obj):
-        return str(obj.grade_id)
+        fields = [ 'grade', 'grade_id' ]
 
 
 class GradeSerializer(serializers.ModelSerializer):
