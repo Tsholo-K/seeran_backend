@@ -149,7 +149,7 @@ class Classroom(models.Model):
 
             if self.subject:
                 # Update the subject student count
-                self.subject.student_count = self.grade.grade_classes.filter(subject=self.subject).aggregate(student_count=models.Sum('students__count'))['count'] or 0
+                self.subject.student_count = self.grade.grade_classes.filter(subject=self.subject).aggregate(student_count=models.Sum('students__count'))['student_count'] or 0
                 self.subject.save()
             
         else:
