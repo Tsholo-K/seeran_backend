@@ -19,8 +19,6 @@ class GradeCreationSerializer(serializers.ModelSerializer):
 
 class GradesSerializer(serializers.ModelSerializer):
     
-    id = serializers.SerializerMethodField()
-
     class Meta:
         model = Grade
         fields = [ 'grade', 'grade_id' ]
