@@ -28,13 +28,25 @@ def update_user_counts_on_delete(sender, instance, **kwargs):
 @receiver(post_save, sender=Classroom)
 def update_class_counts_on_create(sender, instance, created, **kwargs):
     if created and instance.subject:
-        # Count the number of classrooms for this subject
+        # Update the count of classrooms associated with this subject
         instance.subject.classes_count = instance.grade.grade_classes.filter(subject=instance.subject).count()
-        instance.subject.save()
 
+        # Update the count of unique teachers for this subject
+        if instance.teacher:
+            instance.subject.teacher_count = instance.grade.grade_classes.filter(subject=instance.subject).exclude(teacher=None).values_list('teacher', flat=True).distinct().count()
+
+        # Save the updated subject instance
+        instance.subject.save()
+        
 @receiver(post_delete, sender=Classroom)
 def update_class_counts_on_delete(sender, instance, **kwargs):
     if instance.subject:
-        # Count the number of classrooms for this subject
+        # Update the count of classrooms associated with this subject
         instance.subject.classes_count = instance.grade.grade_classes.filter(subject=instance.subject).count()
+
+        # Update the count of unique teachers for this subject
+        if instance.teacher:
+            instance.subject.teacher_count = instance.grade.grade_classes.filter(subject=instance.subject).exclude(teacher=None).values_list('teacher', flat=True).distinct().count()
+
+        # Save the updated subject instance
         instance.subject.save()
