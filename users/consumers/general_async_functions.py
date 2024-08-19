@@ -664,7 +664,7 @@ def search_class(user, details):
         account = CustomUser.objects.select_related('school').get(account_id=user)
 
         # Determine the classroom based on the request details
-        if details.get('class_id') == 'requesting_my_own_class':
+        if details.get('class') == 'requesting_my_own_class':
             # Fetch the classroom where the user is the teacher and it is a register class
             classroom = Classroom.objects.select_related('school').filter(teacher=account, register_class=True).first()
             if classroom is None:
@@ -675,7 +675,7 @@ def search_class(user, details):
 
         else:
             # Fetch the specific classroom based on class_id and school
-            classroom = Classroom.objects.get(class_id=details.get('class_id'), school=account.school)
+            classroom = Classroom.objects.get(class_id=details.get('class'), school=account.school)
         
         # Check permissions
         permission_error = permission_checks.check_class_permissions(account, classroom)
@@ -793,7 +793,7 @@ def search_teacher_classes(user, details):
 
         # If the requesting user is looking for their own classes
         if details.get('teacher_id') == 'requesting_my_own_classes':
-            classes = account.taught_classes.all().exclude(register_class=True)
+            classes = account.taught_classes.exclude(register_class=True)
 
         else:
             if account.role not in ['ADMIN', 'PRINCIPAL']:
@@ -804,7 +804,7 @@ def search_teacher_classes(user, details):
             if teacher.role != 'TEACHER' or account.school != teacher.school:
                 return {"error": "unauthorized access. you are not permitted to view classses of teacher accounts outside your own school"}
 
-            classes = teacher.taught_classes.all()
+            classes = teacher.taught_classes
 
         serializer = TeacherClassesSerializer(classes, many=True)
 

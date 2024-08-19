@@ -45,21 +45,16 @@ class ClassSerializer(serializers.ModelSerializer):
     def get_teacher(self, obj):
         if obj.teacher:
             return f'{obj.teacher.surname} {obj.teacher.name}'.title()
-        else:
-            return None
+        return None
 
     def get_students(self, obj):
-        students = obj.students.all()
-        serializer = AccountSerializer(students, many=True)
-        return serializer.data
+        return AccountSerializer(obj.students, many=True)
             
     def get_subject(self, obj):
         if  obj.register_class:
             return 'Register Class'
-        
         if obj.subject:
-            return f'{obj.subject}'.title()
-        
+            return f'{obj.subject.subject}'.title()
         return None
             
     def get_grade(self, obj):
@@ -89,7 +84,7 @@ class TeacherClassesSerializer(serializers.ModelSerializer):
         if  obj.register_class:
             return 'Register Class'
         if obj.subject:
-            return f'{obj.subject}'.title()
+            return f'{obj.subject.subject}'.title()
         return None
 
     def get_grade(self, obj):
