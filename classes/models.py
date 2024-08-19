@@ -143,9 +143,12 @@ class Classroom(models.Model):
             else:
                 self.students.add(*students)
 
+            # Save the classroom instance first to ensure student changes are persisted
+            self.save()
+
             # Update the students count in the class
             self.students_count = self.students.count()
-            self.save()
+            self.save()  # Save again to update students_count field
 
             if self.subject:
                 # Update the subject student count
