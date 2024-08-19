@@ -100,30 +100,60 @@ class Classroom(models.Model):
 
     def update_students(self, students_list=None, remove=False):
         """
-        Add the provided list of students (by account_id) to the class and update the students count.
+        Add or remove the provided list of students (by account_id) to/from the class and update the students count.
+
+        Args:
+            students_list (list): List of student account IDs.
+            remove (bool): Indicates if students should be removed.
         """
         if students_list:
-            # Retrieve the CustomUser instances corresponding to the account_ids
+            # Retrieve CustomUser instances corresponding to the account_ids
             students = CustomUser.objects.filter(account_id__in=students_list, role='STUDENT')
-            
+
             if not students.exists():
-                raise ValueError("No valid students found with the provided account_ids.")
+                return "No valid students found with the provided account_ids."
             
+            if not remove:
+                # Check if students are already in a class of the same subject
+                if self.subject:
+                    students_in_subject = CustomUser.objects.filter(account_id__in=students_list, enrolled_classes__subject=self.subject).values_list('account_id', flat=True)
+                    if students_in_subject:
+                        return f'The following students are already assigned to a class in the subject: {", ".join(students_in_subject)}'
+
+                # Check if students are already in any register class
+                if self.register_class:
+                    students_in_register_classes = CustomUser.objects.filter(account_id__in=students_list, enrolled_classes__register_class=True).values_list('account_id', flat=True)
+                    if students_in_register_classes:
+                        return f'The following students are already in a register class: {", ".join(students_in_register_classes)}'
+
+                # Check if students are already in this specific class
+                existing_students = self.students.filter(account_id__in=students_list).values_list('account_id', flat=True)
+                if existing_students:
+                    return f'The following students are already in this class: {", ".join(existing_students)}'
+
+            else:
+                # Check if students to be removed are actually in the class
+                existing_students = self.students.filter(account_id__in=students_list).values_list('account_id', flat=True)
+                if not existing_students:
+                    return "No provided students are in this class to remove."
+
+            # Proceed with adding or removing students
             if remove:
                 self.students.remove(*students)
             else:
                 self.students.add(*students)
 
+            # Update the students count in the class
             self.students_count = self.students.count()
-            
             self.save()
 
             if self.subject:
+                # Update the subject student count
                 self.subject.student_count = self.grade.grade_classes.filter(subject=self.subject).aggregate(count=models.Sum('students__count'))['count'] or 0
                 self.subject.save()
             
         else:
-            raise ValueError("validation error.. no students were provided.")
+            return "Validation error: No students were provided."
 
     def update_teacher(self, teacher):
         """

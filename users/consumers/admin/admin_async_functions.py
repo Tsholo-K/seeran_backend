@@ -758,30 +758,22 @@ def update_class_students(user, details):
     try:
         # Retrieve the user account and classroom with related fields
         account = CustomUser.objects.select_related('school').get(account_id=user)
-        classroom = Classroom.objects.select_related('school', 'grade', 'subject').get(class_id=details.get('class_id'))
+        classroom = Classroom.objects.select_related('school', 'grade', 'subject').get(class_id=details.get('class'))
 
-        # Check permissions based on whether it's a register or subject class
-        if details.get('register'):
-            if account.school != classroom.school or not classroom.register_class:
-                return {"error": "Permission denied. The provided classroom is either not from your school or is not a register class."}
-        else:
-            if account.school != classroom.school or not classroom.subject:
-                return {"error": "Permission denied. The provided classroom is either not from your school or has no subject linked to it."}
+        # Check permissions 
+        if account.school != classroom.school:
+            return {"error": "Permission denied. The provided classroom is not from your school"}
 
         students_list = details.get('students', '').split(', ')
         if not students_list or students_list == ['']:
-            return {'error': 'invalid request. no students were provided'}
+            return {'error': 'your request could not be proccessed.. no students were provided'}
         
-        if not details.get('remove'):
-            # Retrieve students already in the class to prevent duplication
-            existing_students = classroom.students.filter(account_id__in=students_list).values_list('account_id', flat=True)
-            if existing_students:
-                return {'error': f'The following students are already in this class: {", ".join(existing_students)}'}
+        # Check for validation errors and perform student updates
+        error_message = classroom.update_students(students_list=students_list, remove=details.get('remove'))
+        if error_message:
+            return {'error': error_message}
 
-        with transaction.atomic():
-            classroom.update_students(students_list=students_list, remove=details.get('remove'))
-        
-        return {'message': f'Students successfully {"removed from" if details.get("remove") else "added to"} the grade {classroom.grade.grade}, group {classroom.group} {"register" if classroom.register_class else classroom.subject.subject.lower()} class'}
+        return {'message': f'Students successfully {"removed from" if details.get("remove") else "added to"} the grade {classroom.grade.grade}, group {classroom.group} {"register" if classroom.register_class else classroom.subject.subject} class'.lower()}
 
     except CustomUser.DoesNotExist:
         # Handle case where the user account does not exist
@@ -793,6 +785,7 @@ def update_class_students(user, details):
 
     except Exception as e:
         return {'error': str(e)}
+
 
 
 @database_sync_to_async
