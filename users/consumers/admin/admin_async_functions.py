@@ -787,7 +787,6 @@ def update_class_students(user, details):
         return {'error': str(e)}
 
 
-
 @database_sync_to_async
 def create_schedule(user, details):
     """
