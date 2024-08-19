@@ -1197,7 +1197,6 @@ def form_data_for_creating_class(user, details):
         # Handle any other unexpected errors
         return {'error': str(e)}
 
-    
 
 @database_sync_to_async
 def form_data_for_updating_class(user, details):
@@ -1226,20 +1225,16 @@ def form_data_for_updating_class(user, details):
         if account.school != classroom.school:
             return {"error": "Permission denied. The provided classroom is not from your school. You can only update details of classes from your own school."}
 
-        # Determine the query based on the reason for retrieving teachers
+        # Determine the query based on the classroom type
         if classroom.subject:
-            # Retrieve other teachers in the same school, excluding the current teacher if one is assigned
+            teachers = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(taught_classes__subject=classroom.subject)
             if classroom.teacher:
-                teachers = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(taught_classes__subject=classroom.subject, account_id=classroom.teacher.account_id)
-            else:
-                teachers = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(taught_classes__subject=classroom.subject)
+                teachers = teachers.exclude(account_id=classroom.teacher.account_id)
 
         elif classroom.register_class:
-            # Retrieve teachers not currently teaching a register class in the school, excluding the current teacher if one is assigned
+            teachers = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(taught_classes__register_class=True)
             if classroom.teacher:
-                teachers = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(taught_classes__register_class=True, account_id=classroom.teacher.account_id)
-            else:
-                teachers = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(taught_classes__register_class=True)
+                teachers = teachers.exclude(account_id=classroom.teacher.account_id)
 
         else:
             return {"error": "invalid classroom provided. the classroom in neither a register class or linked to a subject"}
@@ -1263,7 +1258,6 @@ def form_data_for_updating_class(user, details):
     except Exception as e:
         # Handle any other unexpected errors
         return {'error': str(e)}
-
 
 
 @database_sync_to_async
