@@ -17,10 +17,11 @@ from users.serializers import AccountSerializer
 class ClassCreationSerializer(serializers.ModelSerializer):
 
     subject = serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all(), required=False, allow_null=True)
+    teacher = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.filter(role='TEACHER'), required=False)
 
     class Meta:
         model = Classroom
-        fields = ['classroom_number', 'group', 'subject', 'register_class', 'grade', 'school']
+        fields = ['classroom_number', 'group', 'subject', 'register_class', 'teacher', 'grade', 'school']
     
     def validate(self, data):
         """

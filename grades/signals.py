@@ -1,4 +1,5 @@
 # django
+from django.db import models
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
@@ -26,7 +27,7 @@ def update_user_counts_on_delete(sender, instance, **kwargs):
         grade.save()
 
 @receiver(post_save, sender=Classroom)
-def update_class_counts_on_create(sender, instance, created, **kwargs):
+def update_class_counts_on_create_or_update(sender, instance, created, **kwargs):
     if created and instance.subject:
         # Update the count of classrooms associated with this subject
         instance.subject.classes_count = instance.grade.grade_classes.filter(subject=instance.subject).count()
@@ -37,7 +38,7 @@ def update_class_counts_on_create(sender, instance, created, **kwargs):
 
         # Save the updated subject instance
         instance.subject.save()
-        
+
 @receiver(post_delete, sender=Classroom)
 def update_class_counts_on_delete(sender, instance, **kwargs):
     if instance.subject:
@@ -47,6 +48,10 @@ def update_class_counts_on_delete(sender, instance, **kwargs):
         # Update the count of unique teachers for this subject
         if instance.teacher:
             instance.subject.teacher_count = instance.grade.grade_classes.filter(subject=instance.subject).exclude(teacher=None).values_list('teacher', flat=True).distinct().count()
+        
+        # Update the count of students for this subject
+        if instance.students:
+            instance.subject.student_count = instance.grade.grade_classes.filter(subject=instance.subject).aggregate(count=models.Sum('students__count'))['count'] or 0
 
         # Save the updated subject instance
         instance.subject.save()

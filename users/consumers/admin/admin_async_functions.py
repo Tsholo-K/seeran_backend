@@ -597,16 +597,16 @@ def create_class(user, details):
         # Set the school and grade fields
         details.update({'school': account.school.pk, 'grade': grade.pk})
 
+        # If a teacher is specified, update the teacher for the class
+        if details.get('teacher'):
+            details['teacher'] = CustomUser.objects.get(account_id=details['teacher'], school=account.school).pk
+
         # Serialize and validate the data
         serializer = ClassCreationSerializer(data=details)
         if serializer.is_valid():
             # Create the class within a transaction
             with transaction.atomic():
-                classroom = Classroom.objects.create(**serializer.validated_data)
-
-                # If a teacher is specified, update the teacher for the class
-                if details.get('teacher'):
-                    classroom.update_teacher(teacher=CustomUser.objects.get(account_id=details.get('teacher'), role='TEACHER', school=account.school))
+                Classroom.objects.create(**serializer.validated_data)
             
             return response
         
@@ -701,7 +701,7 @@ def update_class(user, details):
                     if updates.get('teacher') == 'remove teacher':
                         classroom.update_teacher(teacher=None)
                     else:
-                        classroom.update_teacher(teacher=CustomUser.objects.get(account_id=updates.get('teacher'), school=account.school))
+                        classroom.update_teacher(teacher=updates['teacher'])
 
             return {"message" : 'classroom details have been successfully updated'}
             

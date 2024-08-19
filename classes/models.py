@@ -124,31 +124,38 @@ class Classroom(models.Model):
         else:
             raise ValueError("validation error.. no students were provided.")
 
-    def update_teacher(self, teacher=None):
+    def update_teacher(self, teacher):
         """
         Update the class's teacher and update the subject's teacher count if applicable.
         This method ensures that a teacher can only be assigned to one register class per school.
         """
-        if teacher:
-            # Check if the teacher is already assigned to another register class in the school
-            if self.register_class and teacher.taught_classes.filter(register_class=True).exclude(pk=self.pk).exists():
-                raise ValueError("the provided teacher is already assigned to a register class. teachers can only be assigned to one register class in a school")
+        try:
+            if teacher:
+                # Retrieve the CustomUser instance corresponding to the account_id
+                teacher = CustomUser.objects.get(account_id=teacher, role='TEACHER')
             
-            # Check if the teacher is already assigned to another class in the subject
-            elif self.subject and teacher.taught_classes.filter(subject=self.subject).exclude(pk=self.pk).exists():
-                raise ValueError("the provided teacher is already assigned to a class in this grade and subject. teachers can not teach more than one class in the same grade and subject")
+                # Check if the teacher is already assigned to another register class in the school
+                if self.register_class and teacher.taught_classes.filter(register_class=True).exclude(pk=self.pk).exists():
+                    raise ValueError("the provided teacher is already assigned to a register class. teachers can only be assigned to one register class in a school")
+                
+                # Check if the teacher is already assigned to another class in the subject
+                elif self.subject and teacher.taught_classes.filter(subject=self.subject).exclude(pk=self.pk).exists():
+                    raise ValueError("the provided teacher is already assigned to a class in this grade and subject. teachers can not teach more than one class in the same grade and subject")
+                
+                # Assign the teacher to the classroom
+                self.teacher = teacher
+            else:
+                # Remove the teacher assignment
+                self.teacher = None
             
-            # Assign the teacher to the classroom
-            self.teacher = teacher
-        else:
-            # Remove the teacher assignment
-            self.teacher = None
+            # Update the teacher count in the subject if applicable
+            if self.subject:
+                # Count unique teachers assigned to classrooms for this subject
+                self.subject.teacher_count = self.grade.grade_classes.filter(subject=self.subject).values_list('teacher', flat=True).distinct().count()
+                self.subject.save()
 
-        # Update the teacher count in the subject if applicable
-        if self.subject:
-            # Count unique teachers assigned to classrooms for this subject
-            self.subject.teacher_count = self.grade.grade_classes.filter(subject=self.subject).values_list('teacher', flat=True).distinct().count()
-            self.subject.save()
+            # Save the classroom instance with the updated teacher
+            self.save()
 
-        # Save the classroom instance with the updated teacher
-        self.save()
+        except CustomUser.DoesNotExist:
+            raise ValueError("a teacher account with the provided credentials does not exist. please check the teachers details and try again")
