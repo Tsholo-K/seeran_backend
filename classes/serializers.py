@@ -80,37 +80,24 @@ class TeacherClassesSerializer(serializers.ModelSerializer):
 
     subject = serializers.SerializerMethodField()
     grade = serializers.SerializerMethodField()
-    student_count = serializers.SerializerMethodField()
-    id = serializers.SerializerMethodField()
 
     class Meta:
         model = Classroom
-        fields = ['classroom_number', 'subject', 'grade', 'student_count', 'group', 'id']
+        fields = ['classroom_number', 'subject', 'grade', 'student_count', 'group', 'class_id']
 
     def get_subject(self, obj):
         if  obj.register_class:
             return 'Register Class'
-        
         if obj.subject:
             return f'{obj.subject}'.title()
-        
         return None
 
     def get_grade(self, obj):
         return obj.grade.grade
-        
-    def get_id(self, obj):
-        return str(obj.class_id)
 
 
 class TeacherRegisterClassSerializer(serializers.ModelSerializer):
 
-    student_count = serializers.SerializerMethodField()
-    id = serializers.SerializerMethodField()
-
     class Meta:
         model = Classroom
-        fields = ['classroom_number', 'student_count', 'group', 'id']
-    
-    def get_id(self, obj):
-        return str(obj.class_id)
+        fields = ['classroom_number', 'student_count', 'group', 'class_id']
