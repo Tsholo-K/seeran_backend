@@ -147,7 +147,7 @@ class Classroom(models.Model):
             self.save()
 
             # Update the students count in the class
-            self.students_count = self.students.count()
+            self.student_count = self.students.count()
             self.save()  # Save again to update students_count field
 
             if self.subject:
