@@ -208,7 +208,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             
             'log_activity': general_async_functions.log_activity,
                         
-            'set_assessment': general_async_functions.log_activity,
+            'set_assessment': general_async_functions.set_assessment,
         }
 
         func = post_map.get(description)

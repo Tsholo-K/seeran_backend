@@ -1266,21 +1266,30 @@ def log_activity(user, details):
 
         # Ensure the account has a valid role to log activities
         if account.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
-            return {"error": "unauthorized request. you do not have sufficient permissions to log activities."}
+            return {"error": "could not proccess your request. you do not have sufficient permissions to log activities."}
 
         # Ensure the student belongs to the same school and has the 'STUDENT' role
         if account.school != student.school or student.role != 'STUDENT':
-            return {"error": "unauthorized request. the provided student account is either not a student or does not belong to your school. Please check the account details and try again."}
+            return {"error": "could not proccess your request. the provided student account is either not a student or does not belong to your school. please check the account details and try again."}
 
-        # If the account is a teacher, ensure they are teaching the student and the teacher of hte class
+        # If the account is a teacher, ensure they are teaching the student and the teacher of the class
         if account.role == 'TEACHER':
-            # Retrieve the classroom
-            classroom = Classroom.objects.get(class_id=details.get('class_id'))
-            
-            if account.school != classroom.school or classroom.teacher != account:
-                return {"error": "unauthorized access. you are not permitted to access information about classses outside your own school or those you do not teacher"}
+                    
+            # Determine the classroom based on the request details
+            if details.get('class') == 'requesting_my_own_class':
+                # Fetch the classroom where the user is the teacher and it is a register class
+                classroom = Classroom.objects.select_related('school').filter(teacher=account, register_class=True).first()
+                if classroom is None:
+                    return {"error": _("could not proccess your request. the account making the request has no register class assigned to it")}
 
-            if classroom not in account.taught_classes.all() or not account.taught_classes.filter(students=student).exists():
+            else:
+                # Fetch the specific classroom based on class_id and school
+                classroom = Classroom.objects.get(class_id=details.get('class'))
+
+            if classroom.school != account.school:
+                return {"error": _("could not proccess your request. you are not permitted to access information about classses outside your own school or those you do not teach")}
+
+            if classroom not in account.taught_classes or not account.taught_classes.filter(students=student).exists():
                 return {"error": "unauthorized access. you can only log activities for classrooms and students you teach."}
   
             details['classroom'] = classroom.pk
