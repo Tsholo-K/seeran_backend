@@ -1279,7 +1279,7 @@ def log_activity(user, details):
             if details.get('class') == 'requesting_my_own_class':
                 # Fetch the classroom where the user is the teacher and it is a register class
                 classroom = Classroom.objects.select_related('school').filter(teacher=account, register_class=True).first()
-                if classroom is None:
+                if not classroom:
                     return {"error": _("could not proccess your request. the account making the request has no register class assigned to it")}
 
             else:
@@ -1289,7 +1289,7 @@ def log_activity(user, details):
             if classroom.school != account.school:
                 return {"error": _("could not proccess your request. you are not permitted to access information about classses outside your own school or those you do not teach")}
 
-            if classroom not in account.taught_classes or not account.taught_classes.filter(students=student).exists():
+            if classroom not in account.taught_classes.all() or not account.taught_classes.filter(students=student).exists():
                 return {"error": "unauthorized access. you can only log activities for classrooms and students you teach."}
   
             details['classroom'] = classroom.pk
