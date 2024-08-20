@@ -713,20 +713,27 @@ def search_student_class_card(user, details):
         if permission_error:
             return permission_error
         
-        # Retrieve the requested user's account
-        classroom = Classroom.objects.get(class_id=details.get('class_id'))
-        
-        if account.school != classroom.school:
-            return {"error": "unauthorized access. you are not permitted to view information about classses outside your own school"}
+        # Determine the classroom based on the request details
+        if details.get('class') == 'requesting_my_own_class':
+            # Fetch the classroom where the user is the teacher and it is a register class
+            classroom = Classroom.objects.select_related('school').filter(teacher=account, register_class=True).first()
+            if classroom is None:
+                return {"error": _("could not proccess your request. the account making the request has no register class assigned to it")}
 
-        # Serialize the requested user's account ID
-        serializer = BySerializer(instance=student).data
+            if account.role != 'TEACHER' or classroom.school != account.school:
+                return {"error": _("could not proccess your request. the account making the request has an invalid role or the classroom is not from your school")}
 
-        # Serialize the activities 
+        else:
+            # Fetch the specific classroom based on class_id and school
+            classroom = Classroom.objects.get(class_id=details.get('class'))
+
+            if account.school != classroom.school:
+                return {"error": "could not proccess your request. you are not permitted to view information about classses outside your own school"}
+
+        # retrieve the students activities 
         activities = Activity.objects.filter(classroom=classroom, recipient=student)
-        serializer2 = ActivitiesSerializer(activities, many=True).data
 
-        return {"user": serializer, 'activities' : serializer2}
+        return {"user": BySerializer(instance=student).data, 'activities' : ActivitiesSerializer(activities, many=True).data}
 
     except CustomUser.DoesNotExist:
         # Handle case where the user or requested user account does not exist
