@@ -284,7 +284,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
         func = post_map.get(description)
 
         if func:
-            response = await func(access_token) if description in ['log_out'] else func(user, details)
+            response = await func(access_token) if description in ['log_out'] else await func(user, details)
 
             if response.get('reciever') and description in ['text']:
                 await connection_manager.send_message(response['reciever']['id'], json.dumps({'description': 'text_message', 'message': response['message'], 'sender': response['sender']}))
