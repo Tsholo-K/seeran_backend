@@ -5,6 +5,8 @@
 from rest_framework import serializers
 
 # django
+from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
 
 # models
 from .models import School
@@ -33,7 +35,22 @@ class UpdateSchoolAccountSerializer(serializers.ModelSerializer):
         # Set all fields to be optional by making them not required
         for field in self.fields:
             self.fields[field].required = False
+    
+    def validate_website(self, value):
+        """
+        Custom validation for the website field.
+        """
+        validator = URLValidator()
 
+        try:
+            # Validate the URL format
+            validator(value)
+        except ValidationError:
+            raise serializers.ValidationError("please provide a valid website URL starting with http:// or https://")
+
+        # Additional custom validation logic (if any) can be added here
+
+        return value
 
 class SchoolsSerializer(serializers.ModelSerializer):
     
