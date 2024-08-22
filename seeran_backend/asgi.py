@@ -27,6 +27,8 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 from users.consumers.founder.founder_consumer import FounderConsumer
 from users.consumers.admin.admin_consumer import AdminConsumer
 from users.consumers.teacher.teacher_consumer import TeacherConsumer
+from users.consumers.parent.parent_consumer import ParentConsumer
+from users.consumers.student.student_consumer import StudentConsumer
 
 # middleware
 from .middleware import TokenAuthMiddleware
@@ -42,8 +44,8 @@ application = ProtocolTypeRouter({
             path('ws/founder/', FounderConsumer.as_asgi()),
             path('ws/admin/', AdminConsumer.as_asgi()),
             path('ws/teacher/', TeacherConsumer.as_asgi()),
-            path('ws/parent/', FounderConsumer.as_asgi()),
-            path('ws/student/', FounderConsumer.as_asgi()),
+            path('ws/parent/', ParentConsumer.as_asgi()),
+            path('ws/student/', StudentConsumer.as_asgi()),
         ])
     ),
 })

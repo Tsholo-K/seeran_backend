@@ -83,14 +83,6 @@ class School(models.Model):
     website = models.URLField(max_length=200, blank=True, null=True)
     logo = models.ImageField(upload_to='school_logos/', blank=True, null=True)
 
-    established_date = models.DateField(blank=True, null=True)
-
-    accreditation = models.CharField(max_length=100, blank=True, null=True)
-    # Curriculum Details
-    curriculum_details = models.TextField(blank=True, null=True)
-    # School Motto or Mission Statement
-    school_motto = models.CharField(max_length=255, blank=True, null=True)
-
     # school account id 
     school_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     

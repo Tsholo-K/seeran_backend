@@ -212,10 +212,11 @@ class AccountIDSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
     surname = serializers.SerializerMethodField()
     identifier = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
-        fields = [ 'email', 'name', 'surname', 'role', 'id', 'identifier' ]
+        fields = [ 'email', 'name', 'surname', 'role', 'id', 'identifier', 'image' ]
     
     def get_name(self, obj):
         return obj.name.title()
@@ -235,7 +236,10 @@ class AccountIDSerializer(serializers.ModelSerializer):
         if obj.passport_number:
             return obj.passport_number
         return obj.email
-    
+                
+    def get_image(self, obj):
+        return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
+
     
 class PrincipalIDSerializer(serializers.ModelSerializer):
 

@@ -44,7 +44,6 @@ class Classroom(models.Model):
 
     teacher = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, limit_choices_to={'role': 'TEACHER'}, null=True, blank=True, related_name='taught_classes', help_text='The teacher assigned to the classroom.')
     students = models.ManyToManyField(CustomUser, limit_choices_to={'role': 'STUDENT'}, related_name='enrolled_classes', help_text='Students enrolled in the classroom.')
-    parents = models.ManyToManyField(CustomUser, related_name='children_classes', help_text='Parents or guardians of students in the classroom.')
 
     student_count = models.IntegerField(default=0)
 

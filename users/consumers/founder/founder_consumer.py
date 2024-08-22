@@ -11,7 +11,7 @@ from seeran_backend.middleware import  connection_manager
 from authentication.utils import validate_access_token
 
 # async functions 
-from users.consumers import general_async_functions
+from users.consumers.general import general_search_async_functions
 from . import founder_async_functions
 
 
@@ -40,7 +40,8 @@ class FounderConsumer(AsyncWebsocketConsumer):
         access_token = self.scope.get('access_token')
 
         if not (user and access_token and validate_access_token(access_token)):
-            return await self.send(text_data=json.dumps({'error': 'request not authenticated.. access denied'}))
+            await self.send(text_data=json.dumps({'error': 'request not authenticated.. access denied'}))
+            return await self.close()
 
         data = json.loads(text_data)
         action = data.get('action')
@@ -74,13 +75,13 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
     async def handle_get(self, description, details, user, access_token):
         if description == 'my_security_information':
-            return await general_async_functions.fetch_my_security_information(user)
+            return await general_search_async_functions.fetch_my_security_information(user)
         
         elif description == 'schools':
             return await founder_async_functions.fetch_schools()
         
         elif description == 'log_out':
-            return await general_async_functions.log_out(access_token)
+            return await general_search_async_functions.log_out(access_token)
         
         else:
             return {'error': 'Invalid get description'}
@@ -109,17 +110,17 @@ class FounderConsumer(AsyncWebsocketConsumer):
     async def handle_verify(self, description, details, user, access_token):
 
         if description == 'verify_email':
-            response = await general_async_functions.verify_email(details)
+            response = await general_search_async_functions.verify_email(details)
             if response.get('user'):
-                return await general_async_functions.send_one_time_pin_email(response.get('user'), reason='This OTP was generated in response to your email update request..')
+                return await general_search_async_functions.send_one_time_pin_email(response.get('user'), reason='This OTP was generated in response to your email update request..')
             
         elif description == 'verify_password':
-            response = await general_async_functions.verify_password(user, details)
+            response = await general_search_async_functions.verify_password(user, details)
             if response.get('user'):
-                return await general_async_functions.send_one_time_pin_email(response.get('user'), reason='This OTP was generated in response to your password update request..')
+                return await general_search_async_functions.send_one_time_pin_email(response.get('user'), reason='This OTP was generated in response to your password update request..')
             
         elif description == 'verify_otp':
-            return await general_async_functions.verify_otp(user, details)
+            return await general_search_async_functions.verify_otp(user, details)
         
         else:
             return {'error': 'Invalid verify description'}
@@ -127,13 +128,13 @@ class FounderConsumer(AsyncWebsocketConsumer):
     async def handle_put(self, description, details, user, access_token):
 
         if description == 'update_email':
-            return await general_async_functions.update_email(user, details, access_token)
+            return await general_search_async_functions.update_email(user, details, access_token)
         
         elif description == 'update_password':
-            return await general_async_functions.update_password(user, details, access_token)
+            return await general_search_async_functions.update_password(user, details, access_token)
         
         elif description == 'update_multi_factor_authentication':
-            return await general_async_functions.update_multi_factor_authentication(user, details)
+            return await general_search_async_functions.update_multi_factor_authentication(user, details)
         
         elif description == 'update_bug_report':
             return await founder_async_functions.update_bug_report(details)
@@ -155,7 +156,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         elif description == 'create_principal_account':
             response = await founder_async_functions.create_principal_account(details)
             if response.get('user'):
-                return await general_async_functions.send_account_confirmation_email(response.get('user'))
+                return await general_search_async_functions.send_account_confirmation_email(response.get('user'))
             return response
             
         elif description == 'delete_principal_account':

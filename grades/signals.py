@@ -7,27 +7,45 @@ from django.dispatch import receiver
 from users.models import CustomUser
 from classes.models import Classroom
 
+
 @receiver(post_save, sender=CustomUser)
-def update_user_counts_on_create(sender, instance, created, **kwargs):
+def update_grade_counts_on_create(sender, instance, created, **kwargs):
     if created:
         role = instance.role
-        grade = instance.grade
         
         if role == 'STUDENT':
-            grade.student_count = CustomUser.objects.filter(role=role, grade=grade).count()
+            grade = instance.grade
+
+            grade.student_count = CustomUser.objects.filter(role='STUDENT', grade=grade).count()
             grade.save()
 
+
 @receiver(post_delete, sender=CustomUser)
-def update_user_counts_on_delete(sender, instance, **kwargs):
+def update_grade_and_subject_counts_on_delete(sender, instance, **kwargs):
     role = instance.role
-    grade = instance.grade
     
     if role == 'STUDENT':
-        grade.student_count = CustomUser.objects.filter(role=role, grade=grade).count()
+        grade = instance.grade
+
+        grade.student_count = CustomUser.objects.filter(role='STUDENT', grade=grade).count()
         grade.save()
 
+        for classroom in instance.enrolled_classes.all().exclude(subject=None, register_class=True):
+            if classroom.subject:
+                # Update the subject student count
+                classroom.subject.student_count = classroom.grade.grade_classes.filter(subject=classroom.subject).aggregate(student_count=models.Count('students'))['student_count'] or 0
+                classroom.subject.save()
+
+    elif role == 'TEACHER':
+        # Update teacher count for all related subjects
+        for classroom in instance.taught_classes.all().exclude(subject=None, register_class=True):
+            if classroom.subject:
+                classroom.subject.teacher_count = classroom.grade.grade_classes.filter(subject=classroom.subject).exclude(teacher=None).values_list('teacher', flat=True).distinct().count()
+                classroom.subject.save()
+
+
 @receiver(post_save, sender=Classroom)
-def update_class_counts_on_create_or_update(sender, instance, created, **kwargs):
+def update_subject_counts_on_create(sender, instance, created, **kwargs):
     if created and instance.subject:
         # Update the count of classrooms associated with this subject
         instance.subject.classes_count = instance.grade.grade_classes.filter(subject=instance.subject).count()
@@ -39,8 +57,9 @@ def update_class_counts_on_create_or_update(sender, instance, created, **kwargs)
         # Save the updated subject instance
         instance.subject.save()
 
+
 @receiver(post_delete, sender=Classroom)
-def update_class_counts_on_delete(sender, instance, **kwargs):
+def update_subject_counts_on_delete(sender, instance, **kwargs):
     if instance.subject:
         # Update the count of classrooms associated with this subject
         instance.subject.classes_count = instance.grade.grade_classes.filter(subject=instance.subject).count()
