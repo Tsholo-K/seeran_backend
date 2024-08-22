@@ -171,7 +171,7 @@ class Term(models.Model):
         """
         Ensure that the term dates do not overlap with other terms in the same school and validate term dates.
         """
-        if Term.objects.filter(school=self.school, term=self.term).exists():
+        if Term.objects.filter(school=self.school, term=self.term).exclude(pk=self.pk).exists():
             raise ValidationError(f"a term with the provided term number already exists in the school")
 
         if self.start_date >= self.end_date:
