@@ -150,7 +150,7 @@ class UpdateSchoolTermSerializer(serializers.ModelSerializer):
         fields = [ 'weight', 'start_date', 'end_date', 'school_days' ]
 
     def __init__(self, *args, **kwargs):
-        super(UpdateSchoolAccountSerializer, self).__init__(*args, **kwargs)
+        super(UpdateSchoolTermSerializer, self).__init__(*args, **kwargs)
         # Set all fields to be optional by making them not required
         for field in self.fields:
             self.fields[field].required = False
