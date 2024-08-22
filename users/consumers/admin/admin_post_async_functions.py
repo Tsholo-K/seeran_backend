@@ -60,9 +60,9 @@ def create_term(user, details):
             # Using atomic transaction to ensure data integrity
             with transaction.atomic():
                 # Create the new term using the validated data
-                term = serializer.save()
+                Term.objects.create(**serializer.validated_data)
             
-            return {'message': f'Term {term.term} has been successfully created for your school'}
+            return {'message': f'Term {details['term']} has been successfully created for your school'}
             
         # Return serializer errors if the data is not valid
         return {"error": serializer.errors}
