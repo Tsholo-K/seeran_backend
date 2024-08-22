@@ -29,7 +29,7 @@ def search_term(user, details):
     try:
         # Fetch the school directly using the account_id for efficiency
         account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
-        term = CustomUser.objects.select_related('school').only('school').get(term_id=details.get('term'))
+        term = Term.objects.select_related('school').only('school').get(term_id=details.get('term'))
 
         # Check if the user has permission to view the term
         if account.school != term.school:
