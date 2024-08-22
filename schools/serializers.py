@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import URLValidator
 
 # models
-from .models import School
+from .models import School, Term
 from users.models import CustomUser
 from balances.models import Balance
 
@@ -134,3 +134,11 @@ class SchoolIDSerializer(serializers.ModelSerializer):
 
     def get_province(self, obj):
         return obj.province.title()
+
+
+class TermsSerializer(serializers.ModelSerializer):
+        
+    class Meta:
+        model = Term
+        fields = [ "term", 'weight', 'start_date', 'end_date', 'term_id' ]
+

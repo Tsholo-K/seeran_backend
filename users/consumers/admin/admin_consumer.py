@@ -96,6 +96,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'email_information': general_get_async_functions.fetch_my_email_information,
 
             "school_id": admin_get_async_functions.fetch_school_id,
+            "school_terms": admin_get_async_functions.fetch_school_terms,
 
             'grades': admin_get_async_functions.fetch_grades,
             'grades_with_student_count': admin_get_async_functions.fetch_grades_with_student_count,
