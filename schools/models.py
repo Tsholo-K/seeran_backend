@@ -60,11 +60,11 @@ class School(models.Model):
     none_compliant = models.BooleanField(_('school denied access'), default=False)
     
     # e.g., Primary, Secondary, High School, etc.
-    school_type = models.CharField(_('school type'), max_length=50, choices=SCHOOL_TYPE_CHOICES, default="PRIMARY")
+    type = models.CharField(_('school type'), max_length=50, choices=SCHOOL_TYPE_CHOICES, default="PRIMARY")
     # School District or Region
     province = models.CharField(_('province'), max_length=100, choices=PROVINCE_CHOICES, default="GAUTENG")
     # School District or Region
-    school_district = models.CharField(_('school district'), max_length=100, choices=SCHOOL_DISTRICT_CHOICES, default="GAUTENG NORTH")
+    district = models.CharField(_('school district'), max_length=100, choices=SCHOOL_DISTRICT_CHOICES, default="GAUTENG NORTH")
     
     # Grading System Details
     grading_system = models.TextField(blank=True, null=True)
@@ -76,11 +76,11 @@ class School(models.Model):
     # Sports Facilities Details
     sports_facilities = models.TextField(blank=True, null=True)
 
-    operating_hours = models.CharField(max_length=100, blank=True, null=True)
+    operating_hours = models.CharField(max_length=12, blank=True, null=True)
     location = models.CharField(_('school location'), max_length=100, blank=True, null=True)
 
     # others
-    website = models.URLField(max_length=200, blank=True, null=True)
+    website = models.URLField(max_length=256, blank=True, null=True)
     logo = models.ImageField(upload_to='school_logos/', blank=True, null=True)
 
     # school account id 
@@ -115,13 +115,10 @@ class School(models.Model):
             try:
                 validator(self.website)
             except ValidationError:
-                raise ValidationError(_('the provided URL format is Invalid'))
+                raise ValidationError(_('the provided URL format is invalid'))
         
         if self.logo and not self.logo.name.endswith(('.png', '.jpg', '.jpeg')):
             raise ValidationError(_('school logo must be a PNG or JPG/JPEG image'))
-
-        if self.established_date and self.established_date > datetime.date.today():
-            raise ValidationError(_('established date cannot be in the future'))
 
         # Validate choice fields
         if self.school_type not in dict(SCHOOL_TYPE_CHOICES).keys():

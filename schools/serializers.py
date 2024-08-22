@@ -15,12 +15,11 @@ from balances.models import Balance
 from users.serializers import AccountSerializer
 
 
-
 class SchoolCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = School
-        fields = [ 'name', 'email', 'contact_number', 'school_type', 'province', 'school_district' ]
+        fields = [ 'name', 'email', 'contact_number', 'type', 'province', 'district' ]
 
 
 class SchoolsSerializer(serializers.ModelSerializer):
@@ -49,12 +48,10 @@ class SchoolSerializer(serializers.ModelSerializer):
         fields = ['principal', 'balance', 'name' ]
                 
     def get_principal(self, obj):
-    
         try:
             principal = CustomUser.objects.get(school=obj, role='PRINCIPAL')
             if principal:
                 return AccountSerializer(principal).data
-            
         except CustomUser.DoesNotExist:
             return None
     
@@ -86,19 +83,40 @@ class SchoolDetailsSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = School
-        fields = ['name', 'school_type', 'school_district',  'province', 'email', 'contact_number', 'school_id',  'students', 'parents', 'teachers', 'admins', ]
+        fields = ['name', 'type', 'district',  'province', 'email', 'contact_number', 'school_id',  'students', 'parents', 'teachers', 'admins', ]
         
     def get_name(self, obj):
         return obj.name.title()
     
-    def get_school_type(self, obj):
+    def get_type(self, obj):
         return obj.school_type.title()
 
-    def get_school_district(self, obj):
+    def get_district(self, obj):
         return obj.school_district.title()
 
     def get_province(self, obj):
         return obj.province.title()
 
+class SchoolIDSerializer(serializers.ModelSerializer):
+        
+    name = serializers.SerializerMethodField()
+    type = serializers.SerializerMethodField()
+    school_district = serializers.SerializerMethodField()
+    province = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = School
+        fields = ['name', 'email', 'contact_number', 'in_arrears', 'type', 'province', 'district', 'operating_hours', 'location', 'website', 'school_id' ]
+        
+    def get_name(self, obj):
+        return obj.name.title()
+    
+    def get_type(self, obj):
+        return obj.school_type.title()
 
+    def get_district(self, obj):
+        return obj.school_district.title()
+
+    def get_province(self, obj):
+        return obj.province.title()
         

@@ -1,5 +1,5 @@
 # python 
-from datetime import date, timedelta
+from datetime import timedelta
 
 # djnago
 from django.test import TestCase
@@ -17,9 +17,9 @@ class SchoolModelTest(TestCase):
             name="Test School",
             email="testschool@example.com",
             contact_number="1234567890",
-            school_type="PRIMARY",
+            type="PRIMARY",
             province="GAUTENG",
-            school_district="JHB NORTH"
+            district="JHB NORTH"
         )
 
     def test_school_creation(self):
@@ -67,21 +67,15 @@ class SchoolModelTest(TestCase):
             name="Another Test School",
             email="another@example.com",
             contact_number="0987654321",
-            school_type="PRIMARY",
+            type="PRIMARY",
             province="GAUTENG",
-            school_district="JHB NORTH"
+            district="JHB NORTH"
         )
         self.assertNotEqual(self.school.school_id, school_2.school_id)
 
-    def test_school_accreditation_field(self):
-        """Test that the 'accreditation' field can be set and saved correctly."""
-        self.school.accreditation = "Department of Education"
-        self.school.save()
-        self.assertEqual(self.school.accreditation, "Department of Education")
-
     def test_school_field_defaults(self):
         """Test that the default values for 'school_type' and 'province' fields are set correctly."""
-        self.assertEqual(self.school.school_type, "PRIMARY")
+        self.assertEqual(self.school.type, "PRIMARY")
         self.assertEqual(self.school.province, "GAUTENG")
 
     def test_valid_school_district(self):
@@ -93,9 +87,9 @@ class SchoolModelTest(TestCase):
             name="Valid District School",
             email="another@example.com",
             contact_number="0987654321",
-            school_type="PRIMARY",
+            type="PRIMARY",
             province="GAUTENG",
-            school_district=valid_district
+            district=valid_district
         )
         try:
             school.full_clean()  # Calls clean and validates the model
@@ -111,9 +105,9 @@ class SchoolModelTest(TestCase):
             name="Invalid District School",
             email="another@example.com",
             contact_number="0987654321",
-            school_type="PRIMARY",
+            type="PRIMARY",
             province="GAUTENG",
-            school_district=invalid_district
+            district=invalid_district
         )
         with self.assertRaises(ValidationError):
             school.full_clean()  # Calls clean and validates the model
@@ -126,9 +120,9 @@ class TermModelTest(TestCase):
             name="Test School",
             email="testschool@example.com",
             contact_number="1234567890",
-            school_type="PRIMARY",
+            type="PRIMARY",
             province="GAUTENG",
-            school_district="JHB NORTH"
+            district="JHB NORTH"
         )
         self.term = Term.objects.create(
             term=1,

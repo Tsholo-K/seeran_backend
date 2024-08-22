@@ -15,8 +15,40 @@ from grades.models import Grade
 
 # serilializers
 from grades.serializers import GradesSerializer
+from schools.serializers import SchoolIDSerializer
 
 # utility functions 
+
+
+
+@database_sync_to_async
+def fetch_school_id(user):
+    """
+    Asynchronously fetches the school ID associated with the provided user.
+
+    This function retrieves the school associated with a user based on their account ID.
+    It handles potential errors such as non-existent users and unexpected exceptions.
+
+    Args:
+        user (str): The account ID of the user.
+
+    Returns:
+        dict: A dictionary containing either the school ID or an error message.
+    """
+    try:
+        # Use select_related to fetch the related school in the same query for efficiency
+        account = CustomUser.objects.select_related('school').get(account_id=user)
+        
+        # Serialize the school object into a dictionary
+        return {'school': SchoolIDSerializer(account.school).data}
+        
+    except CustomUser.DoesNotExist:
+        # Return a clear and user-friendly error message if the user is not found
+        return {'error': 'No account found with the provided account ID.'}
+    
+    except Exception as e:
+        # Catch all other exceptions and return a descriptive error message
+        return {'error': f'An unexpected error occurred: {str(e)}'}
 
 
 @database_sync_to_async
