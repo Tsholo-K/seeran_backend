@@ -5,14 +5,22 @@ import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 
 # websocket manager
-from seeran_backend.middleware import  connection_manager
+from seeran_backend.middleware import connection_manager
 
 # utility functions
 from authentication.utils import validate_access_token
 
-# async functions 
-from users.consumers.general import general_search_async_functions
+# student async functions 
 from . import student_async_functions
+
+# general async functions 
+from users.consumers.general import general_post_async_functions
+from users.consumers.general import general_put_async_functions
+from users.consumers.general import general_search_async_functions
+from users.consumers.general import general_get_async_functions
+from users.consumers.general import general_verify_async_functions
+from users.consumers.general import general_email_async_functions
+from users.consumers.general import general_form_data_async_functions
 
 
 class StudentConsumer(AsyncWebsocketConsumer):
@@ -32,17 +40,20 @@ class StudentConsumer(AsyncWebsocketConsumer):
         return await self.send(text_data=json.dumps({'message': 'Welcome Back'}))
 
 
+
     async def disconnect(self, close_code):
         account_id = self.scope['user']
         await connection_manager.disconnect(account_id, self)
         
+
 
     async def receive(self, text_data):
         user = self.scope.get('user')
         access_token = self.scope.get('access_token')
 
         if not (user and access_token and validate_access_token(access_token)):
-            return await self.send(text_data=json.dumps({'error': 'request not authenticated.. access denied'}))
+            await self.send(text_data=json.dumps({'error': 'request not authenticated.. access denied'}))
+            return await self.close()
 
         data = json.loads(text_data)
         action = data.get('action')
@@ -58,6 +69,8 @@ class StudentConsumer(AsyncWebsocketConsumer):
             return await self.send(text_data=json.dumps(response))
         
         return await self.send(text_data=json.dumps({'error': 'provided information is invalid.. request revoked'}))
+
+
 
     async def handle_request(self, action, description, details, user, access_token):
         action_map = {
@@ -75,16 +88,16 @@ class StudentConsumer(AsyncWebsocketConsumer):
         
         return {'error': 'Invalid action'}
 
+
+
     async def handle_get(self, description, details, user, access_token):
         get_map = {
-            'my_security_information': general_search_async_functions.fetch_my_security_information,
-            'email_information': general_search_async_functions.fetch_my_email_information,
+            'my_security_information': general_get_async_functions.fetch_my_security_information,
+            'email_information': general_get_async_functions.fetch_my_email_information,
 
-            'chats': general_search_async_functions.fetch_chats,
+            'chats': general_get_async_functions.fetch_chats,
 
-            'announcements': general_search_async_functions.fetch_announcements,
-
-            'log_out': general_search_async_functions.log_out,
+            'announcements': general_get_async_functions.fetch_announcements,
         }
 
         func = get_map.get(description)
@@ -92,6 +105,8 @@ class StudentConsumer(AsyncWebsocketConsumer):
             return await func(user) if description != 'log_out' else await func(access_token)
         
         return {'error': 'Invalid get description'}
+
+
 
     async def handle_search(self, description, details, user, access_token):
         search_map = {
@@ -104,10 +119,15 @@ class StudentConsumer(AsyncWebsocketConsumer):
             'group_schedules': general_search_async_functions.search_group_schedules,
             'schedule_sessions': general_search_async_functions.search_for_schedule_sessions,
 
+            'month_attendance_records': general_search_async_functions.search_month_attendance_records,
+
             'announcement': general_search_async_functions.search_announcement,
 
             'chat_room': general_search_async_functions.search_chat_room,
             'chat_room_messages': general_search_async_functions.search_chat_room_messages,
+
+            'class': general_search_async_functions.search_class,
+            'student_class_card': general_search_async_functions.search_student_class_card,
 
             'activity': general_search_async_functions.search_activity,
 
@@ -128,14 +148,18 @@ class StudentConsumer(AsyncWebsocketConsumer):
         
         return {'error': 'Invalid search description'}
 
+
+
     async def handle_verify(self, description, details, user, access_token):
         verify_map = {
-            'verify_email': general_search_async_functions.verify_email,
-            'verify_password': general_search_async_functions.verify_password,
+            'verify_email': general_verify_async_functions.verify_email,
+            'verify_password': general_verify_async_functions.verify_password,
 
-            'verify_otp': general_search_async_functions.verify_otp,
+            'verify_otp': general_verify_async_functions.verify_otp,
+            
+            'verify_email_revalidation_otp': general_verify_async_functions.verify_email_revalidate_otp,
+            'send_email_revalidation_otp': general_verify_async_functions.validate_email_revalidation,
 
-            'verify_email_revalidation_otp': general_search_async_functions.verify_email_revalidate_otp,
         }
 
         func = verify_map.get(description)
@@ -143,15 +167,18 @@ class StudentConsumer(AsyncWebsocketConsumer):
             response = await func(details) if description == 'verify_email' else await func(user, details)
             if response.get('user'):
                 if description == 'verify_email' or description == 'verify_password':
-                    return await general_search_async_functions.send_one_time_pin_email(response.get('user'), reason='This OTP was generated in response to your request.')
+                    return await general_email_async_functions.send_one_time_pin_email(response.get('user'), reason='This OTP was generated in response to your request.')
                 if description == 'verify_email_revalidation_otp':
-                    return await general_search_async_functions.send_email_revalidation_one_time_pin_email(response.get('user'))
+                    return await general_email_async_functions.send_email_revalidation_one_time_pin_email(response.get('user'))
             return response
         
         return {'error': 'Invalid verify description'}
 
+
+
     async def handle_form_data(self, description, details, user, access_token):
-        form_data_map = {}
+        form_data_map = {
+        }
 
         func = form_data_map.get(description)
         if func:
@@ -160,16 +187,16 @@ class StudentConsumer(AsyncWebsocketConsumer):
         
         return {'error': 'Invalid form data description'}
 
+
+
     async def handle_put(self, description, details, user, access_token):
         put_map = {
-            'update_email': general_search_async_functions.update_email,
-            'update_password': general_search_async_functions.update_password,
+            'update_email': general_put_async_functions.update_email,
+            'update_password': general_put_async_functions.update_password,
 
-            'update_multi_factor_authentication': general_search_async_functions.update_multi_factor_authentication,
+            'update_multi_factor_authentication': general_put_async_functions.update_multi_factor_authentication,
 
-            'mark_messages_as_read': general_search_async_functions.mark_messages_as_read,
-
-            'send_email_revalidation_otp': general_search_async_functions.validate_email_revalidation,
+            'mark_messages_as_read': general_put_async_functions.mark_messages_as_read,
         }
 
         func = put_map.get(description)
@@ -182,24 +209,28 @@ class StudentConsumer(AsyncWebsocketConsumer):
                 return {'message': 'read receipt sent'}
 
             if description == 'send_email_revalidation_otp' and response.get('user'):
-                response = await general_search_async_functions.send_email_revalidation_one_time_pin_email(response.get('user'))
+                response = await general_email_async_functions.send_email_revalidation_one_time_pin_email(response.get('user'))
 
                 if response.get('message'):
-                    return await general_search_async_functions.update_email_ban_otp_sends(details)
+                    return await general_put_async_functions.update_email_ban_otp_sends(details)
                 
             return response
         
         return {'error': 'Invalid put description'}
 
+
+
     async def handle_post(self, description, details, user, access_token):
         post_map = {
-            'text': general_search_async_functions.text,
+            'text': general_post_async_functions.text,
+
+            'log_out': general_post_async_functions.log_out,
         }
 
         func = post_map.get(description)
 
         if func:
-            response = await func(user, details)
+            response = await func(access_token) if description in ['log_out'] else func(user, details)
             
             if response.get('reciever') and description in ['text']:
                 await connection_manager.send_message(response['reciever']['id'], json.dumps({'description': 'text_message', 'message': response['message'], 'sender': response['sender']}))

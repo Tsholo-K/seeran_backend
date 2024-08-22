@@ -5,14 +5,13 @@ import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 
 # websocket manager
-from seeran_backend.middleware import  connection_manager
+from seeran_backend.middleware import connection_manager
 
 # utility functions
 from authentication.utils import validate_access_token
 
 # async functions 
 from . import teacher_async_functions
-
 
 # general async functions 
 from users.consumers.general import general_post_async_functions
@@ -41,10 +40,12 @@ class TeacherConsumer(AsyncWebsocketConsumer):
         return await self.send(text_data=json.dumps({'message': 'Welcome Back'}))
 
 
+
     async def disconnect(self, close_code):
         account_id = self.scope['user']
         await connection_manager.disconnect(account_id, self)
         
+
 
     async def receive(self, text_data):
         user = self.scope.get('user')
@@ -70,6 +71,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
         return await self.send(text_data=json.dumps({'error': 'provided information is invalid.. request revoked'}))
 
 
+
     async def handle_request(self, action, description, details, user, access_token):
         action_map = {
             'GET': self.handle_get,
@@ -85,6 +87,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             return await handler(description, details, user, access_token)
         
         return {'error': 'Invalid action'}
+
 
 
     async def handle_get(self, description, details, user, access_token):
@@ -103,6 +106,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             return await func(user) if description != 'log_out' else await func(access_token)
         
         return {'error': 'Invalid get description'}
+
 
 
     async def handle_search(self, description, details, user, access_token):
@@ -149,6 +153,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
         return {'error': 'Invalid search description'}
 
 
+
     async def handle_verify(self, description, details, user, access_token):
         verify_map = {
             'verify_email': general_verify_async_functions.verify_email,
@@ -159,7 +164,6 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             'verify_email_revalidation_otp': general_verify_async_functions.verify_email_revalidate_otp,
 
             'send_email_revalidation_otp': general_verify_async_functions.validate_email_revalidation,
-
         }
 
         func = verify_map.get(description)
@@ -175,6 +179,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
         return {'error': 'Invalid verify description'}
 
 
+
     async def handle_form_data(self, description, details, user, access_token):
         form_data_map = {
             'attendance_register': general_form_data_async_functions.form_data_for_attendance_register,
@@ -186,6 +191,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             return response
         
         return {'error': 'Invalid form data description'}
+
 
 
     async def handle_put(self, description, details, user, access_token):
@@ -218,6 +224,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
         return {'error': 'Invalid put description'}
 
 
+
     async def handle_post(self, description, details, user, access_token):
         post_map = {
             'text': general_post_async_functions.text,
@@ -235,7 +242,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
         func = post_map.get(description)
 
         if func:
-            response = await func(user, details)
+            response = await func(access_token) if description in ['log_out'] else func(user, details)
             
             if response.get('reciever') and description in ['text']:
                 await connection_manager.send_message(response['reciever']['id'], json.dumps({'description': 'text_message', 'message': response['message'], 'sender': response['sender']}))
