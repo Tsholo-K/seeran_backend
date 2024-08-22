@@ -72,8 +72,8 @@ class SchoolSerializer(serializers.ModelSerializer):
 class SchoolDetailsSerializer(serializers.ModelSerializer):
         
     name = serializers.SerializerMethodField()
-    school_type = serializers.SerializerMethodField()
-    school_district = serializers.SerializerMethodField()
+    type = serializers.SerializerMethodField()
+    district = serializers.SerializerMethodField()
     province = serializers.SerializerMethodField()
     
     students = serializers.IntegerField()
@@ -89,10 +89,10 @@ class SchoolDetailsSerializer(serializers.ModelSerializer):
         return obj.name.title()
     
     def get_type(self, obj):
-        return obj.school_type.title()
+        return obj.type.title()
 
     def get_district(self, obj):
-        return obj.school_district.title()
+        return obj.district.title()
 
     def get_province(self, obj):
         return obj.province.title()
@@ -101,7 +101,7 @@ class SchoolIDSerializer(serializers.ModelSerializer):
         
     name = serializers.SerializerMethodField()
     type = serializers.SerializerMethodField()
-    school_district = serializers.SerializerMethodField()
+    district = serializers.SerializerMethodField()
     province = serializers.SerializerMethodField()
     
     class Meta:
@@ -112,10 +112,10 @@ class SchoolIDSerializer(serializers.ModelSerializer):
         return obj.name.title()
     
     def get_type(self, obj):
-        return obj.school_type.title()
+        return obj.type.title()
 
     def get_district(self, obj):
-        return obj.school_district.title()
+        return obj.district.title()
 
     def get_province(self, obj):
         return obj.province.title()
