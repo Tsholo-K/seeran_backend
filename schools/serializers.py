@@ -136,6 +136,13 @@ class SchoolIDSerializer(serializers.ModelSerializer):
         return obj.province.title()
 
 
+class TermCreationSerializer(serializers.ModelSerializer):
+        
+    class Meta:
+        model = Term
+        fields = [ "term", 'weight', 'start_date', 'end_date', 'school_days', 'school' ]
+
+
 class TermsSerializer(serializers.ModelSerializer):
         
     class Meta:

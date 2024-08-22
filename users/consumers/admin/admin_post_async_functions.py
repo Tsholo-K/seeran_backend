@@ -17,15 +17,67 @@ from users.models import CustomUser
 from timetables.models import Session, Schedule, TeacherSchedule, GroupSchedule
 from grades.models import Grade, Subject
 from classes.models import Classroom
+from schools.models import Term
 
 # serilializers
 from users.serializers import AccountCreationSerializer, StudentAccountCreationSerializer, ParentAccountCreationSerializer
 from grades.serializers import GradeCreationSerializer, SubjectCreationSerializer
 from classes.serializers import ClassCreationSerializer
 from announcements.serializers import AnnouncementCreationSerializer
+from schools.serializers import TermCreationSerializer
 
 # utility functions 
 from authentication.utils import validate_user_email
+
+
+@database_sync_to_async
+def create_term(user, details):
+    """
+    Asynchronously creates a new school term associated with the provided user's school.
+
+    This function fetches the school associated with the user and attempts to create a new term
+    using the provided details. The process is wrapped in a database transaction for safety.
+    It handles various exceptions such as non-existent users, validation errors, and unexpected exceptions.
+
+    Args:
+        user (str): The account ID of the user.
+        details (dict): A dictionary containing the details required to create a new term.
+
+    Returns:
+        dict: A dictionary containing either a success message or an error message.
+    """
+    try:
+        # Use select_related and only to fetch the school reference efficiently
+        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
+        
+        # Add the school ID to the term details
+        details['school'] = account.school.pk
+        
+        # Initialize the serializer with the incoming data
+        serializer = TermCreationSerializer(data=details)
+        
+        if serializer.is_valid():
+            # Using atomic transaction to ensure data integrity
+            with transaction.atomic():
+                # Create the new term using the validated data
+                term = serializer.save()
+            
+            return {'message': f'Term {term.term} has been successfully created for your school'}
+            
+        # Return serializer errors if the data is not valid
+        return {"error": serializer.errors}
+    
+    except CustomUser.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+    
+    except ValidationError as e:
+        # Handle validation errors separately with meaningful messages
+        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
+    
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e).lower()}
     
     
 @database_sync_to_async
