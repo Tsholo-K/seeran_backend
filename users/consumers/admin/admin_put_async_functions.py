@@ -64,7 +64,7 @@ def update_school_account(user, details):
             return {'school': SchoolIDSerializer(account.school).data, "message": "school account details have been successfully updated" }
         
         # If the serializer is not valid, return detailed validation errors
-        return { "error": serializer.errors }
+        return { "error": serializer.errors[0].lower() if isinstance(serializer.errors, list) else serializer.errors.lower() }
 
     except CustomUser.DoesNotExist:
         # Handle the case where the provided account ID does not exist
