@@ -62,7 +62,7 @@ def create_term(user, details):
                 # Create the new term using the validated data
                 Term.objects.create(**serializer.validated_data)
             
-            return {'message': f'Term {details['term']} has been successfully created for your school'}
+            return {'message': f"Term {details['term']} has been successfully created for your school"}
             
         # Return serializer errors if the data is not valid
         return {"error": serializer.errors}
