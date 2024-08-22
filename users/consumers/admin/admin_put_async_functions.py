@@ -103,7 +103,7 @@ def update_school_term(user, details):
             # Serialize the school terms
             serialized_term = TermSerializer(term).data
 
-            return {'school': serialized_term, "message": "school term details have been successfully updated" }
+            return {'term': serialized_term, "message": "school term details have been successfully updated" }
         
         # If the serializer is not valid, return detailed validation errors
         return { "error": serializer.errors }
