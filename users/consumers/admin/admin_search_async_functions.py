@@ -33,7 +33,7 @@ def search_term(user, details):
 
         # Check if the user has permission to view the term
         if account.school != term.school:
-            return {"error": 'permission denied. you can only access details about terms from your own school'}
+            return {"error": 'permission denied. you can only access or update details about terms from your own school'}
         
         # Serialize the school terms
         serialized_term = TermSerializer(term).data

@@ -219,6 +219,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'update_multi_factor_authentication': general_put_async_functions.update_multi_factor_authentication,
 
             'update_school_account' : admin_put_async_functions.update_school_account,
+            'update_school_term' : admin_put_async_functions.update_school_term,
 
             'mark_messages_as_read': general_put_async_functions.mark_messages_as_read,
 

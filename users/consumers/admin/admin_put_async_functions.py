@@ -15,12 +15,12 @@ from django.core.exceptions import ValidationError
 from users.models import CustomUser
 from timetables.models import GroupSchedule
 from classes.models import Classroom
-from schools.models import School
+from schools.models import Term
 
 # serilializers
 from users.serializers import AccountUpdateSerializer, AccountIDSerializer, AccountSerializer
 from classes.serializers import ClassUpdateSerializer
-from schools.serializers import UpdateSchoolAccountSerializer, SchoolIDSerializer
+from schools.serializers import UpdateSchoolAccountSerializer, SchoolIDSerializer, UpdateSchoolTermSerializer, TermSerializer
 
 # utility functions 
 from authentication.utils import validate_user_email
@@ -65,6 +65,48 @@ def update_school_account(user, details):
         
         # If the serializer is not valid, return detailed validation errors
         return { "error": serializer.errors[0] if isinstance(serializer.errors, list) else serializer.errors }
+
+    except CustomUser.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+    
+    except ValidationError as e:
+        # Handle validation errors separately with meaningful messages
+        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def update_school_term(user, details):
+    try:
+        # Efficiently retrieve the user's account and related school using select_related
+        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
+        term = Term.objects.select_related('school').only('school').get(term_id=details.get('term'))
+
+        # Check if the user has permission to view the term
+        if account.school != term.school:
+            return {"error": 'permission denied. you can only access or update details about terms from your own school'}
+
+        # Initialize the serializer with the existing school instance and incoming data
+        serializer = UpdateSchoolTermSerializer(instance=term, data=details)
+
+        # Validate the incoming data
+        if serializer.is_valid():
+            # Use an atomic transaction to ensure the database is updated safely
+            with transaction.atomic():
+                serializer.save()
+                term.refresh_from_db()  # Refresh the user instance from the database
+                    
+            # Serialize the school terms
+            serialized_term = TermSerializer(term).data
+
+            return {'school': serialized_term, "message": "school term details have been successfully updated" }
+        
+        # If the serializer is not valid, return detailed validation errors
+        return { "error": serializer.errors }
 
     except CustomUser.DoesNotExist:
         # Handle the case where the provided account ID does not exist
