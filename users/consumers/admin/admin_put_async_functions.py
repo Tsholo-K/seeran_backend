@@ -7,9 +7,9 @@ from channels.db import database_sync_to_async
 
 # django
 from django.db import transaction
+from django.core.exceptions import ValidationError
 
 # simple jwt
-from rest_framework.exceptions import ValidationError
 
 # models 
 from users.models import CustomUser
@@ -69,15 +69,14 @@ def update_school_account(user, details):
     except CustomUser.DoesNotExist:
         # Handle the case where the provided account ID does not exist
         return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
-
+    
     except ValidationError as e:
         # Handle validation errors separately with meaningful messages
-        return {'error': str(e)}
+        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
 
     except Exception as e:
         # Handle any unexpected errors with a general error message
         return {'error': str(e)}
-
     
 
 @database_sync_to_async
