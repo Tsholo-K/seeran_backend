@@ -1,10 +1,9 @@
 # python 
 import uuid
-import datetime
 from datetime import timedelta
 
 # django 
-from django.db import models
+from django.db import models, IntegrityError
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 from django.core.exceptions import ValidationError
@@ -106,7 +105,11 @@ class School(models.Model):
             try:
                 validate_email(self.email)
             except ValidationError:
-                raise ValidationError(_('the provided email address is invalid'))
+                raise ValidationError(_('the provided email address is not in a valid format. please correct the email address and try again'))
+            
+            if School.objects.filter(email=self.email).exists():
+                raise ValidationError(_('a school account with the provided email address already exists'))
+            
             if len(self.email) > 254:
                 raise ValidationError(_("email address cannot exceed 254 characters"))
             
@@ -121,12 +124,13 @@ class School(models.Model):
             raise ValidationError(_('school logo must be a PNG or JPG/JPEG image'))
 
         # Validate choice fields
-        if self.school_type not in dict(SCHOOL_TYPE_CHOICES).keys():
+        if self.type not in dict(SCHOOL_TYPE_CHOICES).keys():
             raise ValidationError(_('provided school type is invalid'))
         if self.province not in dict(PROVINCE_CHOICES).keys():
             raise ValidationError(_('provided school province is invalid'))
-        if self.school_district not in dict(SCHOOL_DISTRICT_CHOICES).keys():
+        if self.district not in dict(SCHOOL_DISTRICT_CHOICES).keys():
             raise ValidationError(_('provided school district is invalid'))
+
 
     def save(self, *args, **kwargs):
         """
@@ -136,6 +140,7 @@ class School(models.Model):
 
         try:
             super().save(*args, **kwargs)
+
         except Exception as e:
             raise ValidationError(_(str(e).lower()))
 
@@ -202,6 +207,14 @@ class Term(models.Model):
 
         try:
             super().save(*args, **kwargs)
+        except IntegrityError as e:
+            # Check if the error is related to unique constraints
+            if 'unique constraint' in str(e).lower():
+                raise ValidationError(_('a term with the specified term number is already there for your school. Duplicate terms within the same school is not permitted.'))
+            else:
+                # Re-raise the original exception if it's not related to unique constraints
+                raise
+
         except Exception as e:
             raise ValidationError(_(str(e).lower()))
 

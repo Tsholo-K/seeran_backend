@@ -22,6 +22,19 @@ class SchoolCreationSerializer(serializers.ModelSerializer):
         fields = [ 'name', 'email', 'contact_number', 'type', 'province', 'district' ]
 
 
+class UpdateSchoolAccountSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = School
+        fields = ['name', 'email', 'contact_number', 'type', 'district', 'operating_hours', 'location', 'website']
+
+    def __init__(self, *args, **kwargs):
+        super(UpdateSchoolAccountSerializer, self).__init__(*args, **kwargs)
+        # Set all fields to be optional by making them not required
+        for field in self.fields:
+            self.fields[field].required = False
+
+
 class SchoolsSerializer(serializers.ModelSerializer):
     
     name = serializers.SerializerMethodField()
@@ -119,4 +132,3 @@ class SchoolIDSerializer(serializers.ModelSerializer):
 
     def get_province(self, obj):
         return obj.province.title()
-        

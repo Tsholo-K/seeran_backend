@@ -9,19 +9,76 @@ from channels.db import database_sync_to_async
 from django.db import transaction
 
 # simple jwt
+from rest_framework.exceptions import ValidationError
 
 # models 
 from users.models import CustomUser
 from timetables.models import GroupSchedule
 from classes.models import Classroom
+from schools.models import School
 
 # serilializers
 from users.serializers import AccountUpdateSerializer, AccountIDSerializer, AccountSerializer
 from classes.serializers import ClassUpdateSerializer
+from schools.serializers import UpdateSchoolAccountSerializer, SchoolIDSerializer
 
 # utility functions 
 from authentication.utils import validate_user_email
 
+
+@database_sync_to_async
+def update_school_account(user, details):
+    """
+    Update the school account details associated with the provided user.
+
+    Parameters:
+    user (str): The account ID of the user requesting the update.
+    details (dict): A dictionary containing the updated school account details.
+
+    Returns:
+    dict: A dictionary containing either a success message or an error message.
+
+    - If the update is successful, returns:
+        { "message": "School account details have been successfully updated" }
+
+    - If the account does not exist, returns:
+        { "error": "An account with the provided credentials does not exist, please check the account details and try again" }
+
+    - If there is any validation error or unexpected error, returns:
+        { "error": "Error message describing the issue" }
+    """
+    try:
+        # Efficiently retrieve the user's account and related school using select_related
+        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
+        
+        # Initialize the serializer with the existing school instance and incoming data
+        serializer = UpdateSchoolAccountSerializer(instance=account.school, data=details)
+
+        # Validate the incoming data
+        if serializer.is_valid():
+            # Use an atomic transaction to ensure the database is updated safely
+            with transaction.atomic():
+                serializer.save()
+                account.school.refresh_from_db()  # Refresh the user instance from the database
+            
+            return {'school': SchoolIDSerializer(account.school).data, "message": "school account details have been successfully updated" }
+        
+        # If the serializer is not valid, return detailed validation errors
+        return { "error": serializer.errors }
+
+    except CustomUser.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+
+    except ValidationError as e:
+        # Handle validation errors separately with meaningful messages
+        return {'error': str(e)}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
+
+    
 
 @database_sync_to_async
 def update_account(user, details):
@@ -31,7 +88,7 @@ def update_account(user, details):
 
         if updates.get('email'):
             if not validate_user_email(updates.get('email')):
-                return {'error': 'Invalid email format'}
+                return {'error': 'the provided email address is not in a valid format. please correct the email address and try again'}
 
             if CustomUser.objects.filter(email=updates.get('email')).exists():
                 return {"error": "an account with the provided email address already exists"}
@@ -56,10 +113,12 @@ def update_account(user, details):
         return {"error" : serializer.errors}
     
     except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-    
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+
     except Exception as e:
-        return { 'error': str(e) }
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
 
 
 @database_sync_to_async

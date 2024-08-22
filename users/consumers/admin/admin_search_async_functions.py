@@ -39,12 +39,14 @@ def search_accounts(user, details):
 
         serializer = AccountSerializer(accounts, many=True)
         return { "users" : serializer.data }
-        
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
     
+    except CustomUser.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+
     except Exception as e:
-        return { 'error': str(e) }
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
 
 
 @database_sync_to_async
@@ -82,14 +84,16 @@ def search_subscribed_students(user, details):
         serializer = AccountSerializer(students, many=True)
 
         return {"students": serializer.data}
-
+    
     except CustomUser.DoesNotExist:
-        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
                 
     except GroupSchedule.DoesNotExist:
         return {'error': 'a group schedule with the provided credentials does not exist. Please check the group schedule details and try again.'}
 
     except Exception as e:
+        # Handle any unexpected errors with a general error message
         return {'error': str(e)}
 
 
@@ -106,12 +110,14 @@ def search_grade(user, details):
     
     except Grade.DoesNotExist:
         return { 'error': 'grade with the provided credentials does not exist' }
-
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
     
+    except CustomUser.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+
     except Exception as e:
-        return { 'error': str(e) }
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
 
 
 @database_sync_to_async
@@ -146,17 +152,17 @@ def search_subject(user, details):
         # Serialize the subject data
         serializer = SubjectDetailSerializer(subject)
         return {"subject": serializer.data}
-
+    
     except CustomUser.DoesNotExist:
-        # Handle case where the user account does not exist
-        return {'error': 'an account with the provided credentials does not exist.'}
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
     
     except Subject.DoesNotExist:
         # Handle case where the subject does not exist
         return {'error': 'a subject with the provided credentials does not exist.'}
-    
+
     except Exception as e:
-        # Handle any other exceptions
+        # Handle any unexpected errors with a general error message
         return {'error': str(e)}
 
 
@@ -174,13 +180,15 @@ def search_grade_register_classes(user, details):
         return {"classes": serializer.data}
     
     except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
            
     except Grade.DoesNotExist:
         return { 'error': 'grade with the provided credentials does not exist' }
-    
+
     except Exception as e:
-        return { 'error': str(e).lower()}
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
     
 
 @database_sync_to_async
@@ -195,10 +203,12 @@ def search_students(user, details):
         return {"students": serializer.data}
     
     except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
            
     except Grade.DoesNotExist:
         return { 'error': 'grade with the provided credentials does not exist' }
-    
+
     except Exception as e:
-        return { 'error': str(e) }
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}

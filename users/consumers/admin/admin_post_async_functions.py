@@ -54,12 +54,14 @@ def create_account(user, details):
             return {'user' : created_user}
             
         return {"error" : serializer.errors}
-           
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
     
+    except CustomUser.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+
     except Exception as e:
-        return { 'error': str(e) }
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
 
 
 @database_sync_to_async
@@ -111,15 +113,17 @@ def create_student_account(user, details):
                 return {'message' : 'student account successfully created.. you can now link a parent, add to classes and much more'}
             
         return {"error" : serializer.errors}
-           
+    
     except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
     
     except Grade.DoesNotExist:
         return { 'error': 'grade with the provided credentials does not exist' }
 
     except Exception as e:
-        return { 'error': str(e) }
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
 
 
 @database_sync_to_async
@@ -157,12 +161,14 @@ def link_parent(user, details):
             return {'user' : parent}
             
         return {"error" : serializer.errors}
-           
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
     
+    except CustomUser.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+
     except Exception as e:
-        return { 'error': str(e) }
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
         
     
 @database_sync_to_async
@@ -181,12 +187,14 @@ def delete_account(user, details):
         requested_user.delete()
                             
         return {"message" : 'account successfully deleted'}
-        
-    except CustomUser.DoesNotExist:
-        return {'error': 'an account with the provided credentials does not exist, please check the account details and try again'}
     
+    except CustomUser.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+
     except Exception as e:
-        return { 'error': str(e) }
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
 
 
 @database_sync_to_async
@@ -280,9 +288,10 @@ def create_grade(user, details):
             return {"error": e.messages[0]}  # Return the first error message
         else:
             return {"error": str(e)}  # Handle as a single error message
-        
+
     except Exception as e:
-        return {"error": str(e)}
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
 
 
 @database_sync_to_async
@@ -325,10 +334,12 @@ def create_subject(user, details):
         return { 'error': 'grade with the provided credentials does not exist' }
     
     except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-    
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+
     except Exception as e:
-        return { 'error': str(e) }
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
     
 
 @database_sync_to_async
@@ -411,7 +422,8 @@ def create_class(user, details):
         return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
     
     except Exception as e:
-        return {'error': str(e).lower()}
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
     
 
 @database_sync_to_async
@@ -432,8 +444,8 @@ def delete_class(user, details):
         return response
                
     except CustomUser.DoesNotExist:
-        # Handle case where the user or teacher account does not exist
-        return {'error': 'account with the provided credentials does not exist'}
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
     
     except Classroom.DoesNotExist:
         # Handle case where the grade does not exist
@@ -602,15 +614,17 @@ def delete_schedule(user, details):
         
         else:
             return {'message': 'the schedule has been successfully deleted from the teachers schedule and will no longer be available to the teacher'}
-
+    
     except CustomUser.DoesNotExist:
-        return {'error': 'Invalid account credentials. Please verify and try again.'}
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
 
     except Schedule.DoesNotExist:
         return {'error': 'Specified schedule not found. Please verify the details and try again.'}
 
     except Exception as e:
-        return {'error': f'An unexpected error occurred: {str(e)}'}
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
 
 
 @database_sync_to_async
@@ -678,11 +692,13 @@ def announce(user, details):
         
         # Return validation errors
         return {"error": serializer.errors}
-        
+    
     except CustomUser.DoesNotExist:
-        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
 
     except Exception as e:
+        # Handle any unexpected errors with a general error message
         return {'error': str(e)}
 
     

@@ -37,36 +37,34 @@ def fetch_school_id(user):
     """
     try:
         # Use select_related to fetch the related school in the same query for efficiency
-        account = CustomUser.objects.select_related('school').get(account_id=user)
+        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
         
         # Serialize the school object into a dictionary
         return {'school': SchoolIDSerializer(account.school).data}
-        
-    except CustomUser.DoesNotExist:
-        # Return a clear and user-friendly error message if the user is not found
-        return {'error': 'No account found with the provided account ID.'}
     
+    except CustomUser.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+
     except Exception as e:
-        # Catch all other exceptions and return a descriptive error message
-        return {'error': f'An unexpected error occurred: {str(e)}'}
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
 
 
 @database_sync_to_async
 def fetch_grades(user):
 
     try:
-        account = CustomUser.objects.get(account_id=user)
-        grades = Grade.objects.filter(school=account.school.pk)
-        
-        serializer = GradesSerializer(grades, many=True)
-
-        return { 'grades': serializer.data }
-        
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
+        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
+        return {'grades':  GradesSerializer(account.school.school_grades.all(), many=True).data}
     
+    except CustomUser.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+
     except Exception as e:
-        return { 'error': str(e) }
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
 
 
 @database_sync_to_async
@@ -80,11 +78,13 @@ def fetch_grades_with_student_count(user):
         student_count = CustomUser.objects.filter(role='STUDENT', school=account.school).count()
 
         return { 'grades': serializer.data, 'student_count' : student_count }
-        
-    except CustomUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
     
+    except CustomUser.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+
     except Exception as e:
-        return { 'error': str(e) }
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
 
     
