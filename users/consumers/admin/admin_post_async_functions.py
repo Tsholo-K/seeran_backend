@@ -60,7 +60,8 @@ def create_term(user, details):
             # Using atomic transaction to ensure data integrity
             with transaction.atomic():
                 # Create the new term using the validated data
-                term = serializer.save()
+                term = Term(**serializer.validated_data)
+                term.save()
             
             return {'message': f"Term {term.term} has been successfully created for your school"}
             
@@ -99,11 +100,10 @@ def create_account(user, details):
         serializer = AccountCreationSerializer(data=details)
         
         if serializer.is_valid():
-            
             with transaction.atomic():
-                created_user = CustomUser.objects.create_user(**serializer.validated_data)
+                serializer.save()
             
-            return {'user' : created_user}
+            return {'message' : f"a new {details.get('role')} account has been created for your school, an account confirmation email has been sent to the user"}
             
         return {"error" : serializer.errors}
     

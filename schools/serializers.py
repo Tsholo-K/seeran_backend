@@ -149,3 +149,9 @@ class TermsSerializer(serializers.ModelSerializer):
         model = Term
         fields = [ "term", 'weight', 'start_date', 'end_date', 'term_id' ]
 
+
+class TermSerializer(serializers.ModelSerializer):
+        
+    class Meta:
+        model = Term
+        fields = [ "term", 'weight', 'start_date', 'end_date', 'school_days' ]

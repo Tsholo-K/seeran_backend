@@ -119,15 +119,17 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'students': admin_search_async_functions.search_students,
             'parents': general_search_async_functions.search_parents,
 
-            'subscribed_students': admin_search_async_functions.search_subscribed_students,
-
             'account_profile': general_search_async_functions.search_account_profile,
             'account_id': general_search_async_functions.search_account_id,
+
+            'term': admin_search_async_functions.search_term,
 
             'teacher_schedule_schedules': general_search_async_functions.search_teacher_schedule_schedules,
             'group_schedule_schedules': general_search_async_functions.search_group_schedule_schedules,
             'group_schedules': general_search_async_functions.search_group_schedules,
             'schedule_sessions': general_search_async_functions.search_for_schedule_sessions,
+
+            'subscribed_students': admin_search_async_functions.search_subscribed_students,
 
             'teacher_classes': general_search_async_functions.search_teacher_classes,
             'register_classes': admin_search_async_functions.search_grade_register_classes,

@@ -14,12 +14,40 @@ from django.db.models import Q
 from users.models import CustomUser
 from timetables.models import GroupSchedule
 from grades.models import Grade, Subject
+from schools.models import Term
 
 # serilializers
 from users.serializers import AccountSerializer
 from grades.serializers import GradeSerializer, SubjectDetailSerializer, ClassesSerializer
+from schools.serializers import TermSerializer
 
 # utility functions 
+
+
+@database_sync_to_async
+def search_term(user, details):
+    try:
+        # Fetch the school directly using the account_id for efficiency
+        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
+        term = CustomUser.objects.select_related('school').only('school').get(term_id=details.get('term'))
+
+        # Check if the user has permission to view the term
+        if account.school != term.school:
+            return {"error": 'permission denied. you can only access details about terms from your own school'}
+        
+        # Serialize the school terms
+        serialized_term = TermSerializer(term).data
+        
+        # Return the serialized terms in a dictionary
+        return {'term': serialized_term}
+    
+    except CustomUser.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+    
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': f'An unexpected error occurred: {str(e)}'}
     
 
 @database_sync_to_async
