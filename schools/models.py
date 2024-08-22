@@ -142,7 +142,7 @@ class School(models.Model):
 class Term(models.Model):
 
     # the term number
-    term = models.IntegerField(editable=False)
+    term = models.IntegerField(editable=False, default=1)
     # Weight of the term in final year calculations in relation to other terms
     weight = models.DecimalField(max_digits=5, decimal_places=2)
 
