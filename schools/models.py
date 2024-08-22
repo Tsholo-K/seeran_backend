@@ -79,7 +79,7 @@ class School(models.Model):
     location = models.CharField(_('school location'), max_length=100, blank=True, null=True)
 
     # others
-    website = models.URLField(max_length=256, blank=True, null=True)
+    website = models.CharField(max_length=256, blank=True, null=True)
     logo = models.ImageField(upload_to='school_logos/', blank=True, null=True)
 
     # school account id 
@@ -112,13 +112,6 @@ class School(models.Model):
             
             if len(self.email) > 254:
                 raise ValidationError(_("email address cannot exceed 254 characters"))
-            
-        if self.website:
-            validator = URLValidator()
-            try:
-                validator(self.website)
-            except ValidationError:
-                raise ValidationError(_('the provided URL format is invalid'))
         
         if self.logo and not self.logo.name.endswith(('.png', '.jpg', '.jpeg')):
             raise ValidationError(_('school logo must be a PNG or JPG/JPEG image'))
