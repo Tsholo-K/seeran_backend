@@ -1,6 +1,7 @@
 # python 
 import uuid
 from datetime import timedelta
+from decimal import Decimal
 
 # django 
 from django.db import models, IntegrityError
@@ -180,14 +181,11 @@ class Term(models.Model):
         if overlapping_terms.exists():
             raise ValidationError(_('the provided start and end dates for the term overlap with one or more existing terms'))
         
-        total_weight = Term.objects.filter(school=self.school).exclude(pk=self.pk).aggregate(models.Sum('weight'))['weight__sum'] or 0
-
-        # Convert total_weight to Decimal if it's not already
-        total_weight = float(total_weight)
+        total_weight = Term.objects.filter(school=self.school).exclude(pk=self.pk).aggregate(total_weight=models.Sum('weight'))['total_weight'] or Decimal('0.00')
 
         # Ensure the total weight does not exceed 100%
-        if total_weight + self.weight > 100.0 or total_weight + self.weight < 0.0:
-            raise ValidationError('The total weight of all terms should be between 0% and 100%.')
+        if total_weight + self.weight > Decimal('100.00') or total_weight + self.weight < Decimal('0.00'):
+            raise ValidationError(_('The total weight of all terms should be between 0% and 100%.'))
         
     def save(self, *args, **kwargs):
         """
