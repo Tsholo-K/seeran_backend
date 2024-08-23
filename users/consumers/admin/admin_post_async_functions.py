@@ -65,12 +65,8 @@ def create_term(user, details):
             return {'message': f"term {term.term} has been successfully created for your schools grade {term.grade.grade}"}
             
         # Return serializer errors if the data is not valid, format it as a string
-        # Customize the error message here
-        error_msg = serializer.errors.get('non_field_errors', ['An error occurred'])[0]
-        if "must make a unique set" in error_msg:
-            return {"error": "A term with this term number, grade, and school already exists."}
-        return {"error": error_msg}
-           
+        return {"error": serializer.errors}
+       
     except CustomUser.DoesNotExist:
         # Handle the case where the provided account ID does not exist
         return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}

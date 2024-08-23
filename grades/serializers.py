@@ -46,18 +46,15 @@ class TermCreationSerializer(serializers.ModelSerializer):
         model = Term
         fields = [ "term", 'weight', 'start_date', 'end_date', 'school_days', 'grade', 'school' ]
 
-    def validate(self, data):
-        # Skip uniqueness validation for 'term', 'school', and 'grade'
-        # This will be handled in the model's clean method
-        try:
-            term_instance = Term(**data)
-            term_instance.clean()  # Perform model-level validation, including uniqueness checks
-        except ValidationError as e:
-            # Customize the uniqueness constraint error message
-            if 'unique_together' in e.message_dict:
-                e.message_dict['non_field_errors'] = _("A term with this term number, grade, and school already exists.")
-            raise e
+    def __init__(self, *args, **kwargs):
+        super(TermCreationSerializer, self).__init__(*args, **kwargs)
+        # Remove the unique validators from the serializer fields
+        self.fields['term'].validators = []
+        self.fields['school'].validators = []
+        self.fields['grade'].validators = []
 
+    def validate(self, data):
+        # You can add any other custom validation here if needed
         return data
     
 
