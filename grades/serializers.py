@@ -6,6 +6,7 @@ from django.utils.translation import gettext_lazy as _
 
 # rest framework
 from rest_framework import serializers
+from rest_framework.validators import UniqueTogetherValidator
 
 # models
 from .models import Grade, Term, Subject
@@ -46,14 +47,10 @@ class TermCreationSerializer(serializers.ModelSerializer):
         model = Term
         fields = [ "term", 'weight', 'start_date', 'end_date', 'school_days', 'grade', 'school' ]
 
-    def validate(self, data):
-        """
-        Check that the data is in the correct format.
-        """
-        # Remove the unique together validation
-        self._validated_data = data
-        self._errors = {}
-        return data
+    def __init__(self, *args, **kwargs):
+        super(TermCreationSerializer, self).__init__(*args, **kwargs)
+        # Remove the unique together validator that's added by DRF
+        self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
     
 
 class UpdateTermSerializer(serializers.ModelSerializer):
