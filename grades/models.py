@@ -154,6 +154,7 @@ class Term(models.Model):
     term_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
+        ordering = ['term']
         unique_together = ('term', 'grade', 'school')
         indexes = [models.Index(fields=['term', 'school'])]
 

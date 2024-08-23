@@ -65,9 +65,7 @@ def create_term(user, details):
             return {'message': f"term {term.term} has been successfully created for your schools grade {term.grade.grade}"}
             
         # Return serializer errors if the data is not valid
-        # If the serializer is not valid, format the errors into a single string
-        errors = " | ".join([f"{key}: {' '.join(value)}" for key, value in serializer.errors.items()])
-        return {"error": errors}
+        return {"error": serializer.errors}
         
     except CustomUser.DoesNotExist:
         # Handle the case where the provided account ID does not exist
@@ -89,16 +87,10 @@ def create_term(user, details):
 def create_account(user, details):
 
     try:
-        if not validate_user_email(details.get('email')):
-            return {'error': 'Invalid email format'}
-    
-        if CustomUser.objects.filter(email=details.get('email')).exists():
-            return {"error": "an account with the provided email address already exists"}
-
         if details.get('role') not in ['ADMIN', 'TEACHER']:
             return {"error": "invalid account role"}
         
-        account = CustomUser.objects.get(account_id=user)
+        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
         details['school'] = account.school.pk
         
         serializer = AccountCreationSerializer(data=details)
@@ -124,32 +116,8 @@ def create_account(user, details):
 def create_student_account(user, details):
 
     try:
-        if details.get('citizen') not in ['yes', 'no']:
-            return {"error": "invalid citizen value"}
-
-        if details.get('email'):
-            if not validate_user_email(details.get('email')):
-                return {'error': 'Invalid email format'}
-            
-            if CustomUser.objects.filter(email=details.get('email')).exists():
-                return {"error": "an account with the provided email address already exists"}
-
-        if details.get('citizen') == 'yes':
-            if not details.get('id_number'):
-                return {"error": "ID number needed for all student accounts who are citizens"}
-            
-            if CustomUser.objects.filter(id_number=details.get('id_number')).exists():
-                return {"error": "an account with this ID number already exists"}
-
-        if details.get('citizen') == 'no':
-            if not details.get('passport_number'):
-                return {"error": "Passport number needed for all student accounts who are not citizens"}
-            
-            if CustomUser.objects.filter(passport_number=details.get('passport_number')).exists():
-                return {"error": "an account with this Passport Number already exists"}
-
-        account = CustomUser.objects.get(account_id=user)
-        grade = Grade.objects.get(grade_id=details.get('grade_id'), school=account.school)
+        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
+        grade = Grade.objects.get(grade_id=details.get('grade'), school=account.school)
 
         details['school'] = account.school.pk
         details['grade'] = grade.pk
@@ -158,11 +126,10 @@ def create_student_account(user, details):
         serializer = StudentAccountCreationSerializer(data=details)
         
         if serializer.is_valid():
-            
             with transaction.atomic():
                 user = CustomUser.objects.create_user(**serializer.validated_data)
             
-            if details.get('email') != (None or ''):
+            if details.get('email'):
                 return {'user' : user }
             
             else:
@@ -196,7 +163,7 @@ def link_parent(user, details):
                 return {"error": "an account with the provided email address already exists, but the accounts role is not parent"}
             return {'alert': 'There is already a parent account created with the provided email address', 'parent': existing_parent.account_id}
        
-        account = CustomUser.objects.get(account_id=user)
+        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
         child = CustomUser.objects.get(account_id=details.get('child'), school=account.school, role='STUDENT')
 
         # Check if the child already has two or more parents linked
@@ -231,8 +198,8 @@ def link_parent(user, details):
 def delete_account(user, details):
 
     try:
-        account = CustomUser.objects.get(account_id=user)
-        requested_user  = CustomUser.objects.get(account_id=details.get('account_id'))
+        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
+        requested_user  = CustomUser.objects.select_related('school').only('school').get(account_id=details.get('account_id'))
 
         if requested_user.role == 'FOUNDER' or (requested_user.role in ['PRINCIPAL', 'ADMIN'] and account.role != 'PRINCIPAL') or (requested_user.role != 'PARENT' and account.school != requested_user.school) or (requested_user.role == 'PARENT' and not requested_user.children.filter(school=account.school).exists()):
             return { "error" : 'unauthorized action.. permission denied' }
@@ -267,10 +234,10 @@ def unlink_parent(user, details):
     """
     try:
         # Fetch the account of the user making the request
-        account = CustomUser.objects.get(account_id=user)
+        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
 
         # Fetch the student account using the provided child ID
-        child = CustomUser.objects.get(account_id=details.get('child_id'))
+        child = CustomUser.objects.select_related('school').only('school').get(account_id=details.get('child_id'))
 
         # Ensure the specified account is a student and belongs to the same school
         if child.role != 'STUDENT' or account.school != child.school:
@@ -312,7 +279,7 @@ def create_grade(user, details):
     """
     try:
         # Retrieve the user and related school in a single query using select_related
-        account = CustomUser.objects.select_related('school').get(account_id=user)
+        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
 
         # Check if the grade already exists for the school using exists() to avoid fetching unnecessary data
         if Grade.objects.filter(grade=details.get('grade'), school_id=account.school_id).exists():
@@ -358,8 +325,8 @@ def create_subject(user, details):
             return {"error": "could not process request.. no subject was provided"}
            
         # Retrieve the user and related school in a single query using select_related
-        account = CustomUser.objects.select_related('school').get(account_id=user)
-        grade = Grade.objects.select_related('school').get(grade_id=details.get('grade'))
+        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
+        grade = Grade.objects.select_related('school').only('school').get(grade_id=details.get('grade'))
 
         # Check if the grade is from the same school as the user making the request
         if account.school != grade.school:

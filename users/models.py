@@ -247,7 +247,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
             try:
                 validate_email(self.email)
             except ValidationError:
-                raise ValidationError(_('the provided email address is invalid'))
+                raise ValidationError(_('the provided email address is not in a valid format. please correct the email address and try again'))
             if len(self.email) > 254:
                 raise ValidationError(_("email address cannot exceed 254 characters"))
 
