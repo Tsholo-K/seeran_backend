@@ -15,11 +15,11 @@ from django.core.exceptions import ValidationError
 from users.models import CustomUser
 from timetables.models import GroupSchedule
 from classes.models import Classroom
-from grades.models import Term
+from grades.models import Grade, Term
 
 # serilializers
 from users.serializers import AccountUpdateSerializer, AccountIDSerializer, AccountSerializer
-from grades.serializers import UpdateTermSerializer, TermSerializer
+from grades.serializers import UpdateGradeSerializer, UpdateTermSerializer, GradeDetailsSerializer, TermSerializer
 from classes.serializers import ClassUpdateSerializer
 from schools.serializers import UpdateSchoolAccountSerializer, SchoolIDSerializer
 
@@ -28,7 +28,7 @@ from authentication.utils import validate_user_email
 
 
 @database_sync_to_async
-def update_school_account(user, details):
+def update_school_details(user, details):
     """
     Update the school account details associated with the provided user.
 
@@ -61,11 +61,14 @@ def update_school_account(user, details):
             with transaction.atomic():
                 serializer.save()
                 account.school.refresh_from_db()  # Refresh the user instance from the database
-            
-            return {'school': SchoolIDSerializer(account.school).data, "message": "school account details have been successfully updated" }
+                        
+            # Serialize the grade
+            serialized_school = SchoolIDSerializer(account.school).data
+
+            return {'school': serialized_school, "message": "school account details have been successfully updated" }
         
-        # If the serializer is not valid, return detailed validation errors
-        return { "error": serializer.errors[0] if isinstance(serializer.errors, list) else serializer.errors }
+        # Return serializer errors if the data is not valid, format it as a string
+        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
 
     except CustomUser.DoesNotExist:
         # Handle the case where the provided account ID does not exist
@@ -81,7 +84,50 @@ def update_school_account(user, details):
 
 
 @database_sync_to_async
-def update_school_term(user, details):
+def update_grade_details(user, details):
+    try:
+        # Efficiently retrieve the user's account and related school using select_related
+        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
+        grade = Grade.objects.select_related('school').only('school').get(grade_id=details.get('grade'))
+
+        # Check if the user has permission to view the grades terms
+        if account.school != grade.school:
+            return {"error": 'permission denied. you can only access or update details about grades from your own school'}
+
+        # Initialize the serializer with the existing school instance and incoming data
+        serializer = UpdateGradeSerializer(instance=grade, data=details)
+
+        # Validate the incoming data
+        if serializer.is_valid():
+            # Use an atomic transaction to ensure the database is updated safely
+            with transaction.atomic():
+                serializer.save()
+                grade.refresh_from_db()  # Refresh the grade instance from the database
+            
+            # Serialize the grade
+            serialized_grade = GradeDetailsSerializer(grade).data
+            
+            # Return the serialized grade in a dictionary
+            return {'grade': serialized_grade, "message": "grade details have been successfully updated"}
+        
+        # Return serializer errors if the data is not valid, format it as a string
+        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
+
+    except CustomUser.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+    
+    except ValidationError as e:
+        # Handle validation errors separately with meaningful messages
+        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
+    
+
+@database_sync_to_async
+def update_term_details(user, details):
     try:
         # Efficiently retrieve the user's account and related school using select_related
         account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
@@ -106,8 +152,8 @@ def update_school_term(user, details):
 
             return {'term': serialized_term, "message": "school term details have been successfully updated" }
         
-        # If the serializer is not valid, return detailed validation errors
-        return { "error": serializer.errors }
+        # Return serializer errors if the data is not valid, format it as a string
+        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
 
     except CustomUser.DoesNotExist:
         # Handle the case where the provided account ID does not exist
@@ -152,7 +198,8 @@ def update_account(user, details):
             serializer = AccountIDSerializer(instance=requested_user)
             return { "user" : serializer.data }
             
-        return {"error" : serializer.errors}
+        # Return serializer errors if the data is not valid, format it as a string
+        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
     
     except CustomUser.DoesNotExist:
         # Handle the case where the provided account ID does not exist
@@ -186,7 +233,8 @@ def update_class(user, details):
 
             return {"message" : 'classroom details have been successfully updated'}
             
-        return {"error" : serializer.errors}
+        # Return serializer errors if the data is not valid, format it as a string
+        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
 
     except CustomUser.DoesNotExist:
         # Handle case where the user account does not exist

@@ -17,10 +17,39 @@ from grades.models import Grade, Subject, Term
 
 # serilializers
 from users.serializers import AccountSerializer
-from grades.serializers import GradeSerializer, TermsSerializer, TermSerializer, SubjectDetailSerializer, ClassesSerializer
+from grades.serializers import GradeSerializer, GradeDetailsSerializer, TermsSerializer, TermSerializer, SubjectDetailSerializer, ClassesSerializer
 
 # utility functions 
 
+
+@database_sync_to_async
+def search_grade_details(user, details):
+    try:
+        # Fetch the school directly using the account_id for efficiency
+        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
+        grade = Grade.objects.select_related('school').only('school').get(grade_id=details.get('grade'))
+
+        # Check if the user has permission to view the grades terms
+        if account.school != grade.school:
+            return {"error": 'permission denied. you can only access or update details about grades from your own school'}
+        
+        # Serialize the grade
+        serialized_grade = GradeDetailsSerializer(grade).data
+        
+        # Return the serialized grade in a dictionary
+        return {'grade': serialized_grade}
+    
+    except CustomUser.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+        
+    except Grade.DoesNotExist:
+        return { 'error': 'grade with the provided credentials does not exist' }
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': f'An unexpected error occurred: {str(e)}'}
+    
 
 @database_sync_to_async
 def search_school_terms(user, details):

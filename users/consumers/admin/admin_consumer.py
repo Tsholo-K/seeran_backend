@@ -121,6 +121,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'account_profile': general_search_async_functions.search_account_profile,
             'account_id': general_search_async_functions.search_account_id,
 
+            "grade_details": admin_search_async_functions.search_grade_details,
+
             "school_terms": admin_search_async_functions.search_school_terms,
             'term': admin_search_async_functions.search_term,
 
@@ -218,8 +220,11 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'update_multi_factor_authentication': general_put_async_functions.update_multi_factor_authentication,
 
-            'update_school_account' : admin_put_async_functions.update_school_account,
-            'update_school_term' : admin_put_async_functions.update_school_term,
+            'update_school_details' : admin_put_async_functions.update_school_details,
+            
+            'update_grade_details' : admin_put_async_functions.update_grade_details,
+
+            'update_term_details' : admin_put_async_functions.update_term_details,
 
             'mark_messages_as_read': general_put_async_functions.mark_messages_as_read,
 

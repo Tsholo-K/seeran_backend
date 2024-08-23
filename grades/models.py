@@ -56,7 +56,7 @@ SCHOOL_SUBJECTS_CHOICES = [
 class Grade(models.Model):
 
     # grade level
-    grade = models.CharField(_('school grade'), choices=SCHOOL_GRADES_CHOICES, max_length=4, default="8")
+    grade = models.CharField(_('school grade'), choices=SCHOOL_GRADES_CHOICES, max_length=4, editable=False)
     grade_order = models.PositiveIntegerField() # used for odering grades
 
     student_count = models.IntegerField(default=0)
@@ -66,7 +66,7 @@ class Grade(models.Model):
     none_major_subjects = models.PositiveIntegerField() # how many none major subjects a student in the grade needs to fail to fail a term
     
     # school linked to
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='school_grades')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='school_grades')
 
     # grade  id 
     grade_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -116,6 +116,9 @@ class Grade(models.Model):
             else:
                 raise ValidationError(_('validation error, a grade cannot have an empty level'))
             
+            if not self.school:
+                raise ValidationError(_('validation error, a grade needs to be associated with a school'))
+            
         self.clean()
 
         try:
@@ -145,10 +148,10 @@ class Term(models.Model):
     school_days = models.IntegerField(default=0)
 
     # grade linked to
-    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='grade_terms')
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='grade_terms')
 
     # The school the term is linked to
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='school_terms')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='school_terms')
 
     # term id 
     term_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -165,12 +168,6 @@ class Term(models.Model):
         """
         Ensure that the term dates do not overlap with other terms in the same school and validate term dates.
         """
-        if not self.term:
-            raise ValidationError(_('the term is missing a term identifier'))
-        
-        elif len(self.term) > 16:
-            raise ValidationError(_('the specified term identifier is too long, max length of a term identifier is 16 characters'))
-
         if self.start_date >= self.end_date:
             raise ValidationError(_('a terms start date must be before it\'s end date'))
 
@@ -191,6 +188,13 @@ class Term(models.Model):
         """
         Override save method to calculate the total amount of school days in the term if not provided.
         """
+        if not self.pk:
+            if not self.term:
+                raise ValidationError(_('the provided term information is missing a term identifier'))
+            
+            elif len(self.term) > 16:
+                raise ValidationError(_('the specified term identifier is too long, max length of a term identifier is 16 characters'))
+
         self.clean()
 
         try:
@@ -224,7 +228,7 @@ class Term(models.Model):
 class Subject(models.Model):
 
     # grade linked to
-    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='grade_subjects')
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='grade_subjects')
     subject = models.CharField(_('grade subject'), max_length=64, choices=SCHOOL_SUBJECTS_CHOICES, default="ENGLISH")
 
     student_count = models.IntegerField(default=0)
@@ -260,6 +264,10 @@ class Subject(models.Model):
         """
         Override save method to validate incoming data.
         """
+        if not self.pk:
+            if not self.grade:
+                raise ValidationError(_('a subject needs to be associated with a school grade'))
+            
         self.clean()
             
         try:
