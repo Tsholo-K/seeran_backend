@@ -67,17 +67,27 @@ class UpdateTermSerializer(serializers.ModelSerializer):
 
 
 class TermsSerializer(serializers.ModelSerializer):
-        
+            
+    term = serializers.SerializerMethodField()
+
     class Meta:
         model = Term
         fields = [ "term", 'weight', 'start_date', 'end_date', 'term_id' ]
 
+    def get_term(self, obj):
+        return obj.term.title()
+
 
 class TermSerializer(serializers.ModelSerializer):
-        
+            
+    term = serializers.SerializerMethodField()
+
     class Meta:
         model = Term
         fields = [ "term", 'weight', 'start_date', 'end_date', 'school_days' ]
+    
+    def get_term(self, obj):
+        return obj.term.title()
 
 
 class SubjectCreationSerializer(serializers.ModelSerializer):
