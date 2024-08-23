@@ -54,18 +54,19 @@ def create_term(user, details):
         details['grade'] = grade.pk
 
         # Initialize the serializer with the incoming data
-        serializer = TermCreationSerializer(data=details)
+        # serializer = TermCreationSerializer(data=details)
         
-        if serializer.is_valid():
-            # Using atomic transaction to ensure data integrity
-            with transaction.atomic():
-                # Create the new term using the validated data
-                term = Term.objects.create(**serializer.validated_data)
-            
-            return {'message': f"term {term.term} has been successfully created for your schools grade {term.grade.grade}"}
+        # if serializer.is_valid():
+        # Using atomic transaction to ensure data integrity
+        with transaction.atomic():
+            # Create the new term using the validated data
+            # term = Term.objects.create(**serializer.validated_data)
+            term = Term.objects.create(details)
+        
+        return {'message': f"term {term.term} has been successfully created for your schools grade {term.grade.grade}"}
             
         # Return serializer errors if the data is not valid
-        return {"error": serializer.errors}
+        # return {"error": serializer.errors}
         
     except CustomUser.DoesNotExist:
         # Handle the case where the provided account ID does not exist
