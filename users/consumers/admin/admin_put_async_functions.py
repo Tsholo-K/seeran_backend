@@ -15,11 +15,11 @@ from django.core.exceptions import ValidationError
 from users.models import CustomUser
 from timetables.models import GroupSchedule
 from classes.models import Classroom
-from grades.models import Grade, Term
+from grades.models import Grade, Term, Subject
 
 # serilializers
 from users.serializers import AccountUpdateSerializer, AccountIDSerializer, AccountSerializer
-from grades.serializers import UpdateGradeSerializer, UpdateTermSerializer, GradeDetailsSerializer, TermSerializer
+from grades.serializers import UpdateGradeSerializer, UpdateTermSerializer, GradeDetailsSerializer, TermSerializer, UpdateSubjectSerializer, SubjectDetailsSerializer
 from classes.serializers import ClassUpdateSerializer
 from schools.serializers import UpdateSchoolAccountSerializer, SchoolIDSerializer
 
@@ -159,6 +159,54 @@ def update_term_details(user, details):
         # Handle the case where the provided account ID does not exist
         return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
     
+    except ValidationError as e:
+        # Handle validation errors separately with meaningful messages
+        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def update_subject_details(user, details):
+    try:
+        # Efficiently retrieve the user's account and related school using select_related
+        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
+        subject = Subject.objects.select_related('grade__school').get(subject_id=details.get('subject'))
+
+
+        # Check if the user has permission to view the subject
+        if account.school != subject.grade.school:
+            return {"error": 'permission denied. you can only access or update details about subjects from your own school'}
+
+        # Initialize the serializer with the existing school instance and incoming data
+        serializer = UpdateSubjectSerializer(instance=subject, data=details)
+
+        # Validate the incoming data
+        if serializer.is_valid():
+            # Use an atomic transaction to ensure the database is updated safely
+            with transaction.atomic():
+                serializer.save()
+                subject.refresh_from_db()  # Refresh the grade instance from the database
+            
+            # Serialize the subject
+            serialized_subject = SubjectDetailsSerializer(subject).data
+            
+            # Return the serialized grade in a dictionary
+            return {'subject': serialized_subject, "message": "subject details have been successfully updated"}
+        
+        # Return serializer errors if the data is not valid, format it as a string
+        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
+
+    except CustomUser.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+        
+    except Subject.DoesNotExist:
+        # Handle case where the subject does not exist
+        return {'error': 'a subject with the provided credentials does not exist.'}
+
     except ValidationError as e:
         # Handle validation errors separately with meaningful messages
         return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}

@@ -123,8 +123,10 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             "grade_details": admin_search_async_functions.search_grade_details,
 
+            "subject_details": admin_search_async_functions.search_subject_details,
+
             "school_terms": admin_search_async_functions.search_school_terms,
-            'term': admin_search_async_functions.search_term,
+            'term_details': admin_search_async_functions.search_term_details,
 
             'teacher_schedule_schedules': general_search_async_functions.search_teacher_schedule_schedules,
             'group_schedule_schedules': general_search_async_functions.search_group_schedule_schedules,
@@ -223,6 +225,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'update_school_details' : admin_put_async_functions.update_school_details,
             
             'update_grade_details' : admin_put_async_functions.update_grade_details,
+            
+            'update_subject_details' : admin_put_async_functions.update_subject_details,
 
             'update_term_details' : admin_put_async_functions.update_term_details,
 

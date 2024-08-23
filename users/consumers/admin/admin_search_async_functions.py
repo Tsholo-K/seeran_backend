@@ -17,7 +17,7 @@ from grades.models import Grade, Subject, Term
 
 # serilializers
 from users.serializers import AccountSerializer
-from grades.serializers import GradeSerializer, GradeDetailsSerializer, TermsSerializer, TermSerializer, SubjectDetailSerializer, ClassesSerializer
+from grades.serializers import GradeSerializer, GradeDetailsSerializer, TermsSerializer, TermSerializer, SubjectSerializer, SubjectDetailsSerializer, ClassesSerializer
 
 # utility functions 
 
@@ -97,7 +97,7 @@ def search_school_terms(user, details):
     
 
 @database_sync_to_async
-def search_term(user, details):
+def search_term_details(user, details):
     try:
         # Fetch the school directly using the account_id for efficiency
         account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
@@ -119,6 +119,82 @@ def search_term(user, details):
         
     except Term.DoesNotExist:
         return { 'error': 'term with the provided credentials does not exist' }
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': f'An unexpected error occurred: {str(e)}'}
+
+
+@database_sync_to_async
+def search_subject(user, details):
+    """
+    Asynchronous function to search for and retrieve subject details.
+
+    This function checks if the requesting user is authorized to access or update 
+    the subject information. If the subject is found and the user has the correct 
+    permissions, the function returns the serialized subject data.
+
+    Args:
+        user (str): The account_id of the user making the request.
+        details (dict): A dictionary containing the details of the subject being searched, specifically the 'subject_id'.
+
+    Returns:
+        dict: A dictionary containing the serialized subject data if found and accessible, 
+            or an error message if the subject or user account is not found, or if there is 
+            a permission issue.
+    """
+    try:
+        # Retrieve user account
+        account = CustomUser.objects.get(account_id=user)
+
+        # Retrieve the subject and its related grade
+        subject = Subject.objects.select_related('grade').get(subject_id=details.get('subject_id'))
+
+        # Verify that the subject belongs to the same school as the user
+        if account.school != subject.grade.school:
+            return {"error": "permission denied. you can only access or update details about subjects from your own school."}
+
+        # Serialize the subject data
+        serializer = SubjectSerializer(subject)
+        return {"subject": serializer.data}
+    
+    except CustomUser.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+    
+    except Subject.DoesNotExist:
+        # Handle case where the subject does not exist
+        return {'error': 'a subject with the provided credentials does not exist.'}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def search_subject_details(user, details):
+    try:
+        # Fetch the school directly using the account_id for efficiency
+        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
+        subject = Subject.objects.select_related('grade__school').get(subject_id=details.get('subject'))
+
+        # Check if the user has permission to view the subject
+        if account.school != subject.grade.school:
+            return {"error": 'permission denied. you can only access or update details about subjects from your own school'}
+        
+        # Serialize the subject
+        serialized_subject = SubjectDetailsSerializer(subject).data
+        
+        # Return the serialized grade in a dictionary
+        return {'subject': serialized_subject}
+    
+    except CustomUser.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+    
+    except Subject.DoesNotExist:
+        # Handle case where the subject does not exist
+        return {'error': 'a subject with the provided credentials does not exist.'}
 
     except Exception as e:
         # Handle any unexpected errors with a general error message
@@ -224,59 +300,13 @@ def search_grade(user, details):
 
 
 @database_sync_to_async
-def search_subject(user, details):
-    """
-    Asynchronous function to search for and retrieve subject details.
-
-    This function checks if the requesting user is authorized to access or update 
-    the subject information. If the subject is found and the user has the correct 
-    permissions, the function returns the serialized subject data.
-
-    Args:
-        user (str): The account_id of the user making the request.
-        details (dict): A dictionary containing the details of the subject being searched, specifically the 'subject_id'.
-
-    Returns:
-        dict: A dictionary containing the serialized subject data if found and accessible, 
-            or an error message if the subject or user account is not found, or if there is 
-            a permission issue.
-    """
-    try:
-        # Retrieve user account
-        account = CustomUser.objects.get(account_id=user)
-
-        # Retrieve the subject and its related grade
-        subject = Subject.objects.select_related('grade').get(subject_id=details.get('subject_id'))
-
-        # Verify that the subject belongs to the same school as the user
-        if account.school != subject.grade.school:
-            return {"error": "permission denied. you can only access or update details about subjects from your own school."}
-
-        # Serialize the subject data
-        serializer = SubjectDetailSerializer(subject)
-        return {"subject": serializer.data}
-    
-    except CustomUser.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
-    
-    except Subject.DoesNotExist:
-        # Handle case where the subject does not exist
-        return {'error': 'a subject with the provided credentials does not exist.'}
-
-    except Exception as e:
-        # Handle any unexpected errors with a general error message
-        return {'error': str(e)}
-
-
-@database_sync_to_async
 def search_grade_register_classes(user, details):
 
     try:
         account = CustomUser.objects.get(account_id=user)
         grade  = Grade.objects.get(grade_id=details.get('grade_id'), school=account.school)
 
-        classes = grade.grade_classes.filter(register_class=True)
+        classes = grade.grade_classes.all().filter(register_class=True)
 
         serializer = ClassesSerializer(classes, many=True)
 

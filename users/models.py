@@ -17,21 +17,286 @@ from grades.models import Grade
 from authentication.utils import get_upload_path
 
 
-ROLE_CHOICES = [
-    ('STUDENT', 'Student'),
-    ('TEACHER', 'Teacher'),
-    ('ADMIN', 'Admin'),
-    ('PRINCIPAL', 'Principal'),
-    ('FOUNDER', 'Founder'),
-    ('PARENT', 'Parent'),
-]
+ROLE_CHOICES = [('STUDENT', 'Student'), ('TEACHER', 'Teacher'), ('ADMIN', 'Admin'), ('PRINCIPAL', 'Principal'), ('FOUNDER', 'Founder'), ('PARENT', 'Parent'),]
 
-# COUNTRY_CHOICES = [
-#     ('ZA', 'South Africa'),
-#     ('US', 'United States'),
-#     ('GB', 'United Kingdom'),
-#     # Add more countries as needed
-# ]
+# class BaseUserManager(BaseUserManager):
+
+#     @transaction.atomic
+#     def create_user(self, email=None, name=None, surname=None, role=None, **extra_fields):
+#         if not name:
+#             raise ValueError(_('a name is required for all accounts on the system'))
+        
+#         if not surname:
+#             raise ValueError(_('a surname is required for all accounts on the system'))
+        
+#         if role not in dict(ROLE_CHOICES).keys():
+#             raise ValidationError(_('the specified account role is invalid'))
+
+#         email = self.normalize_email(email) if email else None
+
+#         user = self.model(email=email, name=name, surname=surname, role=role, **extra_fields)
+
+#         user.set_unusable_password()
+#         user.save(using=self._db)
+#         return user
+
+#     @transaction.atomic
+#     def activate_user(self, email, password):
+#         try:
+#             user = self.get(email=email)
+
+#             validate_password(password)
+
+#             user.set_password(password)
+#             user.activated = True
+
+#             user.save(using=self._db)
+#             return user
+        
+#         except BaseUser.DoesNotExist:
+#             raise ValueError("Account with the provided credentials does not exist")
+        
+#         except ValidationError as e:
+#             raise ValueError(str(e).lower())
+
+
+# class BaseUser(AbstractBaseUser, PermissionsMixin):
+#     name = models.CharField(_('name'), max_length=64)
+#     surname = models.CharField(_('surname'), max_length=64)
+
+#     email = models.EmailField(_('email address'), unique=True, blank=True, null=True)
+
+#     role = models.CharField(choices=ROLE_CHOICES)
+
+#     activated = models.BooleanField(_('account active or not'), default=False)
+#     profile_picture = models.ImageField(upload_to=get_upload_path, blank=True, null=True)
+
+#     multifactor_authentication = models.BooleanField(_('multifactor authentication'), default=False)
+
+#     email_banned = models.BooleanField(_('email banned'), default=False)
+#     email_ban_amount = models.SmallIntegerField(_('amount of times email has been banned'), default=0)
+
+#     is_active = models.BooleanField(_('active'), default=True)
+#     is_staff = models.BooleanField(_('staff status'), default=False)
+#     is_superuser = models.BooleanField(_('superuser status'), default=False)
+
+#     USERNAME_FIELD = 'email'
+#     REQUIRED_FIELDS = ['name', 'surname', 'role']
+    
+#     account_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+
+#     objects = BaseUserManager()
+
+#     class Meta:
+#         ordering = ['surname', 'name', 'account_id']
+
+#     def __str__(self):
+#         return f'{self.name} {self.surname}'
+
+#     def clean(self):
+#         if self.email:
+#             try:
+#                 validate_email(self.email)
+
+#             except ValidationError:
+#                 raise ValidationError(_('The provided email address is not valid'))
+            
+#             if len(self.email) > 254:
+#                 raise ValidationError(_("Email address cannot exceed 254 characters"))
+            
+#         if len(self.name) > 64:
+#             raise ValidationError(_("Name cannot exceed 64 characters"))
+        
+#         if len(self.surname) > 64:
+#             raise ValidationError(_("Surname cannot exceed 64 characters"))
+
+
+# class Founder(BaseUser):
+
+#     class Meta:
+#         ...
+
+#     def clean(self):
+#         super().clean()
+
+
+# class Principal(BaseUser):
+#     contact_number = models.CharField(_('phone number'), max_length=15, unique=True)
+#     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='principal')
+
+#     class Meta:
+#         ...
+
+#     def clean(self):
+#         super().clean()
+
+#         if not self.email:
+#             raise ValidationError(_('either email, ID number or Passport number must be provided for the creation of an account depandant on role'))
+
+#         if not self.contact_number.isdigit():
+#             raise ValidationError(_('Contact number should contain only digits'))
+        
+#         if not (10 <= len(self.contact_number) <= 15):
+#             raise ValidationError(_('Contact number should be between 10 and 15 digits'))
+        
+#         if not self.school:
+#             raise ValidationError(_('Principal accounts must be associated with a school'))
+
+
+# class Admin(BaseUser):
+#     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='admins')
+
+#     class Meta:
+#         ...
+
+#     def clean(self):
+#         super().clean()
+
+#         if not self.email:
+#             raise ValidationError(_('either email, ID number or Passport number must be provided for the creation of an account depandant on role'))
+
+#         if not self.school:
+#             raise ValidationError(_('Principal accounts must be associated with a school'))
+
+
+# class Student(BaseUser):
+#     id_number = models.CharField(_('ID number'), max_length=13, unique=True, blank=True, null=True)
+#     passport_number = models.CharField(_('passport number'), max_length=9, unique=True, blank=True, null=True)
+
+#     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='students')
+
+#     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='students')
+
+#     event_emails = models.BooleanField(_('email subscription'), default=False)
+
+#     class Meta:
+#         ...
+
+#     def clean(self):
+#         super().clean()
+
+#         if not self.id_number and not self.passport_number:
+#             raise ValidationError(_('Either ID or Passport number is required for a student account'))
+        
+#         if self.school and self.grade.school != self.school:
+#             raise ValidationError(_('The grade must be associated with the school the student is linked to'))
+        
+#         if self.school.type == 'PRIMARY' and int(self.grade.grade) > 7:
+#             raise ValidationError(_('Primary school students cannot be assigned to grades higher than 7'))
+        
+#         if self.school.type == 'SECONDARY' and int(self.grade.grade) <= 7:
+#             raise ValidationError(_('Secondary school students must be assigned to grades higher than 7'))
+
+
+# class Parent(BaseUser):
+#     children = models.ManyToManyField(Student, blank=True, related_name='parents')
+#     event_emails = models.BooleanField(_('email subscription'), default=False)
+
+#     class Meta:
+#         ...
+
+#     def clean(self):
+#         super().clean()
+
+#         if not self.email:
+#             raise ValidationError(_('either email, ID number or Passport number must be provided for the creation of an account depandant on role'))
+
+#         if self.children.exists():
+#             if any(child.role != 'STUDENT' for child in self.children.all()):
+#                 raise ValidationError(_('only student accounts can be assigned as children'))
+            
+#             if self in self.children.all():
+#                 raise ValidationError(_('an account cannot be it\'s own parent'))
+
+
+# class Teacher(BaseUser):
+#     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='teachers')
+
+#     class Meta:
+#         ...
+
+#     def clean(self):
+#         super().clean()
+
+#         if not self.email:
+#             raise ValidationError(_('either email, ID number or Passport number must be provided for the creation of an account depandant on role'))
+        
+#         if not self.school:
+#             raise ValidationError(_('teacher accounts must be associated with a school'))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class CustomUserManager(BaseUserManager):
     """
@@ -195,9 +460,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     name = models.CharField(_('name'), max_length=64)
     surname = models.CharField(_('surname'), max_length=64)
     
-    # for future refrences
-    # country = models.CharField(max_length=2, choices=COUNTRY_CHOICES)
-
     contact_number = models.CharField(_('phone number'), max_length=15, unique=True, blank=True, null=True)
 
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='students', blank=True, null=True)

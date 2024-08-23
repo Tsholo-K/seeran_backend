@@ -166,7 +166,7 @@ class SubjectsSerializer(serializers.ModelSerializer):
         return obj.subject.title()
 
 
-class SubjectDetailSerializer(serializers.ModelSerializer):
+class SubjectSerializer(serializers.ModelSerializer):
 
     classes = serializers.SerializerMethodField()
 
@@ -182,4 +182,4 @@ class SubjectDetailsSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Subject
-        fields = ['classes_count', 'teacher_count', 'student_count']
+        fields = ['classes_count', 'teacher_count', 'student_count', 'major_subject', 'pass_mark']
