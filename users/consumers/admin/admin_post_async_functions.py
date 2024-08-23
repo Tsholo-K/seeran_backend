@@ -47,11 +47,11 @@ def create_term(user, details):
     try:
         # Use select_related and only to fetch the school reference efficiently
         account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
-        grade = Grade.objects.get(grade_id=details.get('grade'), school=account.school)
+        grade = Grade.objects.only('pk').get(grade_id=details.get('grade'), school=account.school)
 
         # Add the school ID to the term details
-        details['school'] = account.school
-        details['grade'] = grade
+        details['school'] = account.school.pk
+        details['grade'] = grade.pk
 
         # Initialize the serializer with the incoming data
         # serializer = TermCreationSerializer(data=details)
@@ -61,7 +61,8 @@ def create_term(user, details):
         with transaction.atomic():
             # Create the new term using the validated data
             # term = Term.objects.create(**serializer.validated_data)
-            term = Term(details).save()
+            term = Term(details)
+            term.save()
         
         return {'message': f"term {term.term} has been successfully created for your schools grade {term.grade.grade}"}
             
