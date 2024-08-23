@@ -40,7 +40,7 @@ def search_school_terms(user, details):
     try:
         # Fetch the school directly using the account_id for efficiency
         account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
-        grade = Grade.objects.select_related('school').get(term_id=details.get('term'))
+        grade = Grade.objects.select_related('school').get(grade_id=details.get('grade'))
 
         # Check if the user has permission to view the grades terms
         if account.school != grade.school:

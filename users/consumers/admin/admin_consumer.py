@@ -96,7 +96,6 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'email_information': general_get_async_functions.fetch_my_email_information,
 
             "school_id": admin_get_async_functions.fetch_school_id,
-            "school_terms": admin_get_async_functions.fetch_school_terms,
 
             'grades': admin_get_async_functions.fetch_grades,
             'grades_with_student_count': admin_get_async_functions.fetch_grades_with_student_count,
@@ -122,6 +121,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'account_profile': general_search_async_functions.search_account_profile,
             'account_id': general_search_async_functions.search_account_id,
 
+            "school_terms": admin_search_async_functions.search_school_terms,
             'term': admin_search_async_functions.search_term,
 
             'teacher_schedule_schedules': general_search_async_functions.search_teacher_schedule_schedules,
