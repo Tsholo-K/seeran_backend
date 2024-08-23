@@ -47,15 +47,19 @@ def create_term(user, details):
     try:
         # Use select_related and only to fetch the school reference efficiently
         account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
-        
+        grade = Grade.objects.only('pk').get(grade_id=details.get('grade'), school=account.school)
+
         # Add the school ID to the term details
         details['school'] = account.school.pk
-        details['grade'] = Grade.objects.only('pk').get(grade_id=details.get('grade'), school=account.school).pk
+        details['grade'] = grade.pk
+
+        # if Term.objects.filter(school=account.school, grade=grade, term=details.get('term')).exists():
+        #     raise ValidationError(f"a term with the provided term number already exists in the specified grade ")
 
         # Initialize the serializer with the incoming data
         serializer = TermCreationSerializer(data=details)
         
-        if serializer.is_valid(raise_exception=False):
+        if serializer.is_valid():
             # Using atomic transaction to ensure data integrity
             with transaction.atomic():
                 # Create the new term using the validated data
@@ -64,8 +68,10 @@ def create_term(user, details):
             return {'message': f"term {term.term} has been successfully created for your schools grade {term.grade.grade}"}
             
         # Return serializer errors if the data is not valid
-        return {"error": 'provided data is invalid'}
-    
+        # If the serializer is not valid, format the errors into a single string
+        errors = " | ".join([f"{key}: {' '.join(value)}" for key, value in serializer.errors.items()])
+        return {"error": errors}
+        
     except CustomUser.DoesNotExist:
         # Handle the case where the provided account ID does not exist
         return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}

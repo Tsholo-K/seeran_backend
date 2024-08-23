@@ -44,11 +44,6 @@ class TermCreationSerializer(serializers.ModelSerializer):
         model = Term
         fields = [ "term", 'weight', 'start_date', 'end_date', 'school_days', 'school', 'grade' ]
 
-    def validate(self, data):
-        # Skip uniqueness validation for 'term', 'school', and 'grade'
-        # This will be handled in the model's clean method
-        return data
-
 
 class UpdateSchoolTermSerializer(serializers.ModelSerializer):
 
