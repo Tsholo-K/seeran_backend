@@ -45,7 +45,7 @@ class TermCreationSerializer(serializers.ModelSerializer):
         
     class Meta:
         model = Term
-        fields = [ "term", 'weight', 'start_date', 'end_date', 'school_days', 'grade', 'school' ]
+        fields = [ 'term', 'weight', 'start_date', 'end_date', 'school_days', 'grade', 'school' ]
 
     def __init__(self, *args, **kwargs):
         super(TermCreationSerializer, self).__init__(*args, **kwargs)
