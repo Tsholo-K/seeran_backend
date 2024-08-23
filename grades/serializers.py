@@ -45,13 +45,6 @@ class TermCreationSerializer(serializers.ModelSerializer):
         model = Term
         fields = [ "term", 'weight', 'start_date', 'end_date', 'school_days', 'school', 'grade' ]
     
-    def validate(self, data):
-        # Check for the unique constraint manually
-        if Term.objects.filter(term=data.get('term'), grade=data.get('grade'), school=data.get('school')).exists():
-            raise ValidationError("a term with the provided term number already exists in the specified grade")
-        
-        # Perform any other validation as necessary
-        return data
 
 class UpdateSchoolTermSerializer(serializers.ModelSerializer):
 
