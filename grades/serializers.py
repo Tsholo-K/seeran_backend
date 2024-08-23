@@ -1,7 +1,6 @@
 # python 
 
 # django
-from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 # rest framework
@@ -45,7 +44,7 @@ class TermCreationSerializer(serializers.ModelSerializer):
         
     class Meta:
         model = Term
-        fields = [ 'term', 'weight', 'start_date', 'end_date', 'school_days', 'grade', 'school' ]
+        fields = ['term', 'weight', 'start_date', 'end_date', 'school_days', 'grade', 'school']
 
     def __init__(self, *args, **kwargs):
         super(TermCreationSerializer, self).__init__(*args, **kwargs)

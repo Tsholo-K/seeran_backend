@@ -191,7 +191,6 @@ class Term(models.Model):
         """
         Override save method to calculate the total amount of school days in the term if not provided.
         """
-
         self.clean()
 
         try:
