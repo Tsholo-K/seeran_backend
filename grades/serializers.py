@@ -37,7 +37,7 @@ class UpdateGradeSerializer(serializers.ModelSerializer):
         fields = ['major_subjects', 'none_major_subjects']
 
     def __init__(self, *args, **kwargs):
-        super(UpdateTermSerializer, self).__init__(*args, **kwargs)
+        super(UpdateGradeSerializer, self).__init__(*args, **kwargs)
         # Set all fields to be optional by making them not required
         for field in self.fields:
             self.fields[field].required = False
@@ -148,7 +148,7 @@ class UpdateSubjectSerializer(serializers.ModelSerializer):
         fields = ['major_subject', 'pass_mark']
 
     def __init__(self, *args, **kwargs):
-        super(UpdateTermSerializer, self).__init__(*args, **kwargs)
+        super(UpdateSubjectSerializer, self).__init__(*args, **kwargs)
         # Set all fields to be optional by making them not required
         for field in self.fields:
             self.fields[field].required = False
