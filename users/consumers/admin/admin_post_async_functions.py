@@ -45,8 +45,6 @@ def create_term(user, details):
         dict: A dictionary containing either a success message or an error message.
     """
     try:
-        return {'message': details}
-
         # Use select_related and only to fetch the school reference efficiently
         account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
         grade = Grade.objects.only('pk').get(grade_id=details.get('grade'), school=account.school)
@@ -62,7 +60,7 @@ def create_term(user, details):
             # Using atomic transaction to ensure data integrity
             with transaction.atomic():
                 # Create the new term using the validated data
-                term = Term.objects.create(**serializer.validated_data)
+                term = Term.objects.create(details)
             
             return {'message': f"term {term.term} has been successfully created for your schools grade {term.grade.grade}"}
             
