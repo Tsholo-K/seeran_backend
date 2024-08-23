@@ -155,7 +155,7 @@ class Term(models.Model):
 
     class Meta:
         ordering = ['term']
-        unique_together = ('term', 'grade', 'school')
+        unique_together = ('term', 'grade')
         indexes = [models.Index(fields=['term', 'school'])]
 
     def __str__(self):
