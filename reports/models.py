@@ -8,8 +8,8 @@ from django.core.exceptions import ValidationError
 
 # models
 from users.models import CustomUser
-from schools.models import School, Term
-from grades.models import Grade, Subject
+from schools.models import School
+from grades.models import Grade, Term, Subject
 from assessments.models import Assessment, Transcript
 from attendances.models import Absent, Late
 
