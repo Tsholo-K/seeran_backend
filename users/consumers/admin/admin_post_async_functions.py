@@ -31,7 +31,7 @@ from authentication.utils import validate_user_email
 @database_sync_to_async
 def create_term(user, details):
     """
-    Asynchronously creates a new school term associated with the provided user's school.
+    Asynchronously creates a new school term associated with the provided user's school and grade.
 
     This function fetches the school associated with the user and attempts to create a new term
     using the provided details. The process is wrapped in a database transaction for safety.
@@ -64,7 +64,7 @@ def create_term(user, details):
             return {'message': f"term {term.term} has been successfully created for your schools grade {term.grade.grade}"}
             
         # Return serializer errors if the data is not valid
-        return {"hmm": serializer.errors}
+        return {"error": serializer.errors}
     
     except CustomUser.DoesNotExist:
         # Handle the case where the provided account ID does not exist

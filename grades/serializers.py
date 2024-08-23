@@ -57,6 +57,11 @@ class UpdateSchoolTermSerializer(serializers.ModelSerializer):
         for field in self.fields:
             self.fields[field].required = False
 
+    def validate(self, data):
+        # Skip uniqueness validation for 'term', 'school', and 'grade'
+        # This will be handled in the model's clean method
+        return data
+
 
 class TermsSerializer(serializers.ModelSerializer):
         
