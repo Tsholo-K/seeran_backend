@@ -156,7 +156,6 @@ class Term(models.Model):
     class Meta:
         unique_together = ('term', 'grade', 'school')
         indexes = [models.Index(fields=['term', 'school'])]
-        error_messages = {NON_FIELD_ERRORS: {'unique_together': "a term with the provided term number already exists in the specified grade"}}
 
     def __str__(self):
         return f"Term {self.term}"

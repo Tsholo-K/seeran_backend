@@ -53,6 +53,9 @@ def create_term(user, details):
         details['school'] = account.school.pk
         details['grade'] = grade.pk
 
+        if Term.objects.filter(school=account.school, grade=grade, term=details.get('term')).exists():
+            raise ValidationError(f"a term with the provided term number already exists in the specified grade ")
+
         # Initialize the serializer with the incoming data
         serializer = TermCreationSerializer(data=details)
         
