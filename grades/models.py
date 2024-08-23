@@ -194,7 +194,7 @@ class Term(models.Model):
         except IntegrityError as e:
             # Check if the error is related to unique constraints
             if 'unique constraint' in str(e).lower():
-                raise ValidationError(_('a term with the specified term number is already there for your school. Duplicate terms within the same school is not permitted.'))
+                raise ValidationError(_('a term with the specified term number in the specified grade is already there for your school. Duplicate terms within the same grade and school is not permitted.'))
             else:
                 # Re-raise the original exception if it's not related to unique constraints
                 raise

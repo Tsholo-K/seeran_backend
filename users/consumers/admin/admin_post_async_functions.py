@@ -15,7 +15,7 @@ from django.core.exceptions import ValidationError
 # models 
 from users.models import CustomUser
 from timetables.models import Session, Schedule, TeacherSchedule, GroupSchedule
-from grades.models import Grade, Subject
+from grades.models import Grade, Term, Subject
 from classes.models import Classroom
 
 # serilializers
@@ -59,7 +59,7 @@ def create_term(user, details):
             # Using atomic transaction to ensure data integrity
             with transaction.atomic():
                 # Create the new term using the validated data
-                term = serializer.save()
+                term = Term.objects.create(**serializer.validated_data)
             
             return {'message': f"term {term.term} has been successfully created for your schools grade {term.grade.grade}"}
             
@@ -102,10 +102,10 @@ def create_account(user, details):
         
         if serializer.is_valid():
             with transaction.atomic():
-                serializer.save()
+                user = CustomUser.objects.create_user(**serializer.validated_data)
             
-            return {'message' : f"a new {details.get('role')} account has been created for your school, an account confirmation email has been sent to the user"}
-            
+            return {'user' : user } # return user to be used by email sending functions
+                
         return {"error" : serializer.errors}
     
     except CustomUser.DoesNotExist:
