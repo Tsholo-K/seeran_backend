@@ -50,7 +50,9 @@ class TermCreationSerializer(serializers.ModelSerializer):
         """
         Check that the data is in the correct format.
         """
-        # Add your custom validation logic here
+        # Remove the unique together validation
+        self._validated_data = data
+        self._errors = {}
         return data
     
 
