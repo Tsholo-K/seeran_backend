@@ -180,12 +180,13 @@ class Term(models.Model):
         if Decimal(total_weight) + Decimal(self.weight) > Decimal('100.00') or Decimal(total_weight) + Decimal(self.weight) < Decimal('0.00'):
             raise ValidationError(_('The total weight of all terms should be between 0% and 100%.'))
         
+        if not self.school_days:
+            self.school_days = self.calculate_total_school_days()
+        
     def save(self, *args, **kwargs):
         """
         Override save method to calculate the total amount of school days in the term if not provided.
         """
-        if not self.school_days:
-            self.school_days = self.calculate_total_school_days()
 
         self.clean()
 
@@ -218,7 +219,8 @@ class Term(models.Model):
             current_date += timedelta(days=1)
 
         return total_days
-    
+
+
 class Subject(models.Model):
 
     # grade linked to

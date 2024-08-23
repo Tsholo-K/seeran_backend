@@ -38,7 +38,6 @@ class GradeSerializer(serializers.ModelSerializer):
         return SubjectsSerializer(obj.grade_subjects.all(), many=True).data
 
 
-
 class TermCreationSerializer(serializers.ModelSerializer):
         
     class Meta:

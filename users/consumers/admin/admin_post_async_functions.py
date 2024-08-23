@@ -64,7 +64,7 @@ def create_term(user, details):
             return {'message': f"term {term.term} has been successfully created for your schools grade {term.grade.grade}"}
             
         # Return serializer errors if the data is not valid
-        return {"error": serializer.errors}
+        return {"hmm": serializer.errors}
     
     except CustomUser.DoesNotExist:
         # Handle the case where the provided account ID does not exist
