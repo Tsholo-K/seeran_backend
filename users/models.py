@@ -1,14 +1,13 @@
+# python 
+import uuid
+
 # django imports
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
-from django.db import models
+from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from django.db import transaction
 from django.core.validators import validate_email
-
-# python 
-import uuid
 
 # models
 from schools.models import School

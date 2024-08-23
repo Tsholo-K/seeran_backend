@@ -2,10 +2,11 @@
 import uuid
 
 # django 
-from django.db import models, IntegrityError
+from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
+
 
 # school district choices
 SCHOOL_DISTRICT_CHOICES = [

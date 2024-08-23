@@ -6,7 +6,7 @@ from decimal import Decimal
 # django 
 from django.db import models, IntegrityError
 from django.utils.translation import gettext_lazy as _
-from django.core.exceptions import ValidationError, NON_FIELD_ERRORS
+from django.core.exceptions import ValidationError
 
 # models
 from schools.models import School
@@ -155,7 +155,7 @@ class Term(models.Model):
 
     class Meta:
         ordering = ['term']
-        unique_together = ('term', 'grade')
+        unique_together = ('term', 'grade', 'school')
         indexes = [models.Index(fields=['term', 'school'])]
 
     def __str__(self):
