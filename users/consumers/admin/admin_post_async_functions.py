@@ -55,7 +55,7 @@ def create_term(user, details):
         # Initialize the serializer with the incoming data
         serializer = TermCreationSerializer(data=details)
         
-        if serializer.is_valid(raise_exception=True):
+        if serializer.is_valid(raise_exception=False):
             # Using atomic transaction to ensure data integrity
             with transaction.atomic():
                 # Create the new term using the validated data
