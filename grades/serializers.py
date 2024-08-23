@@ -42,6 +42,8 @@ class GradeSerializer(serializers.ModelSerializer):
 
 class TermCreationSerializer(serializers.ModelSerializer):
         
+    term = serializers.CharField(max_length=16)
+    
     class Meta:
         model = Term
         fields = ['term', 'weight', 'start_date', 'end_date', 'school_days', 'grade', 'school']
