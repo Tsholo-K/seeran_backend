@@ -132,7 +132,7 @@ class Grade(models.Model):
 class Term(models.Model):
 
     # the term identifier
-    term = models.CharField(max_length=16)
+    term = models.CharField(max_length=16, editable=False)
     # Weight of the term in final year calculations in relation to other terms
     weight = models.DecimalField(max_digits=5, decimal_places=2)
 
@@ -198,7 +198,7 @@ class Term(models.Model):
         except IntegrityError as e:
             # Check if the error is related to unique constraints
             if 'unique constraint' in str(e).lower():
-                raise ValidationError(_('a term with the specified term number in the specified grade is already there for your school. duplicate terms within the same grade and school is not permitted.'))
+                raise ValidationError(_('a term with the provided term identifier in the specified grade is already there for your school. duplicate terms within the same grade and school is not permitted.'))
             else:
                 # Re-raise the original exception if it's not related to unique constraints
                 raise
