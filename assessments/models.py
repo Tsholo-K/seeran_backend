@@ -11,8 +11,8 @@ from django.core.exceptions import ValidationError
 # models
 from users.models import CustomUser
 from classes.models import Classroom
-from grades.models import Grade, Subject
-from schools.models import School, Term
+from grades.models import Grade, Term, Subject
+from schools.models import School
 
 class Topic(models.Model):
     name = models.CharField(max_length=124, unique=True)
