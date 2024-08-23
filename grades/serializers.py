@@ -41,8 +41,6 @@ class GradeSerializer(serializers.ModelSerializer):
 
 
 class TermCreationSerializer(serializers.ModelSerializer):
-        
-    term = serializers.CharField(max_length=16)
     
     class Meta:
         model = Term
