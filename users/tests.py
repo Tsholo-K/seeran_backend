@@ -26,9 +26,9 @@ class CustomUserManagerTest(TestCase):
             name="Test School",
             email="testschool@example.com",
             contact_number="1234567890",
-            school_type="PRIMARY",
+            type="PRIMARY",
             province="GAUTENG",
-            school_district="GAUTENG NORTH"
+            district="GAUTENG NORTH"
         )
         self.school.save()
         self.grade = Grade.objects.create(

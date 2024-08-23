@@ -5,13 +5,12 @@ from datetime import timedelta
 from django.test import TestCase
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from django.db import IntegrityError
 
 # models
 from .models import Assessment, Transcript
 from users.models import CustomUser
-from schools.models import School, Term
-from grades.models import Grade, Subject
+from schools.models import School
+from grades.models import Grade, Term, Subject
 from classes.models import Classroom
 
 

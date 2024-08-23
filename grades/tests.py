@@ -116,11 +116,18 @@ class TermModelTest(TestCase):
             province="GAUTENG",
             district="JHB NORTH"
         )
+        self.grade = Grade.objects.create(
+            grade='7',
+            major_subjects=1,
+            none_major_subjects=2,
+            school=self.school
+        )
         self.term = Term.objects.create(
             term=1,
             weight=30.00,
             start_date=timezone.now().date(),
             end_date=timezone.now().date() + timedelta(days=60),
+            grade=self.grade,
             school=self.school
         )
 
@@ -144,6 +151,7 @@ class TermModelTest(TestCase):
             weight=20.00,
             start_date=self.term.start_date + timedelta(days=15),
             end_date=self.term.end_date + timedelta(days=15),
+            grade=self.grade,
             school=self.school
         )
         with self.assertRaises(ValidationError):
@@ -156,6 +164,7 @@ class TermModelTest(TestCase):
             weight=60.00,
             start_date=timezone.now().date() + timedelta(days=61),
             end_date=timezone.now().date() + timedelta(days=120),
+            grade=self.grade,
             school=self.school
         )
         with self.assertRaises(ValidationError):
@@ -191,6 +200,7 @@ class TermModelTest(TestCase):
                 weight=25.00,
                 start_date=self.term.start_date + timedelta(days=120),
                 end_date=self.term.end_date + timedelta(days=180),
+                grade=self.grade,
                 school=self.school
             )
             duplicate_term.clean()  # Trigger validation
@@ -202,6 +212,7 @@ class TermModelTest(TestCase):
             weight=50.00,
             start_date=timezone.now().date() + timedelta(days=61),
             end_date=timezone.now().date() + timedelta(days=120),
+            grade=self.grade,
             school=self.school
         )
         self.assertNotEqual(self.term.term_id, term_2.term_id)

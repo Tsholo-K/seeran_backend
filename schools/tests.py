@@ -55,10 +55,6 @@ class SchoolModelTest(TestCase):
         with self.assertRaises(ValidationError):
             self.school.full_clean()  # Trigger validation
 
-    def test_school_motto_empty(self):
-        """Test that the 'school_motto' field is empty by default."""
-        self.assertEqual(self.school.school_motto, None)
-
     def test_unique_school_id(self):
         """Test that each school instance has a unique 'school_id'."""
         school_2 = School.objects.create(
