@@ -132,7 +132,7 @@ class Grade(models.Model):
 class Term(models.Model):
 
     # the term identifier
-    term = models.CharField(max_length=16, editable=False, default='Term 1')
+    term = models.CharField(max_length=16, editable=False)
     # Weight of the term in final year calculations in relation to other terms
     weight = models.DecimalField(max_digits=5, decimal_places=2)
 

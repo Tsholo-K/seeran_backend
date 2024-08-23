@@ -60,7 +60,7 @@ def create_term(user, details):
             # Using atomic transaction to ensure data integrity
             with transaction.atomic():
                 # Create the new term using the validated data
-                term = serializer.save()
+                term = Term.objects.create(**serializer.validated_data)
             
             return {'message': f"term {term.term} has been successfully created for your schools grade {term.grade.grade}"}
             
