@@ -52,6 +52,7 @@ def create_term(user, details):
         # Add the school ID to the term details
         details['school'] = account.school.pk
         details['grade'] = grade.pk
+        details['term'] = details.get('term')
 
         # Initialize the serializer with the incoming data
         serializer = TermCreationSerializer(data=details)
