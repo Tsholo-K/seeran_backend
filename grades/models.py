@@ -165,7 +165,7 @@ class Term(models.Model):
         Ensure that the term dates do not overlap with other terms in the same school and validate term dates.
         """
         if Term.objects.filter(school=self.school, grade=self.grade, term=self.term).exclude(pk=self.pk).exists():
-            raise ValidationError(f"a term with the provided term number already exists in the specified grade")
+            raise ValidationError(_("a term with the provided term number already exists in the specified grade"))
 
         if self.start_date >= self.end_date:
             raise ValidationError(_('a terms start date must be before it\'s end date'))
@@ -199,9 +199,6 @@ class Term(models.Model):
             else:
                 # Re-raise the original exception if it's not related to unique constraints
                 raise
-
-        except Exception as e:
-            raise ValidationError(_(str(e).lower()))
 
     def calculate_total_school_days(self):
         """
