@@ -278,9 +278,9 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
                 raise ValidationError(_('student accounts need to be allocated to a grade'))
             if self.school and self.grade.school != self.school:
                 raise ValidationError(_('the grade must be associated with the school the student account is linked to'))
-            if self.school.school_type == 'PRIMARY' and int(self.grade.grade) > 7:
+            if self.school.type == 'PRIMARY' and int(self.grade.grade) > 7:
                 raise ValidationError(_('primary school students cannot be assigned to grades higher than 7'))
-            if self.school.school_type == 'SECONDARY' and int(self.grade.grade) <= 7:
+            if self.school.type == 'SECONDARY' and int(self.grade.grade) <= 7:
                 raise ValidationError(_('secondary school students must be assigned to grades higher than 7'))
         elif self.role in ['PARENT', 'FOUNDER', 'PRINCIPAL', 'TEACHER', 'ADMIN']:
             if self.grade is not None:
