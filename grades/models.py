@@ -132,7 +132,7 @@ class Grade(models.Model):
 class Term(models.Model):
 
     # the term identifier
-    term = models.CharField(max_length=16, editable=False)
+    term = models.CharField(max_length=16)
     # Weight of the term in final year calculations in relation to other terms
     weight = models.DecimalField(max_digits=5, decimal_places=2)
 
@@ -165,8 +165,6 @@ class Term(models.Model):
         """
         Ensure that the term dates do not overlap with other terms in the same school and validate term dates.
         """
-        print(f"Term value: {self.term}")  # or use logging
-        
         if not self.term:
             raise ValidationError(_('the term is missing a term identifier'))
         
