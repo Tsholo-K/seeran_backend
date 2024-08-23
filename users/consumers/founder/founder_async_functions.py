@@ -2,8 +2,7 @@ from channels.db import database_sync_to_async
 
 # django
 from django.db.models import Count, Q
-from django.db import models, transaction
-from django.db import IntegrityError
+from django.db import transaction
 
 # models 
 from balances.models import Bill

@@ -1,58 +1,28 @@
-# python 
-from decouple import config
-import base64
-import time
+# python
+
 # httpx
-import httpx
 
 # channels
 from channels.db import database_sync_to_async
 
 # django
 from django.core.exceptions import ValidationError
-from django.utils import timezone
-from django.db import  transaction
-from django.db.models import Q
-from django.contrib.auth.password_validation import validate_password
 from django.core.cache import cache
 from django.contrib.auth.hashers import check_password
 from django.utils.translation import gettext as _
 
 # simple jwt
-from rest_framework_simplejwt.tokens import AccessToken as decode, TokenError
-from rest_framework_simplejwt.exceptions import TokenError
 
 # models 
 from users.models import CustomUser
-from schools.models import Term
-from auth_tokens.models import AccessToken
 from email_bans.models import EmailBan
-from timetables.models import Schedule, TeacherSchedule, GroupSchedule
-from classes.models import Classroom
-from attendances.models import Absent, Late
-from grades.models import Grade, Subject
-from announcements.models import Announcement
-from chats.models import ChatRoom, ChatRoomMessage
-from activities.models import Activity
-from assessments.models import Assessment, Transcript, Topic
 
 # serializers
-from users.serializers import AccountSerializer, StudentAccountAttendanceRecordSerializer, AccountProfileSerializer, AccountIDSerializer, ChatroomSerializer, BySerializer, ChatAccountSerializer
-from email_bans.serializers import EmailBansSerializer, EmailBanSerializer
-from timetables.serializers import SessoinsSerializer, ScheduleSerializer
-from timetables.serializers import GroupScheduleSerializer
-from announcements.serializers import AnnouncementsSerializer, AnnouncementSerializer
-from chats.serializers import ChatRoomMessageSerializer, ChatSerializer
-from classes.serializers import TeacherClassesSerializer, ClassSerializer
-from activities.serializers import ActivityCreationSerializer, ActivitiesSerializer, ActivitySerializer
-from assessments.serializers import AssessmentCreationSerializer
 
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp, validate_user_email
-from attendances.utility_functions import get_month_dates
 
 # checks
-from users.checks import permission_checks
 
 
 @database_sync_to_async

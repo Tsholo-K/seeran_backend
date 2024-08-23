@@ -5,11 +5,9 @@
 from rest_framework import serializers
 
 # django
-from django.core.exceptions import ValidationError
-from django.core.validators import URLValidator
 
 # models
-from .models import School, Term
+from .models import School
 from users.models import CustomUser
 from balances.models import Balance
 
@@ -135,36 +133,3 @@ class SchoolIDSerializer(serializers.ModelSerializer):
     def get_province(self, obj):
         return obj.province.title()
 
-
-class TermCreationSerializer(serializers.ModelSerializer):
-        
-    class Meta:
-        model = Term
-        fields = [ "term", 'weight', 'start_date', 'end_date', 'school_days', 'school' ]
-
-
-class UpdateSchoolTermSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Term
-        fields = [ 'weight', 'start_date', 'end_date', 'school_days' ]
-
-    def __init__(self, *args, **kwargs):
-        super(UpdateSchoolTermSerializer, self).__init__(*args, **kwargs)
-        # Set all fields to be optional by making them not required
-        for field in self.fields:
-            self.fields[field].required = False
-
-
-class TermsSerializer(serializers.ModelSerializer):
-        
-    class Meta:
-        model = Term
-        fields = [ "term", 'weight', 'start_date', 'end_date', 'term_id' ]
-
-
-class TermSerializer(serializers.ModelSerializer):
-        
-    class Meta:
-        model = Term
-        fields = [ "term", 'weight', 'start_date', 'end_date', 'school_days' ]

@@ -18,11 +18,10 @@ from rest_framework_simplejwt.exceptions import TokenError
 
 # models 
 from users.models import CustomUser
-from schools.models import Term
 from auth_tokens.models import AccessToken
 from classes.models import Classroom
 from attendances.models import Absent, Late
-from grades.models import Grade, Subject
+from grades.models import Grade, Term, Subject
 from chats.models import ChatRoom, ChatRoomMessage
 from assessments.models import Topic
 

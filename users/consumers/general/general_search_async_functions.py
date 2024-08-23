@@ -34,7 +34,6 @@ from classes.serializers import TeacherClassesSerializer, ClassSerializer
 from activities.serializers import ActivitiesSerializer, ActivitySerializer
 
 # utility functions 
-from authentication.utils import generate_otp, verify_user_otp, validate_user_email
 from attendances.utility_functions import get_month_dates
 
 # checks

@@ -31,6 +31,17 @@ class ClassCreationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"error": "a subject is required for the classroom when 'register_class' is False"})
         return data
 
+
+class ClassUpdateSerializer(serializers.ModelSerializer):
+
+    classroom_number = serializers.CharField(required=False)
+    group = serializers.CharField(required=False)
+
+    class Meta:
+        model = Classroom
+        fields = [ 'classroom_number', 'group']
+
+
 class ClassSerializer(serializers.ModelSerializer):
 
     teacher = serializers.SerializerMethodField()
@@ -61,14 +72,20 @@ class ClassSerializer(serializers.ModelSerializer):
         return obj.grade.grade
 
 
-class ClassUpdateSerializer(serializers.ModelSerializer):
 
-    classroom_number = serializers.CharField(required=False)
-    group = serializers.CharField(required=False)
+class ClassesSerializer(serializers.ModelSerializer):
+
+    teacher = serializers.SerializerMethodField()
 
     class Meta:
         model = Classroom
-        fields = [ 'classroom_number', 'group']
+        fields = ['classroom_number', 'teacher', 'student_count', 'group', 'class_id']
+
+    def get_teacher(self, obj):
+        if obj.teacher:
+            return f'{obj.teacher.surname} {obj.teacher.name}'.title()
+        else:
+            return None
 
 
 class TeacherClassesSerializer(serializers.ModelSerializer):

@@ -1,7 +1,5 @@
 # python 
 import uuid
-from datetime import timedelta
-from decimal import Decimal
 
 # django 
 from django.db import models, IntegrityError
@@ -9,7 +7,7 @@ from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
-from django.core.validators import validate_email, URLValidator
+from django.core.validators import validate_email
 
 # school district choices
 SCHOOL_DISTRICT_CHOICES = [
@@ -138,90 +136,3 @@ class School(models.Model):
         except Exception as e:
             raise ValidationError(_(str(e).lower()))
 
-
-class Term(models.Model):
-
-    # the term number
-    term = models.IntegerField(editable=False, default=1)
-    # Weight of the term in final year calculations in relation to other terms
-    weight = models.DecimalField(max_digits=5, decimal_places=2)
-
-    # The first day of the term
-    start_date = models.DateField()
-    # The final day of the term
-    end_date = models.DateField()
-
-    # number of school days in the term
-    school_days = models.IntegerField(default=0)
-
-    # The school the term is linked to
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='school_terms')
-
-    # term id 
-    term_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-
-    class Meta:
-        unique_together = ('term', 'school')
-        indexes = [models.Index(fields=['term', 'school', 'start_date'])]  # Index for performance
-
-    def __str__(self):
-        return f"Term {self.term}"
-    
-    def clean(self):
-        """
-        Ensure that the term dates do not overlap with other terms in the same school and validate term dates.
-        """
-        if Term.objects.filter(school=self.school, term=self.term).exclude(pk=self.pk).exists():
-            raise ValidationError(f"a term with the provided term number already exists in the school")
-
-        if self.start_date >= self.end_date:
-            raise ValidationError(_('a terms start date must be before it\'s end date'))
-
-        overlapping_terms = Term.objects.filter(school=self.school, start_date__lt=self.end_date, end_date__gt=self.start_date).exclude(pk=self.pk)
-        if overlapping_terms.exists():
-            raise ValidationError(_('the provided start and end dates for the term overlap with one or more existing terms'))
-        
-        total_weight = Term.objects.filter(school=self.school).exclude(pk=self.pk).aggregate(total_weight=models.Sum('weight'))['total_weight'] or Decimal('0.00')
-
-        # Ensure the total weight does not exceed 100%
-        if total_weight + self.weight > Decimal('100.00') or total_weight + self.weight < Decimal('0.00'):
-            raise ValidationError(_('The total weight of all terms should be between 0% and 100%.'))
-        
-    def save(self, *args, **kwargs):
-        """
-        Override save method to calculate the total amount of school days in the term if not provided.
-        """
-        if not self.school_days:
-            self.school_days = self.calculate_total_school_days()
-
-        self.clean()
-
-        try:
-            super().save(*args, **kwargs)
-        except IntegrityError as e:
-            # Check if the error is related to unique constraints
-            if 'unique constraint' in str(e).lower():
-                raise ValidationError(_('a term with the specified term number is already there for your school. Duplicate terms within the same school is not permitted.'))
-            else:
-                # Re-raise the original exception if it's not related to unique constraints
-                raise
-
-        except Exception as e:
-            raise ValidationError(_(str(e).lower()))
-
-    def calculate_total_school_days(self):
-        """
-        Calculate the total number of school days (weekdays) between start_date and end_date, excluding weekends.
-        """
-        start_date = self.start_date
-        end_date = self.end_date
-
-        total_days = 0
-        current_date = start_date
-
-        while current_date <= end_date:
-            if current_date.weekday() < 5:  # Monday to Friday are considered school days
-                total_days += 1
-            current_date += timedelta(days=1)
-
-        return total_days

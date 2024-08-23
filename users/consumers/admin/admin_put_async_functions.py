@@ -15,12 +15,13 @@ from django.core.exceptions import ValidationError
 from users.models import CustomUser
 from timetables.models import GroupSchedule
 from classes.models import Classroom
-from schools.models import Term
+from grades.models import Term
 
 # serilializers
 from users.serializers import AccountUpdateSerializer, AccountIDSerializer, AccountSerializer
+from grades.serializers import UpdateSchoolTermSerializer, TermSerializer
 from classes.serializers import ClassUpdateSerializer
-from schools.serializers import UpdateSchoolAccountSerializer, SchoolIDSerializer, UpdateSchoolTermSerializer, TermSerializer
+from schools.serializers import UpdateSchoolAccountSerializer, SchoolIDSerializer
 
 # utility functions 
 from authentication.utils import validate_user_email

@@ -17,14 +17,12 @@ from users.models import CustomUser
 from timetables.models import Session, Schedule, TeacherSchedule, GroupSchedule
 from grades.models import Grade, Subject
 from classes.models import Classroom
-from schools.models import Term
 
 # serilializers
 from users.serializers import AccountCreationSerializer, StudentAccountCreationSerializer, ParentAccountCreationSerializer
-from grades.serializers import GradeCreationSerializer, SubjectCreationSerializer
+from grades.serializers import GradeCreationSerializer, TermCreationSerializer, SubjectCreationSerializer
 from classes.serializers import ClassCreationSerializer
 from announcements.serializers import AnnouncementCreationSerializer
-from schools.serializers import TermCreationSerializer
 
 # utility functions 
 from authentication.utils import validate_user_email
@@ -52,7 +50,8 @@ def create_term(user, details):
         
         # Add the school ID to the term details
         details['school'] = account.school.pk
-        
+        details['grade'] = Grade.objects.only('pk').get(term_id=details.get('term')).pk
+
         # Initialize the serializer with the incoming data
         serializer = TermCreationSerializer(data=details)
         
@@ -62,7 +61,7 @@ def create_term(user, details):
                 # Create the new term using the validated data
                 term = serializer.save()
             
-            return {'message': f"Term {term.term} has been successfully created for your school"}
+            return {'message': f"term {term.term} has been successfully created for your schools grade {term.grade.grade}"}
             
         # Return serializer errors if the data is not valid
         return {"error": serializer.errors}

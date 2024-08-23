@@ -6,8 +6,10 @@
 from rest_framework import serializers
 
 # models
-from grades.models import Grade, Subject
-from classes.models import Classroom
+from .models import Grade, Term, Subject
+
+# serializers
+from classes.serializers import ClassesSerializer
 
 
 class GradeCreationSerializer(serializers.ModelSerializer):
@@ -34,7 +36,42 @@ class GradeSerializer(serializers.ModelSerializer):
 
     def get_subjects(self, obj):
         return SubjectsSerializer(obj.grade_subjects.all(), many=True).data
+
+
+
+class TermCreationSerializer(serializers.ModelSerializer):
         
+    class Meta:
+        model = Term
+        fields = [ "term", 'weight', 'start_date', 'end_date', 'school_days', 'school', 'grade' ]
+
+
+class UpdateSchoolTermSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Term
+        fields = [ 'weight', 'start_date', 'end_date', 'school_days' ]
+
+    def __init__(self, *args, **kwargs):
+        super(UpdateSchoolTermSerializer, self).__init__(*args, **kwargs)
+        # Set all fields to be optional by making them not required
+        for field in self.fields:
+            self.fields[field].required = False
+
+
+class TermsSerializer(serializers.ModelSerializer):
+        
+    class Meta:
+        model = Term
+        fields = [ "term", 'weight', 'start_date', 'end_date', 'term_id' ]
+
+
+class TermSerializer(serializers.ModelSerializer):
+        
+    class Meta:
+        model = Term
+        fields = [ "term", 'weight', 'start_date', 'end_date', 'school_days' ]
+
 
 class SubjectCreationSerializer(serializers.ModelSerializer):
 
@@ -66,17 +103,3 @@ class SubjectDetailSerializer(serializers.ModelSerializer):
     def get_classes(self, obj):
         return ClassesSerializer(obj.subject_classes.all(), many=True).data
 
-
-class ClassesSerializer(serializers.ModelSerializer):
-
-    teacher = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Classroom
-        fields = ['classroom_number', 'teacher', 'student_count', 'group', 'class_id']
-
-    def get_teacher(self, obj):
-        if obj.teacher:
-            return f'{obj.teacher.surname} {obj.teacher.name}'.title()
-        else:
-            return None

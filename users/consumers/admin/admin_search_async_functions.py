@@ -13,16 +13,56 @@ from django.db.models import Q
 # models 
 from users.models import CustomUser
 from timetables.models import GroupSchedule
-from grades.models import Grade, Subject
-from schools.models import Term
+from grades.models import Grade, Subject, Term
 
 # serilializers
 from users.serializers import AccountSerializer
-from grades.serializers import GradeSerializer, SubjectDetailSerializer, ClassesSerializer
-from schools.serializers import TermSerializer
+from grades.serializers import GradeSerializer, TermsSerializer, TermSerializer, SubjectDetailSerializer, ClassesSerializer
 
 # utility functions 
 
+
+@database_sync_to_async
+def search_school_terms(user, details):
+    """
+    Fetch all the terms associated with the school linked to a given user.
+
+    This function retrieves the school associated with the provided user account,
+    and then fetches all the terms related to that school. It handles cases where
+    the user does not exist and returns a descriptive error message in such scenarios.
+
+    Args:
+        user (str): The account ID of the user whose school terms are to be fetched.
+
+    Returns:
+        dict: A dictionary containing either the serialized terms data or an error message.
+    """
+    try:
+        # Fetch the school directly using the account_id for efficiency
+        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
+        grade = Grade.objects.select_related('school').get(term_id=details.get('term'))
+
+        # Check if the user has permission to view the grades terms
+        if account.school != grade.school:
+            return {"error": 'permission denied. you can only access or update details about grades from your own school'}
+
+        # Prefetch related school terms to minimize database hits
+        grade_terms = grade.grade_terms.all()
+        
+        # Serialize the school terms
+        serialized_terms = TermsSerializer(grade_terms, many=True).data
+        
+        # Return the serialized terms in a dictionary
+        return {'terms': serialized_terms}
+    
+    except CustomUser.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+    
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': f'An unexpected error occurred: {str(e)}'}
+    
 
 @database_sync_to_async
 def search_term(user, details):
