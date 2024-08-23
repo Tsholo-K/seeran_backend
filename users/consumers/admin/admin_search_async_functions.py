@@ -40,7 +40,7 @@ def search_school_terms(user, details):
     try:
         # Fetch the school directly using the account_id for efficiency
         account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
-        grade = Grade.objects.select_related('school').get(grade_id=details.get('grade'))
+        grade = Grade.objects.select_related('school').only('school').get(grade_id=details.get('grade'))
 
         # Check if the user has permission to view the grades terms
         if account.school != grade.school:
@@ -58,7 +58,10 @@ def search_school_terms(user, details):
     except CustomUser.DoesNotExist:
         # Handle the case where the provided account ID does not exist
         return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
-    
+        
+    except Grade.DoesNotExist:
+        return { 'error': 'grade with the provided credentials does not exist' }
+
     except Exception as e:
         # Handle any unexpected errors with a general error message
         return {'error': f'An unexpected error occurred: {str(e)}'}
@@ -84,7 +87,10 @@ def search_term(user, details):
     except CustomUser.DoesNotExist:
         # Handle the case where the provided account ID does not exist
         return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
-    
+        
+    except Term.DoesNotExist:
+        return { 'error': 'term with the provided credentials does not exist' }
+
     except Exception as e:
         # Handle any unexpected errors with a general error message
         return {'error': f'An unexpected error occurred: {str(e)}'}

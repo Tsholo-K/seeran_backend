@@ -50,7 +50,7 @@ def create_term(user, details):
         
         # Add the school ID to the term details
         details['school'] = account.school.pk
-        details['grade'] = Grade.objects.only('pk').get(term_id=details.get('term')).pk
+        details['grade'] = Grade.objects.only('pk').get(grade_id=details.get('grade'), school=account.school).pk
 
         # Initialize the serializer with the incoming data
         serializer = TermCreationSerializer(data=details)
@@ -69,7 +69,10 @@ def create_term(user, details):
     except CustomUser.DoesNotExist:
         # Handle the case where the provided account ID does not exist
         return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
-    
+            
+    except Grade.DoesNotExist:
+        return { 'error': 'grade with the provided credentials does not exist' }
+
     except ValidationError as e:
         # Handle validation errors separately with meaningful messages
         return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
