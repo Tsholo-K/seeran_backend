@@ -61,14 +61,14 @@ class TermCreationSerializer(serializers.ModelSerializer):
         return data
     
 
-class UpdateSchoolTermSerializer(serializers.ModelSerializer):
+class UpdateTermSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Term
         fields = [ 'weight', 'start_date', 'end_date', 'school_days' ]
 
     def __init__(self, *args, **kwargs):
-        super(UpdateSchoolTermSerializer, self).__init__(*args, **kwargs)
+        super(UpdateTermSerializer, self).__init__(*args, **kwargs)
         # Set all fields to be optional by making them not required
         for field in self.fields:
             self.fields[field].required = False

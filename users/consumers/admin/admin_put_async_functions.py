@@ -19,7 +19,7 @@ from grades.models import Term
 
 # serilializers
 from users.serializers import AccountUpdateSerializer, AccountIDSerializer, AccountSerializer
-from grades.serializers import UpdateSchoolTermSerializer, TermSerializer
+from grades.serializers import UpdateTermSerializer, TermSerializer
 from classes.serializers import ClassUpdateSerializer
 from schools.serializers import UpdateSchoolAccountSerializer, SchoolIDSerializer
 
@@ -92,7 +92,7 @@ def update_school_term(user, details):
             return {"error": 'permission denied. you can only access or update details about terms from your own school'}
 
         # Initialize the serializer with the existing school instance and incoming data
-        serializer = UpdateSchoolTermSerializer(instance=term, data=details)
+        serializer = UpdateTermSerializer(instance=term, data=details)
 
         # Validate the incoming data
         if serializer.is_valid():
