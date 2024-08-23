@@ -58,11 +58,11 @@ def create_term(user, details):
         
         if serializer.is_valid():
             # Using atomic transaction to ensure data integrity
-            with transaction.atomic():
+            # with transaction.atomic():
                 # Create the new term using the validated data
-                term = Term.objects.create(**serializer.validated_data)
+                # term = Term.objects.create(**serializer.validated_data)
             
-            return {'message': f"term {term.term} has been successfully created for your schools grade {term.grade.grade}"}
+            return {'message': f"okay"}
             
         # Return serializer errors if the data is not valid, format it as a string
         return {"error": serializer.errors}
