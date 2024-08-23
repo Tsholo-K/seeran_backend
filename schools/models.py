@@ -5,8 +5,6 @@ import uuid
 from django.db import models, IntegrityError
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
-from django.core.exceptions import ValidationError
-from django.utils.translation import gettext_lazy as _
 from django.core.validators import validate_email
 
 # school district choices

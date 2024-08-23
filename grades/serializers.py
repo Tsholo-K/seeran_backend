@@ -2,6 +2,7 @@
 
 # django
 from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
 
 # rest framework
 from rest_framework import serializers
@@ -48,7 +49,17 @@ class TermCreationSerializer(serializers.ModelSerializer):
     def validate(self, data):
         # Skip uniqueness validation for 'term', 'school', and 'grade'
         # This will be handled in the model's clean method
+        try:
+            term_instance = Term(**data)
+            term_instance.clean()  # Perform model-level validation, including uniqueness checks
+        except ValidationError as e:
+            # Customize the uniqueness constraint error message
+            if 'unique_together' in e.message_dict:
+                e.message_dict['non_field_errors'] = _("A term with this term number, grade, and school already exists.")
+            raise e
+
         return data
+    
 
 class UpdateSchoolTermSerializer(serializers.ModelSerializer):
 
