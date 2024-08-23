@@ -165,6 +165,8 @@ class Term(models.Model):
         """
         Ensure that the term dates do not overlap with other terms in the same school and validate term dates.
         """
+        print(f"Term value: {self.term}")  # or use logging
+        
         if not self.term:
             raise ValidationError(_('the term is missing a term identifier'))
         
