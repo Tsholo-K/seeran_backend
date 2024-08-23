@@ -46,15 +46,11 @@ class TermCreationSerializer(serializers.ModelSerializer):
         model = Term
         fields = [ "term", 'weight', 'start_date', 'end_date', 'school_days', 'grade', 'school' ]
 
-    def __init__(self, *args, **kwargs):
-        super(TermCreationSerializer, self).__init__(*args, **kwargs)
-        # Remove the unique validators from the serializer fields
-        self.fields['term'].validators = []
-        self.fields['school'].validators = []
-        self.fields['grade'].validators = []
-
     def validate(self, data):
-        # You can add any other custom validation here if needed
+        """
+        Check that the data is in the correct format.
+        """
+        # Add your custom validation logic here
         return data
     
 
