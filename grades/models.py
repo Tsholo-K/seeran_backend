@@ -131,8 +131,8 @@ class Grade(models.Model):
 
 class Term(models.Model):
 
-    # the term number
-    term = models.IntegerField(editable=False, default=1)
+    # the term identifier
+    term = models.CharField(max_length=16, editable=False, default=1)
     # Weight of the term in final year calculations in relation to other terms
     weight = models.DecimalField(max_digits=5, decimal_places=2)
 
@@ -166,7 +166,10 @@ class Term(models.Model):
         Ensure that the term dates do not overlap with other terms in the same school and validate term dates.
         """
         if not self.term:
-            raise ValidationError(_('the term is missing a term number'))
+            raise ValidationError(_('the term is missing a term identifier'))
+        
+        elif len(self.term) > 16:
+            raise ValidationError(_('the specified term identifier is too long, max length of a term identifier is 16 characters'))
 
         if self.start_date >= self.end_date:
             raise ValidationError(_('a terms start date must be before it\'s end date'))
