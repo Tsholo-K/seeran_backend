@@ -165,6 +165,9 @@ class Term(models.Model):
         """
         Ensure that the term dates do not overlap with other terms in the same school and validate term dates.
         """
+        if not self.term:
+            raise ValidationError(_('the term is missing a term number'))
+
         if self.start_date >= self.end_date:
             raise ValidationError(_('a terms start date must be before it\'s end date'))
 
@@ -176,7 +179,7 @@ class Term(models.Model):
 
         # Ensure the total weight does not exceed 100%
         if Decimal(total_weight) + Decimal(self.weight) > Decimal('100.00') or Decimal(total_weight) + Decimal(self.weight) < Decimal('0.00'):
-            raise ValidationError(_('The total weight of all terms should be between 0% and 100%.'))
+            raise ValidationError(_('The total weight of all terms in the grade should be between 0% and 100% for any given school calendar year.'))
         
         if not self.school_days:
             self.school_days = self.calculate_total_school_days()
