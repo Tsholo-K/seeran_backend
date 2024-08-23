@@ -45,6 +45,8 @@ def create_term(user, details):
         dict: A dictionary containing either a success message or an error message.
     """
     try:
+        return {'message': details}
+
         # Use select_related and only to fetch the school reference efficiently
         account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
         grade = Grade.objects.only('pk').get(grade_id=details.get('grade'), school=account.school)
@@ -52,7 +54,6 @@ def create_term(user, details):
         # Add the school ID to the term details
         details['school'] = account.school.pk
         details['grade'] = grade.pk
-        details['term'] = details.get('term')
 
         # Initialize the serializer with the incoming data
         serializer = TermCreationSerializer(data=details)
