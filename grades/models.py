@@ -174,10 +174,10 @@ class Term(models.Model):
         if overlapping_terms.exists():
             raise ValidationError(_('the provided start and end dates for the term overlap with one or more existing terms'))
         
-        total_weight = Term.objects.filter(school=self.school, grade=self.grade).exclude(pk=self.pk).aggregate(total_weight=models.Sum('weight'))['total_weight'] or Decimal('0.00')
+        total_weight = Term.objects.filter(school=self.school, grade=self.grade).exclude(pk=self.pk).aggregate(total_weight=models.Sum('weight'))['total_weight'] or '0.00'
 
         # Ensure the total weight does not exceed 100%
-        if total_weight + self.weight > Decimal('100.00') or total_weight + self.weight < Decimal('0.00'):
+        if Decimal(total_weight) + Decimal(self.weight) > Decimal('100.00') or Decimal(total_weight) + Decimal(self.weight) < Decimal('0.00'):
             raise ValidationError(_('The total weight of all terms should be between 0% and 100%.'))
         
     def save(self, *args, **kwargs):

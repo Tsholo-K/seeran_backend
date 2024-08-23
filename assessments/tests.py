@@ -27,9 +27,9 @@ class AssessmentTest(TestCase):
             name="Test School",
             email="testschool@example.com",
             contact_number="1234567890",
-            school_type="PRIMARY",
+            type="PRIMARY",
             province="GAUTENG",
-            school_district="JHB NORTH"
+            district="JHB NORTH"
         )
         self.grade = Grade.objects.create(
             grade='7',
@@ -42,6 +42,7 @@ class AssessmentTest(TestCase):
             start_date=timezone.now().date(),
             end_date=timezone.now().date() + timedelta(days=30),
             weight=20.00,
+            grade=self.grade,
             school=self.school
         )
         self.subject = Subject.objects.create(
@@ -251,9 +252,9 @@ class TranscriptTest(TestCase):
             name="Test School",
             email="testschool@example.com",
             contact_number="1234567890",
-            school_type="PRIMARY",
+            type="PRIMARY",
             province="GAUTENG",
-            school_district="JHB NORTH"
+            district="JHB NORTH"
         )
         self.grade = Grade.objects.create(
             grade='7',
@@ -266,6 +267,7 @@ class TranscriptTest(TestCase):
             start_date=timezone.now().date(),
             end_date=timezone.now().date() + timedelta(days=30),
             weight=20.00,
+            grade=self.grade,
             school=self.school
         )
         self.subject = Subject.objects.create(
