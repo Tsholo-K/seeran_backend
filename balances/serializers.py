@@ -5,7 +5,7 @@ from rest_framework import serializers
 from .models import Balance, Bill
 
 # serializers
-from users.serializers.founder.founder_serializers import BySerializer
+from users.serializers.general_serializers import SourceAccountSerializer
 
 
 ### users balance serilizers ###
@@ -37,7 +37,7 @@ class BillSerializer(serializers.ModelSerializer):
 
     def get_user(self, obj):
         if obj.user:
-            return BySerializer(obj.user).data
+            return SourceAccountSerializer(obj.user).data
         else:
             return None
                 

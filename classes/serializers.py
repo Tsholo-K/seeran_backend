@@ -12,7 +12,7 @@ from schools.models import School
 from grades.models import Grade, Subject
 
 # serilializers
-from users.serializers.founder.founder_serializers import AccountSerializer
+from users.serializers.students.students_serializers import StudentAccountSerializer
 
 
 class ClassCreationSerializer(serializers.ModelSerializer):
@@ -63,7 +63,7 @@ class ClassSerializer(serializers.ModelSerializer):
         return None
 
     def get_students(self, obj):
-        return AccountSerializer(obj.students, many=True).data
+        return StudentAccountSerializer(obj.students, many=True).data
             
     def get_subject(self, obj):
         if  obj.register_class:

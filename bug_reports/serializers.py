@@ -9,7 +9,7 @@ from rest_framework import serializers
 from .models import BugReport
 
 # serializers
-from users.serializers.founder.founder_serializers import AccountSerializer
+from users.serializers.general_serializers import SourceAccountSerializer
 
 
 
@@ -58,7 +58,7 @@ class BugReportSerializer(serializers.ModelSerializer):
     
     def get_user(self, obj):
         if obj.user:
-            return AccountSerializer(obj.user).data
+            return SourceAccountSerializer(obj.user).data
         else:
             return None
 

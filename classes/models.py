@@ -7,7 +7,7 @@ from django.db import models, IntegrityError
 from django.utils.translation import gettext_lazy as _
 
 # models
-from users.models import BaseUser, Teacher, Student
+from users.models import Teacher, Student
 from schools.models import School
 from grades.models import Grade, Subject
 

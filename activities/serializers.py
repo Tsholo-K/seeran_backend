@@ -10,7 +10,7 @@ from .models import Activity
 from classes.models import Classroom
 
 # serializers
-from users.serializers.founder.founder_serializers import BySerializer
+from users.serializers.general_serializers import SourceAccountSerializer
 
 
 
@@ -49,6 +49,6 @@ class ActivitySerializer(serializers.ModelSerializer):
 
     def get_logger(self, obj):
         if  obj.logger:
-            return BySerializer(obj.logger).data
+            return SourceAccountSerializer(obj.logger).data
         return None
 

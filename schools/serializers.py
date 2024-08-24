@@ -12,7 +12,7 @@ from users.models import Principal
 from balances.models import Balance
 
 # serializers
-from users.serializers.founder.founder_serializers import AccountSerializer
+from users.serializers.principals.principals_serializers import PrincipalAccountSerializer
 from balances.serializers import BalanceSerializer
 
 
@@ -61,7 +61,7 @@ class SchoolSerializer(serializers.ModelSerializer):
     def get_principal(self, obj):
         try:
             principal = Principal.objects.get(school=obj, role='PRINCIPAL')
-            return AccountSerializer(principal).data
+            return PrincipalAccountSerializer(principal).data
         except Principal.DoesNotExist:
             return None
     
