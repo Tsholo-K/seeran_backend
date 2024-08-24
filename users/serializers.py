@@ -6,14 +6,28 @@
 from rest_framework import serializers
 
 # models
-from .models import CustomUser
+from .models import BaseUser, Principal, Admin, Teacher, Student, Parent
 
 
 class PrincipalAccountCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = CustomUser
+        model = Principal
         fields = [ 'name', 'surname', 'contact_number', 'email', 'school', 'role' ]
+
+
+class AdminAccountCreationSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Admin
+        fields = [ 'name', 'surname', 'email', 'school', 'role' ]
+
+
+class TeacherAccountCreationSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Teacher
+        fields = [ 'name', 'surname', 'email', 'school', 'role' ]
 
 
 class StudentAccountCreationSerializer(serializers.ModelSerializer):
@@ -23,29 +37,29 @@ class StudentAccountCreationSerializer(serializers.ModelSerializer):
     passport_number = serializers.CharField(required=False, allow_blank=True)  # Make optional
 
     class Meta:
-        model = CustomUser
+        model = Student
         fields = [ 'name', 'surname', 'id_number', 'passport_number', 'email', 'school', 'role', 'grade' ]
 
 
 class ParentAccountCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = CustomUser
+        model = Parent
         fields = [ 'name', 'surname', 'email',  'role' ]
-
-
-class AccountCreationSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = CustomUser
-        fields = [ 'name', 'surname', 'email', 'school', 'role', ]
 
 
 class MySecurityInformationSerializer(serializers.ModelSerializer):
     
+    event_emails = serializers.SerializerMethodField()
+
     class Meta:
-        model = CustomUser
+        model = BaseUser
         fields = [ 'multifactor_authentication', 'event_emails' ]
+    
+    def get_event_emails(self, obj):
+        if obj.event_emails:
+            return obj.event_emails
+        return None
 
 
 class MyAccountDetailsSerializer(serializers.ModelSerializer):
@@ -58,7 +72,7 @@ class MyAccountDetailsSerializer(serializers.ModelSerializer):
     role = serializers.SerializerMethodField()
 
     class Meta:
-        model = CustomUser
+        model = BaseUser
         fields = [ 'name', 'surname', 'identifier', 'image', 'role', 'id' ]
     
     def get_name(self, obj):
@@ -93,7 +107,7 @@ class AccountSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
 
     class Meta:
-        model = CustomUser
+        model = BaseUser
         fields = ['name', 'surname', 'id', 'identifier', 'image']
     
     def get_id(self, obj):
@@ -125,7 +139,7 @@ class BySerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
 
     class Meta:
-        model = CustomUser
+        model = BaseUser
         fields = ['name', 'surname', 'identifier', 'image']
     
     def get_name(self, obj):
@@ -153,7 +167,7 @@ class ChatAccountSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
 
     class Meta:
-        model = CustomUser
+        model = BaseUser
         fields = ['name', 'surname', 'id', 'image']
     
     def get_name(self, obj):
@@ -182,7 +196,7 @@ class AccountProfileSerializer(serializers.ModelSerializer):
     identifier = serializers.SerializerMethodField()
 
     class Meta:
-        model = CustomUser
+        model = BaseUser
         fields = [ 'name', 'surname', 'id', 'identifier', 'image' ]
     
     def get_name(self, obj):
@@ -215,7 +229,7 @@ class AccountIDSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
 
     class Meta:
-        model = CustomUser
+        model = BaseUser
         fields = [ 'email', 'name', 'surname', 'role', 'id', 'identifier', 'image' ]
     
     def get_name(self, obj):
@@ -250,7 +264,7 @@ class PrincipalIDSerializer(serializers.ModelSerializer):
     identifier = serializers.SerializerMethodField()
 
     class Meta:
-        model = CustomUser
+        model = Principal
         fields = [ 'email', 'name', 'surname', 'contact_number', 'role', 'id', 'identifier' ]
     
     def get_name(self, obj):
@@ -277,7 +291,7 @@ class PrincipalAccountUpdateSerializer(serializers.ModelSerializer):
     phone_number = serializers.CharField(required=False)
 
     class Meta:
-        model = CustomUser
+        model = Principal
         fields = ['name', 'surname', 'email', 'contact_number']
 
 
@@ -288,7 +302,7 @@ class AccountUpdateSerializer(serializers.ModelSerializer):
     surname = serializers.CharField(required=False)
 
     class Meta:
-        model = CustomUser
+        model = BaseUser
         fields = ['name', 'surname', 'email']
 
 
@@ -299,7 +313,7 @@ class ChatroomSerializer(serializers.ModelSerializer):
     image = serializers.SerializerMethodField()
 
     class Meta:
-        model = CustomUser
+        model = BaseUser
         fields = [ 'name', 'surname', 'image' ]
     
     def get_name(self, obj):
@@ -319,7 +333,7 @@ class StudentAccountAttendanceRecordSerializer(serializers.ModelSerializer):
     identifier = serializers.SerializerMethodField()
 
     class Meta:
-        model = CustomUser
+        model = Student
         fields = [ 'name', 'surname', 'identifier' ]
     
     def get_name(self, obj):
