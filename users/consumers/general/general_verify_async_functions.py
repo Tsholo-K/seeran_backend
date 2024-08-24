@@ -14,7 +14,7 @@ from django.utils.translation import gettext as _
 # simple jwt
 
 # models 
-from users.models import CustomUser
+from users.models import BaseUser
 from email_bans.models import EmailBan
 
 # serializers
@@ -61,7 +61,7 @@ def validate_email_revalidation(user, details):
     """
     try:
         # Retrieve the user account
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
 
         # Retrieve the email ban record
         email_ban = EmailBan.objects.get(ban_id=details.get('email_ban_id'))
@@ -86,7 +86,7 @@ def validate_email_revalidation(user, details):
         
         return {'user': account}
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         return {'error': 'An account with the provided ID does not exist. Please check the account details and try again.'}
 
     except EmailBan.DoesNotExist:
@@ -134,7 +134,7 @@ def verify_email_revalidate_otp(user, details):
     """
     try:
         # Retrieve the user account
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
 
         # Retrieve the email ban record
         email_ban = EmailBan.objects.get(ban_id=details.get('email_ban_id'))
@@ -175,7 +175,7 @@ def verify_email_revalidate_otp(user, details):
 
             return {"error": f"Revalidation error: incorrect OTP. {attempts} attempts remaining."}
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         return {'error': 'An account with the provided ID does not exist. Please check the account details and try again.'}
 
     except EmailBan.DoesNotExist:
@@ -192,7 +192,7 @@ def verify_email(details):
         if not validate_user_email(details.get('email')):
             return {'error': 'Invalid email format'}
         
-        account = CustomUser.objects.get(email=details.get('email'))
+        account = BaseUser.objects.get(email=details.get('email'))
         
         # check if users email is banned
         if account.email_banned:
@@ -200,7 +200,7 @@ def verify_email(details):
         
         return {'user' : account}
     
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         return {'error': 'invalid email address'}
 
     except ValidationError:
@@ -214,7 +214,7 @@ def verify_email(details):
 def verify_password(user, details):
     
     try:
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
         
         # check if the users email is banned
         if account.email_banned:
@@ -226,7 +226,7 @@ def verify_password(user, details):
         
         return {"user" : account}
        
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         return {'error': 'user with the provided credentials does not exist'}
 
     except Exception as e:
@@ -237,7 +237,7 @@ def verify_password(user, details):
 def verify_otp(user, details):
 
     try:
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
 
         stored_hashed_otp_and_salt = cache.get(account.email + 'account_otp')
 
@@ -272,7 +272,7 @@ def verify_otp(user, details):
 
             return {"error": f"incorrect OTP.. {attempts} attempts remaining"}
        
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         return { 'error': 'user with the provided credentials does not exist' }
  
     except Exception as e:

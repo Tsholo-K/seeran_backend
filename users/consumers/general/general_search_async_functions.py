@@ -13,7 +13,7 @@ from django.utils.translation import gettext as _
 # simple jwt
 
 # models 
-from users.models import CustomUser
+from users.models import BaseUser
 from email_bans.models import EmailBan
 from timetables.models import Schedule, TeacherSchedule, GroupSchedule
 from classes.models import Classroom
@@ -122,9 +122,9 @@ def search_account_profile(user, details):
     """
     try:
         # Retrieve the account making the request
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
         # Retrieve the requested user's account
-        requested_user = CustomUser.objects.get(account_id=details.get('account_id'))
+        requested_user = BaseUser.objects.get(account_id=details.get('account_id'))
         
         # Check permissions
         permission_error = permission_checks.check_profile_or_id_view_permissions(account, requested_user)
@@ -135,7 +135,7 @@ def search_account_profile(user, details):
         serializer = AccountProfileSerializer(instance=requested_user)
         return {"user": serializer.data}
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         # Handle case where the user or requested user account does not exist
         return {'error': 'an account with the provided credentials does not exist, please check the account details and try again'}
     
@@ -176,9 +176,9 @@ def search_account_id(user, details):
     """
     try:
         # Retrieve the account making the request
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
         # Retrieve the requested user's account
-        requested_user = CustomUser.objects.get(account_id=details.get('account_id'))
+        requested_user = BaseUser.objects.get(account_id=details.get('account_id'))
         
         # Check permissions
         permission_error = permission_checks.check_profile_or_id_view_permissions(account, requested_user)
@@ -189,7 +189,7 @@ def search_account_id(user, details):
         serializer = AccountIDSerializer(instance=requested_user)
         return {"user": serializer.data}
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         # Handle case where the user or requested user account does not exist
         return {'error': 'an account with the provided credentials does not exist, please check the account details and try again'}
     
@@ -235,16 +235,16 @@ def search_parents(user, details):
     try:
         # Check if the user is requesting their own parents
         if user == details.get('account_id'):
-            student = CustomUser.objects.get(account_id=user)
+            student = BaseUser.objects.get(account_id=user)
 
             if student.role != 'STUDENT':
                 return {"error": "Unauthorized request.. permission denied"}
 
         else:
             # Retrieve the account making the request
-            account = CustomUser.objects.get(account_id=user)
+            account = BaseUser.objects.get(account_id=user)
             # Retrieve the student's account
-            student = CustomUser.objects.get(account_id=details.get('account_id'))
+            student = BaseUser.objects.get(account_id=details.get('account_id'))
 
             # Ensure the requester's role and permissions
             if account.role not in ['ADMIN', 'PRINCIPAL', 'TEACHER', 'PARENT']:
@@ -262,13 +262,13 @@ def search_parents(user, details):
             if account.role == 'PARENT' and account not in student.children.all():
                 return {"error": "Unauthorized access.. permission denied"}
 
-            parents = CustomUser.objects.filter(children=student, role='PARENT').exclude(account) if account.role == 'PARENT' else CustomUser.objects.filter(children=student, role='PARENT')
+            parents = BaseUser.objects.filter(children=student, role='PARENT').exclude(account) if account.role == 'PARENT' else BaseUser.objects.filter(children=student, role='PARENT')
 
         # Serialize the parents to return them in the response
         serializer = AccountSerializer(parents, many=True)
         return {"parents": serializer.data}
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         # Handle case where the user or teacher account does not exist
         return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
     
@@ -291,7 +291,7 @@ def search_class(user, details):
     """
     try:
         # Retrieve the user account
-        account = CustomUser.objects.select_related('school').get(account_id=user)
+        account = BaseUser.objects.select_related('school').get(account_id=user)
 
         # Determine the classroom based on the request details
         if details.get('class') == 'requesting_my_own_class':
@@ -316,7 +316,7 @@ def search_class(user, details):
         serializer = ClassSerializer(classroom)
         return {"class": serializer.data}
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         # Handle case where the user account does not exist
         return {'error': _('An account with the provided credentials does not exist. Please check the account details and try again.')}
     
@@ -334,9 +334,9 @@ def search_student_class_card(user, details):
 
     try:
         # Retrieve the account making the request
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
         # Retrieve the requested user's account
-        student = CustomUser.objects.get(account_id=details.get('account_id'))
+        student = BaseUser.objects.get(account_id=details.get('account_id'))
 
         # Check permissions
         permission_error = permission_checks.check_profile_or_id_view_permissions(account, student)
@@ -365,7 +365,7 @@ def search_student_class_card(user, details):
 
         return {"user": BySerializer(instance=student).data, 'activities' : ActivitiesSerializer(activities, many=True).data}
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         # Handle case where the user or requested user account does not exist
         return {'error': 'an account with the provided credentials does not exist, please check the account details and try again'}
         
@@ -393,7 +393,7 @@ def search_activity(user, details):
     """
     try:
         # Retrieve the account making the request
-        account = CustomUser.objects.select_related('school').get(account_id=user)
+        account = BaseUser.objects.select_related('school').get(account_id=user)
 
         # Retrieve the activity based on the provided activity_id
         activity = Activity.objects.select_related('school', 'logger', 'recipient', 'classroom').get(activity_id=details.get('activity_id'))
@@ -408,7 +408,7 @@ def search_activity(user, details):
 
         return {"activity": serializer}
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         # Handle case where the user does not exist
         return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
 
@@ -426,7 +426,7 @@ def search_activity(user, details):
 def search_teacher_classes(user, details):
 
     try:
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
 
         # If the requesting user is looking for their own classes
         if details.get('teacher_id') == 'requesting_my_own_classes':
@@ -436,7 +436,7 @@ def search_teacher_classes(user, details):
             if account.role not in ['ADMIN', 'PRINCIPAL']:
                 return {"error": "unauthorized access. you are not permitted to access classes of any teacher account with your role"}
 
-            teacher = CustomUser.objects.get(account_id=details.get('teacher_id'))
+            teacher = BaseUser.objects.get(account_id=details.get('teacher_id'))
 
             if teacher.role != 'TEACHER' or account.school != teacher.school:
                 return {"error": "unauthorized access. you are not permitted to view classses of teacher accounts outside your own school"}
@@ -447,7 +447,7 @@ def search_teacher_classes(user, details):
 
         return {"classes": serializer.data}
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         # Handle case where the user account does not exist
         return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
     
@@ -492,7 +492,7 @@ def search_teacher_schedule_schedules(user, details):
         # Check if the user is requesting their own schedule
         if details.get('account_id') == 'requesting_my_own_schedule':
             # Retrieve the teacher's account
-            teacher = CustomUser.objects.get(account_id=user)
+            teacher = BaseUser.objects.get(account_id=user)
 
             # Ensure the user has the role of 'TEACHER'
             if teacher.role != 'TEACHER':
@@ -500,10 +500,10 @@ def search_teacher_schedule_schedules(user, details):
 
         else:
             # Retrieve the account making the request
-            account = CustomUser.objects.get(account_id=user)
+            account = BaseUser.objects.get(account_id=user)
             
             # Retrieve the teacher's account
-            teacher = CustomUser.objects.get(account_id=details.get('account_id'))
+            teacher = BaseUser.objects.get(account_id=details.get('account_id'))
 
             # Ensure the teacher's role and the requester's permissions
             if teacher.role != 'TEACHER' or account.school != teacher.school or account.role not in ['ADMIN', 'PRINCIPAL']:
@@ -517,7 +517,7 @@ def search_teacher_schedule_schedules(user, details):
         serializer = ScheduleSerializer(schedules, many=True)
         return {"schedules": serializer.data}
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         # Handle case where the user or teacher account does not exist
         return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
     
@@ -567,7 +567,7 @@ def search_group_schedule_schedules(user, details):
     """
     try:
         # Retrieve the account making the request
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
         
         # Retrieve the specified group schedule
         group_schedule = GroupSchedule.objects.get(group_schedule_id=details.get('group_schedule_id'))
@@ -594,7 +594,7 @@ def search_group_schedule_schedules(user, details):
         serializer = ScheduleSerializer(group_schedule.schedules.all(), many=True)
         return {"schedules": serializer.data}
     
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         # Handle case where the user account does not exist
         return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again'}
     
@@ -626,7 +626,7 @@ def search_group_schedules(user, details):
     """
     try:
         # Retrieve the account making the request
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
         
         # Ensure the specified role is valid
         if account.role not in ['ADMIN', 'PRINCIPAL', 'PARENT', 'TEACHER', 'STUDENT']:
@@ -637,7 +637,7 @@ def search_group_schedules(user, details):
         if account.role in ['ADMIN', 'PRINCIPAL']:
             if details.get('account_id'):
                 # Retrieve the student
-                student = CustomUser.objects.get(account_id=details.get('account_id'))
+                student = BaseUser.objects.get(account_id=details.get('account_id'))
 
                 if student.role != 'STUDENT' or account.school != student.school:
                     return {"error": "unauthorized access. you can only view group schedules of students in your school."}
@@ -661,7 +661,7 @@ def search_group_schedules(user, details):
 
         if account.role in ['PARENT']:
             # Retrieve the account's child
-            child = CustomUser.objects.get(account_id=details.get('account_id'))
+            child = BaseUser.objects.get(account_id=details.get('account_id'))
 
             if child.role != 'STUDENT' or child not in account.children.all():
                 return {"error": "unauthorized access. you are only permitted to view group schedules of students who are your children."}
@@ -681,7 +681,7 @@ def search_group_schedules(user, details):
 
         if account.role in ['TEACHER']:
             # Retrieve the student
-            student = CustomUser.objects.get(account_id=details.get('account_id'))
+            student = BaseUser.objects.get(account_id=details.get('account_id'))
 
             if student.role != 'STUDENT' or not account.taught_classes.filter(students=student).exists():
                 return {"error": "unauthorized access. you can only view group schedules of students you teach."}
@@ -696,7 +696,7 @@ def search_group_schedules(user, details):
         serializer = GroupScheduleSerializer(group_schedules, many=True)
         return {"schedules": serializer.data}
     
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         # Handle case where the user account does not exist
         return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
     
@@ -731,7 +731,7 @@ def search_for_schedule_sessions(details):
 def search_month_attendance_records(user, details):
 
     try:
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
  
         if details.get('class_id') == 'requesting_my_own_class':
             classroom = Classroom.objects.select_related('school').get(teacher=account, register_class=True)
@@ -763,7 +763,7 @@ def search_month_attendance_records(user, details):
 
         return {'records': attendance_records}
                
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
     
     except Classroom.DoesNotExist:
@@ -803,7 +803,7 @@ def search_announcement(user, details):
     """
     try:
         # Retrieve the user account making the request
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
 
         # Validate user role
         if account.role not in ['PARENT', 'STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL']:
@@ -831,7 +831,7 @@ def search_announcement(user, details):
         serializer = AnnouncementSerializer(announcement)
         return {'announcement': serializer.data}
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         # Handle case where the user or announcement does not exist
         return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
     
@@ -855,10 +855,10 @@ def search_chat_room(user, details):
     """
     try:
         # Retrieve the account making the request
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
 
         # Retrieve the requested user's account
-        requested_user = CustomUser.objects.get(account_id=details.get('account_id'))
+        requested_user = BaseUser.objects.get(account_id=details.get('account_id'))
         
         # Check permissions
         permission_error = permission_checks.check_message_permissions(account, requested_user)
@@ -873,7 +873,7 @@ def search_chat_room(user, details):
         # Serialize the requested user's data
         return {'user': ChatroomSerializer(requested_user).data, 'chat': chat_room_exists}
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         # Handle case where the user does not exist
         return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
     
@@ -898,8 +898,8 @@ def search_chat_room_messages(user, details):
     """
     try:
         # Retrieve the account making the request
-        account = CustomUser.objects.get(account_id=user)
-        requested_user = CustomUser.objects.get(account_id=details.get('account_id'))
+        account = BaseUser.objects.get(account_id=user)
+        requested_user = BaseUser.objects.get(account_id=details.get('account_id'))
         
         # Check if a chat room exists between the two users
         chat_room = ChatRoom.objects.filter(Q(user_one=account, user_two=requested_user) | Q(user_one=requested_user, user_two=account)).select_related('user_one', 'user_two').first()
@@ -942,7 +942,7 @@ def search_chat_room_messages(user, details):
             # Handle the case where no messages need to be updated
             return {'messages': serializer.data, 'next_cursor': next_cursor, 'unread_messages': 0}
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         # Handle case where the user does not exist
         return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
     

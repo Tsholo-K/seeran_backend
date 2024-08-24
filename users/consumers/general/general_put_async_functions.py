@@ -17,7 +17,7 @@ from django.utils.translation import gettext as _
 from rest_framework_simplejwt.tokens import AccessToken as decode
 
 # models 
-from users.models import CustomUser
+from users.models import BaseUser
 from auth_tokens.models import AccessToken
 from email_bans.models import EmailBan
 from chats.models import ChatRoom, ChatRoomMessage
@@ -84,10 +84,10 @@ def update_email(user, details, access_token):
         if not validate_user_email(details.get('new_email')):
             return {'error': 'Invalid email format'}
         
-        if CustomUser.objects.filter(email=details.get('new_email')).exists():
+        if BaseUser.objects.filter(email=details.get('new_email')).exists():
             return {"error": "an account with the provided email address already exists"}
 
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
         
         if details.get('new_email') == account.email:
             return {"error": "cannot set current email as new email"}
@@ -119,7 +119,7 @@ def update_email(user, details, access_token):
     
         return {"message": "email changed successfully"}
     
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         return {'error': 'user with the provided credentials does not exist'}
 
     except Exception as e:
@@ -130,7 +130,7 @@ def update_email(user, details, access_token):
 def update_password(user, details, access_token):
     
     try:
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
 
         hashed_authorization_otp = cache.get(account.email + 'authorization_otp')
         if not hashed_authorization_otp:
@@ -158,7 +158,7 @@ def update_password(user, details, access_token):
     
         return {"message": "password changed successfully"}
     
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         return {'error': 'user with the provided credentials does not exist'}
     
     except ValidationError as e:
@@ -172,7 +172,7 @@ def update_password(user, details, access_token):
 def update_multi_factor_authentication(user, details):
 
     try:
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
         
         if account.email_banned:
             return { "error" : "your email has been banned"}
@@ -182,7 +182,7 @@ def update_multi_factor_authentication(user, details):
         
         return {'message': 'Multifactor authentication {} successfully'.format('enabled' if details.get('toggle') else 'disabled')}
     
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         return { 'error': 'user with the provided credentials does not exist' }
     
     except Exception as e:
@@ -193,9 +193,9 @@ def update_multi_factor_authentication(user, details):
 def mark_messages_as_read(user, details):
     try:
         # Retrieve the account making the request
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
         # Retrieve the requested user's account
-        requested_user = CustomUser.objects.get(account_id=details.get('account_id'))
+        requested_user = BaseUser.objects.get(account_id=details.get('account_id'))
         
         # Check if a chat room exists between the two users
         chat_room = ChatRoom.objects.filter(Q(user_one=account, user_two=requested_user) | Q(user_one=requested_user, user_two=account)).first()
@@ -218,7 +218,7 @@ def mark_messages_as_read(user, details):
         
         return {"error": 'no such chat room exists'}
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         # Handle case where the user does not exist
         return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
         

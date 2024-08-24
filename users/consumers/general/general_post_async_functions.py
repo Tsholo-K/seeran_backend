@@ -17,7 +17,7 @@ from rest_framework_simplejwt.tokens import AccessToken as decode, TokenError
 from rest_framework_simplejwt.exceptions import TokenError
 
 # models 
-from users.models import CustomUser
+from users.models import BaseUser
 from auth_tokens.models import AccessToken
 from classes.models import Classroom
 from attendances.models import Absent, Late
@@ -41,7 +41,7 @@ from users.checks import permission_checks
 def submit_absentes(user, details):
 
     try:
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
 
         if details.get('class_id') == 'requesting_my_own_class':
             classroom = Classroom.objects.select_related('school').get(teacher=account, register_class=True)
@@ -65,13 +65,13 @@ def submit_absentes(user, details):
             if details.get('students'):
                 register.absentes = True
                 for student in details.get('students').split(', '):
-                    register.absent_students.add(CustomUser.objects.get(account_id=student))
+                    register.absent_students.add(BaseUser.objects.get(account_id=student))
 
             register.save()
         
         return { 'message': 'attendance register successfully taken for today'}
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         # Handle case where the user or teacher account does not exist
         return {'error': 'The account with the provided credentials does not exist. Please check the account details and try again.'}
     
@@ -89,7 +89,7 @@ def submit_late_arrivals(user, details):
         if not details.get('students'):
             return {"error" : 'invalid request.. no students provided.. at least one student is needed to be marked as late'}
 
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
 
         if details.get('class_id') == 'requesting_my_own_class':
             classroom = Classroom.objects.select_related('school').get(teacher=account, register_class=True)
@@ -119,7 +119,7 @@ def submit_late_arrivals(user, details):
                 register = Late.objects.create(submitted_by=account, classroom=classroom)
                 
             for student in details.get('students').split(', '):
-                student = CustomUser.objects.get(account_id=student)
+                student = BaseUser.objects.get(account_id=student)
                 absentes.absent_students.remove(student)
                 register.late_students.add(student)
 
@@ -128,7 +128,7 @@ def submit_late_arrivals(user, details):
 
         return { 'message': 'students marked as late, attendance register successfully updated'}
                
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
     
     except Classroom.DoesNotExist:
@@ -155,8 +155,8 @@ def log_activity(user, details):
     """
     try:
         # Retrieve the user account and the student account using select_related to minimize database hits
-        account = CustomUser.objects.select_related('school').get(account_id=user)
-        student = CustomUser.objects.select_related('school').get(account_id=details.get('recipient'))
+        account = BaseUser.objects.select_related('school').get(account_id=user)
+        student = BaseUser.objects.select_related('school').get(account_id=details.get('recipient'))
 
         # Ensure the account has a valid role to log activities
         if account.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
@@ -206,7 +206,7 @@ def log_activity(user, details):
         # Return validation errors if the serializer is not valid
         return {"error": serializer.errors}
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         # Handle case where the user or student account does not exist
         return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
 
@@ -229,7 +229,7 @@ def set_assessment(user, details):
     """
     try:
         # Retrieve the user's account, including the related school in one query.
-        account = CustomUser.objects.select_related('school').get(account_id=user)
+        account = BaseUser.objects.select_related('school').get(account_id=user)
 
         # Ensure the user has the correct role to set an assessment.
         if account.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
@@ -293,7 +293,7 @@ def set_assessment(user, details):
         # Return validation errors if the serializer is not valid.
         return {"error": serializer.errors}
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         # Handle case where the user or student account does not exist
         return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
 
@@ -364,10 +364,10 @@ def text(user, details):
             return {"error": "validation error. you can not send a text message to yourself, it violates database constraints and is therefore not allowed."}
 
         # Retrieve the user making the request
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
 
         # Retrieve the requested user's account
-        requested_user = CustomUser.objects.get(account_id=details.get('account_id'))
+        requested_user = BaseUser.objects.get(account_id=details.get('account_id'))
         
         # Check permissions
         permission_error = permission_checks.check_message_permissions(account, requested_user)
@@ -398,7 +398,7 @@ def text(user, details):
 
         return {'message': message_data, 'sender': ChatAccountSerializer(account).data, 'reciever':  ChatAccountSerializer(requested_user).data}
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         return {'error': 'User account not found. Please verify the account details.'}
     
     except Exception as e:

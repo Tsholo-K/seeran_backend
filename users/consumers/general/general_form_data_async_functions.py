@@ -12,7 +12,7 @@ from django.utils.translation import gettext as _
 # simple jwt
 
 # models 
-from users.models import CustomUser
+from users.models import BaseUser
 from classes.models import Classroom
 from attendances.models import Absent
 
@@ -28,7 +28,7 @@ from users.serializers import AccountSerializer
 def form_data_for_assessment_setting(user, details):
 
     try:
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
 
         if details.get('class_id') == 'requesting_my_own_class':
             classroom = Classroom.objects.select_related('school').get(teacher=account, register_class=True)
@@ -60,7 +60,7 @@ def form_data_for_assessment_setting(user, details):
 
         return {"students": serializer.data, "attendance_register_taken" : attendance_register_taken}
     
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
             
     except Classroom.DoesNotExist:
@@ -74,7 +74,7 @@ def form_data_for_assessment_setting(user, details):
 def form_data_for_attendance_register(user, details):
 
     try:
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
 
         if details.get('class_id') == 'requesting_my_own_class':
             classroom = Classroom.objects.select_related('school').get(teacher=account, register_class=True)
@@ -106,7 +106,7 @@ def form_data_for_attendance_register(user, details):
 
         return {"students": serializer.data, "attendance_register_taken" : attendance_register_taken}
     
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
             
     except Classroom.DoesNotExist:

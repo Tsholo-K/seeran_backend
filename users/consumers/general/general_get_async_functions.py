@@ -12,7 +12,7 @@ from django.utils.translation import gettext as _
 # simple jwt
 
 # models 
-from users.models import CustomUser
+from users.models import BaseUser
 from email_bans.models import EmailBan
 from announcements.models import Announcement
 from chats.models import ChatRoom
@@ -59,7 +59,7 @@ def fetch_my_security_information(user):
     """
     try:
         # Retrieve the user's security settings from the database
-        account = CustomUser.objects.values('multifactor_authentication', 'event_emails').get(account_id=user)
+        account = BaseUser.objects.values('multifactor_authentication', 'event_emails').get(account_id=user)
         
         # Return the retrieved security information
         return {
@@ -67,7 +67,7 @@ def fetch_my_security_information(user):
             'event_emails': account['event_emails']  # Event email settings
         }
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         # Handle the case where no user is found with the provided account ID
         return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
     
@@ -103,7 +103,7 @@ def fetch_my_email_information(user):
     """
     try:
         # Retrieve the user's email address and email ban details
-        account = CustomUser.objects.values('email', 'email_ban_amount', 'email_banned').get(account_id=user)
+        account = BaseUser.objects.values('email', 'email_ban_amount', 'email_banned').get(account_id=user)
         
         # Retrieve email ban records for the user's email address, ordered by the most recent ban first
         email_bans = EmailBan.objects.filter(email=account['email']).order_by('-banned_at')
@@ -120,7 +120,7 @@ def fetch_my_email_information(user):
             }
         }
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         # Handle the case where no user is found with the provided account ID
         return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
     
@@ -158,7 +158,7 @@ def fetch_chats(user):
     """
     try:
         # Retrieve the user account
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
         
         # Fetch chat rooms where the user is involved and order by latest message timestamp
         chat_rooms = ChatRoom.objects.filter(Q(user_one=account) | Q(user_two=account)).order_by('-latest_message_timestamp')
@@ -168,7 +168,7 @@ def fetch_chats(user):
         
         return {'chats': serializer.data}
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         return {'error': 'An account with the provided ID does not exist. Please check the account details and try again.'}
     
     except Exception as e:
@@ -208,7 +208,7 @@ def fetch_announcements(user):
     """
     try:
         # Fetch the user account making the request
-        account = CustomUser.objects.get(account_id=user)
+        account = BaseUser.objects.get(account_id=user)
 
         # Validate user role
         if account.role not in ['PARENT', 'STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL']:
@@ -228,7 +228,7 @@ def fetch_announcements(user):
         serializer = AnnouncementsSerializer(announcements, many=True, context={'user': user})
         return {'announcements': serializer.data}
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
 
     except Exception as e:
