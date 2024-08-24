@@ -22,37 +22,37 @@ from announcements.models import Announcement
 from .serializers import MyAccountDetailsSerializer
 
 
-################################################## general views ###########################################################
-
-
 @api_view(["GET"])
 @token_required
 def my_account_details(request):
    
     # if the user is authenticated, return their profile information 
     if request.user:
-        # Fetch announcements based on role
-        if request.user.role == 'PARENT':
-            children_schools = request.user.children.values_list('school', flat=True)
-            unread_announcements = Announcement.objects.filter(school__in=children_schools).exclude(reached=request.user).count()
+        if request.user.role == 'FOUNDER':
+            serializer = MyAccountDetailsSerializer(instance=request.user)
+            return Response({'user' : serializer.data}, status=status.HTTP_200_OK)
+        
         else:
-            unread_announcements = Announcement.objects.filter(school=request.user.school).exclude(reached=request.user).count()
+            # Fetch announcements based on role
+            if request.user.role == 'PARENT':
+                children_schools = request.user.children.values_list('school', flat=True)
+                unread_announcements = Announcement.objects.filter(school__in=children_schools).exclude(reached=request.user).count()
 
-        # Fetch unread messages
-        unread_messages = ChatRoomMessage.objects.filter(Q(chat_room__user_one=request.user) | Q(chat_room__user_two=request.user), read_receipt=False).exclude(sender=request.user).count()
+            elif request.user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
+                unread_announcements = Announcement.objects.filter(school=request.user.school).exclude(reached=request.user).count()
+            
+            else:
+                return Response({'error' : 'your request could not be proccessed, your accounts role is invalid'}, status=status.HTTP_401_UNAUTHORIZED)
 
-        # Serialize user data
-        serializer = MyAccountDetailsSerializer(instance=request.user)
-        return Response({'user' : serializer.data, 'messages' : unread_messages, 'announcements' : unread_announcements}, status=status.HTTP_200_OK)
+            # Fetch unread messages
+            unread_messages = ChatRoomMessage.objects.filter(Q(chat_room__user_one=request.user) | Q(chat_room__user_two=request.user), read_receipt=False).exclude(sender=request.user).count()
+
+            # Serialize user data
+            serializer = MyAccountDetailsSerializer(instance=request.user)
+            return Response({'user' : serializer.data, 'messages' : unread_messages, 'announcements' : unread_announcements}, status=status.HTTP_200_OK)
 
     else:
         return Response({"error" : "unauthenticated",}, status=status.HTTP_401_UNAUTHORIZED)
-
-
-#############################################################################################################################
-
-
-#################################################### user upload views ######################################################
 
 
 # user profile pictures upload 
@@ -129,5 +129,3 @@ def my_account_details(request):
 #         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     
-
-##########################################################################################
