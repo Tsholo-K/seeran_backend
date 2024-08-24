@@ -62,7 +62,7 @@ def update_subject_counts_on_create(sender, instance, created, **kwargs):
 def update_subject_counts_on_delete(sender, instance, **kwargs):
     if instance.subject:
         # Update the count of classrooms associated with this subject
-        instance.subject.classes_count = instance.grade.grade_classes.filter(subject=instance.subject).count()
+        instance.subject.classes_count = instance.grade.classes.filter(subject=instance.subject).count()
 
         # Update the count of unique teachers for this subject
         if instance.teacher:
