@@ -10,6 +10,7 @@ from django.core.exceptions import ValidationError
 from django.core.cache import cache
 from django.contrib.auth.hashers import check_password
 from django.utils.translation import gettext as _
+from django.core.validators import validate_email
 
 # simple jwt
 
@@ -20,7 +21,7 @@ from email_bans.models import EmailBan
 # serializers
 
 # utility functions 
-from authentication.utils import generate_otp, verify_user_otp, validate_user_email
+from authentication.utils import generate_otp, verify_user_otp
 
 # checks
 
@@ -189,9 +190,7 @@ def verify_email_revalidate_otp(user, details):
 def verify_email(details):
 
     try:
-        if not validate_user_email(details.get('email')):
-            return {'error': 'Invalid email format'}
-        
+        validate_email(details.get('email'))
         account = BaseUser.objects.get(email=details.get('email'))
         
         # check if users email is banned

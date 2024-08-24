@@ -26,7 +26,7 @@ from chats.models import ChatRoom, ChatRoomMessage
 from assessments.models import Topic
 
 # serializers
-from users.serializers import ChatAccountSerializer
+from users.serializers.general_serializers import BareAccountDetailsSerializer
 from chats.serializers import ChatRoomMessageSerializer
 from activities.serializers import ActivityCreationSerializer
 from assessments.serializers import AssessmentCreationSerializer
@@ -396,7 +396,7 @@ def text(user, details):
         serializer = ChatRoomMessageSerializer(new_message, context={'user': user})
         message_data = serializer.data
 
-        return {'message': message_data, 'sender': ChatAccountSerializer(account).data, 'reciever':  ChatAccountSerializer(requested_user).data}
+        return {'message': message_data, 'sender': BareAccountDetailsSerializer(account).data, 'reciever':  BareAccountDetailsSerializer(requested_user).data}
 
     except BaseUser.DoesNotExist:
         return {'error': 'User account not found. Please verify the account details.'}

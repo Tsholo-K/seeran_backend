@@ -9,7 +9,7 @@ from rest_framework import serializers
 from .models import ChatRoom, ChatRoomMessage
 
 # serializers
-from users.serializers import ChatAccountSerializer
+from users.serializers.founder.founder_serializers import ChatAccountSerializer
 
 
 class ChatSerializer(serializers.ModelSerializer):

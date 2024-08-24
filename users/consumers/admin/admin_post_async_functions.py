@@ -19,7 +19,8 @@ from grades.models import Grade, Term, Subject
 from classes.models import Classroom
 
 # serilializers
-from users.serializers import StudentAccountCreationSerializer, ParentAccountCreationSerializer
+from users.serializers.students.students_serializers import StudentAccountCreationSerializer
+from users.serializers.parents.parents_serializers import ParentAccountCreationSerializer
 from grades.serializers import GradeCreationSerializer, TermCreationSerializer, SubjectCreationSerializer
 from classes.serializers import ClassCreationSerializer
 from announcements.serializers import AnnouncementCreationSerializer

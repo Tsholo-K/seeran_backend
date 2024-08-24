@@ -19,7 +19,6 @@ from grades.models import Grade
 from classes.models import Classroom
 
 # serilializers
-from users.serializers import AccountSerializer
 from timetables.serializers import ScheduleSerializer
 from classes.serializers import ClassSerializer, TeacherClassesSerializer, TeacherRegisterClassSerializer
 

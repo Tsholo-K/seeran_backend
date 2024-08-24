@@ -12,7 +12,8 @@ from users.models import Principal
 from balances.models import Balance
 
 # serializers
-from users.serializers import AccountSerializer
+from users.serializers.founder.founder_serializers import AccountSerializer
+from balances.serializers import BalanceSerializer
 
 
 class SchoolCreationSerializer(serializers.ModelSerializer):
@@ -38,13 +39,10 @@ class UpdateSchoolAccountSerializer(serializers.ModelSerializer):
 class SchoolsSerializer(serializers.ModelSerializer):
     
     name = serializers.SerializerMethodField()
-    students = serializers.IntegerField()
-    parents = serializers.IntegerField()
-    teachers = serializers.IntegerField()
     
     class Meta:
         model = School
-        fields = [ "school_id", 'name', 'students', 'parents', 'teachers', ]
+        fields = ['name', 'student_count', 'teacher_count', 'admin_count', "school_id"]
         
     def get_name(self, obj):
         return obj.name.title()
@@ -63,54 +61,23 @@ class SchoolSerializer(serializers.ModelSerializer):
     def get_principal(self, obj):
         try:
             principal = Principal.objects.get(school=obj, role='PRINCIPAL')
-            if principal:
-                return AccountSerializer(principal).data
+            return AccountSerializer(principal).data
         except Principal.DoesNotExist:
             return None
     
     def get_balance(self, obj):
         try:
             principal = Principal.objects.get(school=obj, role='PRINCIPAL')
-            if principal:
-                balance = Balance.objects.get(user=principal)
-                return { "amount" : str(balance.amount), "last_updated" : balance.last_updated.isoformat() }
-  
+            balance = principal.balance
+            return BalanceSerializer(balance).data
         except Principal.DoesNotExist:
             return None
     
     def get_name(self, obj):
         return obj.name.title()
-    
-    
+
+
 class SchoolDetailsSerializer(serializers.ModelSerializer):
-        
-    name = serializers.SerializerMethodField()
-    type = serializers.SerializerMethodField()
-    district = serializers.SerializerMethodField()
-    province = serializers.SerializerMethodField()
-    
-    students = serializers.IntegerField()
-    parents = serializers.IntegerField()
-    teachers = serializers.IntegerField()
-    admins = serializers.IntegerField()
-    
-    class Meta:
-        model = School
-        fields = ['name', 'type', 'district',  'province', 'email', 'contact_number', 'school_id',  'students', 'parents', 'teachers', 'admins', ]
-        
-    def get_name(self, obj):
-        return obj.name.title()
-    
-    def get_type(self, obj):
-        return obj.type.title()
-
-    def get_district(self, obj):
-        return obj.district.title()
-
-    def get_province(self, obj):
-        return obj.province.title()
-
-class SchoolIDSerializer(serializers.ModelSerializer):
         
     name = serializers.SerializerMethodField()
     type = serializers.SerializerMethodField()

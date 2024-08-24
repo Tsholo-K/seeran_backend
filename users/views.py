@@ -1,10 +1,7 @@
 # python 
-import uuid
-import urllib.parse
 
 # rest framework
-from rest_framework.decorators import api_view, parser_classes
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -19,40 +16,80 @@ from chats.models import ChatRoomMessage
 from announcements.models import Announcement
 
 # serilializers
-from .serializers import FounderAccountDetailsSerializer, MyAccountDetailsSerializer
+from users.serializers.founders.founders_serializers import FounderAccountDetailsSerializer
+from users.serializers.principals.principals_serializers import PrincipalAccountDetailsSerializer
+from users.serializers.admins.admins_serializers import AdminAccountDetailsSerializer
+from users.serializers.teachers.teachers_serializers import TeacherAccountDetailsSerializer
+from users.serializers.students.students_serializers import StudentAccountDetailsSerializer
+from users.serializers.parents.parents_serializers import ParentAccountDetailsSerializer
 
 
 @api_view(["GET"])
 @token_required
 def my_account_details(request):
-   
-    # if the user is authenticated, return their profile information 
+    """
+    View to return the account details of the authenticated user along with unread messages
+    and unread announcements count based on their role.
+
+    - If the user is a FOUNDER, return founder-specific details.
+    - If the user is a PARENT, PRINCIPAL, ADMIN, TEACHER, or STUDENT, return role-specific details.
+    - For PARENTS, fetch announcements relevant to their children's schools.
+    - For PRINCIPALS, ADMINs, TEACHERs, and STUDENTs, fetch announcements relevant to their school.
+    - For TEACHERs, STUDENTs, ADMINs, and PRINCIPALS, serialize and return the appropriate details.
+    - If the user's role is invalid, return an error response.
+
+    Args:
+        request (Request): The request object containing user information.
+
+    Returns:
+        Response: A JSON response containing user details, unread messages count,
+        unread announcements count, or an error message.
+    """
+
+    # Ensure the user is authenticated
     if request.user:
-        if request.user.role == 'FOUNDER':
-            serialized_founder = FounderAccountDetailsSerializer(instance=request.user).data
-            return Response({'user' : serialized_founder}, status=status.HTTP_200_OK)
-        
-        else:
-            # Fetch announcements based on role
-            if request.user.role == 'PARENT':
+        role = request.user.role
+
+        # Handle FOUNDER-specific serialization
+        if role == 'FOUNDER':
+            serialized_account = FounderAccountDetailsSerializer(instance=request.user).data
+            return Response({'user': serialized_account}, status=status.HTTP_200_OK)
+
+        # Handle other roles: PARENT, PRINCIPAL, ADMIN, TEACHER, STUDENT
+        elif role in ['PARENT', 'PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
+            # Determine unread announcements based on user role
+            if role == 'PARENT':
+                # Fetch announcements for the schools the parent's children are enrolled in
                 children_schools = request.user.children.values_list('school', flat=True)
                 unread_announcements = Announcement.objects.filter(school__in=children_schools).exclude(reached=request.user).count()
+                serialized_account = ParentAccountDetailsSerializer(instance=request.user).data
 
-            elif request.user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
-                unread_announcements = Announcement.objects.filter(school=request.user.school).exclude(reached=request.user).count()
-            
             else:
-                return Response({'error' : 'your request could not be proccessed, your accounts role is invalid'}, status=status.HTTP_401_UNAUTHORIZED)
+                # Fetch announcements relevant to the user's school
+                unread_announcements = Announcement.objects.filter(school=request.user.school).exclude(reached=request.user).count()
+                
+                # Handle specific role-based serialization
+                if role == 'TEACHER':
+                    serialized_account = TeacherAccountDetailsSerializer(instance=request.user).data
+                elif role == 'STUDENT':
+                    serialized_account = StudentAccountDetailsSerializer(instance=request.user).data
+                elif role == 'ADMIN':
+                    serialized_account = AdminAccountDetailsSerializer(instance=request.user).data
+                elif role == 'PRINCIPAL':
+                    serialized_account = PrincipalAccountDetailsSerializer(instance=request.user).data
 
-            # Fetch unread messages
+            # Fetch unread messages for the user
             unread_messages = ChatRoomMessage.objects.filter(Q(chat_room__user_one=request.user) | Q(chat_room__user_two=request.user), read_receipt=False).exclude(sender=request.user).count()
 
-            # Serialize user data
-            serializer = MyAccountDetailsSerializer(instance=request.user)
-            return Response({'user' : serializer.data, 'messages' : unread_messages, 'announcements' : unread_announcements}, status=status.HTTP_200_OK)
+            # Return the serialized account details along with unread counts
+            return Response({'user': serialized_account, 'messages': unread_messages, 'announcements': unread_announcements}, status=status.HTTP_200_OK)
 
+        # Handle case where role is not recognized
+        return Response({'error': 'your request could not be processed, your account role is invalid'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    # Return an error if the user is not authenticated
     else:
-        return Response({"error" : "unauthenticated",}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({"error": "your request could not be processed, your account is not authenticated"}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 # user profile pictures upload 

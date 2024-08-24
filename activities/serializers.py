@@ -10,7 +10,7 @@ from .models import Activity
 from classes.models import Classroom
 
 # serializers
-from users.serializers import BySerializer
+from users.serializers.founder.founder_serializers import BySerializer
 
 
 

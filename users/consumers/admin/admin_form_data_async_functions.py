@@ -16,7 +16,8 @@ from grades.models import Subject
 from classes.models import Classroom
 
 # serilializers
-from users.serializers import AccountSerializer
+from users.serializers.teachers.teachers_serializers import TeacherAccountSerializer
+from users.serializers.students.students_serializers import StudentAccountSerializer
 
 # utility functions 
 
@@ -61,7 +62,7 @@ def form_data_for_creating_class(user, role, details):
             return {"error": "invalid reason provided. expected 'subject class' or 'register class'."}
 
         # Serialize the list of teachers
-        serialized_teachers = AccountSerializer(teachers, many=True).data
+        serialized_teachers = TeacherAccountSerializer(teachers, many=True).data
 
         return {"teachers": serialized_teachers}
                
@@ -122,8 +123,8 @@ def form_data_for_updating_class(user, role, details):
             teachers = teachers.exclude(account_id=classroom.teacher.account_id)
         
         # serialize them
-        serialized_teachers = AccountSerializer(teachers, many=True).data
-        class_teacher = AccountSerializer(classroom.teacher).data if classroom.teacher else None
+        serialized_teachers = TeacherAccountSerializer(teachers, many=True).data
+        class_teacher = TeacherAccountSerializer(classroom.teacher).data if classroom.teacher else None
 
         return {'teacher': class_teacher, "teachers": serialized_teachers, 'group': classroom.group, 'classroom_identifier': classroom.classroom_number}
                
@@ -196,7 +197,7 @@ def form_data_for_adding_students_to_class(user, role, details):
             return {"error": "Invalid reason provided."}
 
         # Serialize the list of students to return them in the response
-        serialized_students = AccountSerializer(students, many=True).data
+        serialized_students = StudentAccountSerializer(students, many=True).data
 
         return {"students": serialized_students}
                
@@ -249,7 +250,7 @@ def form_data_for_adding_students_to_group_schedule(user, role, details):
         students = admin.school.students.all().filter(grade=group_schedule.grade).exclude(my_group_schedule=group_schedule)
 
         # Serialize the list of students to return them in the response
-        serialized_students = AccountSerializer(students, many=True).data
+        serialized_students = StudentAccountSerializer(students, many=True).data
 
         return {"students": serialized_students}
                

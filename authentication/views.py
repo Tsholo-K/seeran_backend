@@ -1,14 +1,10 @@
 # python
 from datetime import timedelta, timezone
-from decouple import config
-import requests
-import base64
 
 # rest framework
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, throttle_classes
-from rest_framework_simplejwt.tokens import AccessToken as decode
 from rest_framework.throttling import UserRateThrottle
 
 # django
@@ -27,7 +23,7 @@ from auth_tokens.models import AccessToken
 from .serializers import CustomTokenObtainPairSerializer
 
 # utility functions 
-from .utils import generate_token, generate_otp, verify_user_otp, validate_user_email, validate_names
+from .utils import generate_token, generate_otp, verify_user_otp, validate_names, send_otp_email
 
 # custom decorators
 from .decorators import token_required
@@ -46,17 +42,6 @@ class CustomRateThrottle(UserRateThrottle):
 @api_view(['POST'])
 @throttle_classes([CustomRateThrottle])
 def login(request):
-    """
-    API endpoint for user login with optional multi-factor authentication (MFA).
-
-    Handles authentication and MFA process securely.
-
-    Args:
-        request (HttpRequest): HTTP request object containing user credentials.
-
-    Returns:
-        Response: JSON response indicating success or failure of login and MFA steps.
-    """
     try:
         serializer = CustomTokenObtainPairSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -88,58 +73,34 @@ def login(request):
                     access_tokens_count = user.access_tokens.count()
                     
                     if access_tokens_count >= 3:
-                        return Response({"error": "you have reached the maximum number of connected devices. please disconnect another device to proceed"}, status=status.HTTP_403_FORBIDDEN)
+                        return Response({"error": "You have reached the maximum number of connected devices. Please disconnect another device to proceed"}, status=status.HTTP_403_FORBIDDEN)
                     
                     with transaction.atomic():
                         AccessToken.objects.create(user=user, token=token['access'])
 
                     # Set access token cookie with custom expiration (24 hours)
-                    response = Response({"message": "you will have access to your dashboard for the next 24 hours, until your session ends", "alert" : "your email address has been blacklisted", "role" : user.role.title()}, status=status.HTTP_200_OK)
+                    response = Response({"message": "You will have access to your dashboard for the next 24 hours, until your session ends", "alert" : "Your email address has been blacklisted", "role" : user.role.title()}, status=status.HTTP_200_OK)
                     response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
 
                     return response
                 
-                return Response({"error": "server error.. could not generating access token for your account"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({"error": "Server error.. Could not generate access token for your account"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
             # Generate OTP and send to user's email for MFA
             otp, hashed_otp, salt = generate_otp()
-            mailgun_api_url = "https://api.eu.mailgun.net/v3/" + config('MAILGUN_DOMAIN') + "/messages"
-            email_data = {
-                "from": "seeran grades <authorization@" + config('MAILGUN_DOMAIN') + ">",
-                "to": user.surname.title() + " " + user.name.title() + "<" + user.email + ">",
-                "subject": "One Time Passcode",
-                "template": "one-time passcode",
-                "v:onetimecode": otp,
-                "v:otpcodereason": "Your account has multi-factor authentication toggled on, this OTP was generated in response to your login request."
-            }
-            headers = {
-                "Authorization": "Basic " + base64.b64encode(f"api:{config('MAILGUN_API_KEY')}".encode()).decode(),
-                "Content-Type": "application/x-www-form-urlencoded"
-            }
-            response = requests.post(
-                mailgun_api_url,
-                headers=headers,
-                data=email_data
-            )
-            if response.status_code == 200:
+            email_response = send_otp_email(user, otp, reason="Your account has multi-factor authentication toggled on, this OTP was generated in response to your login request.")
+            
+            if email_response['status'] == 'success':
                 cache.set(user.email+'login_otp', (hashed_otp, salt), timeout=300)  # Cache OTP for 5 mins
                 login_authorization_otp, hashed_login_authorization_otp, salt = generate_otp()
                 cache.set(user.email+'login_authorization_otp', (hashed_login_authorization_otp, salt), timeout=300)  # Cache auth OTP for 5 mins
 
-                response = Response({"multifactor_authentication": "a new OTP has been sent to your email address. please check your inbox"}, status=status.HTTP_200_OK)
+                response = Response({"multifactor_authentication": "A new OTP has been sent to your email address. Please check your inbox"}, status=status.HTTP_200_OK)
                 response.set_cookie('login_authorization_otp', login_authorization_otp, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # Set auth OTP cookie (5 mins)
                 
                 return response
-        
-            # if there was an error sending the email respond accordingly
-            if response.status_code in [ 400, 401, 402, 403, 404 ]:
-                return {"error": f"there was an error sending login OTP to your email address.. please open a new bug ticket with the issue, error code {response.status_code}"}
-            
-            if response.status_code == 429:
-                return {"error": f"there was an error sending login OTP to your email address.. please try again in a few moments"}
-
             else:
-                return {"error": "there was an error sending login OTP to your email address.."}
+                return Response({"error": email_response['message']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Handle login without MFA
         if 'access' in token:
@@ -153,9 +114,9 @@ def login(request):
             access_tokens_count = user.access_tokens.count()
             
             if access_tokens_count >= 3:
-                return Response({"error": "you have reached the maximum number of connected devices. please disconnect another device to proceed"}, status=status.HTTP_403_FORBIDDEN)
+                return Response({"error": "You have reached the maximum number of connected devices. Please disconnect another device to proceed"}, status=status.HTTP_403_FORBIDDEN)
             
-            response = Response({"message": "you will have access to your dashboard for the next 24 hours, until your session ends", "role" : user.role.title()}, status=status.HTTP_200_OK)
+            response = Response({"message": "You will have access to your dashboard for the next 24 hours, until your session ends", "role" : user.role.title()}, status=status.HTTP_200_OK)
                     
             with transaction.atomic():
                 AccessToken.objects.create(user=user, token=token['access'])
@@ -164,16 +125,17 @@ def login(request):
             response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
         
         else:
-            response = Response({"error": "server error.. could not generating access token for your account"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            response = Response({"error": "Server error.. Could not generate access token for your account"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return response
     
     except BaseUser.DoesNotExist:
         # Handle the case where the provided account ID does not exist
-        return Response({"error": "the credentials you entered are invalid. please check your email and password and try again"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error": "The credentials you entered are invalid. Please check your email and password and try again"}, status=status.HTTP_404_NOT_FOUND)
     
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 @api_view(['POST'])
@@ -337,48 +299,14 @@ def signin(request):
         # if everything checks out without an error 
         # create an otp for the user
         otp, hashed_otp, salt = generate_otp()
-
-        # Define your Mailgun API URL
-        mailgun_api_url = "https://api.eu.mailgun.net/v3/" + config('MAILGUN_DOMAIN') + "/messages"
-
-        # Define your email data
-        email_data = {
-            "from": "seeran grades <authorization@" + config('MAILGUN_DOMAIN') + ">",
-            "to": user.surname.title() + " " + user.name.title() + "<" + user.email + ">",
-            "subject": "One Time Passcode",
-            "template": "one-time passcode",
-            "v:onetimecode": otp,
-            "v:otpcodereason": "We are pleased to have you trying out our service, this OTP was generated in response to your account activation request.."
-        }
-
-        # Define your headers
-        headers = {
-            "Authorization": "Basic " + base64.b64encode(f"api:{config('MAILGUN_API_KEY')}".encode()).decode(),
-            "Content-Type": "application/x-www-form-urlencoded"
-        }
-
-        # Send the email via Mailgun
-        response = requests.post(
-            mailgun_api_url,
-            headers=headers,
-            data=email_data
-        )
-
-        if response.status_code == 200:
-
-            # if the email was successfully sent cache the otp then return the response
+        email_response = send_otp_email(user, otp, reason="We are pleased to have you trying out our service, this OTP was generated in response to your account activation request..")
+        
+        if email_response['status'] == 'success':
             cache.set(user.email + 'signin_otp', (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
             return Response({"message": "a sign-in OTP has been generated and sent to your email address.. it will be valid for the next 5 minutes",}, status=status.HTTP_200_OK)
         
-        # if there was an error sending the email respond accordingly
-        if response.status_code in [ 400, 401, 402, 403, 404 ]:
-            return {"error": f"there was an error sending sign-in OTP to your email address.. please open a new bug ticket with the issue. error code {response.status_code}"}
-        
-        if response.status_code == 429:
-            return {"error": f"there was an error sending sign-in OTP to your email address.. please try again in a few moments"}
-
         else:
-            return {"error": "there was an error sending sign-in OTP to your email address.."}
+            return Response({"error": email_response['message']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     except BaseUser.DoesNotExist:
         # if there's no user with the provided credentials return an error 
@@ -556,56 +484,28 @@ def validate_password_reset(request):
         if user.email_banned:
             return Response({ "error" : "your email address has been banned, failed to send OTP.. you can visit your school to have it changed"}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Validate the email
-        if not validate_user_email(sent_email):
-            return Response({"error": "provided email address is invalid"}, status=status.HTTP_400_BAD_REQUEST)
+        # validate email format
+        validate_email(sent_email)
         
         # if everything checks out without an error 
         # create an otp for the user
         otp, hashed_otp, salt = generate_otp()
-
-        # Define your Mailgun API URL
-        mailgun_api_url = "https://api.eu.mailgun.net/v3/" + config('MAILGUN_DOMAIN') + "/messages"
-
-        # Define your email data
-        email_data = {
-            "from": "seeran grades <authorization@" + config('MAILGUN_DOMAIN') + ">",
-            "to": user.surname.title() + " " + user.name.title() + "<" + user.email + ">",
-            "subject": "One Time Passcode",
-            "template": "one-time passcode",
-            "v:onetimecode": otp,
-            "v:otpcodereason": "we recieved a password reset request for your account, this OTP was generated in response to your password reset request.."
-        }
-
-        # Define your headers
-        headers = {
-            "Authorization": "Basic " + base64.b64encode(f"api:{config('MAILGUN_API_KEY')}".encode()).decode(),
-            "Content-Type": "application/x-www-form-urlencoded"
-        }
-
-        # Send the email via Mailgun
-        response = requests.post(mailgun_api_url, headers=headers, data=email_data)
-
-        if response.status_code == 200:
-
-            # if the email was successfully sent cache the otp then return the response
+        email_response = send_otp_email(user, otp, reason="We recieved a password reset request for your account, this OTP was generated in response to your password reset request..")
+        
+        if email_response['status'] == 'success':
             cache.set(user.email + 'password_reset_otp', (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
             return Response({"message": "a password reset OTP has been generated and sent to your email address.. it will be valid for the next 5 minutes",}, status=status.HTTP_200_OK)
         
-        # if there was an error sending the email respond accordingly
-        if response.status_code in [ 400, 401, 402, 403, 404 ]:
-            return {"error": f"there was an error sending password reset OTP to your email address.. please open a new bug ticket with the issue. error code {response.status_code}"}
-        
-        if response.status_code == 429:
-            return {"error": f"there was an error sending password reset OTP to your email address.. please try again in a few moments"}
-
         else:
-            return {"error": "there was an error sending password reset OTP to your email address.."}
+            return Response({"error": email_response['message']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     except BaseUser.DoesNotExist:
         # if theres no user with the provided email return an error
         return Response({"error": "an account with the provided credentials does not exist. please check the account details and try again"}, status=status.HTTP_404_NOT_FOUND)
-        
+            
+    except ValidationError:
+        return Response({"error": "the provided email address is not in a valid format. please correct the email address and try again"}, status=status.HTTP_400_BAD_REQUEST)
+
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 

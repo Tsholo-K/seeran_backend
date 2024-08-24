@@ -12,7 +12,7 @@ from schools.models import School
 from grades.models import Grade, Subject
 
 # serilializers
-from users.serializers import AccountSerializer
+from users.serializers.founder.founder_serializers import AccountSerializer
 
 
 class ClassCreationSerializer(serializers.ModelSerializer):

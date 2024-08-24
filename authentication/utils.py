@@ -1,33 +1,54 @@
 # python 
 import hashlib
-import json
 import re
-import uuid
 import secrets
-
-# django
-from django.core.cache import cache
+import base64
+import requests
+from decouple import config
 
 # restframework
-from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 
-# models 
+# django
 
 
-# account id generator
-def generate_account_id(prefix=''):
-    while True:
-        # Generate a UUID
-        unique_part = uuid.uuid4().hex
 
-        # Concatenate prefix and UUID and convert to string
-        account_id = prefix + unique_part
+def send_otp_email(user, otp, reason):
+    """
+    Sends an OTP email to the specified user.
 
-        # Ensure it's exactly 15 digits long (2 for prefix and 13 for the rest)
-        account_id = account_id[:15].ljust(15, '0')
-        return account_id
+    Args:
+        user (BaseUser): The user object to whom the OTP is to be sent.
+        otp (str): The one-time passcode to be included in the email.
+
+    Returns:
+        dict: A dictionary containing the response status and any relevant message.
+    """
+    mailgun_api_url = f"https://api.eu.mailgun.net/v3/{config('MAILGUN_DOMAIN')}/messages"
+    email_data = {
+        "from": f"seeran grades <authorization@{config('MAILGUN_DOMAIN')}>",
+        "to": f"{user.surname.title()} {user.name.title()}<{user.email}>",
+        "subject": "One Time Passcode",
+        "template": "one-time passcode",
+        "v:onetimecode": otp,
+        "v:otpcodereason": reason
+    }
+    headers = {
+        "Authorization": "Basic " + base64.b64encode(f"api:{config('MAILGUN_API_KEY')}".encode()).decode(),
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+
+    response = requests.post(mailgun_api_url, headers=headers, data=email_data)
+
+    if response.status_code == 200:
+        return {"status": "success"}
+    elif response.status_code in [400, 401, 402, 403, 404]:
+        return {"status": "error", "message": f"There was an error sending the OTP to your email address. Please open a new bug ticket with the issue, error code {response.status_code}"}
+    elif response.status_code == 429:
+        return {"status": "error", "message": "There was an error sending the OTP to your email address. Please try again in a few moments"}
+    else:
+        return {"status": "error", "message": "There was an error sending the OTP to your email address."}
 
 
 # validate token
@@ -41,35 +62,11 @@ def validate_access_token(access_token):
         return None
 
 
-# validate refresh token
-def validate_refresh_token(refresh_token):
-    try:
-        RefreshToken(refresh_token).verify()
-        # Refresh token is valid
-        return refresh_token
-    except TokenError:
-        # Refresh token is invalid
-        return None
-
-
-# refresh access token
-def refresh_access_token(refresh_token):
-    try:
-        refresh = RefreshToken(refresh_token)
-        new_access_token = str(refresh.access_token)
-        return new_access_token
-    except TokenError:
-        # Refresh token is invalid or expired
-        return None
-
-
 # otp generation function
 def generate_otp():
     otp = str(secrets.randbelow(900000) + 100000)
-    
     # Generate a random salt
     salt = secrets.token_bytes(16)
-    
     # Convert the salt to hexadecimal
     salt_hex = salt.hex()
     
@@ -84,40 +81,8 @@ def generate_otp():
 def verify_user_otp(user_otp, stored_hashed_otp_and_salt):
     stored_hashed_otp, salt_hex = stored_hashed_otp_and_salt
     hashed_user_otp = hashlib.sha256((user_otp + salt_hex).encode()).hexdigest()
+
     return hashed_user_otp == stored_hashed_otp
-
-
-# rate limit function 
-def rate_limit(request):
-
-    # You can adjust the rate limit and key as needed
-    rate_limit = 5  # Requests per hour
-    body_unicode = request.body.decode('utf-8')
-
-    try:
-        body_data = json.loads(body_unicode)
-    except json.JSONDecodeError:
-        return Response({'error': 'Invalid JSON'})
-
-    email = body_data.get('email')
-
-    if email is None:
-        return Response({'error': 'Email is required'})
-
-    cache_key = f'rate_limit:{email}'
-
-    request_count = cache.get(cache_key, 0)
-    if request_count >= rate_limit:
-        return Response({'error': 'Rate limit exceeded. Please try again in 1 hour.'})
-
-    # Increment the request count and set expiry
-    cache.set(cache_key, request_count + 1, timeout=3600)  # 3600 seconds = 1 hour
-
-
-def validate_user_email(email):
-    # Regular expression pattern for basic email format validation
-    pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
-    return re.match(pattern, email)
 
 
 def generate_access_token(user):
@@ -125,6 +90,7 @@ def generate_access_token(user):
     refresh = RefreshToken.for_user(user)
     # Optionally, access the access token and its payload
     access_token = refresh.access_token
+
     return access_token
 
 
@@ -152,20 +118,13 @@ def get_upload_path(instance, filename):
     
     
 def validate_names(names):
-  
     parts = names.split(' ')
     if len(parts) == 2:
         return True
  
     else:
         return False
-    
-def is_phone_number_valid(phone_number):
-    
-    # South African phone numbers without the leading 0
-    pattern = r"^(1|6|7|8|9)\d{8}$"
-  
-    return bool(re.match(pattern, phone_number))
+
 
 def is_valid_human_name(name):
     # Valid characters typically found in human names

@@ -14,7 +14,7 @@ from users.models import Principal, Admin
 
 # serilializers
 from grades.serializers import GradesSerializer, StudentGradesSerializer
-from schools.serializers import SchoolIDSerializer
+from schools.serializers import SchoolDetailsSerializer
 
 # utility functions 
 
@@ -42,7 +42,7 @@ def fetch_school_details(user, role):
             admin = Admin.objects.select_related('school').only('school').get(account_id=user)
 
         # Serialize the school object into a dictionary
-        serialized_school = SchoolIDSerializer(admin.school).data
+        serialized_school = SchoolDetailsSerializer(admin.school).data
 
         return {'school': serialized_school}
                

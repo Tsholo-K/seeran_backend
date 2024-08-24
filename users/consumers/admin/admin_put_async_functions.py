@@ -18,10 +18,13 @@ from classes.models import Classroom
 from grades.models import Grade, Term, Subject
 
 # serilializers
-from users.serializers import AccountUpdateSerializer, AccountIDSerializer
+from users.serializers.admins.admins_serializers import AdminAccountUpdateSerializer, AdminAccountSerializer
+from users.serializers.teachers.teachers_serializers import TeacherAccountUpdateSerializer, TeacherAccountSerializer
+from users.serializers.parents.parents_serializers import ParentAccountUpdateSerializer, ParentAccountSerializer
+from users.serializers.students.students_serializers import StudentAccountUpdateSerializer, StudentAccountSerializer
 from grades.serializers import UpdateGradeSerializer, UpdateTermSerializer, GradeDetailsSerializer, TermSerializer, UpdateSubjectSerializer, SubjectDetailsSerializer
 from classes.serializers import UpdateClassSerializer
-from schools.serializers import UpdateSchoolAccountSerializer, SchoolIDSerializer
+from schools.serializers import UpdateSchoolAccountSerializer, SchoolDetailsSerializer
 
 # utility functions 
 
@@ -63,7 +66,7 @@ def update_school_details(user, role, details):
                 serializer.save()
                         
             # Serialize the grade
-            serialized_school = SchoolIDSerializer(admin.school).data
+            serialized_school = SchoolDetailsSerializer(admin.school).data
 
             return {'school': serialized_school, "message": "school account details have been successfully updated" }
         
@@ -245,13 +248,13 @@ def update_admin_account(user, role, details):
 
         admin  = Admin.objects.get(account_id=details.get('account_id'), school=principal.school)
         
-        serializer = AccountUpdateSerializer(instance=admin, data=details.get('updates'))
+        serializer = AdminAccountUpdateSerializer(instance=admin, data=details.get('updates'))
         if serializer.is_valid():
             
             with transaction.atomic():
                 serializer.save()
             
-            serialized_admin = AccountIDSerializer(instance=admin).data
+            serialized_admin = AdminAccountSerializer(instance=admin).data
 
             return {"admin" : serialized_admin}
             
@@ -283,13 +286,13 @@ def update_teacher_account(user, role, details):
 
         teacher  = Teacher.objects.get(account_id=details.get('account_id'), school=admin.school)
         
-        serializer = AccountUpdateSerializer(instance=teacher, data=details.get('updates'))
+        serializer = TeacherAccountUpdateSerializer(instance=teacher, data=details.get('updates'))
         if serializer.is_valid():
             
             with transaction.atomic():
                 serializer.save()
             
-            serialized_teacher = AccountIDSerializer(instance=teacher).data
+            serialized_teacher = TeacherAccountSerializer(instance=teacher).data
 
             return {"teacher" : serialized_teacher}
             
@@ -325,14 +328,14 @@ def update_student_account(user, role, details):
 
         student  = Student.objects.get(account_id=details.get('account_id'), school=admin.school)
         
-        serializer = AccountUpdateSerializer(instance=student, data=details.get('updates'))
+        serializer = StudentAccountUpdateSerializer(instance=student, data=details.get('updates'))
         
         if serializer.is_valid():
             
             with transaction.atomic():
                 serializer.save()
             
-            serialized_student = AccountIDSerializer(instance=student).data
+            serialized_student = StudentAccountSerializer(instance=student).data
 
             return {"student" : serialized_student}
             
@@ -371,13 +374,13 @@ def update_parent_account(user, role, details):
         if not parent.children.filter(school=admin.school).exists():
             return {"error": "could not proccess your request, the specified parent account is not linked to any student in your school. please ensure you are attempting to update a parent that is linked to at least one student in your school"}
 
-        serializer = AccountUpdateSerializer(instance=parent, data=details.get('updates'))
+        serializer = ParentAccountUpdateSerializer(instance=parent, data=details.get('updates'))
         if serializer.is_valid():
             
             with transaction.atomic():
                 serializer.save()
             
-            serialized_parent = AccountIDSerializer(instance=parent).data
+            serialized_parent = ParentAccountSerializer(instance=parent).data
 
             return {"student" : serialized_parent}
             

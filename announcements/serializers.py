@@ -5,7 +5,7 @@ from rest_framework import serializers
 from .models import Announcement
 
 # serializers
-from users.serializers import BySerializer
+from users.serializers.founder.founder_serializers import BySerializer
 
 
 class AnnouncementCreationSerializer(serializers.ModelSerializer):

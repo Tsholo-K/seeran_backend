@@ -6,18 +6,21 @@
 from channels.db import database_sync_to_async
 
 # django
-from django.db.models import Q, Prefetch
+from django.db.models import Prefetch
 
 # simple jwt
 
 # models 
-from users.models import BaseUser, Principal, Admin, Teacher
+from users.models import Principal, Admin
 from grades.models import Grade, Subject, Term
 from classes.models import Classroom
 from timetables.models import GroupSchedule
 
 # serilializers
-from users.serializers import AccountSerializer
+from users.serializers.principals.principals_serializers import PrincipalAccountSerializer
+from users.serializers.students.students_serializers import StudentAccountSerializer
+from users.serializers.admins.admins_serializers import AdminAccountSerializer
+from users.serializers.teachers.teachers_serializers import TeacherAccountSerializer
 from grades.serializers import GradeSerializer, GradeDetailsSerializer, TermsSerializer, TermSerializer, SubjectSerializer, SubjectDetailsSerializer, ClassesSerializer
 
 # utility functions 
@@ -37,8 +40,7 @@ def search_grade(user, role, details):
 
         serialized_grade = GradeSerializer(instance=grade).data
 
-        # Return serializer errors if the data is not valid, format it as a string
-        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
+        return {'grade' : serialized_grade}
                
     except Principal.DoesNotExist:
         # Handle the case where the provided account ID does not exist
@@ -296,7 +298,17 @@ def search_subject_details(user, role, details):
 
 @database_sync_to_async
 def search_accounts(user, role, details):
+    """
+    Search for accounts within a school based on the provided role and details.
 
+    Args:
+        user (str): The account ID of the user making the request.
+        role (str): The role of the user making the request ('PRINCIPAL' or 'ADMIN').
+        details (dict): The search details containing the target role to filter accounts.
+
+    Returns:
+        dict: A dictionary containing the serialized account data or an error message.
+    """
     try:
         # Retrieve the user and related school in a single query using select_related
         if role == 'PRINCIPAL':
@@ -305,29 +317,38 @@ def search_accounts(user, role, details):
             admin = Admin.objects.select_related('school').only('school').get(account_id=user)
 
         if details.get('role') == 'ADMIN':
-            accounts = BaseUser.objects.filter( Q(role='ADMIN') | Q(role='PRINCIPAL'), school=admin.school).exclude(account_id=user)
-    
+            # Fetch all admin accounts in the school
+            admins = admin.school.admins.exclude(account_id=user)
+            serialized_accounts = AdminAccountSerializer(admins, many=True).data
+
+            # If the user is not a principal, exclude them from the results
+            if role != 'PRINCIPAL':
+                principal = admin.school.principal
+                if principal:
+                    serialized_accounts.append(PrincipalAccountSerializer(principal).data)
+
         elif details.get('role') == 'TEACHER':
-            accounts = Teacher.objects.filter(role=details.get('role'), school=admin.school)
+            # Fetch all teacher accounts in the school, excluding the current user
+            teachers = admin.school.teachers
+            serialized_accounts = TeacherAccountSerializer(teachers, many=True).data
 
         else:
-            return {"error": ''}
+            return {"error": "the role specified is invalid"}
 
-        serialized_accounts = AccountSerializer(accounts, many=True).data
+        return {"users": serialized_accounts}
 
-        return {"users" : serialized_accounts}
-               
     except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
+        # Handle the case where the principal account does not exist
         return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
+
     except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
+        # Handle the case where the admin account does not exist
         return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
 
     except Exception as e:
         # Handle any unexpected errors with a general error message
-        return {'error': str(e)}
+        return {'error': str(e)} 
+
     
 
 @database_sync_to_async
@@ -342,7 +363,7 @@ def search_students(user, role, details):
 
         grade = Grade.objects.prefetch_related('students').get(grade_id=details.get('grade'), school=admin.school.pk)
 
-        serialized_students = AccountSerializer(grade.students.all(), many=True).data
+        serialized_students = StudentAccountSerializer(grade.students.all(), many=True).data
 
         return {"students": serialized_students}
                
@@ -394,7 +415,7 @@ def search_subscribed_students(user, role, details):
         students = group_schedule.students.all()
 
         # Serialize the students
-        serialized_students = AccountSerializer(students, many=True).data
+        serialized_students = StudentAccountSerializer(students, many=True).data
 
         return {"students": serialized_students}
                

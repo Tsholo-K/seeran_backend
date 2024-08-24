@@ -25,7 +25,7 @@ from chats.models import ChatRoom, ChatRoomMessage
 # serializers
 
 # utility functions 
-from authentication.utils import verify_user_otp, validate_user_email
+from authentication.utils import verify_user_otp
 
 # checks
 
@@ -81,9 +81,8 @@ def update_email_ban_otp_sends(email_ban_id):
 def update_email(user, details, access_token):
     
     try:
-        if not validate_user_email(details.get('new_email')):
-            return {'error': 'Invalid email format'}
-        
+        validate_password(details.get('new_email'))
+
         if BaseUser.objects.filter(email=details.get('new_email')).exists():
             return {"error": "an account with the provided email address already exists"}
 

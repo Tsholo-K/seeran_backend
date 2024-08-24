@@ -24,7 +24,9 @@ from chats.models import ChatRoom, ChatRoomMessage
 from activities.models import Activity
 
 # serializers
-from users.serializers import AccountSerializer, StudentAccountAttendanceRecordSerializer, AccountProfileSerializer, AccountIDSerializer, ChatroomSerializer, BySerializer
+from users.serializers.general_serializers import DisplayAccountDetailsSerializer, SourceAccountSerializer
+from users.serializers.students.students_serializers import StudentAccountSerializer, LeastAccountDetailsSerializer
+from users.serializers.parents.parents_serializers import ParentAccountSerializer
 from email_bans.serializers import EmailBanSerializer
 from timetables.serializers import SessoinsSerializer, ScheduleSerializer
 from timetables.serializers import GroupScheduleSerializer
@@ -132,7 +134,7 @@ def search_account_profile(user, details):
             return permission_error
 
         # Serialize the requested user's profile to return it in the response
-        serializer = AccountProfileSerializer(instance=requested_user)
+        serializer = SourceAccountSerializer(instance=requested_user)
         return {"user": serializer.data}
 
     except BaseUser.DoesNotExist:
@@ -186,7 +188,7 @@ def search_account_id(user, details):
             return permission_error
         
         # Serialize the requested user's account ID to return it in the response
-        serializer = AccountIDSerializer(instance=requested_user)
+        serializer = SourceAccountSerializer(instance=requested_user)
         return {"user": serializer.data}
 
     except BaseUser.DoesNotExist:
@@ -262,10 +264,10 @@ def search_parents(user, details):
             if account.role == 'PARENT' and account not in student.children.all():
                 return {"error": "Unauthorized access.. permission denied"}
 
-            parents = BaseUser.objects.filter(children=student, role='PARENT').exclude(account) if account.role == 'PARENT' else BaseUser.objects.filter(children=student, role='PARENT')
+            parents = student.parents.filter(children=student).exclude(account) if account.role == 'PARENT' else student.parents.filter(children=student)
 
         # Serialize the parents to return them in the response
-        serializer = AccountSerializer(parents, many=True)
+        serializer = ParentAccountSerializer(parents, many=True)
         return {"parents": serializer.data}
 
     except BaseUser.DoesNotExist:
@@ -363,7 +365,7 @@ def search_student_class_card(user, details):
         # retrieve the students activities 
         activities = Activity.objects.filter(classroom=classroom, recipient=student)
 
-        return {"user": BySerializer(instance=student).data, 'activities' : ActivitiesSerializer(activities, many=True).data}
+        return {"user": SourceAccountSerializer(instance=student).data, 'activities' : ActivitiesSerializer(activities, many=True).data}
 
     except BaseUser.DoesNotExist:
         # Handle case where the user or requested user account does not exist
@@ -734,10 +736,7 @@ def search_month_attendance_records(user, details):
         account = BaseUser.objects.get(account_id=user)
  
         if details.get('class_id') == 'requesting_my_own_class':
-            classroom = Classroom.objects.select_related('school').get(teacher=account, register_class=True)
-
-            if account.role != 'TEACHER' or classroom.school != account.school:
-                return {"error": "unauthorized access. the account making the request has an invalid role or the classroom you are trying to access is not from your school"}
+            classroom = Classroom.objects.get(teacher=account, register_class=True, school=account.school)
 
         else:
             if account.role not in ['ADMIN', 'PRINCIPAL']:
@@ -748,16 +747,16 @@ def search_month_attendance_records(user, details):
         start_date, end_date = get_month_dates(details.get('month_name'))
 
         # Query for the Absent instances where absentes is True
-        absents = Absent.objects.filter(Q(date__gte=start_date) & Q(date__lt=end_date) & Q(classroom=classroom) & Q(absentes=True))
+        absents = Absent.objects.prefetch_related('absent_students').filter(Q(date__gte=start_date) & Q(date__lt=end_date) & Q(classroom=classroom) & Q(absentes=True))
 
         # For each absent instance, get the corresponding Late instance
         attendance_records = []
         for absent in absents:
-            late = Late.objects.filter(date__date=absent.date.date(), classroom=classroom).first()
+            late = Late.objects.prefetch_related('late_students').filter(date__date=absent.date.date(), classroom=classroom).first()
             record = {
                 'date': absent.date.isoformat(),
-                'absent_students': StudentAccountAttendanceRecordSerializer(absent.absent_students.all(), many=True).data,
-                'late_students': StudentAccountAttendanceRecordSerializer(late.late_students.all(), many=True).data if late else [],
+                'absent_students': LeastAccountDetailsSerializer(absent.absent_students.all(), many=True).data,
+                'late_students': LeastAccountDetailsSerializer(late.late_students.all(), many=True).data if late else [],
             }
             attendance_records.append(record)
 
@@ -767,7 +766,7 @@ def search_month_attendance_records(user, details):
         return { 'error': 'account with the provided credentials does not exist' }
     
     except Classroom.DoesNotExist:
-        return { 'error': 'class with the provided credentials does not exist' }
+        return { 'error': 'a classroom in your school with the provided credentials does not exist' }
 
     except Exception as e:
         return { 'error': str(e) }
@@ -871,7 +870,7 @@ def search_chat_room(user, details):
         chat_room_exists = bool(chat_room)
 
         # Serialize the requested user's data
-        return {'user': ChatroomSerializer(requested_user).data, 'chat': chat_room_exists}
+        return {'user': DisplayAccountDetailsSerializer(requested_user).data, 'chat': chat_room_exists}
 
     except BaseUser.DoesNotExist:
         # Handle case where the user does not exist

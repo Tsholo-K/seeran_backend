@@ -17,7 +17,7 @@ from classes.models import Classroom
 from attendances.models import Absent
 
 # serializers
-from users.serializers import AccountSerializer
+from users.serializers.students.students_serializers import StudentAccountSerializer
 
 # utility functions 
 
@@ -56,7 +56,7 @@ def form_data_for_assessment_setting(user, details):
             students = classroom.students.all()
             attendance_register_taken = False
 
-        serializer = AccountSerializer(students, many=True)
+        serializer = StudentAccountSerializer(students, many=True)
 
         return {"students": serializer.data, "attendance_register_taken" : attendance_register_taken}
     
@@ -102,7 +102,7 @@ def form_data_for_attendance_register(user, details):
             students = classroom.students.all()
             attendance_register_taken = False
 
-        serializer = AccountSerializer(students, many=True)
+        serializer = StudentAccountSerializer(students, many=True)
 
         return {"students": serializer.data, "attendance_register_taken" : attendance_register_taken}
     
