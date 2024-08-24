@@ -19,7 +19,7 @@ from chats.models import ChatRoomMessage
 from announcements.models import Announcement
 
 # serilializers
-from .serializers import MyAccountDetailsSerializer
+from .serializers import FounderAccountDetailsSerializer, MyAccountDetailsSerializer
 
 
 @api_view(["GET"])
@@ -29,8 +29,8 @@ def my_account_details(request):
     # if the user is authenticated, return their profile information 
     if request.user:
         if request.user.role == 'FOUNDER':
-            serializer = MyAccountDetailsSerializer(instance=request.user)
-            return Response({'user' : serializer.data}, status=status.HTTP_200_OK)
+            serialized_founder = FounderAccountDetailsSerializer(instance=request.user).data
+            return Response({'user' : serialized_founder}, status=status.HTTP_200_OK)
         
         else:
             # Fetch announcements based on role
