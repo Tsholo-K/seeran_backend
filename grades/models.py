@@ -2,6 +2,7 @@
 import uuid
 from datetime import timedelta
 from decimal import Decimal
+# import logging
 
 # django 
 from django.db import models, IntegrityError
@@ -11,6 +12,7 @@ from django.core.exceptions import ValidationError
 # models
 from schools.models import School
 
+# logger = logging.getLogger(__name__)
 
 # grade choices
 SCHOOL_GRADES_CHOICES = [
@@ -66,7 +68,7 @@ class Grade(models.Model):
     none_major_subjects = models.PositiveIntegerField() # how many none major subjects a student in the grade needs to fail to fail a term
     
     # school linked to
-    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='school_grades')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='grades')
 
     # grade  id 
     grade_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -124,12 +126,19 @@ class Grade(models.Model):
         try:
             super().save(*args, **kwargs)
         except IntegrityError as e:
+            error_message = str(e).lower()
             # Check if the error is related to unique constraints
-            if 'unique constraint' in str(e).lower():
-                raise ValidationError(_('the provided grade already exists for your school. duplicate grades are not permitted'))
-            else:
-                # Re-raise the original exception if it's not related to unique constraints
-                raise
+            if 'unique constraint' in error_message:
+                raise ValidationError(_('the provided grade already exists for your school, duplicate grades are not permitted. please choose a different grade.'))
+            
+            elif 'foreign key constraint' in error_message:
+                raise ValidationError(_('The school referenced does not exist. please check and select a valid school'))
+            
+            elif 'check constraint' in error_message:
+                raise ValidationError(_('The data provided does not meet the required constraints. please review and correct the provided information'))
+
+            # Re-raise the original exception if it's not handled
+            raise
 
 
 class Term(models.Model):
@@ -273,10 +282,21 @@ class Subject(models.Model):
         try:
             super().save(*args, **kwargs)
         except IntegrityError as e:
-            # Check if the error is related to unique constraints
-            if 'unique constraint' in str(e).lower():
-                raise ValidationError(_('the provided subject already exists for your school. duplicate subjects are not permitted'))
-            else:
-                # Re-raise the original exception if it's not related to unique constraints
-                raise
+            error_message = str(e).lower()
+            # logger.error('Integrity error occurred while saving Subject: %s', str(e))
+
+            # Handle unique constraint errors
+            if 'unique constraint' in error_message:
+
+                if 'subject_id' in error_message:
+                    raise ValidationError(_('The subject ID must be unique.'))
+                
+                elif 'grade_subject' in error_message:
+                    raise ValidationError(_('The provided subject already exists for this grade. Duplicate subjects are not permitted.'))
+                
+                else:
+                    raise ValidationError(_('A unique constraint error occurred.'))
+
+            # Re-raise the original exception if it's not handled
+            raise
     

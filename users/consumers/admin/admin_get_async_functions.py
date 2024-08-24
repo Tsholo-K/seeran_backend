@@ -10,11 +10,10 @@ from channels.db import database_sync_to_async
 # simple jwt
 
 # models 
-from users.models import CustomUser
-from grades.models import Grade
+from users.models import Principal, Admin
 
 # serilializers
-from grades.serializers import GradesSerializer, TermsSerializer
+from grades.serializers import GradesSerializer, StudentGradesSerializer
 from schools.serializers import SchoolIDSerializer
 
 # utility functions 
@@ -22,7 +21,7 @@ from schools.serializers import SchoolIDSerializer
 
 
 @database_sync_to_async
-def fetch_school_id(user):
+def fetch_school_details(user, role):
     """
     Asynchronously fetches the school ID associated with the provided user.
 
@@ -36,15 +35,24 @@ def fetch_school_id(user):
         dict: A dictionary containing either the school ID or an error message.
     """
     try:
-        # Use select_related to fetch the related school in the same query for efficiency
-        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
-        
+        # Retrieve the user and related school in a single query using select_related
+        if role == 'PRINCIPAL':
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+        else:
+            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+
         # Serialize the school object into a dictionary
-        return {'school': SchoolIDSerializer(account.school).data}
-    
-    except CustomUser.DoesNotExist:
+        serialized_school = SchoolIDSerializer(admin.school).data
+
+        return {'school': serialized_school}
+               
+    except Principal.DoesNotExist:
         # Handle the case where the provided account ID does not exist
-        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
 
     except Exception as e:
         # Handle any unexpected errors with a general error message
@@ -52,15 +60,29 @@ def fetch_school_id(user):
 
 
 @database_sync_to_async
-def fetch_grades(user):
+def fetch_grades(user, role):
 
     try:
-        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
-        return {'grades':  GradesSerializer(account.school.school_grades.all(), many=True).data}
-    
-    except CustomUser.DoesNotExist:
+        # Retrieve the user and related school in a single query using select_related
+        if role == 'PRINCIPAL':
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+        else:
+            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+            
+        grades = admin.school.grades.all()
+
+        # Serialize the grade objects into a dictionary
+        serialized_grades = GradesSerializer(grades, many=True).data
+
+        return {'grades': serialized_grades}
+               
+    except Principal.DoesNotExist:
         # Handle the case where the provided account ID does not exist
-        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
 
     except Exception as e:
         # Handle any unexpected errors with a general error message
@@ -68,20 +90,28 @@ def fetch_grades(user):
 
 
 @database_sync_to_async
-def fetch_grades_with_student_count(user):
+def fetch_student_grades(user, role):
 
     try:
-        account = CustomUser.objects.get(account_id=user)
-        grades = Grade.objects.filter(school=account.school)
+        # Retrieve the user and related school in a single query using select_related
+        if role == 'PRINCIPAL':
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+        else:
+            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
 
-        serializer = GradesSerializer(grades, many=True)
-        student_count = CustomUser.objects.filter(role='STUDENT', school=account.school).count()
+        grades = admin.school.grades.all()
 
-        return { 'grades': serializer.data, 'student_count' : student_count }
-    
-    except CustomUser.DoesNotExist:
+        serialized_grades = StudentGradesSerializer(grades, many=True).data
+
+        return {'grades': serialized_grades}
+               
+    except Principal.DoesNotExist:
         # Handle the case where the provided account ID does not exist
-        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
 
     except Exception as e:
         # Handle any unexpected errors with a general error message

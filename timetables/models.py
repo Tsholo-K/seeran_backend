@@ -48,7 +48,7 @@ class Schedule(models.Model):
 
 class TeacherSchedule(models.Model):
     teacher = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='teacher_schedule')
-    schedules = models.ManyToManyField(Schedule, related_name='teacher_linked_to')
+    schedules = models.ManyToManyField(Schedule, related_name='teacher_schedule_linked_to')
 
     teacher_schedule_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 

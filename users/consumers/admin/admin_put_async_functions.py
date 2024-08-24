@@ -12,23 +12,22 @@ from django.core.exceptions import ValidationError
 # simple jwt
 
 # models 
-from users.models import CustomUser
+from users.models import Principal, Admin, Teacher, Student, Parent
 from timetables.models import GroupSchedule
 from classes.models import Classroom
 from grades.models import Grade, Term, Subject
 
 # serilializers
-from users.serializers import AccountUpdateSerializer, AccountIDSerializer, AccountSerializer
+from users.serializers import AccountUpdateSerializer, AccountIDSerializer
 from grades.serializers import UpdateGradeSerializer, UpdateTermSerializer, GradeDetailsSerializer, TermSerializer, UpdateSubjectSerializer, SubjectDetailsSerializer
 from classes.serializers import ClassUpdateSerializer
 from schools.serializers import UpdateSchoolAccountSerializer, SchoolIDSerializer
 
 # utility functions 
-from authentication.utils import validate_user_email
 
 
 @database_sync_to_async
-def update_school_details(user, details):
+def update_school_details(user, role, details):
     """
     Update the school account details associated with the provided user.
 
@@ -49,30 +48,35 @@ def update_school_details(user, details):
         { "error": "Error message describing the issue" }
     """
     try:
-        # Efficiently retrieve the user's account and related school using select_related
-        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
-        
-        # Initialize the serializer with the existing school instance and incoming data
-        serializer = UpdateSchoolAccountSerializer(instance=account.school, data=details)
+        # Retrieve the user and related school in a single query using select_related
+        if role == 'PRINCIPAL':
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+        else:
+            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
 
+        # Initialize the serializer with the existing school instance and incoming data
+        serializer = UpdateSchoolAccountSerializer(instance=admin.school, data=details)
         # Validate the incoming data
         if serializer.is_valid():
             # Use an atomic transaction to ensure the database is updated safely
             with transaction.atomic():
                 serializer.save()
-                account.school.refresh_from_db()  # Refresh the user instance from the database
                         
             # Serialize the grade
-            serialized_school = SchoolIDSerializer(account.school).data
+            serialized_school = SchoolIDSerializer(admin.school).data
 
             return {'school': serialized_school, "message": "school account details have been successfully updated" }
         
         # Return serializer errors if the data is not valid, format it as a string
         return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
-
-    except CustomUser.DoesNotExist:
+               
+    except Principal.DoesNotExist:
         # Handle the case where the provided account ID does not exist
-        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
     
     except ValidationError as e:
         # Handle validation errors separately with meaningful messages
@@ -84,25 +88,23 @@ def update_school_details(user, details):
 
 
 @database_sync_to_async
-def update_grade_details(user, details):
+def update_grade_details(user, role, details):
     try:
-        # Efficiently retrieve the user's account and related school using select_related
-        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
-        grade = Grade.objects.select_related('school').only('school').get(grade_id=details.get('grade'))
+        # Retrieve the user and related school in a single query using select_related
+        if role == 'PRINCIPAL':
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+        else:
+            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
 
-        # Check if the user has permission to view the grades terms
-        if account.school != grade.school:
-            return {"error": 'permission denied. you can only access or update details about grades from your own school'}
+        grade = Grade.objects.get(grade_id=details.get('grade'), school=admin.school)
 
         # Initialize the serializer with the existing school instance and incoming data
         serializer = UpdateGradeSerializer(instance=grade, data=details)
-
         # Validate the incoming data
         if serializer.is_valid():
             # Use an atomic transaction to ensure the database is updated safely
             with transaction.atomic():
                 serializer.save()
-                grade.refresh_from_db()  # Refresh the grade instance from the database
             
             # Serialize the grade
             serialized_grade = GradeDetailsSerializer(grade).data
@@ -112,11 +114,19 @@ def update_grade_details(user, details):
         
         # Return serializer errors if the data is not valid, format it as a string
         return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
-
-    except CustomUser.DoesNotExist:
+               
+    except Principal.DoesNotExist:
         # Handle the case where the provided account ID does not exist
-        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
-    
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+                       
+    except Grade.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an grade for your school with the provided credentials does not exist, please check the grade details and try again'}
+
     except ValidationError as e:
         # Handle validation errors separately with meaningful messages
         return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
@@ -127,25 +137,23 @@ def update_grade_details(user, details):
     
 
 @database_sync_to_async
-def update_term_details(user, details):
+def update_term_details(user, role, details):
     try:
-        # Efficiently retrieve the user's account and related school using select_related
-        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
-        term = Term.objects.select_related('school').only('school').get(term_id=details.get('term'))
+        # Retrieve the user and related school in a single query using select_related
+        if role == 'PRINCIPAL':
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+        else:
+            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
 
-        # Check if the user has permission to view the term
-        if account.school != term.school:
-            return {"error": 'permission denied. you can only access or update details about terms from your own school'}
+        term = Term.objects.get(term_id=details.get('term'), school=admin.school)
 
         # Initialize the serializer with the existing school instance and incoming data
         serializer = UpdateTermSerializer(instance=term, data=details)
-
         # Validate the incoming data
         if serializer.is_valid():
             # Use an atomic transaction to ensure the database is updated safely
             with transaction.atomic():
                 serializer.save()
-                term.refresh_from_db()  # Refresh the user instance from the database
                     
             # Serialize the school terms
             serialized_term = TermSerializer(term).data
@@ -154,11 +162,19 @@ def update_term_details(user, details):
         
         # Return serializer errors if the data is not valid, format it as a string
         return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
-
-    except CustomUser.DoesNotExist:
+               
+    except Principal.DoesNotExist:
         # Handle the case where the provided account ID does not exist
-        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
-    
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+                       
+    except Term.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a term for your school with the provided credentials does not exist, please check the term details and try again'}
+
     except ValidationError as e:
         # Handle validation errors separately with meaningful messages
         return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
@@ -169,26 +185,23 @@ def update_term_details(user, details):
 
 
 @database_sync_to_async
-def update_subject_details(user, details):
+def update_subject_details(user, role, details):
     try:
-        # Efficiently retrieve the user's account and related school using select_related
-        account = CustomUser.objects.select_related('school').only('school').get(account_id=user)
-        subject = Subject.objects.select_related('grade__school').get(subject_id=details.get('subject'))
+        # Retrieve the user and related school in a single query using select_related
+        if role == 'PRINCIPAL':
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+        else:
+            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
 
-
-        # Check if the user has permission to view the subject
-        if account.school != subject.grade.school:
-            return {"error": 'permission denied. you can only access or update details about subjects from your own school'}
+        subject = Subject.objects.get(subject_id=details.get('subject'), grade__school=admin.school)
 
         # Initialize the serializer with the existing school instance and incoming data
         serializer = UpdateSubjectSerializer(instance=subject, data=details)
-
         # Validate the incoming data
         if serializer.is_valid():
             # Use an atomic transaction to ensure the database is updated safely
             with transaction.atomic():
                 serializer.save()
-                subject.refresh_from_db()  # Refresh the grade instance from the database
             
             # Serialize the subject
             serialized_subject = SubjectDetailsSerializer(subject).data
@@ -198,14 +211,18 @@ def update_subject_details(user, details):
         
         # Return serializer errors if the data is not valid, format it as a string
         return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
-
-    except CustomUser.DoesNotExist:
+               
+    except Principal.DoesNotExist:
         # Handle the case where the provided account ID does not exist
-        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
         
     except Subject.DoesNotExist:
         # Handle case where the subject does not exist
-        return {'error': 'a subject with the provided credentials does not exist.'}
+        return {'error': 'a subject in your school with the provided credentials does not exist.'}
 
     except ValidationError as e:
         # Handle validation errors separately with meaningful messages
@@ -217,41 +234,37 @@ def update_subject_details(user, details):
     
 
 @database_sync_to_async
-def update_account(user, details):
+def update_admin_account(user, role, details):
 
     try:
-        updates = details.get('updates')
-
-        if updates.get('email'):
-            if not validate_user_email(updates.get('email')):
-                return {'error': 'the provided email address is not in a valid format. please correct the email address and try again'}
-
-            if CustomUser.objects.filter(email=updates.get('email')).exists():
-                return {"error": "an account with the provided email address already exists"}
-
-        account = CustomUser.objects.get(account_id=user)
-        requested_user  = CustomUser.objects.get(account_id=details.get('account_id'))
-
-        if requested_user.role == 'FOUNDER' or (requested_user.role in ['PRINCIPAL', 'ADMIN'] and account.role != 'PRINCIPAL') or (requested_user.role != 'PARENT' and account.school != requested_user.school) or (requested_user.role == 'PARENT' and not requested_user.children.filter(school=account.school).exists()):
+        # Retrieve the user and related school in a single query using select_related
+        if not role == 'PRINCIPAL':
             return { "error" : 'unauthorized access.. permission denied' }
         
-        serializer = AccountUpdateSerializer(instance=requested_user, data=updates)
+        principal = Principal.objects.select_related('school').only('school').get(account_id=user)
+
+        admin  = Admin.objects.get(account_id=details.get('account_id'), school=principal.school)
         
+        serializer = AccountUpdateSerializer(instance=admin, data=details.get('updates'))
         if serializer.is_valid():
             
             with transaction.atomic():
                 serializer.save()
-                requested_user.refresh_from_db()  # Refresh the user instance from the database
             
-            serializer = AccountIDSerializer(instance=requested_user)
-            return { "user" : serializer.data }
+            serialized_admin = AccountIDSerializer(instance=admin).data
+
+            return {"admin" : serialized_admin}
             
         # Return serializer errors if the data is not valid, format it as a string
         return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
-    
-    except CustomUser.DoesNotExist:
+               
+    except Principal.DoesNotExist:
         # Handle the case where the provided account ID does not exist
-        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account for your school with the provided credentials does not exist, please check the account details and try again'}
 
     except Exception as e:
         # Handle any unexpected errors with a general error message
@@ -259,16 +272,150 @@ def update_account(user, details):
 
 
 @database_sync_to_async
-def update_class(user, details):
+def update_teacher_account(user, role, details):
+
+    try:
+        # Retrieve the user and related school in a single query using select_related
+        if role == 'PRINCIPAL':
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+        else:
+            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+
+        teacher  = Teacher.objects.get(account_id=details.get('account_id'), school=admin.school)
+        
+        serializer = AccountUpdateSerializer(instance=teacher, data=details.get('updates'))
+        if serializer.is_valid():
+            
+            with transaction.atomic():
+                serializer.save()
+            
+            serialized_teacher = AccountIDSerializer(instance=teacher).data
+
+            return {"teacher" : serialized_teacher}
+            
+        # Return serializer errors if the data is not valid, format it as a string
+        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Teacher.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a teacher account in your school with the provided credentials does not exist, please check the account details and try again'}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def update_student_account(user, role, details):
+
+    try:
+        # Retrieve the user and related school in a single query using select_related
+        if role == 'PRINCIPAL':
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+        else:
+            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+
+        student  = Student.objects.get(account_id=details.get('account_id'), school=admin.school)
+        
+        serializer = AccountUpdateSerializer(instance=student, data=details.get('updates'))
+        
+        if serializer.is_valid():
+            
+            with transaction.atomic():
+                serializer.save()
+            
+            serialized_student = AccountIDSerializer(instance=student).data
+
+            return {"student" : serialized_student}
+            
+        # Return serializer errors if the data is not valid, format it as a string
+        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Student.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a student account in your school with the provided credentials does not exist, please check the account details and try again'}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def update_parent_account(user, role, details):
+
+    try:
+        # Retrieve the user and related school in a single query using select_related
+        if role == 'PRINCIPAL':
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+        else:
+            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+            
+        parent  = Parent.objects.prefetch_related('children__school').get(account_id=details.get('account_id'))
+
+        if not parent.children.filter(school=admin.school).exists():
+            return {"error": "could not proccess your request, the specified parent account is not linked to any student in your school. please ensure you are attempting to update a parent that is linked to at least one student in your school"}
+
+        serializer = AccountUpdateSerializer(instance=parent, data=details.get('updates'))
+        if serializer.is_valid():
+            
+            with transaction.atomic():
+                serializer.save()
+            
+            serialized_parent = AccountIDSerializer(instance=parent).data
+
+            return {"student" : serialized_parent}
+            
+        # Return serializer errors if the data is not valid, format it as a string
+        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Parent.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a parent account with the provided credentials does not exist, please check the account details and try again'}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def update_class(user, role, details):
 
     try:
         updates = details.get('updates')
 
-        account = CustomUser.objects.get(account_id=user)
-        classroom = Classroom.objects.get(class_id=details.get('class_id'), school=account.school)
+        # Retrieve the user and related school in a single query using select_related
+        if role == 'PRINCIPAL':
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+        else:
+            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+
+        classroom = Classroom.objects.get(class_id=details.get('class_id'), school=admin.school)
 
         serializer = ClassUpdateSerializer(instance=classroom, data=updates)
-
         if serializer.is_valid():
             with transaction.atomic():
                 serializer.save()
@@ -283,21 +430,25 @@ def update_class(user, details):
             
         # Return serializer errors if the data is not valid, format it as a string
         return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
-
-    except CustomUser.DoesNotExist:
-        # Handle case where the user account does not exist
-        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
     
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
-        return {'error': 'a classroom with the provided credentials does not exist. please check the classroom details and try again.'}
+        return {'error': 'a classroom in your school with the provided credentials does not exist. please check the classroom details and try again.'}
 
     except Exception as e:
         return { 'error': str(e) }
 
 
 @database_sync_to_async
-def update_class_students(user, details):
+def update_class_students(user, role, details):
     """
     Adds or removes students to/from a specified classroom.
 
@@ -312,18 +463,18 @@ def update_class_students(user, details):
         dict: A dictionary containing a success message or an error message.
     """
     try:
-        # Retrieve the user account and classroom with related fields
-        account = CustomUser.objects.select_related('school').get(account_id=user)
-        classroom = Classroom.objects.select_related('school', 'grade', 'subject').get(class_id=details.get('class'))
-
-        # Check permissions 
-        if account.school != classroom.school:
-            return {"error": "Permission denied. The provided classroom is not from your school"}
-
         students_list = details.get('students', '').split(', ')
         if not students_list or students_list == ['']:
             return {'error': 'your request could not be proccessed.. no students were provided'}
         
+        # Retrieve the user and related school in a single query using select_related
+        if role == 'PRINCIPAL':
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+        else:
+            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+
+        classroom = Classroom.objects.select_related('grade', 'subject').get(class_id=details.get('class'), school=admin.school)
+
         with transaction.atomic():
             # Check for validation errors and perform student updates
             error_message = classroom.update_students(students_list=students_list, remove=details.get('remove'))
@@ -332,21 +483,25 @@ def update_class_students(user, details):
             return {'error': error_message}
 
         return {'message': f'Students successfully {"removed from" if details.get("remove") else "added to"} the grade {classroom.grade.grade}, group {classroom.group} {"register" if classroom.register_class else classroom.subject.subject} class'.lower()}
-
-    except CustomUser.DoesNotExist:
-        # Handle case where the user account does not exist
-        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
     
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
-        return {'error': 'a classroom with the provided credentials does not exist. please check the classroom details and try again.'}
+        return {'error': 'a classroom in your school with the provided credentials does not exist. please check the classroom details and try again.'}
 
     except Exception as e:
         return {'error': str(e)}
 
 
 @database_sync_to_async
-def add_students_to_group_schedule(user, details):
+def add_students_to_group_schedule(user, role, details):
     """
     Adds students to a specified group schedule.
 
@@ -362,18 +517,19 @@ def add_students_to_group_schedule(user, details):
             - 'error': An error message if an exception occurs.
     """
     try:
-        # Retrieve the user account
-        account = CustomUser.objects.select_related('school').get(account_id=user)
-        
-        # Retrieve the group schedule object with related grade and school for permission check
-        group_schedule = GroupSchedule.objects.select_related('grade__school').get(group_schedule_id=details.get('group_schedule_id'))
-
-        # Check if the user has permission to modify the group schedule
-        if account.school != group_schedule.grade.school:
-            return {"error": 'Permission denied. You can only modify group schedules from your own school.'}
-        
         # Get the list of student IDs from the details
-        students_list = details.get('students').split(', ')
+        students_list = details.get('students', '').split(', ')
+        if not students_list or students_list == ['']:
+            return {'error': 'your request could not be proccessed.. no students were provided'}
+
+        # Retrieve the user and related school in a single query using select_related
+        if role == 'PRINCIPAL':
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+        else:
+            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+
+        # Retrieve the group schedule object with related grade and school for permission check
+        group_schedule = GroupSchedule.objects.prefetch_related('students').select_related('grade').get(group_schedule_id=details.get('group_schedule_id'), grade__school=admin.school)
         
         # Retrieve the existing students in the group schedule
         existing_students = group_schedule.students.filter(account_id__in=students_list).values_list('account_id', flat=True)
@@ -382,26 +538,32 @@ def add_students_to_group_schedule(user, details):
             existing_students_str = ', '.join(existing_students)
             return {'error': f'Invalid request. The following students are already in this class: {existing_students_str}. Please review the list of students and try again.'}
         
-        students_to_add = CustomUser.objects.filter(account_id__in=students_list, school=account.school, grade=group_schedule.grade)        
+        students_to_add = Student.objects.filter(account_id__in=students_list, school=admin.school, grade=group_schedule.grade)        
         
         # Add students to the group schedule within a transaction
         with transaction.atomic():
             group_schedule.students.add(*students_to_add)
         
-        return {'message': 'Students successfully added to group schedule.'}
-        
-    except CustomUser.DoesNotExist:
-        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+        return {'message': 'students successfully added to group schedule.'}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
             
     except GroupSchedule.DoesNotExist:
-        return {'error': 'A group schedule with the provided credentials does not exist. Please check the group schedule details and try again.'}
+        # Handle the case where the provided group schedule ID does not exist
+        return {'error': 'A group schedule in your school with the provided credentials does not exist. Please check the group schedule details and try again.'}
 
     except Exception as e:
         return {'error': str(e)}
 
 
 @database_sync_to_async
-def remove_students_from_group_schedule(user, details):
+def remove_students_from_group_schedule(user, role, details):
     """
     Removes students from a specified group schedule.
 
@@ -418,36 +580,40 @@ def remove_students_from_group_schedule(user, details):
             - 'error': An error message if an exception occurs.
     """
     try:
-        # Retrieve the user account
-        account = CustomUser.objects.select_related('school').get(account_id=user)
-        
-        # Retrieve the group schedule object with related grade and school for permission check
-        group_schedule = GroupSchedule.objects.select_related('grade__school').get(group_schedule_id=details.get('group_schedule_id'))
-
-        # Check if the user has permission to modify the group schedule
-        if account.school != group_schedule.grade.school:
-            return {"error": 'Permission denied. You can only modify group schedules from your own school.'}
-        
         # Get the list of student IDs from the details
-        students_list = details.get('students').split(', ')
+        students_list = details.get('students', '').split(', ')
+        if not students_list or students_list == ['']:
+            return {'error': 'your request could not be proccessed.. no students were provided'}
+
+        # Retrieve the user and related school in a single query using select_related
+        if role == 'PRINCIPAL':
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+        else:
+            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+
+        # Retrieve the group schedule object with related grade and school for permission check
+        group_schedule = GroupSchedule.objects.select_related('grade').get(group_schedule_id=details.get('group_schedule_id'), grade__school=admin.school)
 
         # Retrieve the students that need to be removed in a single query for efficiency
-        students_to_remove = CustomUser.objects.filter(account_id__in=students_list, school=account.school, grade=group_schedule.grade)
+        students_to_remove = Student.objects.filter(account_id__in=students_list, school=admin.school, grade=group_schedule.grade)
 
         # Remove students from the group schedule within a transaction
         with transaction.atomic():
             group_schedule.students.remove(*students_to_remove)
         
-        # Serialize the remaining students
-        serializer = AccountSerializer(group_schedule.students.all(), many=True)
-
-        return {"students": serializer.data, 'message': 'Students successfully removed from group schedule.'}
-        
-    except CustomUser.DoesNotExist:
-        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+        return {'message': 'students successfully removed from group schedule.'}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
             
     except GroupSchedule.DoesNotExist:
-        return {'error': 'A group schedule with the provided credentials does not exist. Please check the group schedule details and try again.'}
+        # Handle the case where the provided group schedule ID does not exist
+        return {'error': 'A group schedule in your school with the provided credentials does not exist. Please check the group schedule details and try again.'}
 
     except Exception as e:
         return {'error': str(e)}

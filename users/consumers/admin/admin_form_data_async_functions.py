@@ -10,7 +10,7 @@ from channels.db import database_sync_to_async
 # simple jwt
 
 # models 
-from users.models import CustomUser
+from users.models import Principal, Admin
 from timetables.models import GroupSchedule
 from grades.models import Subject
 from classes.models import Classroom
@@ -22,7 +22,7 @@ from users.serializers import AccountSerializer
 
 
 @database_sync_to_async
-def form_data_for_creating_class(user, details):
+def form_data_for_creating_class(user, role, details):
     """
     Retrieves a list of teachers available for class creation based on the type of class being created.
 
@@ -39,35 +39,42 @@ def form_data_for_creating_class(user, details):
             - 'error': An error message if an exception occurs.
     """
     try:
-        # Retrieve the user account
-        account = CustomUser.objects.select_related('school').get(account_id=user)
+        # Retrieve the user and related school in a single query using select_related
+        if role == 'PRINCIPAL':
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+        else:
+            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
 
         # Determine the query based on the reason for retrieving teachers
         if details.get('reason') == 'subject class':
             # Retrieve the subject and validate it against the grade
-            subject = Subject.objects.get(subject_id=details.get('subject'))
+            subject = Subject.objects.get(subject_id=details.get('subject'), grade__school=admin.school)
 
             # Retrieve all teachers in the user's school who are not teaching the specified subject
-            teachers = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(taught_classes__subject=subject).only('account_id', 'name', 'surname', 'email')
+            teachers = admin.school.teachers.all().exclude(taught_classes__subject=subject)
 
         elif details.get('reason') == 'register class':
             # Retrieve teachers not currently teaching a register class
-            teachers = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(taught_classes__register_class=True).only('account_id', 'name', 'surname', 'email')
+            teachers = admin.school.teachers.all().exclude(taught_classes__register_class=True)
 
         else:
-            return {"error": "Invalid reason provided. Expected 'subject class' or 'register class'."}
+            return {"error": "invalid reason provided. expected 'subject class' or 'register class'."}
 
         # Serialize the list of teachers
-        serializer = AccountSerializer(teachers.order_by('name', 'surname', 'account_id'), many=True)
+        serialized_teachers = AccountSerializer(teachers, many=True).data
 
-        return {"teachers": serializer.data}
-        
-    except CustomUser.DoesNotExist:
-        # Handle case where the user account does not exist
-        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+        return {"teachers": serialized_teachers}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
         
     except Subject.DoesNotExist:
-        return {'error': 'subject with the provided credentials does not exist'}
+        return {'error': 'a subject in your school with the provided credentials does not exist, please check the subject details and try again'}
 
     except Exception as e:
         # Handle any other unexpected errors
@@ -75,7 +82,7 @@ def form_data_for_creating_class(user, details):
 
 
 @database_sync_to_async
-def form_data_for_updating_class(user, details):
+def form_data_for_updating_class(user, role, details):
     """
     Retrieves data required for updating a classroom, including available teachers and current teacher details.
 
@@ -93,43 +100,44 @@ def form_data_for_updating_class(user, details):
             - 'error': An error message if an exception occurs.
     """
     try:
-        # Retrieve the user account and classroom in one go using select_related to minimize queries
-        account = CustomUser.objects.select_related('school').get(account_id=user)
-        classroom = Classroom.objects.select_related('school', 'teacher').get(class_id=details.get('class_id'))
+        # Retrieve the user and related school in a single query using select_related
+        if role == 'PRINCIPAL':
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+        else:
+            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
 
-        # Check if the user has permission to update the classroom
-        if account.school != classroom.school:
-            return {"error": "Permission denied. The provided classroom is not from your school. You can only update details of classes from your own school."}
+        classroom = Classroom.objects.select_related('subject', 'teacher').get(class_id=details.get('class_id'), school=admin.school)
 
         # Determine the query based on the classroom type
         if classroom.subject:
-            teachers = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(taught_classes__subject=classroom.subject).only('account_id', 'name', 'surname', 'email')
-            if classroom.teacher:
-                teachers = teachers.exclude(account_id=classroom.teacher.account_id)
+            teachers = admin.school.teachers.all().exclude(taught_classes__subject=classroom.subject)
 
         elif classroom.register_class:
-            teachers = CustomUser.objects.filter(role='TEACHER', school=account.school).exclude(taught_classes__register_class=True).only('account_id', 'name', 'surname', 'email')
-            if classroom.teacher:
-                teachers = teachers.exclude(account_id=classroom.teacher.account_id)
+            teachers = admin.school.teachers.all().exclude(taught_classes__register_class=True)
 
         else:
             return {"error": "invalid classroom provided. the classroom in neither a register class or linked to a subject"}
         
-        # Fetch teachers and serialize them
-        teachers = AccountSerializer(teachers, many=True).data
+        if classroom.teacher:
+            teachers = teachers.exclude(account_id=classroom.teacher.account_id)
+        
+        # serialize them
+        serialized_teachers = AccountSerializer(teachers, many=True).data
+        class_teacher = AccountSerializer(classroom.teacher).data if classroom.teacher else None
 
-        # Prepare the response data
-        response_data = {'teacher': AccountSerializer(classroom.teacher).data if classroom.teacher else None, "teachers": teachers, 'group': classroom.group, 'classroom_identifier': classroom.classroom_number}
-
-        return response_data
-
-    except CustomUser.DoesNotExist:
-        # Handle case where the user account does not exist
-        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+        return {'teacher': class_teacher, "teachers": serialized_teachers, 'group': classroom.group, 'classroom_identifier': classroom.classroom_number}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
     
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
-        return {'error': 'A classroom with the provided credentials does not exist. Please check the classroom details and try again.'}
+        return {'error': 'a classroom in your school with the provided credentials does not exist. Please check the classroom details and try again.'}
     
     except Exception as e:
         # Handle any other unexpected errors
@@ -137,7 +145,7 @@ def form_data_for_updating_class(user, details):
 
 
 @database_sync_to_async
-def form_data_for_adding_students_to_class(user, details):
+def form_data_for_adding_students_to_class(user, role, details):
     """
     Retrieves a list of students who can be added to a specified class based on the provided details.
     
@@ -157,15 +165,14 @@ def form_data_for_adding_students_to_class(user, details):
             - "error": An error message if an exception occurs.
     """
     try:
-        # Retrieve the account of the user making the request using `select_related` to optimize query performance
-        account = CustomUser.objects.select_related('school').get(account_id=user)
+        # Retrieve the user and related school in a single query using select_related
+        if role == 'PRINCIPAL':
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+        else:
+            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
 
         # Retrieve the classroom with the provided class ID and related data using `select_related`
-        classroom = Classroom.objects.select_related('school', 'grade', 'subject').get(class_id=details.get('class_id'))
-
-        # Check if the user is allowed to access the classroom
-        if account.school != classroom.school:
-            return {"error": "Permission denied. The provided classroom is not from your school. You can only view details about classes from your own school."}
+        classroom = Classroom.objects.select_related('school', 'grade', 'subject').get(class_id=details.get('class_id'), school=admin.school)
 
         # Determine the reason for fetching students and apply the appropriate filtering logic
         if details.get('reason') == 'subject class':
@@ -174,7 +181,7 @@ def form_data_for_adding_students_to_class(user, details):
                 return {"error": "could not proccess your request. the provided classroom has no subject linked to it."}
 
             # Exclude students who are already enrolled in any class with the same subject as the classroom
-            students = CustomUser.objects.filter(grade=classroom.grade).exclude(enrolled_classes__subject=classroom.subject).only('account_id', 'name', 'surname', 'id_number', 'passport_number', 'email')
+            students = admin.school.students.all().filter(grade=classroom.grade).exclude(enrolled_classes__subject=classroom.subject)
 
         elif details.get('reason') == 'register class':
             # Check if the classroom is a register class
@@ -182,23 +189,28 @@ def form_data_for_adding_students_to_class(user, details):
                 return {"error": "could not proccess your request. the provided classroom is not a register class."}
 
             # Exclude students who are already enrolled in a register class in the same grade
-            students = CustomUser.objects.filter(grade=classroom.grade).exclude(enrolled_classes__register_class=True).only('account_id', 'name', 'surname', 'id_number', 'passport_number', 'email')
+            students = admin.school.students.all().filter(grade=classroom.grade).exclude(enrolled_classes__register_class=True)
 
         else:
             # Return an error if the reason provided is not valid
             return {"error": "Invalid reason provided."}
 
         # Serialize the list of students to return them in the response
-        serializer = AccountSerializer(students, many=True)
-        return {"students": serializer.data}
+        serialized_students = AccountSerializer(students, many=True).data
 
-    except CustomUser.DoesNotExist:
-        # Handle case where the user account does not exist
-        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+        return {"students": serialized_students}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
     
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
-        return {'error': 'A classroom with the provided credentials does not exist. Please check the classroom details and try again.'}
+        return {'error': 'a classroom in your school with the provided credentials does not exist. Please check the classroom details and try again.'}
     
     except Exception as e:
         # Handle any other unexpected errors
@@ -206,7 +218,7 @@ def form_data_for_adding_students_to_class(user, details):
 
 
 @database_sync_to_async
-def form_data_for_adding_students_to_group_schedule(user, details):
+def form_data_for_adding_students_to_group_schedule(user, role, details):
     """
     Retrieves a list of students who can be added to a specified group schedule based on the provided details.
 
@@ -224,31 +236,34 @@ def form_data_for_adding_students_to_group_schedule(user, details):
             - "error": An error message if an exception occurs.
     """
     try:
-        # Retrieve the account of the user making the request
-        account = CustomUser.objects.select_related('school').get(account_id=user)
+        # Retrieve the user and related school in a single query using select_related
+        if role == 'PRINCIPAL':
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+        else:
+            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
         
         # Retrieve the group schedule with the provided ID and related data
-        group_schedule = GroupSchedule.objects.select_related('grade__school').get(group_schedule_id=details.get('group_schedule_id'))
-
-        # Check if the user is allowed to access the group schedule
-        if account.school != group_schedule.grade.school:
-            return {"error": "Permission denied. You can only view details about group schedules from your own school."}
+        group_schedule = GroupSchedule.objects.select_related('grade').get(group_schedule_id=details.get('group_schedule_id'), grade__school=admin.school)
 
         # Fetch all students in the same grade who are not already subscribed to the group schedule
-        students = CustomUser.objects.filter(grade=group_schedule.grade, role='STUDENT').exclude(my_group_schedule=group_schedule).only('account_id', 'name', 'surname', 'id_number', 'passport_number', 'email')  # Use `only` to select specific fields for efficiency
+        students = admin.school.students.all().filter(grade=group_schedule.grade).exclude(my_group_schedule=group_schedule)
 
         # Serialize the list of students to return them in the response
-        serializer = AccountSerializer(students, many=True)
+        serialized_students = AccountSerializer(students, many=True).data
 
-        return {"students": serializer.data}
-
-    except CustomUser.DoesNotExist:
-        # Handle case where the user account does not exist
-        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+        return {"students": serialized_students}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
     
     except GroupSchedule.DoesNotExist:
         # Handle case where the group schedule does not exist
-        return {'error': 'A group schedule with the provided credentials does not exist. Please check the group schedule details and try again.'}
+        return {'error': 'a group schedule in your school with the provided credentials does not exist. Please check the group schedule details and try again.'}
 
     except Exception as e:
         # Handle any other unexpected errors

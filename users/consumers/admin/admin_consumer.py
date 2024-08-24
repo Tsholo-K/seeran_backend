@@ -51,9 +51,10 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         user = self.scope.get('user')
+        role = self.scope.get('role')
         access_token = self.scope.get('access_token')
 
-        if not (user and access_token and validate_access_token(access_token)):
+        if not (user and role and access_token and validate_access_token(access_token)):
             await self.send(text_data=json.dumps({'error': 'request not authenticated.. access denied'}))
             return await self.close()
 
@@ -65,7 +66,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
         if not action or not description:
             return await self.send(text_data=json.dumps({'error': 'invalid request..'}))
 
-        response = await self.handle_request(action, description, details, user, access_token)
+        response = await self.handle_request(action, description, details, user, role, access_token)
         
         if response is not None:
             return await self.send(text_data=json.dumps(response))
@@ -73,7 +74,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
         return await self.send(text_data=json.dumps({'error': 'provided information is invalid.. request revoked'}))
 
 
-    async def handle_request(self, action, description, details, user, access_token):
+    async def handle_request(self, action, description, details, user, role, access_token):
         action_map = {
             'GET': self.handle_get,
             'SEARCH': self.handle_search,
@@ -85,20 +86,20 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         handler = action_map.get(action)
         if handler:
-            return await handler(description, details, user, access_token)
+            return await handler(description, details, user, role, access_token)
         
         return {'error': 'Invalid action'}
 
 
-    async def handle_get(self, description, details, user, access_token):
+    async def handle_get(self, description, details, user, role, access_token):
         get_map = {
             'my_security_information': general_get_async_functions.fetch_my_security_information,
             'email_information': general_get_async_functions.fetch_my_email_information,
 
-            "school_id": admin_get_async_functions.fetch_school_id,
+            "school_details": admin_get_async_functions.fetch_school_details,
 
             'grades': admin_get_async_functions.fetch_grades,
-            'grades_with_student_count': admin_get_async_functions.fetch_grades_with_student_count,
+            'student_grades': admin_get_async_functions.fetch_student_grades,
 
             'chats': general_get_async_functions.fetch_chats,
 
@@ -107,12 +108,12 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         func = get_map.get(description)
         if func:
-            return await func(user) if description != 'log_out' else await func(access_token)
+            return await func(user, role)
         
         return {'error': 'Invalid get description'}
 
 
-    async def handle_search(self, description, details, user, access_token):
+    async def handle_search(self, description, details, user, role, access_token):
         search_map = {
             'accounts': admin_search_async_functions.search_accounts,
             'students': admin_search_async_functions.search_students,
@@ -159,7 +160,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
         func = search_map.get(description)
         
         if func:
-            response = await func(details) if description in ['schedule_sessions'] else await func(user, details)
+            response = await func(role, details) if description in ['schedule_sessions'] else await func(user, role, details)
             
             if response.get('user') and description in ['chat_room_messages']:
                 await connection_manager.send_message(response['user'], json.dumps({'description': 'read_receipt', 'chat': response['chat']}))
@@ -171,7 +172,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
         return {'error': 'Invalid search description'}
 
 
-    async def handle_verify(self, description, details, user, access_token):
+    async def handle_verify(self, description, details, user, role, access_token):
         verify_map = {
             'verify_email': general_verify_async_functions.verify_email,
             'verify_password': general_verify_async_functions.verify_password,
@@ -184,7 +185,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         func = verify_map.get(description)
         if func:
-            response = await func(details) if description == 'verify_email' else await func(user, details)
+            response = await func(role, details) if description == 'verify_email' else await func(user, role, details)
             if response.get('user'):
                 if description == 'verify_email' or description == 'verify_password':
                     return await general_email_async_functions.send_one_time_pin_email(response.get('user'), reason='This OTP was generated in response to your request.')
@@ -195,7 +196,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
         return {'error': 'Invalid verify description'}
 
 
-    async def handle_form_data(self, description, details, user, access_token):
+    async def handle_form_data(self, description, details, user, role, access_token):
         form_data_map = {
             'class_creation': admin_form_data_async_functions.form_data_for_creating_class,
             'class_update': admin_form_data_async_functions.form_data_for_updating_class,
@@ -209,13 +210,13 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         func = form_data_map.get(description)
         if func:
-            response = await func(user, details)
+            response = await func(user, role, details)
             return response
         
         return {'error': 'Invalid form data description'}
 
 
-    async def handle_put(self, description, details, user, access_token):
+    async def handle_put(self, description, details, user, role, access_token):
         put_map = {
             'update_email': general_put_async_functions.update_email,
             'update_password': general_put_async_functions.update_password,
@@ -243,7 +244,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         func = put_map.get(description)
         if func:
-            response = await func(user, details, access_token) if description in ['update_email', 'update_password'] else await func(user, details)
+            response = await func(user, role, details, access_token) if description in ['update_email', 'update_password'] else await func(user, role, details)
   
             if response.get('user') and description in ['mark_messages_as_read']:
                 await connection_manager.send_message(response['user'], json.dumps({'description': 'read_receipt', 'chat': response['chat']}))
@@ -261,7 +262,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
         return {'error': 'Invalid put description'}
 
 
-    async def handle_post(self, description, details, user, access_token):
+    async def handle_post(self, description, details, user, role, access_token):
         post_map = {
             'create_account': admin_post_async_functions.create_account,
             'create_student_account': admin_post_async_functions.create_student_account,
@@ -296,7 +297,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
         func = post_map.get(description)
 
         if func:
-            response = await func(access_token) if description in ['log_out'] else await func(user, details)
+            response = await func(access_token) if description in ['log_out'] else await func(user, role, details)
 
             if response.get('reciever') and description in ['text']:
                 await connection_manager.send_message(response['reciever']['id'], json.dumps({'description': 'text_message', 'message': response['message'], 'sender': response['sender']}))

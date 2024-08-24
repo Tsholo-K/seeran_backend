@@ -50,6 +50,13 @@ class GradesSerializer(serializers.ModelSerializer):
         fields = ['grade', 'grade_id']
 
 
+class StudentGradesSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = Grade
+        fields = ['grade', 'grade_id', 'student_count']
+
+
 class GradeSerializer(serializers.ModelSerializer):
     
     subjects = serializers.SerializerMethodField()
