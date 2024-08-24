@@ -5,7 +5,7 @@ from rest_framework import serializers
 from .models import Announcement
 
 # serializers
-from users.serializers.founder.founder_serializers import BySerializer
+from users.serializers.general_serializers import SourceAccountSerializer
 
 
 class AnnouncementCreationSerializer(serializers.ModelSerializer):
@@ -48,7 +48,7 @@ class AnnouncementSerializer(serializers.ModelSerializer):
 
     def get_announce_by(self, obj):    
         if obj.announce_by:
-            return BySerializer(obj.announce_by).data
+            return SourceAccountSerializer(obj.announce_by).data
         else:
             return None
     
