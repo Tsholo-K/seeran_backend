@@ -1,11 +1,20 @@
 # python
 import json
 
+# simlpe jwt
+from rest_framework_simplejwt.tokens import AccessToken
+
+# channels
 from channels.db import database_sync_to_async
+
+# djnago
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
-from users.models import CustomUser
-from rest_framework_simplejwt.tokens import AccessToken
+
+# models
+from users.models import BaseUser
+
+# utility functions
 from authentication.utils import validate_access_token
 
 
@@ -43,7 +52,7 @@ class TokenAuthMiddleware:
         Raises:
             CustomUser.DoesNotExist: If the user does not exist.
         """
-        user = CustomUser.objects.values('account_id', 'role').get(pk=user_id)
+        user = BaseUser.objects.values('account_id', 'role').get(pk=user_id)
         return (str(user['account_id']), user['role'])
 
     async def __call__(self, scope, receive, send):
