@@ -25,7 +25,7 @@ class Balance(models.Model):
 
 
 class Bill(models.Model):
-    user = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='my_bills')
+    user = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='bills')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
 
     date_billed = models.DateField()

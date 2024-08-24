@@ -5,10 +5,9 @@ from django.db.models import Count, Q
 from django.db import transaction
 
 # models 
-from balances.models import Bill
-from users.models import CustomUser
+from users.models import Principal
 from schools.models import School
-from balances.models import Balance
+from balances.models import Bill, Balance
 from bug_reports.models import BugReport
 
 # serializers
@@ -154,7 +153,7 @@ def create_principal_account(details):
         school = School.objects.get(school_id=details.get('school'))
 
         # Check if the school already has a principal
-        if CustomUser.objects.filter(school=school, role="PRINCIPAL").exists():
+        if Principal.objects.filter(school=school).exists():
             return {"error": "school already has a principal account linked to it"}
 
         # Add the school instance to the request data
@@ -168,7 +167,7 @@ def create_principal_account(details):
             validated_data = serializer.validated_data
             
             with transaction.atomic():
-                user = CustomUser.objects.create_user(**validated_data) 
+                user = Principal.objects.create(**validated_data) 
                 # Create a new Balance instance for the user
                 Balance.objects.create(user=user)
         
@@ -195,12 +194,12 @@ def delete_principal_account(details):
         dict: A dictionary containing either a success message or an error message.
     """
     try:
-        principal = CustomUser.objects.get(account_id=details.get('principal_id'), role='PRINCIPAL')
+        principal = Principal.objects.get(account_id=details.get('principal_id'))
         principal.delete()
         
         return {"message": "principal account deleted successfully"}
     
-    except CustomUser.DoesNotExist:
+    except Principal.DoesNotExist:
         return {"error": "principal with the provided credentials does not exist"}
     
     except Exception as e:
@@ -220,34 +219,20 @@ def update_principal_account(details):
         dict: A dictionary containing the updated user profile or an error message.
     """
     try:
-        updates = details.get('updates')
-
-        if updates.get('email'):
-            if CustomUser.objects.filter(email=updates.get('email')).exists():
-                return {"error": "an account with the provided email address already exists"}
-
-        if updates.get('phone_number'):
-            if CustomUser.objects.filter(phone_number=updates.get('phone_number'), role='PRINCIPAL').exists():
-                return {"error": "an account with the provided phone number already exists"}
-            
-        account = CustomUser.objects.get(account_id=details.get('account_id'))
-
-        if account.role != 'PRINCIPAL':
-            return {"error": 'unauthorized access.. permission denied'}
+        account = Principal.objects.get(account_id=details.get('account_id'))
         
-        serializer = PrincipalAccountUpdateSerializer(instance=account, data=updates)
+        serializer = PrincipalAccountUpdateSerializer(instance=account, data=details.get('updates'))
         
         if serializer.is_valid():
             with transaction.atomic():
                 serializer.save()
-                account.refresh_from_db()  # Refresh the user instance from the database
             
             serializer = PrincipalIDSerializer(instance=account)
             return {"user": serializer.data}
             
         return {"error": serializer.errors}
     
-    except CustomUser.DoesNotExist:
+    except Principal.DoesNotExist:
         return {'error': 'account with the provided credentials does not exist'}
     
     except Exception as e:
@@ -266,11 +251,11 @@ def search_principal_profile(details):
         dict: A dictionary containing the principal's profile or an error message.
     """
     try:
-        principal = CustomUser.objects.get(account_id=details.get('principal_id'), role='PRINCIPAL')
+        principal = Principal.objects.get(account_id=details.get('principal_id'))
         serializer = AccountProfileSerializer(instance=principal)
         return {"user": serializer.data}
     
-    except CustomUser.DoesNotExist:
+    except Principal.DoesNotExist:
         return {'error': 'principal with the provided credentials does not exist'}
     
     except Exception as e:
@@ -289,7 +274,7 @@ def search_principal_id(details):
         dict: A dictionary containing the principal's ID or an error message.
     """
     try:
-        account = CustomUser.objects.get(account_id=details.get('account_id'))
+        account = Principal.objects.get(account_id=details.get('account_id'))
 
         if account.role != 'PRINCIPAL':
             return {"error": 'unauthorized access.. permission denied'}
@@ -298,7 +283,7 @@ def search_principal_id(details):
         serializer = PrincipalIDSerializer(instance=account)
         return {"user": serializer.data}
         
-    except CustomUser.DoesNotExist:
+    except Principal.DoesNotExist:
         return {'error': 'account with the provided credentials does not exist'}
     
     except Exception as e:
@@ -317,16 +302,17 @@ def search_principal_invoices(details):
         dict: A dictionary containing the invoices or an error message.
     """
     try:
-        principal = CustomUser.objects.get(account_id=details.get('principal_id'))
-        principal_bills = Bill.objects.filter(user=principal).order_by('-date_billed')
+        principal = Principal.objects.get(account_id=details.get('principal_id'))
+        principal_bills = principal.bills
         
         if not principal_bills:
             return {'message': 'success', "invoices": None, 'in_arrears': principal.school.in_arrears}
         
-        serializer = BillsSerializer(principal_bills, many=True)
-        return {'message': 'success', "invoices": serializer.data, 'in_arrears': principal.school.in_arrears}
+        serialized_bills = BillsSerializer(principal_bills, many=True).data
+
+        return {'message': 'success', "invoices": serialized_bills, 'in_arrears': principal.school.in_arrears}
     
-    except CustomUser.DoesNotExist:
+    except Principal.DoesNotExist:
         return {"error": "user with the provided credentials can not be found"}
     
     except Exception as e:
