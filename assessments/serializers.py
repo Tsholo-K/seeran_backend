@@ -10,7 +10,6 @@ from .models import Assessment
 from classes.models import Classroom
 
 # serializers
-from users.serializers import BySerializer
 
 
 class AssessmentCreationSerializer(serializers.ModelSerializer):

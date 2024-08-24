@@ -8,7 +8,7 @@ from django.utils import timezone
 
 # models
 from .models import Assessment, Transcript
-from users.models import CustomUser
+from users.models import Teacher, Student
 from schools.models import School
 from grades.models import Grade, Term, Subject
 from classes.models import Classroom
@@ -51,7 +51,7 @@ class AssessmentTest(TestCase):
             major_subject=True,
             pass_mark=50.00
         )
-        self.teacher = CustomUser.objects.create_user(
+        self.teacher = Teacher.objects.create_user(
             email='student@example.com',
             name="John",
             surname="Doe",
@@ -276,7 +276,7 @@ class TranscriptTest(TestCase):
             major_subject=True,
             pass_mark=50.00
         )
-        self.student = CustomUser.objects.create_user(
+        self.student = Student.objects.create_user(
             name="John",
             surname="Doe",
             role="STUDENT",

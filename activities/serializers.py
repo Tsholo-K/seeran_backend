@@ -23,6 +23,18 @@ class ActivityCreationSerializer(serializers.ModelSerializer):
         fields = ['offence', 'details', 'logger', 'recipient', 'school', 'classroom']
 
 
+class ActivitiesSerializer(serializers.ModelSerializer):
+
+    offence = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Activity
+        fields = ['offence', 'date_logged', 'activity_id']
+
+    def get_offence(self, obj):
+        return  obj.offence.title()
+
+
 class ActivitySerializer(serializers.ModelSerializer):
 
     offence = serializers.SerializerMethodField()
@@ -39,20 +51,4 @@ class ActivitySerializer(serializers.ModelSerializer):
         if  obj.logger:
             return BySerializer(obj.logger).data
         return None
-
-
-class ActivitiesSerializer(serializers.ModelSerializer):
-
-    id = serializers.SerializerMethodField()
-    offence = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Activity
-        fields = ['offence', 'date_logged', 'id']
-
-    def get_id(self, obj):
-        return  str(obj.activity_id)
-
-    def get_offence(self, obj):
-        return  obj.offence.title()
 

@@ -7,7 +7,7 @@ from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 
 # models
-from users.models import CustomUser
+from users.models import Student
 from schools.models import School
 from grades.models import Grade, Term, Subject
 from assessments.models import Assessment, Transcript
@@ -19,12 +19,12 @@ class StudentSubjectScore(models.Model):
     Model to represent the score a student has achieved in a specific subject during a term.
     """
     # The student whose score is being recorded
-    student = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='subject_scores')
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='subject_scores')
 
     # field to indicate if the student passed the subject for the specified term
     passed = models.BooleanField(default=False)
     # The academic term for which this score applies
-    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='scores')
+    term = models.ForeignKey(Term, editable=False, on_delete=models.CASCADE, related_name='scores')
 
     # The score the student achieved in the subject
     score = models.DecimalField(max_digits=5, decimal_places=2)
@@ -32,12 +32,12 @@ class StudentSubjectScore(models.Model):
     weighted_score = models.DecimalField(max_digits=5, decimal_places=2)
 
     # The subject for which the score is recorded
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='student_scores')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, editable=False, related_name='student_scores')
 
     #The grade to which this score belongs
-    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='grade_subject_scores')
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='grade_subject_scores')
     # The school where the assessment was conducted
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='school_subject_scores')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='school_subject_scores')
 
     # subject score id
     score_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
@@ -108,12 +108,12 @@ class ReportCard(models.Model):
     Model to represent a student's report card for a specific term.
     """
     # The student whose report is being generated
-    student = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='term_reports')
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='term_reports')
 
     # The subject scores associated with this report
     subject_scores = models.ManyToManyField(StudentSubjectScore, related_name='reports')
     # The academic term for which the report is for
-    term = models.ForeignKey(Term, on_delete=models.SET_NULL, related_name='reports', null=True)
+    term = models.ForeignKey(Term, editable=False, on_delete=models.SET_NULL, related_name='reports', null=True)
     
     # The total number of days the student was absent
     days_absent = models.IntegerField(default=0)
@@ -130,7 +130,7 @@ class ReportCard(models.Model):
     year_end_report = models.BooleanField(default=False)
 
     # The school where the report is generated
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='term_reports')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='term_reports')
 
     # report card id
     report_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)

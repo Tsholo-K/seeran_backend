@@ -12,27 +12,13 @@ from .models import BugReport
 from users.serializers import AccountSerializer
 
 
-### users balance serilizers ###
-
 
 # create bug report seralizer
-class CreateBugReportSerializer(serializers.ModelSerializer):
+class BugReportCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BugReport
         fields = [ 'user', 'section', 'description', 'dashboard' ]
-
-
-class MyBugReportSerializer(serializers.ModelSerializer):
-    
-    status = serializers.SerializerMethodField()
-
-    class Meta:
-        model = BugReport
-        fields = [ 'section', 'created_at', 'updated_at', 'status', 'description' ]
-        
-    def get_status(self, obj):
-        return obj.status.replace("_", " ").title()
      
         
 class UpdateBugReportStatusSerializer(serializers.ModelSerializer):
@@ -75,3 +61,15 @@ class BugReportSerializer(serializers.ModelSerializer):
             return AccountSerializer(obj.user).data
         else:
             return None
+
+
+class MyBugReportSerializer(serializers.ModelSerializer):
+    
+    status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = BugReport
+        fields = [ 'section', 'created_at', 'updated_at', 'status', 'description' ]
+        
+    def get_status(self, obj):
+        return obj.status.replace("_", " ").title()

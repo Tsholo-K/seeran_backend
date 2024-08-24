@@ -7,7 +7,7 @@ from django.db import models, IntegrityError
 from django.utils.translation import gettext_lazy as _
 
 # models
-from users.models import CustomUser
+from users.models import BaseUser, Teacher, Student
 from schools.models import School
 from grades.models import Grade, Subject
 
@@ -42,17 +42,17 @@ class Classroom(models.Model):
     classroom_number = models.CharField(_('classroom identifier'), max_length=16, default='1')
     group = models.CharField(_('class group'), max_length=16, default='A')
 
-    teacher = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, limit_choices_to={'role': 'TEACHER'}, null=True, blank=True, related_name='taught_classes', help_text='The teacher assigned to the classroom.')
-    students = models.ManyToManyField(CustomUser, limit_choices_to={'role': 'STUDENT'}, related_name='enrolled_classes', help_text='Students enrolled in the classroom.')
+    teacher = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, blank=True, related_name='taught_classes', help_text='The teacher assigned to the classroom.')
+    students = models.ManyToManyField(Student, limit_choices_to={'role': 'STUDENT'}, related_name='enrolled_classes', help_text='Students enrolled in the classroom.')
 
     student_count = models.IntegerField(default=0)
 
-    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='grade_classes', help_text='Grade level associated with the classroom.')
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='classes', help_text='Grade level associated with the classroom.')
 
-    register_class = models.BooleanField(_('is the class a register class'), default=False, help_text='Ensure only one register class per teacher.')
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='subject_classes', null=True, blank=True, help_text='Subject taught in the classroom.')
+    register_class = models.BooleanField(_('is the class a register class'), editable=False, default=False, help_text='Ensure only one register class per teacher.')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, editable=False, related_name='classes', null=True, blank=True, help_text='Subject taught in the classroom.')
 
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='classes', help_text='School to which the classroom belongs.')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='classes', help_text='School to which the classroom belongs.')
 
     class_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
@@ -66,20 +66,12 @@ class Classroom(models.Model):
         return f"{self.school} - Grade {self.grade} - {self.classroom_number}"
     
     def clean(self):
-        # Validate unique group in subject/register classes
-        if self.register_class:
-            if Classroom.objects.filter(group=self.group, grade=self.grade, school=self.school, register_class=True).exclude(pk=self.pk).exists():
-                raise ValidationError("a register class with the same group in the same grade already exists.. duplicate groups in the same register and grade is not permitted")
-        else:
-            if self.subject:
-                if Classroom.objects.filter(group=self.group, grade=self.grade, subject=self.subject, school=self.school).exclude(pk=self.pk).exists():
-                    raise ValidationError("a class with the same group in the same subject and grade already exists. duplicate groups in the same subject and grade is not permitted")
-                
-                if self.subject.grade != self.grade:
-                    return {"error": "could not proccess request. the specified subject's grade and the classrooms grade are different"}
+        if not self.subject and not self.register_class:
+            raise ValidationError("a classroom needs to either be a register class or be associated with one subject in your school")
 
-            else:
-                raise ValidationError("a class needs to either be a register class or be added to a subject")
+        if self.subject:
+            if self.subject.grade != self.grade:
+                return {"error": "could not proccess request. the specified subject's grade and the classrooms grade are different"}
                 
     def save(self, *args, **kwargs):
         """
@@ -89,10 +81,11 @@ class Classroom(models.Model):
 
         try:
             super().save(*args, **kwargs)
+
         except IntegrityError as e:
             # Check if the error is related to unique constraints
             if 'unique constraint' in str(e).lower():
-                raise ValidationError(_('a combination of group, grade, subject/register already exists for your school. Duplicate classroom groups in the same grade and subject/register are not permitted.'))
+                raise ValidationError(_('a combination of classroom group, grade, subject/register already exists for your school. Duplicate classroom groups in the same grade and subject/register are not permitted.'))
             else:
                 # Re-raise the original exception if it's not related to unique constraints
                 raise
@@ -107,34 +100,34 @@ class Classroom(models.Model):
         """
         if students_list:
             # Retrieve CustomUser instances corresponding to the account_ids
-            students = CustomUser.objects.filter(account_id__in=students_list, role='STUDENT')
+            students = self.school.students.prefetch_related('enrolled_classes__subject').filter(account_id__in=students_list)
 
             if not students.exists():
-                return "No valid students found with the provided account_ids."
+                return "no valid students found with the provided account IDs."
             
-            if not remove:
+            if remove:
+                # Check if students to be removed are actually in the class
+                existing_students = self.students.filter(account_id__in=students_list).values_list('account_id', flat=True)
+                if not existing_students:
+                    return "could not proccess your request, all the provided students are not part of this classroom"
+
+            else:
                 # Check if students are already in a class of the same subject
                 if self.subject:
-                    students_in_subject = CustomUser.objects.filter(account_id__in=students_list, enrolled_classes__subject=self.subject).values_list('account_id', flat=True)
+                    students_in_subject = self.grade.students.filter(account_id__in=students_list, enrolled_classes__subject=self.subject).values_list('account_id', flat=True)
                     if students_in_subject:
-                        return f'The following students are already assigned to a class in the subject: {", ".join(students_in_subject)}'
+                        return f'the following students are already assigned to a class in the provided subject and grade: {", ".join(students_in_subject)}'
 
                 # Check if students are already in any register class
                 if self.register_class:
-                    students_in_register_classes = CustomUser.objects.filter(account_id__in=students_list, enrolled_classes__register_class=True).values_list('account_id', flat=True)
+                    students_in_register_classes = self.grade.students.filter(account_id__in=students_list, enrolled_classes__register_class=True).values_list('account_id', flat=True)
                     if students_in_register_classes:
-                        return f'The following students are already in a register class: {", ".join(students_in_register_classes)}'
+                        return f'the following students are already assigned to a register class: {", ".join(students_in_register_classes)}'
 
                 # Check if students are already in this specific class
                 existing_students = self.students.filter(account_id__in=students_list).values_list('account_id', flat=True)
                 if existing_students:
-                    return f'The following students are already in this class: {", ".join(existing_students)}'
-
-            else:
-                # Check if students to be removed are actually in the class
-                existing_students = self.students.filter(account_id__in=students_list).values_list('account_id', flat=True)
-                if not existing_students:
-                    return "No provided students are in this class to remove."
+                    return f'the following students are already in this class: {", ".join(existing_students)}'
 
             # Proceed with adding or removing students
             if remove:
@@ -151,7 +144,7 @@ class Classroom(models.Model):
 
             if self.subject:
                 # Update the subject student count
-                self.subject.student_count = self.grade.grade_classes.filter(subject=self.subject).aggregate(student_count=models.Count('students'))['student_count'] or 0
+                self.subject.student_count = self.grade.classes.filter(subject=self.subject).aggregate(student_count=models.Count('students'))['student_count'] or 0
                 self.subject.save()
             
         else:
@@ -165,7 +158,7 @@ class Classroom(models.Model):
         try:
             if teacher:
                 # Retrieve the CustomUser instance corresponding to the account_id
-                teacher = CustomUser.objects.get(account_id=teacher, role='TEACHER')
+                teacher = Teacher.objects.prefetch_related('taught_classes__subject').get(account_id=teacher, school=self.school)
             
                 # Check if the teacher is already assigned to another register class in the school
                 if self.register_class and teacher.taught_classes.filter(register_class=True).exclude(pk=self.pk).exists():
@@ -173,7 +166,7 @@ class Classroom(models.Model):
                 
                 # Check if the teacher is already assigned to another class in the subject
                 elif self.subject and teacher.taught_classes.filter(subject=self.subject).exclude(pk=self.pk).exists():
-                    raise ValueError("the provided teacher is already assigned to a class in this grade and subject. teachers can not teach more than one class in the same grade and subject")
+                    raise ValueError("the provided teacher is already assigned to a class in the provided subject and grade. teachers can not teach more than one class in the same grade and subject")
                 
                 # Assign the teacher to the classroom
                 self.teacher = teacher
@@ -187,8 +180,8 @@ class Classroom(models.Model):
             # Update the teacher count in the subject if applicable
             if self.subject:
                 # Count unique teachers assigned to classrooms for this subject
-                self.subject.teacher_count =  self.grade.grade_classes.filter(subject=self.subject).exclude(teacher=None).values_list('teacher', flat=True).distinct().count()
+                self.subject.teacher_count =  self.grade.classes.filter(subject=self.subject).exclude(teacher=None).values_list('teacher', flat=True).distinct().count()
                 self.subject.save()
 
-        except CustomUser.DoesNotExist:
-            raise ValueError("a teacher account with the provided credentials does not exist. please check the teachers details and try again")
+        except Teacher.DoesNotExist:
+            raise ValueError("a teacher account in your school with the provided credentials does not exist. please check the teachers details and try again")

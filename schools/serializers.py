@@ -8,7 +8,7 @@ from rest_framework import serializers
 
 # models
 from .models import School
-from users.models import CustomUser
+from users.models import Principal
 from balances.models import Balance
 
 # serializers
@@ -62,20 +62,20 @@ class SchoolSerializer(serializers.ModelSerializer):
                 
     def get_principal(self, obj):
         try:
-            principal = CustomUser.objects.get(school=obj, role='PRINCIPAL')
+            principal = Principal.objects.get(school=obj, role='PRINCIPAL')
             if principal:
                 return AccountSerializer(principal).data
-        except CustomUser.DoesNotExist:
+        except Principal.DoesNotExist:
             return None
     
     def get_balance(self, obj):
         try:
-            principal = CustomUser.objects.get(school=obj, role='PRINCIPAL')
+            principal = Principal.objects.get(school=obj, role='PRINCIPAL')
             if principal:
                 balance = Balance.objects.get(user=principal)
                 return { "amount" : str(balance.amount), "last_updated" : balance.last_updated.isoformat() }
   
-        except CustomUser.DoesNotExist:
+        except Principal.DoesNotExist:
             return None
     
     def get_name(self, obj):

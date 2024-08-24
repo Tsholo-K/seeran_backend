@@ -1,14 +1,11 @@
 # python
-from datetime import timedelta
-import threading 
 
 # django
 from django.test import TestCase
 from django.core.exceptions import ValidationError
-from django.utils import timezone
-from django.db import transaction, IntegrityError
 
-from .models import CustomUser
+# models
+from .models import BaseUser, Principal, Admin, Teacher, Parent, Student
 from schools.models import School
 from grades.models import Grade
 
@@ -45,7 +42,7 @@ class CustomUserManagerTest(TestCase):
         """
 
         # Case 1: Valid email creation
-        user = CustomUser.objects.create_user(
+        user = Student.objects.create_user(
             email="testuser@example.com",
             name="John",
             surname="Doe",
@@ -59,7 +56,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 2: Email with invalid format
         with self.assertRaises(ValidationError):
-            CustomUser.objects.create_user(
+            Student.objects.create_user(
                 email="invalid-email",
                 name="Invalid",
                 surname="Email",
@@ -70,7 +67,7 @@ class CustomUserManagerTest(TestCase):
             )
 
         # Case 3: Duplicate Emails
-        CustomUser.objects.create_user(
+        Admin.objects.create_user(
             email="existinguser@example.com",
             name="Charlie",
             surname="Brown",
@@ -78,7 +75,7 @@ class CustomUserManagerTest(TestCase):
             school=self.school,
         )
         with self.assertRaises(ValueError):
-            CustomUser.objects.create_user(
+            Student.objects.create_user(
                 email="existinguser@example.com",
                 name="David",
                 surname="Green",
@@ -94,7 +91,7 @@ class CustomUserManagerTest(TestCase):
         """
 
         # Case 1: Valid ID number creation
-        user = CustomUser.objects.create_user(
+        user = Student.objects.create_user(
             id_number='0208285344080',
             name="Jane",
             surname="Doe",
@@ -106,7 +103,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 2: Duplicate ID number
         with self.assertRaises(ValueError):
-            CustomUser.objects.create_user(
+            Student.objects.create_user(
                 id_number='0208285344080',
                 name="Jane",
                 surname="Doe",
@@ -121,7 +118,7 @@ class CustomUserManagerTest(TestCase):
         """
 
         # Case 1: Valid passport number creation
-        user = CustomUser.objects.create_user(
+        user = Student.objects.create_user(
             passport_number="123456789",
             name="Alice",
             surname="Smith",
@@ -133,7 +130,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 2: Duplicate passport number
         with self.assertRaises(ValueError):
-            CustomUser.objects.create_user(
+            Student.objects.create_user(
                 passport_number="123456789",
                 name="Bob",
                 surname="Smith",
@@ -146,7 +143,7 @@ class CustomUserManagerTest(TestCase):
         """
         Test activating a user account with various password scenarios.
         """
-        user = CustomUser.objects.create_user(
+        user = Principal.objects.create_user(
             email="activateuser@example.com",
             name="Eve",
             surname="White",
@@ -156,7 +153,7 @@ class CustomUserManagerTest(TestCase):
         )
 
         # Case 1: Valid password
-        user = CustomUser.objects.activate_user(
+        user = Principal.objects.activate_user(
             email="activateuser@example.com",
             password="SecurePassword123!"
         )
@@ -165,7 +162,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 2: Password without an uppercase letter
         with self.assertRaises(ValueError) as context:
-            CustomUser.objects.activate_user(
+            Principal.objects.activate_user(
                 email="activateuser@example.com",
                 password="securepassword123!"
             )
@@ -173,7 +170,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 3: Password without a number
         with self.assertRaises(ValueError) as context:
-            CustomUser.objects.activate_user(
+            Principal.objects.activate_user(
                 email="activateuser@example.com",
                 password="SecurePassword!"
             )
@@ -181,7 +178,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 4: Password without a special character
         with self.assertRaises(ValueError) as context:
-            CustomUser.objects.activate_user(
+            Principal.objects.activate_user(
                 email="activateuser@example.com",
                 password="SecurePassword123"
             )
@@ -189,7 +186,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 5: Password too short (e.g., less than 8 characters)
         with self.assertRaises(ValueError) as context:
-            CustomUser.objects.activate_user(
+            Principal.objects.activate_user(
                 email="activateuser@example.com",
                 password="S1!"
             )
@@ -198,7 +195,7 @@ class CustomUserManagerTest(TestCase):
         # Case 6: Password too long (e.g., more than 128 characters)
         long_password = "S" + "e" * 127 + "!"
         with self.assertRaises(ValueError) as context:
-            CustomUser.objects.activate_user(
+            Principal.objects.activate_user(
                 email="activateuser@example.com",
                 password=long_password
             )
@@ -210,7 +207,7 @@ class CustomUserManagerTest(TestCase):
         """
         # Case 1: Missing school for roles that require it
         with self.assertRaises(ValueError):
-            CustomUser.objects.create_user(
+            Student.objects.create_user(
                 email="missinggrade@example.com",
                 name="Frank",
                 surname="Black",
@@ -222,7 +219,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 2: Missing identifier for STUDENT role
         with self.assertRaises(ValueError):
-            CustomUser.objects.create_user(
+            Student.objects.create_user(
                 email="missingidentifier@example.com",
                 name="Frank",
                 surname="Black",
@@ -233,7 +230,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 3: Missing required fields for TEACHER role
         with self.assertRaises(ValueError):
-            CustomUser.objects.create_user(
+            Teacher.objects.create_user(
                 name="Grace",
                 surname="Gray",
                 role="TEACHER",
@@ -242,7 +239,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 4: Missing phone number for PRINCIPAL role
         with self.assertRaises(ValueError):
-            CustomUser.objects.create_user(
+            Principal.objects.create_user(
                 email="missingphone@example.com",
                 name="Grace",
                 surname="Gray",
@@ -260,7 +257,7 @@ class CustomUserManagerTest(TestCase):
         long_name = "x" * 64
         long_surname = "x" * 64
 
-        user = CustomUser.objects.create_user(
+        user = Student.objects.create_user(
             email=long_email,
             name=long_name,
             surname=long_surname,
@@ -280,7 +277,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 1: Long email
         with self.assertRaises(ValidationError) as context:
-            CustomUser.objects.create_user(
+            Student.objects.create_user(
                 email=too_long_email,
                 name='john',
                 surname='doe',
@@ -293,7 +290,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 2: Long name
         with self.assertRaises(ValidationError) as context:
-            CustomUser.objects.create_user(
+            Student.objects.create_user(
                 email="normalemail@example.com",
                 name=too_long_name,
                 surname='doe',
@@ -306,7 +303,7 @@ class CustomUserManagerTest(TestCase):
 
         # Case 3: Long surname
         with self.assertRaises(ValidationError) as context:
-            CustomUser.objects.create_user(
+            Student.objects.create_user(
                 email="normalemail@example.com",
                 name='john',
                 surname=too_long_surname,
@@ -325,7 +322,7 @@ class CustomUserManagerTest(TestCase):
 
         # Test valid file upload
         valid_file = SimpleUploadedFile("profile.jpg", b"file_content", content_type="image/jpeg")
-        user = CustomUser.objects.create_user(
+        user = Student.objects.create_user(
             email="profilepic@example.com",
             name="Profile",
             surname="Pic",
@@ -340,7 +337,7 @@ class CustomUserManagerTest(TestCase):
         # Test invalid file upload
         invalid_file = SimpleUploadedFile("profile.txt", b"file_content", content_type="text/plain")
         with self.assertRaises(ValueError):
-            CustomUser.objects.create_user(
+            Student.objects.create_user(
                 email="invalidpic@example.com",
                 name="Invalid",
                 surname="Pic",

@@ -1,8 +1,6 @@
 # python 
 
-
 # django
-
 
 # rest framework
 from rest_framework import serializers
@@ -31,15 +29,22 @@ class ChatSerializer(serializers.ModelSerializer):
 
     def get_last_message(self, obj):
         # Fetch the latest messages if no cursor is provided
-        message = ChatRoomMessage.objects.filter(chat_room=obj).order_by('-timestamp').first()
+        message = obj.messages.order_by('-timestamp').first()
         serializer = ChatMessageSerializer(message, context={'user': self.context['user']})
         return serializer.data
     
     def get_unread(self, obj):
         user = self.context['user']
         # Count unread messages in the chat room that were not sent by the current user
-        unread_count = ChatRoomMessage.objects.filter(chat_room=obj, read_receipt=False).exclude(sender__account_id=user).count()
+        unread_count = obj.messages.filter(read_receipt=False).exclude(sender__account_id=user).count()
         return unread_count
+
+
+class ChatRoomMessageCreationSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = ChatRoomMessage
+        fields = ['content', 'timestamp', 'read_receipt']
 
 
 class ChatMessageSerializer(serializers.ModelSerializer):
@@ -52,13 +57,6 @@ class ChatMessageSerializer(serializers.ModelSerializer):
 
     def get_read_receipt(self, obj):
         return obj.read_receipt
-
-
-class ChatRoomMessageCreationSerializer(serializers.ModelSerializer):
-    
-    class Meta:
-        model = ChatRoomMessage
-        fields = [ 'content', 'timestamp', 'read_receipt' ]
 
 
 class ChatRoomMessageSerializer(serializers.ModelSerializer):

@@ -6,7 +6,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # models
-from users.models import CustomUser
+from users.models import BaseUser, Student
 from schools.models import School
 from classes.models import Classroom
 
@@ -27,8 +27,8 @@ class Activity(models.Model):
     """
     
     # In case the logger is deleted, we keep the log but set the logger to null
-    logger = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, related_name='logged_activities', null=True, blank=True)
-    recipient = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='my_activities')
+    logger = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, related_name='logged_activities', null=True, blank=True)
+    recipient = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='my_activities')
 
     offence = models.CharField(_('offence'), max_length=124)
     details = models.TextField(_('more details about the offence'), max_length=1024)
@@ -42,9 +42,7 @@ class Activity(models.Model):
     activity_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
-        verbose_name = _('activity')
-        verbose_name_plural = _('activities')
-        ordering = ['-date_logged']  # Recent activities first
+        ordering = ['-date_logged']
 
     def __str__(self):
         return f"{self.offence} logged by {self.logger} for {self.recipient}"

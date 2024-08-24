@@ -10,6 +10,7 @@ class EmailBan(models.Model):
   
     email = models.EmailField(_('email'))
     reason = models.TextField(_('reason for banning email'), )
+    
     can_appeal = models.BooleanField(_('can user appeal the ban'), default=True)
     
     otp_send = models.IntegerField(default=0)

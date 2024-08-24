@@ -8,21 +8,19 @@ import base64
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, throttle_classes
-from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.tokens import AccessToken as decode
 from rest_framework.throttling import UserRateThrottle
 
 # django
 from django.db import transaction
 from django.utils import timezone
-from django.core.exceptions import ObjectDoesNotExist
 from django.core.exceptions import ValidationError
 from django.contrib.auth.password_validation import validate_password
 from django.core.cache import cache
 from django.core.validators import validate_email
 
 # models
-from users.models import CustomUser
+from users.models import BaseUser
 from auth_tokens.models import AccessToken
 
 # serializers
@@ -65,7 +63,7 @@ def login(request):
         token = serializer.validated_data
         
         # Retrieve user and related school
-        user = CustomUser.objects.select_related('school').get(email=request.data.get('email'))
+        user = BaseUser.objects.prefetch_related('access_tokens').get(email=request.data.get('email'))
         
         # Access control based on user role and school compliance
         if user.role not in ["FOUNDER", "PARENT"] and user.school.none_compliant:
@@ -81,24 +79,27 @@ def login(request):
                 # Clear old access tokens if any, to limit active sessions
                 if 'access' in token:
                     cutoff_time = timezone.now() - timedelta(hours=24)
+
                     with transaction.atomic():
-                        if AccessToken.objects.filter(user=user, created_at__lt=cutoff_time).exists():
-                            AccessToken.objects.filter(user=user, created_at__lt=cutoff_time).delete()
-                        access_tokens_count = AccessToken.objects.filter(user=user).count()
+                        expired_access_tokens = user.access_tokens.filter(created_at__lt=cutoff_time)
+                        if expired_access_tokens.exists():
+                            expired_access_tokens.delete()
+
+                    access_tokens_count = user.access_tokens.count()
                     
                     if access_tokens_count >= 3:
                         return Response({"error": "you have reached the maximum number of connected devices. please disconnect another device to proceed"}, status=status.HTTP_403_FORBIDDEN)
                     
-                    response = Response({"message": "you will have access to your dashboard for the next 24 hours, until your session ends", "alert" : "your email address has been blacklisted", "role" : user.role.title()}, status=status.HTTP_200_OK)
-                    AccessToken.objects.create(user=user, token=token['access'])
-                
+                    with transaction.atomic():
+                        AccessToken.objects.create(user=user, token=token['access'])
+
                     # Set access token cookie with custom expiration (24 hours)
+                    response = Response({"message": "you will have access to your dashboard for the next 24 hours, until your session ends", "alert" : "your email address has been blacklisted", "role" : user.role.title()}, status=status.HTTP_200_OK)
                     response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
+
+                    return response
                 
-                else:
-                    response = Response({"error": "server error.. could not generating access token for your account"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                
-                return response
+                return Response({"error": "server error.. could not generating access token for your account"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
             # Generate OTP and send to user's email for MFA
             otp, hashed_otp, salt = generate_otp()
@@ -127,6 +128,7 @@ def login(request):
 
                 response = Response({"multifactor_authentication": "a new OTP has been sent to your email address. please check your inbox"}, status=status.HTTP_200_OK)
                 response.set_cookie('login_authorization_otp', login_authorization_otp, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # Set auth OTP cookie (5 mins)
+                
                 return response
         
             # if there was an error sending the email respond accordingly
@@ -142,17 +144,21 @@ def login(request):
         # Handle login without MFA
         if 'access' in token:
             cutoff_time = timezone.now() - timedelta(hours=24)
+
             with transaction.atomic():
-                if AccessToken.objects.filter(user=user, created_at__lt=cutoff_time).exists():
-                    AccessToken.objects.filter(user=user, created_at__lt=cutoff_time).delete()
-                access_tokens_count = AccessToken.objects.filter(user=user).count()
+                expired_access_tokens = user.access_tokens.filter(created_at__lt=cutoff_time)
+                if expired_access_tokens.exists():
+                    expired_access_tokens.delete()
+                    
+            access_tokens_count = user.access_tokens.count()
             
             if access_tokens_count >= 3:
                 return Response({"error": "you have reached the maximum number of connected devices. please disconnect another device to proceed"}, status=status.HTTP_403_FORBIDDEN)
             
             response = Response({"message": "you will have access to your dashboard for the next 24 hours, until your session ends", "role" : user.role.title()}, status=status.HTTP_200_OK)
-            access_token = token['access']
-            AccessToken.objects.create(user=user, token=access_token)
+                    
+            with transaction.atomic():
+                AccessToken.objects.create(user=user, token=token['access'])
         
             # Set access token cookie with custom expiration (24 hours)
             response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
@@ -162,7 +168,8 @@ def login(request):
 
         return response
     
-    except ObjectDoesNotExist:
+    except BaseUser.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
         return Response({"error": "the credentials you entered are invalid. please check your email and password and try again"}, status=status.HTTP_404_NOT_FOUND)
     
     except Exception as e:
@@ -184,7 +191,7 @@ def multi_factor_authentication_login(request):
     # try to get the user object using the provided email address
     try:
         
-        user = CustomUser.objects.get(email=email)
+        user = BaseUser.objects.get(email=email)
     
         # after getting the user object retrieve the stored otp from cache 
         stored_hashed_otp_and_salt = cache.get(user.email+'login_otp')
@@ -224,27 +231,27 @@ def multi_factor_authentication_login(request):
             
                 with transaction.atomic():
                     # Delete all RefreshToken objects for the user that were created before the cutoff_time
-                    AccessToken.objects.filter(user=user, created_at__lt=cutoff_time).delete()
+                    expired_access_tokens = user.access_tokens.filter(created_at__lt=cutoff_time)
+                    if expired_access_tokens.exists():
+                        expired_access_tokens.delete()
 
-                    # Count the remaining RefreshToken objects for the user
-                    access_tokens_count = AccessToken.objects.filter(user=user).count()
+                # Count the remaining RefreshToken objects for the user
+                access_tokens_count = user.access_tokens.count()
                 
                 if access_tokens_count >= 3:
                     return Response({"error": "maximum number of connected devices reached"}, status=status.HTTP_403_FORBIDDEN)
                 
-                # if users multi-factor authentication is disabled do this..
-                response = Response({"message": "login successful", "role" : user.role.title()}, status=status.HTTP_200_OK)
-    
-                AccessToken.objects.create(user=user, token=token['access'])
-            
+                with transaction.atomic():
+                    AccessToken.objects.create(user=user, token=token['access'])
+                
                 # set access token cookie with custom expiration (5 mins)
+                response = Response({"message": "you will have access to your dashboard for the next 24 hours, until your session ends", "role" : user.role.title()}, status=status.HTTP_200_OK)
                 response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
-            
-            else:
-                response = Response({"error": "couldn't generating authentication tokens"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            return response
-        
+                return response
+            
+            return Response({"error": "the server could not generate an access token for your account, please try again in a moment"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         attempts = cache.get(email + 'login_authorization_otp_attempts', 3)
         
         if attempts <= 0:
@@ -258,9 +265,9 @@ def multi_factor_authentication_login(request):
 
         return Response({"error": f"incorrect OTP.. {attempts} remaining"}, status=status.HTTP_400_BAD_REQUEST)
     
-    except ObjectDoesNotExist:
-        # if no user exists return an error 
-        return Response({"error": "invalid credentials"}, status=status.HTTP_404_NOT_FOUND)
+    except BaseUser.DoesNotExist:
+        # Handle the case where the provided email does not exist
+        return {'error': 'an account with the provided credentials does not exist, please check the account details and try again'}
 
     except Exception as e:
         # if any exceptions rise during return the response return it as the response
@@ -307,7 +314,7 @@ def signin(request):
             return Response({"error": "please enter only your first name and surname"}, status=status.HTTP_400_BAD_REQUEST)
 
         # try to validate the credentials by getting a user with the provided credentials 
-        user = CustomUser.objects.get(email=email)
+        user = BaseUser.objects.get(email=email)
 
         if user.role not in ["FOUNDER", "PARENT"] and user.school.none_compliant:
             return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
@@ -373,7 +380,7 @@ def signin(request):
         else:
             return {"error": "there was an error sending sign-in OTP to your email address.."}
     
-    except ObjectDoesNotExist:
+    except BaseUser.DoesNotExist:
         # if there's no user with the provided credentials return an error 
         return Response({"error": "the credentials you entered are invalid. please check your full name and email and try again"}, status=status.HTTP_404_NOT_FOUND)
     
@@ -428,7 +435,7 @@ def activate_account(request):
         
         # activate users account
         with transaction.atomic():
-            user = CustomUser.objects.activate_user(email=email, password=new_password)
+            user = BaseUser.objects.activate(email=email, password=new_password)
 
         response = Response({"message": "account activation successful", "role": user.role.title()}, status=status.HTTP_200_OK)
                 
@@ -442,9 +449,9 @@ def activate_account(request):
         
         return response
     
-    except ObjectDoesNotExist:
+    except BaseUser.DoesNotExist:
         # if theres no user with the provided email return an error
-        return Response({"denied": "an account with the provided credentials does not exist. please check the account information and try again"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"denied": "an account with the provided credentials does not exist. please check the account details and try again"}, status=status.HTTP_404_NOT_FOUND)
   
     except Exception as e:
         # if any exceptions rise during return the response return it as the response
@@ -536,11 +543,10 @@ def validate_password_reset(request):
             return Response({"error": "request error, no email address provided.. email address is required"}, status=status.HTTP_400_BAD_REQUEST)
         
         # try to get the user with the provided email
-        user = CustomUser.objects.get(email=sent_email)
+        user = BaseUser.objects.get(email=sent_email)
 
-        if user.role != "FOUNDER":
-            if user.school.none_compliant:
-                return Response({"denied": "access denied"}, status=status.HTTP_400_BAD_REQUEST)
+        if user.role not in ["FOUNDER", "PARENT"] and user.school.none_compliant:
+            return Response({"denied": "access denied"}, status=status.HTTP_400_BAD_REQUEST)
     
         # check if the account is activated 
         if user.activated == False:
@@ -595,9 +601,10 @@ def validate_password_reset(request):
 
         else:
             return {"error": "there was an error sending password reset OTP to your email address.."}
-       
-    except CustomUser.DoesNotExist:
-        return { 'error': 'user with the provided credentials does not exist' }
+    
+    except BaseUser.DoesNotExist:
+        # if theres no user with the provided email return an error
+        return Response({"error": "an account with the provided credentials does not exist. please check the account details and try again"}, status=status.HTTP_404_NOT_FOUND)
         
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -650,7 +657,7 @@ def reset_password(request):
         if not (new_password or otp or email):
             return Response({"error": "invalid request.. missing credentials"}, status=status.HTTP_400_BAD_REQUEST)    
     
-        user = CustomUser.objects.get(email=email)
+        user = BaseUser.objects.get(email=email)
         
         # get authorization otp from cache and verify provided otp
         hashed_authorization_otp_and_salt = cache.get(user.email + 'password_reset_authorization_otp')
@@ -670,8 +677,9 @@ def reset_password(request):
    
         return response
     
-    except ObjectDoesNotExist:
-        return Response({"error": "an account with the provided credentials does not exist"})
+    except BaseUser.DoesNotExist:
+        # if theres no user with the provided email return an error
+        return Response({"denied": "an account with the provided credentials does not exist. please check the account details and try again"}, status=status.HTTP_404_NOT_FOUND)
 
     except Exception as e:
         return Response({"error": {str(e)}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -680,32 +688,33 @@ def reset_password(request):
 # Request otp view
 @api_view(['POST'])
 def resend_otp(request):
- 
-    email = request.data.get('email')
-  
-    if not email:
-        return Response({"error" : "an email is required"}, status=status.HTTP_400_BAD_REQUEST)
     
     # try to get the user
     try:
-        user = CustomUser.objects.get(email=email)
- 
-    except CustomUser.DoesNotExist:
-        return Response({"error": "user with this email does not exist."}, status=status.HTTP_400_BAD_REQUEST)
     
-    if user.email_banned:
-        return Response({ "error" : "your email address has been banned, failed to send OTP"})
+        email = request.data.get('email')
     
-    # otp, hashed_otp = generate_otp()
-  
-    # Send the OTP via email
-    try:
+        if not email:
+            return Response({"error" : "an email is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = BaseUser.objects.get(email=email)
+     
+        if user.email_banned:
+            return Response({ "error" : "your email address has been banned, failed to send OTP"})
+        
+        # otp, hashed_otp = generate_otp()
+    
+        # Send the OTP via email
         # cache.set(user.email, hashed_otp, timeout=300)  # 300 seconds = 5 mins
         return Response({"message": "OTP created and sent to your email"}, status=status.HTTP_200_OK)
     
         # else:
         #     return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-  
+      
+    except BaseUser.DoesNotExist:
+        # if theres no user with the provided email return an error
+        return Response({"denied": "an account with the provided credentials does not exist. please check the account details and try again"}, status=status.HTTP_404_NOT_FOUND)
+
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 

@@ -6,7 +6,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # models
-from users.models import CustomUser
+from users.models import Teacher, Student
 from grades.models import Grade
 
 
@@ -47,7 +47,7 @@ class Schedule(models.Model):
 
 
 class TeacherSchedule(models.Model):
-    teacher = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='teacher_schedule')
+    teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE, related_name='teacher_schedule')
     schedules = models.ManyToManyField(Schedule, related_name='teacher_schedule_linked_to')
 
     teacher_schedule_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -67,7 +67,7 @@ class TeacherSchedule(models.Model):
 
 
 class GroupSchedule(models.Model):
-    students = models.ManyToManyField(CustomUser, related_name='my_group_schedule')
+    students = models.ManyToManyField(Student, related_name='my_group_schedule')
     schedules = models.ManyToManyField(Schedule, related_name='group_linked_to')
 
     group_name = models.CharField(max_length=32)

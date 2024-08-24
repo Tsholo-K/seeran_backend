@@ -20,7 +20,7 @@ from grades.models import Grade, Term, Subject
 # serilializers
 from users.serializers import AccountUpdateSerializer, AccountIDSerializer
 from grades.serializers import UpdateGradeSerializer, UpdateTermSerializer, GradeDetailsSerializer, TermSerializer, UpdateSubjectSerializer, SubjectDetailsSerializer
-from classes.serializers import ClassUpdateSerializer
+from classes.serializers import UpdateClassSerializer
 from schools.serializers import UpdateSchoolAccountSerializer, SchoolIDSerializer
 
 # utility functions 
@@ -415,7 +415,7 @@ def update_class(user, role, details):
 
         classroom = Classroom.objects.get(class_id=details.get('class_id'), school=admin.school)
 
-        serializer = ClassUpdateSerializer(instance=classroom, data=updates)
+        serializer = UpdateClassSerializer(instance=classroom, data=updates)
         if serializer.is_valid():
             with transaction.atomic():
                 serializer.save()

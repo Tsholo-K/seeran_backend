@@ -5,23 +5,25 @@ import uuid
 from django.db import models
 
 # models
-from users.models import CustomUser
+from users.models import BaseUser
 
+
+DASHBOARD_CHOICES = [ ('STUDENT', 'Student'), ('TEACHER', 'Teacher'), ('ADMIN', 'Admin'), ('PRINCIPAL', 'Principal') ]
+
+STATUS_CHOICES = [ ('NEW', 'New'), ('IN_PROGRESS', 'In Progress'), ('RESOLVED', 'Resolved') ]
 
 class BugReport(models.Model):
 
     # User who reported the bug
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='my_bug_reports')
+    user = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='my_bug_reports')
     section = models.CharField(max_length=124)
 
-    DASHBOARD_CHOICES = [ ('STUDENT', 'Student'), ('TEACHER', 'Teacher'), ('ADMIN', 'Admin'), ('PRINCIPAL', 'Principal') ]
     dashboard = models.CharField(choices=DASHBOARD_CHOICES, max_length=10)
 
     # Detailed description of the bug
-    description = models.TextField()
+    description = models.TextField(max_length=1024)
 
     # Status of the bug report
-    STATUS_CHOICES = [ ('NEW', 'New'), ('IN_PROGRESS', 'In Progress'), ('RESOLVED', 'Resolved') ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='NEW')
 
     # Timestamps

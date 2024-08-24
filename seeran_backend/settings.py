@@ -132,7 +132,7 @@ CSRF_COOKIE_DOMAIN = '.seeran-grades.cloud'
 
 # applications default user model
 # our custom user model 
-AUTH_USER_MODEL = 'users.CustomUser'
+AUTH_USER_MODEL = 'users.BaseUser'
 
 
 # user authenticator

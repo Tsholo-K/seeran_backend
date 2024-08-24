@@ -6,12 +6,12 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # models
-from users.models import CustomUser
+from users.models import BaseUser
 
 
 class ChatRoom(models.Model):
-    user_one = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, related_name='user_one')
-    user_two = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING, related_name='user_two')
+    user_one = models.ForeignKey(BaseUser, on_delete=models.DO_NOTHING, related_name='user_one')
+    user_two = models.ForeignKey(BaseUser, on_delete=models.DO_NOTHING, related_name='user_two')
 
     latest_message_timestamp = models.DateTimeField(null=True, blank=True, default=None)
 
@@ -24,7 +24,7 @@ class ChatRoom(models.Model):
 class ChatRoomMessage(models.Model):
     chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages')
     
-    sender = models.ForeignKey(CustomUser, on_delete=models.DO_NOTHING)
+    sender = models.ForeignKey(BaseUser, on_delete=models.DO_NOTHING)
 
     edited = models.BooleanField(default=False)
     content = models.TextField()

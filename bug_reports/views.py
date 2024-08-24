@@ -14,10 +14,8 @@ from authentication.decorators import token_required
 from .models import BugReport
 
 # serializers
-from .serializers import CreateBugReportSerializer, BugReportsSerializer, MyBugReportSerializer
+from .serializers import BugReportCreationSerializer, BugReportsSerializer, MyBugReportSerializer
 
-
-################################################## general views ##########################################################
 
 
 # create bug report
@@ -31,7 +29,7 @@ def create_bug_report(request):
         
         data = request.data.copy()
         data['user'] = request.user.id
-        serializer = CreateBugReportSerializer(data=data)
+        serializer = BugReportCreationSerializer(data=data)
 
         if serializer.is_valid():
             serializer.save()
@@ -68,8 +66,4 @@ def my_bug_report(request, bug_report_id):
     
     serializer = MyBugReportSerializer(instance=report)
     return Response({ "report" : serializer.data},status=200)
-
-   
-
-###########################################################################################################################
 

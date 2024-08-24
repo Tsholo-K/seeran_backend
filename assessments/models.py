@@ -9,7 +9,7 @@ from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 
 # models
-from users.models import CustomUser
+from users.models import BaseUser, Student
 from classes.models import Classroom
 from grades.models import Grade, Term, Subject
 from schools.models import School
@@ -28,7 +28,7 @@ class Assessment(models.Model):
     topics = models.ManyToManyField(Topic, related_name='assessments')
     
     # The user who set the assessment
-    set_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, related_name='assessments_set', null=True)
+    set_by = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, related_name='assessments_set', null=True)
 
     # Total score possible for the assessment
     total = models.IntegerField()
@@ -42,14 +42,14 @@ class Assessment(models.Model):
     term = models.ForeignKey(Term, on_delete=models.CASCADE)
     
     # The students who are assessed
-    students_assessed = models.ManyToManyField(CustomUser, related_name='assessments_taken')
+    students_assessed = models.ManyToManyField(Student, related_name='assessments_taken')
     # the students who submitted the assessment before the due date elapsed
-    ontime_submission = models.ManyToManyField(CustomUser, related_name='ontime_submissions', blank=True)
+    ontime_submission = models.ManyToManyField(Student, related_name='ontime_submissions', blank=True)
     # the students who submitted the assessment after the due date elapsed
-    late_submission = models.ManyToManyField(CustomUser, related_name='late_submissions', blank=True)
+    late_submission = models.ManyToManyField(Student, related_name='late_submissions', blank=True)
 
     # the students who have been allowed to retake the assessment after the due date elapsed
-    retake_submission = models.ManyToManyField(CustomUser, related_name='retake_submissions', blank=True)
+    retake_submission = models.ManyToManyField(Student, related_name='retake_submissions', blank=True)
 
     # Indicates if the assessment has been collected
     collected = models.BooleanField(default=False)
@@ -62,7 +62,7 @@ class Assessment(models.Model):
     date_released = models.DateTimeField(null=True, blank=True)
 
     # The user who moderated the assessment
-    moderator = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, related_name='assessments_moderated', null=True)
+    moderator = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, related_name='assessments_moderated', null=True)
     # The classroom where the assessment was conducted
     classroom = models.ForeignKey(Classroom, on_delete=models.SET_NULL, related_name='class_assessments', null=True, blank=True)
 
@@ -93,6 +93,12 @@ class Assessment(models.Model):
         return self.unique_identifier
 
     def clean(self):
+        
+        super().clean()
+
+        if self.set_by and self.set_by.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
+            raise ValidationError('Submitted by user must be an Admin or Teacher.')
+
         # Convert self.due_date to datetime if it's a date object
         if isinstance(self.due_date, datetime.date) and not isinstance(self.due_date, datetime.datetime):
             due_date_datetime = timezone.make_aware(datetime.datetime.combine(self.due_date, datetime.time.min))
@@ -172,7 +178,7 @@ class Transcript(models.Model):
     Model to represent a student's transcript for a specific assessment.
     """
     # The student who received the score
-    student = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='my_transcripts')
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='my_transcripts')
 
     # The score the student received in the assessment
     score = models.DecimalField(max_digits=5, decimal_places=2)
@@ -206,8 +212,7 @@ class Transcript(models.Model):
         """
         Override save method to validate incoming data
         """
-        if not self._state.adding:  # Only validate if the instance is being updated or created
-            self.clean()
+        self.clean()
 
         try:
             super().save(*args, **kwargs)

@@ -9,11 +9,11 @@ from django.db import IntegrityError
 
 # models
 from .models import ReportCard, StudentSubjectScore
-from users.models import CustomUser
+from users.models import Student
 from schools.models import School
 from grades.models import Grade, Term, Subject
-from assessments.models import Assessment, Transcript
 from classes.models import Classroom
+from assessments.models import Assessment, Transcript
 
 
 class StudentSubjectScoreTest(TestCase):
@@ -46,7 +46,7 @@ class StudentSubjectScoreTest(TestCase):
             major_subject=True,
             pass_mark=50.00
         )
-        self.student = CustomUser.objects.create_user(
+        self.student = Student.objects.create_user(
             name="John",
             surname="Doe",
             role="STUDENT",
@@ -173,7 +173,7 @@ class ReportCardTest(TestCase):
             major_subject=True,
             pass_mark=50.00
         )
-        self.student = CustomUser.objects.create_user(
+        self.student = Student.objects.create_user(
             name="John",
             surname="Doe",
             role="STUDENT",

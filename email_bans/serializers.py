@@ -7,9 +7,6 @@ from rest_framework import serializers
 from .models import EmailBan
 
 
-### email ban serilizers ###
-
-
 # users email bans serializer   
 class EmailBansSerializer(serializers.ModelSerializer):
     
@@ -17,7 +14,7 @@ class EmailBansSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = EmailBan
-        fields = [ 'can_appeal', 'ban_id', 'banned_at', 'status' ]
+        fields = ['can_appeal', 'ban_id', 'banned_at', 'status']
         
     def get_status(self, obj):
         return obj.status.title()
@@ -30,7 +27,7 @@ class EmailBanSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EmailBan
-        fields = [ 'can_appeal', 'email', 'banned_at', 'reason', 'ban_id', 'status', 'otp_send' ]
+        fields = ['can_appeal', 'email', 'banned_at', 'reason', 'ban_id', 'status', 'otp_send']
         
     def get_status(self, obj):
         return obj.status.title()
@@ -41,5 +38,5 @@ class AppealEmailBanSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EmailBan
-        fields = [ 'appeal' ]
+        fields = ['appeal']
         
