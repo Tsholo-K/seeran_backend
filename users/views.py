@@ -76,10 +76,10 @@ def my_account_details(request):
 
                 # Handle specific role-based serialization
                 role_serialization_mapping = {
-                    'PRINCIPAL': PrincipalAccountDetailsSerializer(instance=request.user).data,
-                    'ADMIN': AdminAccountDetailsSerializer(instance=request.user).data,
-                    'TEACHER': TeacherAccountDetailsSerializer(instance=request.user).data,
-                    'STUDENT': StudentAccountDetailsSerializer(instance=request.user).data
+                    'PRINCIPAL': PrincipalAccountDetailsSerializer(instance=request.user.principal).data,
+                    'ADMIN': AdminAccountDetailsSerializer(instance=request.user.admin).data,
+                    'TEACHER': TeacherAccountDetailsSerializer(instance=request.user.teacher).data,
+                    'STUDENT': StudentAccountDetailsSerializer(instance=request.user.student).data
                 }
 
                 school_mapping = {
