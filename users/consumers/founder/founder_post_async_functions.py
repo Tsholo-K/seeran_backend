@@ -5,6 +5,7 @@ from channels.db import database_sync_to_async
 
 # django
 from django.db import transaction
+from django.core.exceptions import ValidationError
 
 # models 
 from users.models import Principal
@@ -49,7 +50,11 @@ def create_school_account(details):
     
         # If the data is not valid, return the validation errors formatted as a string
         return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
-    
+        
+    except ValidationError as e:
+        # Handle validation errors separately with meaningful messages
+        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
+
     except Exception as e:
         # Handle any unexpected errors and return a general error message
         return {'error': str(e).lower()}
