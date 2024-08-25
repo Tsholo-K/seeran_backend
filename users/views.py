@@ -95,7 +95,7 @@ def my_account_details(request):
                 serialized_account = role_serialization_mapping[role]
 
                 # Fetch announcements relevant to the user's school
-                unread_announcements = Announcement.objects.filter(school=school_mapping[role]).exclude(reached=request.user).count()
+                unread_announcements = school_mapping[role].announcements.exclude(reached=request.user).count()
 
             # Fetch unread messages for the user
             unread_messages = ChatRoomMessage.objects.filter(Q(chat_room__user_one=request.user) | Q(chat_room__user_two=request.user), read_receipt=False).exclude(sender=request.user).count()

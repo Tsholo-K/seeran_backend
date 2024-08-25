@@ -20,7 +20,7 @@ class Announcement(models.Model):
     announced_at = models.DateTimeField(auto_now_add=True, help_text="Time when the announcement was made")
     announce_by = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='my_announcements', help_text="User who made the announcement")
    
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='school_announcements', help_text="School related to the announcement")
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='announcements', help_text="School related to the announcement")
 
     announcement_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
