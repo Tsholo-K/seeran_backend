@@ -12,6 +12,7 @@ from django.db.models import Q
 from authentication.decorators import token_required
 
 # models
+from users.models import Founder,Principal, Admin, Teacher, Student, Parent
 from chats.models import ChatRoomMessage
 from announcements.models import Announcement
 
@@ -50,61 +51,54 @@ def my_account_details(request):
     if request.user:
         role = request.user.role
 
+        if role not in ['PARENT', 'PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
+            return Response({"error": "your request could not be processed, your account has an invalid role"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        child_model_mapping = {
+            'FOUNDER' : Founder.objects.get(account_id=request.user.account_id),
+            'PRINCIPAL': Principal.objects.get(account_id=request.user.account_id),
+            'ADMIN': Admin.objects.get(account_id=request.user.account_id),
+            'TEACHER': Teacher.objects.get(account_id=request.user.account_id),
+            'STUDENT': Student.objects.get(account_id=request.user.account_id),
+            'PARENT': Parent.objects.get(account_id=request.user.account_id),  
+        }
+
+        user = child_model_mapping[role]
+
         # Handle FOUNDER-specific serialization
         if role == 'FOUNDER':
-            serialized_account = FounderAccountDetailsSerializer(instance=request.user).data
+            serialized_account = FounderAccountDetailsSerializer(instance=user).data
             return Response({'user': serialized_account}, status=status.HTTP_200_OK)
 
-        # Handle other roles: PARENT, PRINCIPAL, ADMIN, TEACHER, STUDENT
-        elif role in ['PARENT', 'PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
-            
-            # Determine unread announcements based on user role
-            if role == 'PARENT':
-                # Fetch announcements for the schools the parent's children are enrolled in
-                children_schools = request.user.parent.children.values_list('school', flat=True)
-                unread_announcements = Announcement.objects.filter(school__in=children_schools).exclude(reached=request.user).count()
-                serialized_account = ParentAccountDetailsSerializer(instance=request.user).data
+        # Determine unread announcements based on user role
+        elif role == 'PARENT':
+            # Fetch announcements for the schools the parent's children are enrolled in
+            children_schools = user.children.values_list('school', flat=True)
+            unread_announcements = Announcement.objects.filter(school__in=children_schools).exclude(reached=request.user).count()
+            serialized_account = ParentAccountDetailsSerializer(instance=user).data
 
-            else:
-                # Access control based on user role and school compliance
-                role_check_mapping = {
-                    'PRINCIPAL': request.user.principal.school.none_compliant if hasattr(request.user, 'principal') else False,
-                    'ADMIN': request.user.admin.school.none_compliant if hasattr(request.user, 'admin') else False,
-                    'TEACHER': request.user.teacher.school.none_compliant if hasattr(request.user, 'teacher') else False,
-                    'STUDENT': request.user.student.school.none_compliant if hasattr(request.user, 'student') else False
-                }
+        else:
+            # Handle specific role-based serialization
+            role_serialization_mapping = {
+                'PRINCIPAL': PrincipalAccountDetailsSerializer(instance=user).data,
+                'ADMIN': AdminAccountDetailsSerializer(instance=user).data,
+                'TEACHER': TeacherAccountDetailsSerializer(instance=user).data,
+                'STUDENT': StudentAccountDetailsSerializer(instance=user).data
+            }
 
-                # Handle specific role-based serialization
-                role_serialization_mapping = {
-                    'PRINCIPAL': PrincipalAccountDetailsSerializer(instance=request.user.principal).data,
-                    'ADMIN': AdminAccountDetailsSerializer(instance=request.user.admin).data,
-                    'TEACHER': TeacherAccountDetailsSerializer(instance=request.user.teacher).data,
-                    'STUDENT': StudentAccountDetailsSerializer(instance=request.user.student).data
-                }
+            if user.school.none_compliant:
+                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
 
-                school_mapping = {
-                    'PRINCIPAL': request.user.principal.school,
-                    'ADMIN': request.user.admin.school,
-                    'TEACHER': request.user.teacher.school,
-                    'STUDENT': request.user.student.school
-                }
+            serialized_account = role_serialization_mapping[role]
 
-                if role_check_mapping[role]:
-                    return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
+            # Fetch announcements relevant to the user's school
+            unread_announcements = user.school.announcements.exclude(reached=request.user).count()
 
-                serialized_account = role_serialization_mapping[role]
+        # Fetch unread messages for the user
+        unread_messages = ChatRoomMessage.objects.filter(Q(chat_room__user_one=request.user) | Q(chat_room__user_two=request.user), read_receipt=False).exclude(sender=request.user).count()
 
-                # Fetch announcements relevant to the user's school
-                unread_announcements = school_mapping[role].announcements.exclude(reached=request.user).count()
-
-            # Fetch unread messages for the user
-            unread_messages = ChatRoomMessage.objects.filter(Q(chat_room__user_one=request.user) | Q(chat_room__user_two=request.user), read_receipt=False).exclude(sender=request.user).count()
-
-            # Return the serialized account details along with unread counts
-            return Response({'user': serialized_account, 'messages': unread_messages, 'announcements': unread_announcements}, status=status.HTTP_200_OK)
-
-        # Handle case where role is not recognized
-        return Response({'error': 'your request could not be processed, your account role is invalid'}, status=status.HTTP_401_UNAUTHORIZED)
+        # Return the serialized account details along with unread counts
+        return Response({'user': serialized_account, 'messages': unread_messages, 'announcements': unread_announcements}, status=status.HTTP_200_OK)
 
     # Return an error if the user is not authenticated
     else:
