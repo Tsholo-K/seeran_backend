@@ -18,9 +18,11 @@ def update_user_counts_on_create(sender, instance, created, **kwargs):
                 school = instance.admin.school
             school.admin_count = school.principal.count() + school.admins.count()
         elif role == 'STUDENT':
-            school.student_count = instance.student.school.students.count()
+            school = instance.student.school
+            school.student_count = school.students.count()
         elif role == 'TEACHER':
-            school.teacher_count = instance.teacher.school.teachers.count()
+            school = instance.teacher.school
+            school.teacher_count = school.teachers.count()
         else:
             return
 
@@ -37,8 +39,12 @@ def update_user_counts_on_delete(sender, instance, **kwargs):
             school = instance.admin.school
         school.admin_count = school.principal.count() + school.admins.count()
     elif role == 'STUDENT':
-        school.student_count = instance.student.school.students.count()
+        school = instance.student.school
+        school.student_count = school.students.count()
     elif role == 'TEACHER':
-        school.teacher_count = instance.teacher.school.teachers.count()
+        school = instance.teacher.school
+        school.teacher_count = school.teachers.count()
     else:
         return
+    
+    school.save()

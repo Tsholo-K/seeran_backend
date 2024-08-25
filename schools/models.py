@@ -108,11 +108,11 @@ class School(models.Model):
             except ValidationError:
                 raise ValidationError(_('the provided email address is not in a valid format. please correct the email address and try again'))
             
-            if School.objects.filter(email=self.email).exclude(pk=self.pk).exists():
-                raise ValidationError(_('a school account with the provided email address already exists'))
-            
             if len(self.email) > 254:
                 raise ValidationError(_("email address cannot exceed 254 characters"))
+            
+            if School.objects.filter(email=self.email).exclude(pk=self.pk).exists():
+                raise ValidationError(_('a school account with the provided email address already exists'))
         
         if self.logo and not self.logo.name.endswith(('.png', '.jpg', '.jpeg')):
             raise ValidationError(_('school logo must be a PNG or JPG/JPEG image'))
