@@ -179,7 +179,7 @@ def search_account_profile(user, role, details):
             queryset = queryset.prefetch_related(*prefetch_related.split(', '))
 
         # Retrieve the requesting user's account from the database.
-        requesting_account = queryset.get(account=user)
+        requesting_account = queryset.get(account_id=user)
 
         # Retrieve the requested user's base account details using the provided account ID.
         requested_user = BaseUser.objects.get(account_id=details.get('account_id'))
@@ -197,7 +197,7 @@ def search_account_profile(user, role, details):
             queryset = queryset.prefetch_related(*prefetch_related.split(', '))
 
         # Retrieve the requested user's account from the database.
-        requested_account = queryset.get(account=requested_user)
+        requested_account = queryset.get(account_id=requested_user.account_id)
         
         # Check if the requesting user has permission to view the requested user's profile.
         permission_error = permission_checks.check_profile_or_id_view_permissions(requesting_account, requested_account)
