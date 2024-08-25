@@ -10,7 +10,6 @@ from rest_framework.validators import UniqueTogetherValidator
 # models
 from .models import School
 from users.models import Principal
-from balances.models import Balance
 
 # serializers
 from users.serializers.principals.principals_serializers import PrincipalAccountSerializer

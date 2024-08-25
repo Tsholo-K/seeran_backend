@@ -98,7 +98,10 @@ class School(models.Model):
                 raise ValidationError(_('contact number should contain only digits'))
             if len(self.contact_number) < 10 or len(self.contact_number) > 15:
                 raise ValidationError(_('contact number should be between 10 and 15 digits'))
-        
+                    
+            if School.objects.filter(contact_number=self.contact_number).exclude(pk=self.pk).exists():
+                raise ValidationError(_('a school account with the provided contact number already exists'))
+
         if self.email:
             try:
                 validate_email(self.email)
