@@ -157,12 +157,15 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
         elif description == 'update_multi_factor_authentication':
             return await general_put_async_functions.update_multi_factor_authentication(user, details)
-        
+
         elif description == 'update_bug_report':
             return await founder_put_async_functions.update_bug_report(details)
         
         elif description == 'update_principal_account':
             return await founder_put_async_functions.update_principal_account(details)
+                
+        elif description == 'update_school_details':
+            return await general_put_async_functions.update_school_details(user, role, details)
         
         else:
             return {'error': 'Invalid put description'}

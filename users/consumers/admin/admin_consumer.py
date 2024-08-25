@@ -223,7 +223,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'update_multi_factor_authentication': general_put_async_functions.update_multi_factor_authentication,
 
-            'update_school_details' : admin_put_async_functions.update_school_details,
+            'update_school_details' : general_put_async_functions.update_school_details,
             
             'update_grade_details' : admin_put_async_functions.update_grade_details,
             
@@ -233,7 +233,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'mark_messages_as_read': general_put_async_functions.mark_messages_as_read,
 
-            'update_account': admin_put_async_functions.update_account,
+            # 'update_account': admin_put_async_functions.update_account,
 
             'update_class': admin_put_async_functions.update_class,
             'update_class_students': admin_put_async_functions.update_class_students,
@@ -246,16 +246,17 @@ class AdminConsumer(AsyncWebsocketConsumer):
         if func:
             response = await func(user, role, details, access_token) if description in ['update_email', 'update_password'] else await func(user, role, details)
   
-            if response.get('user') and description in ['mark_messages_as_read']:
-                await connection_manager.send_message(response['user'], json.dumps({'description': 'read_receipt', 'chat': response['chat']}))
+            if response.get('user'):
+                if description in ['mark_messages_as_read']:
+                    await connection_manager.send_message(response['user'], json.dumps({'description': 'read_receipt', 'chat': response['chat']}))
 
-                return {'message': 'read receipt sent'}
+                    return {'message': 'read receipt sent'}
 
-            if description == 'send_email_revalidation_otp' and response.get('user'):
-                response = await general_email_async_functions.send_email_revalidation_one_time_pin_email(response.get('user'))
+                elif description in ['send_email_revalidation_otp']:
+                    response = await general_email_async_functions.send_email_revalidation_one_time_pin_email(response.get('user'))
 
-                if response.get('message'):
-                    return await general_put_async_functions.update_email_ban_otp_sends(details)
+                    if response.get('message'):
+                        return await general_put_async_functions.update_email_ban_otp_sends(details)
                 
             return response
         
@@ -305,7 +306,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
                 return {'message': 'text message sent'}
 
-            if response.get('user') and description in ['create_account', 'create_student_account', 'link_parent']:
+            elif response.get('user') and description in ['create_account', 'create_student_account', 'link_parent']:
                 return await general_email_async_functions.send_account_confirmation_email(response['user'])
             
             return response

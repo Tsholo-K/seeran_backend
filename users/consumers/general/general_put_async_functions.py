@@ -7,6 +7,7 @@ import time
 from channels.db import database_sync_to_async
 
 # django
+from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.contrib.auth.password_validation import validate_password
@@ -17,18 +18,77 @@ from django.utils.translation import gettext as _
 from rest_framework_simplejwt.tokens import AccessToken as decode
 
 # models 
-from users.models import BaseUser
 from auth_tokens.models import AccessToken
+from users.models import BaseUser, Principal, Admin
+from schools.models import School
 from email_bans.models import EmailBan
 from chats.models import ChatRoom, ChatRoomMessage
 
 # serializers
+from schools.serializers import UpdateSchoolAccountSerializer, SchoolDetailsSerializer
 
 # utility functions 
 from authentication.utils import verify_user_otp
 
 # checks
 
+
+
+@database_sync_to_async
+def update_school_details(user, role, details):
+    try:
+        if role not in ['FOUNDER', 'PRINCIPAL', 'ADMIN']:
+            return {"error": 'could not proccess your request.. your account either has insufficient permissions or is invalid for the action you are trying to perform'}
+        
+        if details.get('school') == 'requesting my own school':
+            # Retrieve the user and related school in a single query using select_related
+            if role == 'PRINCIPAL':
+                admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+            else:
+                admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+
+            school = admin.school
+
+        else:
+            school = School.objects.get(school_id=details.get('school'))
+
+        # Initialize the serializer with the existing school instance and incoming data
+        serializer = UpdateSchoolAccountSerializer(instance=school, data=details)
+
+        # Validate the incoming data
+        if serializer.is_valid():
+            # Use an atomic transaction to ensure the database is updated safely
+            with transaction.atomic():
+                serializer.save()
+                        
+            # Serialize the grade
+            serialized_school = SchoolDetailsSerializer(school).data
+
+            return {'school': serialized_school, "message": "school account details have been successfully updated" }
+        
+        # Return serializer errors if the data is not valid, format it as a string
+        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+    
+    except School.DoesNotExist:
+        # Handle the case where the provided school ID does not exist
+        return {"error": "a school with the provided credentials does not exist"}
+
+    except ValidationError as e:
+        # Handle validation errors separately with meaningful messages
+        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
+    
 
 @database_sync_to_async
 def update_email_ban_otp_sends(email_ban_id):

@@ -13,7 +13,7 @@ from bug_reports.models import BugReport
 
 # serializers
 from users.serializers.principals.principals_serializers import PrincipalAccountSerializer, PrincipalAccountDetailsSerializer
-from schools.serializers import SchoolSerializer, SchoolDetailsSerializer
+from schools.serializers import SchoolSerializer
 from balances.serializers import BillsSerializer, BillSerializer
 from bug_reports.serializers import BugReportsSerializer, BugReportSerializer
 

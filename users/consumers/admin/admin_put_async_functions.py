@@ -24,70 +24,9 @@ from users.serializers.parents.parents_serializers import ParentAccountUpdateSer
 from users.serializers.students.students_serializers import StudentAccountUpdateSerializer, StudentAccountSerializer
 from grades.serializers import UpdateGradeSerializer, UpdateTermSerializer, GradeDetailsSerializer, TermSerializer, UpdateSubjectSerializer, SubjectDetailsSerializer
 from classes.serializers import UpdateClassSerializer
-from schools.serializers import UpdateSchoolAccountSerializer, SchoolDetailsSerializer
 
 # utility functions 
 
-
-@database_sync_to_async
-def update_school_details(user, role, details):
-    """
-    Update the school account details associated with the provided user.
-
-    Parameters:
-    user (str): The account ID of the user requesting the update.
-    details (dict): A dictionary containing the updated school account details.
-
-    Returns:
-    dict: A dictionary containing either a success message or an error message.
-
-    - If the update is successful, returns:
-        { "message": "School account details have been successfully updated" }
-
-    - If the account does not exist, returns:
-        { "error": "An account with the provided credentials does not exist, please check the account details and try again" }
-
-    - If there is any validation error or unexpected error, returns:
-        { "error": "Error message describing the issue" }
-    """
-    try:
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
-
-        # Initialize the serializer with the existing school instance and incoming data
-        serializer = UpdateSchoolAccountSerializer(instance=admin.school, data=details)
-        # Validate the incoming data
-        if serializer.is_valid():
-            # Use an atomic transaction to ensure the database is updated safely
-            with transaction.atomic():
-                serializer.save()
-                        
-            # Serialize the grade
-            serialized_school = SchoolDetailsSerializer(admin.school).data
-
-            return {'school': serialized_school, "message": "school account details have been successfully updated" }
-        
-        # Return serializer errors if the data is not valid, format it as a string
-        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
-               
-    except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
-    
-    except ValidationError as e:
-        # Handle validation errors separately with meaningful messages
-        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
-
-    except Exception as e:
-        # Handle any unexpected errors with a general error message
-        return {'error': str(e)}
 
 
 @database_sync_to_async

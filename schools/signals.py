@@ -14,7 +14,9 @@ def update_user_counts_on_create(sender, instance, created, **kwargs):
         if role in ['PRINCIPAL', 'ADMIN', 'STUDENT', 'TEACHER']:
             school = instance.school
             
-            if role in ['PRINCIPAL', 'ADMIN']:
+            if role in ['PRINCIPAL']:
+                school.admin_count = school.principal.count()
+            if role in ['ADMIN']:
                 school.admin_count = school.admins.count()
             elif role == 'STUDENT':
                 school.student_count = school.students.count()
@@ -30,7 +32,9 @@ def update_user_counts_on_delete(sender, instance, **kwargs):
     if role in ['PRINCIPAL', 'ADMIN', 'STUDENT', 'TEACHER']:
         school = instance.school
         
-        if role in ['PRINCIPAL', 'ADMIN']:
+        if role in ['PRINCIPAL']:
+            school.admin_count = school.principal.count()
+        if role in ['ADMIN']:
             school.admin_count = school.admins.count()
         elif role == 'STUDENT':
             school.student_count = school.students.count()
