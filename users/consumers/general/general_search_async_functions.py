@@ -26,8 +26,11 @@ from activities.models import Activity
 
 # serializers
 from users.serializers.general_serializers import DisplayAccountDetailsSerializer, SourceAccountSerializer
-from users.serializers.students.students_serializers import LeastAccountDetailsSerializer
-from users.serializers.parents.parents_serializers import ParentAccountSerializer
+from users.serializers.principals.principals_serializers import PrincipalAccountDetailsSerializer
+from users.serializers.admins.admins_serializers import AdminAccountDetailsSerializer
+from users.serializers.teachers.teachers_serializers import TeacherAccountDetailsSerializer
+from users.serializers.students.students_serializers import LeastAccountDetailsSerializer, StudentSourceAccountSerializer, StudentAccountDetailsSerializer
+from users.serializers.parents.parents_serializers import ParentAccountSerializer, ParentAccountDetailsSerializer
 from schools.serializers import SchoolDetailsSerializer
 from classes.serializers import TeacherClassesSerializer, ClassSerializer
 from email_bans.serializers import EmailBanSerializer
@@ -135,7 +138,7 @@ def search_school_details(user, role, details):
 
 
 @database_sync_to_async
-def search_account_profile(user, role, details):
+def search_account(user, role, details):
     """
     Asynchronous function to search and retrieve a user's account profile based on their role and details.
 
@@ -163,6 +166,14 @@ def search_account_profile(user, role, details):
             'TEACHER': (Teacher, 'school', 'taught_classes__students'),
             'STUDENT': (Student, 'school', 'enrolled_classes'),
         }
+        
+        role_serializer_mapping = {
+            'PARENT': ParentAccountDetailsSerializer,
+            'PRINCIPAL': PrincipalAccountDetailsSerializer,
+            'ADMIN': AdminAccountDetailsSerializer,
+            'TEACHER': TeacherAccountDetailsSerializer,
+            'STUDENT': StudentAccountDetailsSerializer,
+        }
 
         # Get the appropriate model, select_related, and prefetch_related fields based on the requesting user's role.
         Model, select_related, prefetch_related = role_mapping[role]
@@ -182,7 +193,7 @@ def search_account_profile(user, role, details):
         requesting_account = queryset.get(account_id=user)
 
         # Retrieve the requested user's base account details using the provided account ID.
-        requested_user = BaseUser.objects.get(account_id=details.get('account_id'))
+        requested_user = BaseUser.objects.get(account_id=details.get('account'))
 
         # Get the model, select_related, and prefetch_related fields based on the requested user's role.
         Model, select_related, prefetch_related = role_mapping[requested_user.role]
@@ -204,8 +215,22 @@ def search_account_profile(user, role, details):
         if permission_error:
             return permission_error
 
-        # Serialize the requested user's profile for returning in the response.
-        serialized_user = SourceAccountSerializer(instance=requested_user).data
+        if details.get('reason') == 'details':
+            # Get the appropriate serializer
+            Serializer = role_serializer_mapping[requested_user.role]
+
+            # Serialize the requested user's profile for returning in the response.
+            serialized_user = Serializer(instance=requested_account).data
+
+        elif details.get('reason') == 'profile':
+            # Serialize the requested user's profile for returning in the response.
+            if requested_user.role == 'STUDENT':
+                serialized_user = StudentSourceAccountSerializer(instance=requested_account).data
+            else:
+                serialized_user = SourceAccountSerializer(instance=requested_user).data
+
+        else:
+            return {"error": 'could not proccess your request, invalid reason provided'}
 
         return {"user": serialized_user}
                
@@ -237,60 +262,6 @@ def search_account_profile(user, role, details):
         # Handle any other unexpected errors and return the error message.
         return {'error': str(e)}
 
-
-@database_sync_to_async
-def search_account_id(user, details):
-    """
-    Function to search and retrieve the account ID of a user based on the access control logic.
-
-    This function performs the following steps:
-    1. Retrieve the account making the request.
-    2. Retrieve the requested user's account.
-    3. Check permissions using the `check_profile_or_id_view_permissions` function.
-    4. Serialize and return the requested user's account ID.
-
-    Args:
-        user (str): The account ID of the user making the request.
-        details (dict): A dictionary containing the account_id of the requested user.
-
-    Returns:
-        dict: A dictionary containing either the requested user's account ID or an error message.
-
-    Raises:
-        CustomUser.DoesNotExist: If the user or requested user with the provided account ID does not exist.
-        Exception: For any other unexpected errors.
-
-    Example:
-        response = await search_account_id(request.user.account_id, {'account_id': 'U123'})
-        if 'error' in response:
-            # Handle error
-        else:
-            account_id = response['user']
-            # Process account ID
-    """
-    try:
-        # Retrieve the account making the request
-        account = BaseUser.objects.get(account_id=user)
-        # Retrieve the requested user's account
-        requested_user = BaseUser.objects.get(account_id=details.get('account_id'))
-        
-        # Check permissions
-        permission_error = permission_checks.check_profile_or_id_view_permissions(account, requested_user)
-        if permission_error:
-            return permission_error
-        
-        # Serialize the requested user's account ID to return it in the response
-        serializer = SourceAccountSerializer(instance=requested_user)
-        return {"user": serializer.data}
-
-    except BaseUser.DoesNotExist:
-        # Handle case where the user or requested user account does not exist
-        return {'error': 'an account with the provided credentials does not exist, please check the account details and try again'}
-    
-    except Exception as e:
-        # Handle any other unexpected errors
-        return {'error': str(e)}
-    
 
 @database_sync_to_async
 def search_parents(user, details):

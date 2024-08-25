@@ -119,8 +119,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'students': admin_search_async_functions.search_students,
             'parents': general_search_async_functions.search_parents,
 
-            'account_profile': general_search_async_functions.search_account_profile,
-            'account_id': general_search_async_functions.search_account_id,
+            'account': general_search_async_functions.search_account,
 
             "grade_details": admin_search_async_functions.search_grade_details,
 

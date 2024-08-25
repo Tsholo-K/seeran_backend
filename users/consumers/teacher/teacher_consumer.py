@@ -111,10 +111,9 @@ class TeacherConsumer(AsyncWebsocketConsumer):
 
     async def handle_search(self, description, details, user, access_token):
         search_map = {
+            'account': general_search_async_functions.search_account,
+            
             'parents': general_search_async_functions.search_parents,
-
-            'account_profile': general_search_async_functions.search_account_profile,
-            'account_id': general_search_async_functions.search_account_id,
 
             'teacher_classes': general_search_async_functions.search_teacher_classes,
 
