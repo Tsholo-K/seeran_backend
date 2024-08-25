@@ -40,7 +40,7 @@ def update_school_details(user, role, details):
         if role not in ['FOUNDER', 'PRINCIPAL', 'ADMIN']:
             return {"error": 'could not proccess your request.. your account either has insufficient permissions or is invalid for the action you are trying to perform'}
         
-        if details.get('school') == 'requesting my own school':
+        elif details.get('school') == 'requesting my own school':
             # Retrieve the user and related school in a single query using select_related
             if role == 'PRINCIPAL':
                 admin = Principal.objects.select_related('school').only('school').get(account_id=user)
