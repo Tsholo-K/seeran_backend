@@ -296,15 +296,15 @@ def signin(request):
         user = BaseUser.objects.get(email=email)
 
         # Access control based on user role and school compliance
-        role_check_mapping = {
-            'PRINCIPAL': user.principal.school.none_compliant,
-            'ADMIN': user.admin.school.none_compliant,
-            'TEACHER': user.teacher.school.none_compliant,
-            'STUDENT': user.student.school.none_compliant
-        }
+        # role_check_mapping = {
+        #     'PRINCIPAL': user.principal.school.none_compliant,
+        #     'ADMIN': user.admin.school.none_compliant,
+        #     'TEACHER': user.teacher.school.none_compliant,
+        #     'STUDENT': user.student.school.none_compliant
+        # }
 
-        if user.role in role_check_mapping and role_check_mapping[user.role]:
-            return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
+        # if user.role in role_check_mapping and role_check_mapping[user.role]:
+        #     return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
             
         # check if the provided name and surname are correct
         name, surname = full_names.split(' ', 1)
