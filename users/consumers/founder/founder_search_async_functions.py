@@ -22,7 +22,9 @@ from bug_reports.serializers import BugReportsSerializer, BugReportSerializer
 def search_school(details):
     try:
         school = School.objects.get(school_id=details.get('school'))
+
         serialized_school = SchoolSerializer(instance=school).data
+
         return {"school": serialized_school}
     
     except School.DoesNotExist:
@@ -36,7 +38,9 @@ def search_school(details):
 def search_school_details(details):
     try:
         school = School.objects.get(school_id=details.get('school_id'))
+
         serialized_school = SchoolDetailsSerializer(instance=school).data
+
         return {"school": serialized_school}
     
     except School.DoesNotExist:
@@ -49,9 +53,11 @@ def search_school_details(details):
 @database_sync_to_async
 def search_principal_profile(details):
     try:
-        principal = Principal.objects.get(account_id=details.get('principal_id'))
+        principal = Principal.objects.get(account_id=details.get('principal'))
+
         serializer = PrincipalAccountSerializer(instance=principal)
-        return {"user": serializer.data}
+
+        return {"principal": serializer.data}
     
     except Principal.DoesNotExist:
         return {'error': 'principal with the provided credentials does not exist'}
@@ -65,12 +71,9 @@ def search_principal_details(details):
     try:
         account = Principal.objects.get(account_id=details.get('account'))
 
-        if account.role != 'PRINCIPAL':
-            return {"error": 'unauthorized access.. permission denied'}
-
         # Return the user's profile
         serialized_principal = PrincipalAccountDetailsSerializer(instance=account).data
-        
+
         return {"principal": serialized_principal}
         
     except Principal.DoesNotExist:
