@@ -11,34 +11,34 @@ def update_user_counts_on_create(sender, instance, created, **kwargs):
     if created:
         role = instance.role
         
-        if role in ['PRINCIPAL', 'ADMIN', 'STUDENT', 'TEACHER']:
-            school = instance.school
-            
-            if role in ['PRINCIPAL']:
-                school.admin_count = school.principal.count()
-            if role in ['ADMIN']:
-                school.admin_count = school.admins.count()
-            elif role == 'STUDENT':
-                school.student_count = school.students.count()
-            elif role == 'TEACHER':
-                school.teacher_count = school.teachers.count()
+        if role in ['PRINCIPAL', 'ADMIN']:
+            if role == 'PRINCIPAL':
+                school = instance.principal.school
+            elif role == 'ADMIN':
+                school = instance.admin.school
+            school.admin_count = school.principal.count() + school.admins.count()
+        elif role == 'STUDENT':
+            school.student_count = instance.student.school.students.count()
+        elif role == 'TEACHER':
+            school.teacher_count = instance.teacher.school.teachers.count()
+        else:
+            return
 
-            school.save()
+        school.save()
 
 @receiver(post_delete, sender=BaseUser)
 def update_user_counts_on_delete(sender, instance, **kwargs):
     role = instance.role
 
-    if role in ['PRINCIPAL', 'ADMIN', 'STUDENT', 'TEACHER']:
-        school = instance.school
-        
-        if role in ['PRINCIPAL']:
-            school.admin_count = school.principal.count()
-        if role in ['ADMIN']:
-            school.admin_count = school.admins.count()
-        elif role == 'STUDENT':
-            school.student_count = school.students.count()
-        elif role == 'TEACHER':
-            school.teacher_count = school.teachers.count()
-
-        school.save()
+    if role in ['PRINCIPAL', 'ADMIN']:
+        if role == 'PRINCIPAL':
+            school = instance.principal.school
+        elif role == 'ADMIN':
+            school = instance.admin.school
+        school.admin_count = school.principal.count() + school.admins.count()
+    elif role == 'STUDENT':
+        school.student_count = instance.student.school.students.count()
+    elif role == 'TEACHER':
+        school.teacher_count = instance.teacher.school.teachers.count()
+    else:
+        return
