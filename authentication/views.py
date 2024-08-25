@@ -427,25 +427,28 @@ def authenticate(request):
    
     # if the user is authenticated, return a 200 status code
     if request.user:
-        # role = request.user.role
+        role = request.user.role
 
-        # if role not in ['FOUNDER', 'PARENT', 'PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
-        #     return Response({"error": "your request could not be processed, your account has an invalid role"}, status=status.HTTP_401_UNAUTHORIZED)
+        if role not in ['FOUNDER', 'PARENT', 'PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
+            return Response({"error": "your request could not be processed, your account has an invalid role"}, status=status.HTTP_401_UNAUTHORIZED)
 
-        # child_model_mapping = {
-        #     'FOUNDER' : Founder.objects.get(baseuser_ptr_id=request.user.id),
-        #     'PRINCIPAL': Principal.objects.get(baseuser_ptr_id=request.user.id),
-        #     'ADMIN': Admin.objects.get(baseuser_ptr_id=request.user.id),
-        #     'TEACHER': Teacher.objects.get(baseuser_ptr_id=request.user.id),
-        #     'STUDENT': Student.objects.get(baseuser_ptr_id=request.user.id),
-        #     'PARENT': Parent.objects.get(baseuser_ptr_id=request.user.id),  
-        # }
+        # Fetch the corresponding child model based on the user's role
+        if role == 'FOUNDER':
+            user = Founder.objects.get(account_id=request.user.account_id)
+        elif role == 'PRINCIPAL':
+            user = Principal.objects.get(account_id=request.user.account_id)
+        elif role == 'ADMIN':
+            user = Admin.objects.get(account_id=request.user.account_id)
+        elif role == 'TEACHER':
+            user = Teacher.objects.get(account_id=request.user.account_id)
+        elif role == 'STUDENT':
+            user = Student.objects.get(account_id=request.user.account_id)
+        elif role == 'PARENT':
+            user = Parent.objects.get(account_id=request.user.account_id)
 
-        # user = child_model_mapping[role]
-
-        # if role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
-        #     if user.school.none_compliant:
-        #         return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
+        if role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
+            if user.school.none_compliant:
+                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
 
         return Response({"role" : request.user.role.title()}, status=status.HTTP_200_OK)
 
