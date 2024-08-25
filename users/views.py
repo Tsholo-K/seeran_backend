@@ -68,10 +68,10 @@ def my_account_details(request):
             else:
                 # Access control based on user role and school compliance
                 role_check_mapping = {
-                    'PRINCIPAL': request.user.principal.school.none_compliant,
-                    'ADMIN': request.user.admin.school.none_compliant,
-                    'TEACHER': request.user.teacher.school.none_compliant,
-                    'STUDENT': request.user.student.school.none_compliant
+                    'PRINCIPAL': request.user.principal.school.none_compliant if hasattr(request.user, 'principal') else False,
+                    'ADMIN': request.user.admin.school.none_compliant if hasattr(request.user, 'admin') else False,
+                    'TEACHER': request.user.teacher.school.none_compliant if hasattr(request.user, 'teacher') else False,
+                    'STUDENT': request.user.student.school.none_compliant if hasattr(request.user, 'student') else False
                 }
 
                 # Handle specific role-based serialization
