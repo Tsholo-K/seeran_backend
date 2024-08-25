@@ -18,7 +18,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 
 # models 
 from auth_tokens.models import AccessToken
-from users.models import BaseUser, Principal
+from users.models import BaseUser, Principal, Admin, Teacher, Student
 from schools.models import School
 from classes.models import Classroom
 from attendances.models import Absent, Late
@@ -53,8 +53,15 @@ def delete_school_account(user, role, details):
             # Retrieve the School instance by school_id from the provided details
             school = School.objects.get(school_id=details.get('school'))
 
-        # Delete the School instance
-        school.delete()
+        with transaction.atomic():
+            # Bulk delete associated users without triggering signals
+            Principal.objects.filter(school=school).delete()
+            Admin.objects.filter(school=school).delete()
+            Teacher.objects.filter(school=school).delete()
+            Student.objects.filter(school=school).delete()
+
+            # Delete the School instance
+            school.delete()
 
         # Return a success message
         return {"message": "school account deleted successfully"}
