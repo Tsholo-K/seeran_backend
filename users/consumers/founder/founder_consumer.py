@@ -109,7 +109,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
             'school_details': founder_search_async_functions.search_school_details,
 
             'principal_profile': founder_search_async_functions.search_principal_profile,
-            'principal_id': founder_search_async_functions.search_principal_id,
+            'principal_details': founder_search_async_functions.search_principal_details,
 
             'principal_invoices': founder_search_async_functions.search_principal_invoices,
             'principal_invoice': founder_search_async_functions.search_principal_invoice,
@@ -160,7 +160,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         elif description == 'update_bug_report':
             return await founder_put_async_functions.update_bug_report(details)
         
-        elif description == 'update_account':
+        elif description == 'update_principal_account':
             return await founder_put_async_functions.update_principal_account(details)
         
         else:

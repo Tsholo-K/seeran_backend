@@ -18,13 +18,15 @@ class ParentAccountCreationSerializer(serializers.ModelSerializer):
 
 class ParentAccountUpdateSerializer(serializers.ModelSerializer):
 
-    email = serializers.EmailField(required=False)
-    name = serializers.CharField(required=False)
-    surname = serializers.CharField(required=False)
-
     class Meta:
         model = Parent
         fields = ['name', 'surname', 'email']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Make all fields optional 
+        for field in self.fields:
+            self.fields[field].required = False
 
 
 class ParentSecurityInformationSerializer(serializers.ModelSerializer):

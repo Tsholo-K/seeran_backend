@@ -18,13 +18,15 @@ class AdminAccountCreationSerializer(serializers.ModelSerializer):
 
 class AdminAccountUpdateSerializer(serializers.ModelSerializer):
 
-    email = serializers.EmailField(required=False)
-    name = serializers.CharField(required=False)
-    surname = serializers.CharField(required=False)
-
     class Meta:
         model = Admin
         fields = ['name', 'surname', 'email']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Make all fields optional 
+        for field in self.fields:
+            self.fields[field].required = False
 
 
 class AdminSecurityInformationSerializer(serializers.ModelSerializer):

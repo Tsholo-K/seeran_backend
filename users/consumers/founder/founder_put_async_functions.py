@@ -51,7 +51,7 @@ def update_principal_account(details):
             
             # Serialize the updated account data using PrincipalIDSerializer
             serializer = PrincipalAccountDetailsSerializer(instance=account)
-            return {"user": serializer.data}
+            return {"principal": serializer.data}
             
         # If the data is not valid, return the validation errors formatted as a string
         return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}

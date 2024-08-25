@@ -61,16 +61,17 @@ def search_principal_profile(details):
 
     
 @database_sync_to_async
-def search_principal_id(details):
+def search_principal_details(details):
     try:
-        account = Principal.objects.get(account_id=details.get('account_id'))
+        account = Principal.objects.get(account_id=details.get('account'))
 
         if account.role != 'PRINCIPAL':
             return {"error": 'unauthorized access.. permission denied'}
 
         # Return the user's profile
-        serializer = PrincipalAccountDetailsSerializer(instance=account)
-        return {"user": serializer.data}
+        serialized_principal = PrincipalAccountDetailsSerializer(instance=account).data
+        
+        return {"principal": serialized_principal}
         
     except Principal.DoesNotExist:
         return {'error': 'account with the provided credentials does not exist'}

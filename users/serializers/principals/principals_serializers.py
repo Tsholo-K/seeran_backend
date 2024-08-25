@@ -18,15 +18,15 @@ class PrincipalAccountCreationSerializer(serializers.ModelSerializer):
 
 class UpdatePrincipalAccountSerializer(serializers.ModelSerializer):
 
-    name = serializers.CharField(required=False)
-    surname = serializers.CharField(required=False)
-    email = serializers.EmailField(required=False)
-    contact_number = serializers.CharField(required=False)
-
     class Meta:
         model = Principal
         fields = ['name', 'surname', 'email', 'contact_number']
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Make all fields optional 
+        for field in self.fields:
+            self.fields[field].required = False
 
 class PrincipalSecurityInformationSerializer(serializers.ModelSerializer):
     
