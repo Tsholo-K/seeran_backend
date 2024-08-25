@@ -54,11 +54,13 @@ def delete_school_account(user, role, details):
             school = School.objects.get(school_id=details.get('school'))
 
         with transaction.atomic():
-            # Bulk delete associated users without triggering signals
+            # Perform bulk delete operations without triggering signals
             Principal.objects.filter(school=school).delete()
             Admin.objects.filter(school=school).delete()
             Teacher.objects.filter(school=school).delete()
             Student.objects.filter(school=school).delete()
+            Classroom.objects.filter(school=school).delete()
+            Grade.objects.filter(school=school).delete()
 
             # Delete the School instance
             school.delete()

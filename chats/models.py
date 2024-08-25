@@ -10,8 +10,8 @@ from users.models import BaseUser
 
 
 class ChatRoom(models.Model):
-    user_one = models.ForeignKey(BaseUser, on_delete=models.DO_NOTHING, related_name='user_one')
-    user_two = models.ForeignKey(BaseUser, on_delete=models.DO_NOTHING, related_name='user_two')
+    user_one = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='user_one')
+    user_two = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='user_two')
 
     latest_message_timestamp = models.DateTimeField(null=True, blank=True, default=None)
 

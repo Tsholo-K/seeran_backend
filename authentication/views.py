@@ -51,8 +51,15 @@ def login(request):
         user = BaseUser.objects.prefetch_related('access_tokens').get(email=request.data.get('email'))
         
         # Access control based on user role and school compliance
-        if user.role not in ["FOUNDER", "PARENT"] and user.school.none_compliant:
-            return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
+        if user.role not in ["FOUNDER", "PARENT"]:
+            if user.role == 'PRINCIPAL' and user.principal.school.none_compliant:
+                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
+            elif user.role == 'ADMIN' and user.admin.school.none_compliant:
+                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
+            elif user.role == 'TEACHER' and user.teacher.school.none_compliant:
+                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
+            elif user.role == 'STUDENT' and user.student.school.none_compliant:
+                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
      
         # Handle multi-factor authentication (MFA) if enabled for the user
         if user.multifactor_authentication:
@@ -278,9 +285,16 @@ def signin(request):
         # try to validate the credentials by getting a user with the provided credentials 
         user = BaseUser.objects.get(email=email)
 
-        if user.role not in ["FOUNDER", "PARENT"] and user.school.none_compliant:
-            return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
-                
+        if user.role not in ["FOUNDER", "PARENT"]:
+            if user.role == 'PRINCIPAL' and user.principal.school.none_compliant:
+                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
+            elif user.role == 'ADMIN' and user.admin.school.none_compliant:
+                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
+            elif user.role == 'TEACHER' and user.teacher.school.none_compliant:
+                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
+            elif user.role == 'STUDENT' and user.student.school.none_compliant:
+                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
+            
         # check if the provided name and surname are correct
         name, surname = full_names.split(' ', 1)
 

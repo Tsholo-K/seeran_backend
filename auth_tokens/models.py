@@ -6,7 +6,7 @@ from users.models import BaseUser
 
 
 class AccessToken(models.Model):
-    user = models.ForeignKey(BaseUser, related_name='access_tokens', on_delete=models.CASCADE)
+    user = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='access_tokens')
 
     token = models.CharField(max_length=255, unique=True)
     

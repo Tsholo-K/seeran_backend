@@ -5,7 +5,9 @@ from django.core.exceptions import ValidationError
 
 # models
 from users.models import BaseUser, Student
+from schools.models import School
 from classes.models import Classroom
+
 
 class Absent(models.Model):
     date = models.DateTimeField(auto_now_add=True)
@@ -16,6 +18,8 @@ class Absent(models.Model):
     absentes = models.BooleanField(default=False) # helps in querying 
 
     submitted_by = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, null=True, related_name='submitted_attendances')
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='absences', help_text='School to which the absences belong.')
 
     class Meta:
         unique_together = ('date', 'classroom') # this will prevent the creation of duplicate instances
@@ -37,10 +41,13 @@ class Late(models.Model):
 
     submitted_by = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, null=True, related_name='submitted_late_arrivals')
 
+    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='late_arrivals', help_text='School to which the late_arrivals belong.')
+
     class Meta:
         unique_together = ('date', 'classroom') # this will prevent the creation of duplicate instances
         ordering = ['-date']
         indexes = [models.Index(fields=['date'])]  # Index for performance
+
 
 class Emergency(models.Model):
     date = models.DateTimeField(auto_now_add=True)
@@ -56,6 +63,8 @@ class Emergency(models.Model):
     missing = models.BooleanField(default=False)
 
     submitted_by = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, null=True, related_name='submitted_emergencies')
+
+    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='emergencies', help_text='School to which the emergency belongs.')
 
     def __str__(self):
         return f"{self.emergency} on {self.date}"
