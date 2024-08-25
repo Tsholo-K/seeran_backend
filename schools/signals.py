@@ -1,5 +1,5 @@
 # django
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_save, pre_delete, post_delete
 from django.dispatch import receiver
 
 # models
@@ -26,7 +26,7 @@ def update_user_counts_on_create(sender, instance, created, **kwargs):
 
         school.save()
 
-@receiver(post_delete, sender=BaseUser)
+@receiver(pre_delete, sender=BaseUser)
 def update_user_counts_on_delete(sender, instance, **kwargs):
     role = instance.role
 
@@ -35,10 +35,10 @@ def update_user_counts_on_delete(sender, instance, **kwargs):
             school = instance.principal.school
         elif role == 'ADMIN':
             school = instance.admin.school
-        school.admin_count = school.principal.count() + school.admins.count()
+        school.admin_count -= 1
     elif role == 'STUDENT':
-        school.student_count = instance.student.school.students.count()
+        school.student_count -= 1
     elif role == 'TEACHER':
-        school.teacher_count = instance.teacher.school.teachers.count()
+        school.teacher_count -= 1
     else:
         return
