@@ -3,6 +3,7 @@
 
 # rest framework
 from rest_framework import serializers
+from rest_framework.validators import UniqueTogetherValidator
 
 # django
 
@@ -21,6 +22,11 @@ class SchoolCreationSerializer(serializers.ModelSerializer):
     class Meta:
         model = School
         fields = [ 'name', 'email', 'contact_number', 'type', 'province', 'district' ]
+
+    def __init__(self, *args, **kwargs):
+        super(SchoolCreationSerializer, self).__init__(*args, **kwargs)
+        # Remove the unique together validator that's added by DRF
+        self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
 
 
 class UpdateSchoolAccountSerializer(serializers.ModelSerializer):
