@@ -27,6 +27,11 @@ class SchoolCreationSerializer(serializers.ModelSerializer):
         # Remove the unique together validator that's added by DRF
         self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
 
+    def validate(self, attrs):
+        """
+        Override the validate method to apply custom validation logic if needed.
+        """
+        return attrs
 
 class UpdateSchoolAccountSerializer(serializers.ModelSerializer):
 
