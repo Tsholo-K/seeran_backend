@@ -433,12 +433,12 @@ def authenticate(request):
             return Response({"error": "your request could not be processed, your account has an invalid role"}, status=status.HTTP_401_UNAUTHORIZED)
 
         child_model_mapping = {
-            'FOUNDER' : Founder.objects.get(account_id=request.user.account_id),
-            'PRINCIPAL': Principal.objects.get(account_id=request.user.account_id),
-            'ADMIN': Admin.objects.get(account_id=request.user.account_id),
-            'TEACHER': Teacher.objects.get(account_id=request.user.account_id),
-            'STUDENT': Student.objects.get(account_id=request.user.account_id),
-            'PARENT': Parent.objects.get(account_id=request.user.account_id),  
+            'FOUNDER' : Founder.objects.get(baseuser_ptr_id=request.user.id),
+            'PRINCIPAL': Principal.objects.get(baseuser_ptr_id=request.user.id),
+            'ADMIN': Admin.objects.get(baseuser_ptr_id=request.user.id),
+            'TEACHER': Teacher.objects.get(baseuser_ptr_id=request.user.id),
+            'STUDENT': Student.objects.get(baseuser_ptr_id=request.user.id),
+            'PARENT': Parent.objects.get(baseuser_ptr_id=request.user.id),  
         }
 
         user = child_model_mapping[role]

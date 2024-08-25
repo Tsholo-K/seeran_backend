@@ -85,15 +85,6 @@ def verify_user_otp(user_otp, stored_hashed_otp_and_salt):
     return hashed_user_otp == stored_hashed_otp
 
 
-def generate_access_token(user):
-    # Create a refresh token
-    refresh = RefreshToken.for_user(user)
-    # Optionally, access the access token and its payload
-    access_token = refresh.access_token
-
-    return access_token
-
-
 def generate_token(user):
     # Create a refresh token
     refresh = RefreshToken.for_user(user)
