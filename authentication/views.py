@@ -16,7 +16,7 @@ from django.core.cache import cache
 from django.core.validators import validate_email
 
 # models
-from users.models import BaseUser
+from users.models import BaseUser, Founder,Principal, Admin, Teacher, Student, Parent
 from auth_tokens.models import AccessToken
 
 # serializers
@@ -427,17 +427,25 @@ def authenticate(request):
    
     # if the user is authenticated, return a 200 status code
     if request.user:
-        
-        # Access control based on user role and school compliance
-        role_check_mapping = {
-            'PRINCIPAL': request.user.principal.school.none_compliant,
-            'ADMIN': request.user.admin.school.none_compliant,
-            'TEACHER': request.user.teacher.school.none_compliant,
-            'STUDENT': request.user.student.school.none_compliant
+        role = request.user.role
+
+        if role not in ['FOUNDER', 'PARENT', 'PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
+            return Response({"error": "your request could not be processed, your account has an invalid role"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        child_model_mapping = {
+            'FOUNDER' : Founder.objects.get(account_id=request.user.account_id),
+            'PRINCIPAL': Principal.objects.get(account_id=request.user.account_id),
+            'ADMIN': Admin.objects.get(account_id=request.user.account_id),
+            'TEACHER': Teacher.objects.get(account_id=request.user.account_id),
+            'STUDENT': Student.objects.get(account_id=request.user.account_id),
+            'PARENT': Parent.objects.get(account_id=request.user.account_id),  
         }
 
-        if request.user.role in role_check_mapping and role_check_mapping[request.user.role]:
-            return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
+        user = child_model_mapping[role]
+
+        if role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
+            if user.school.none_compliant:
+                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
 
         return Response({"role" : request.user.role.title()}, status=status.HTTP_200_OK)
 

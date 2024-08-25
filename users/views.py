@@ -51,7 +51,7 @@ def my_account_details(request):
     if request.user:
         role = request.user.role
 
-        if role not in ['PARENT', 'PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
+        if role not in ['FOUNDER', 'PARENT', 'PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
             return Response({"error": "your request could not be processed, your account has an invalid role"}, status=status.HTTP_401_UNAUTHORIZED)
 
         child_model_mapping = {
