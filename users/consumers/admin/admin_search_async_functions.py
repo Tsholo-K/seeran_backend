@@ -316,7 +316,7 @@ def search_accounts(user, role, details):
         else:
             admin = Admin.objects.select_related('school').only('school').get(account_id=user)
 
-        if details.get('role') == 'ADMIN':
+        if details.get('role') == 'admins':
             # Fetch all admin accounts in the school
             admins = admin.school.admins.exclude(account_id=user)
             serialized_accounts = AdminAccountSerializer(admins, many=True).data
@@ -327,13 +327,13 @@ def search_accounts(user, role, details):
                 if principal:
                     serialized_accounts.append(PrincipalAccountSerializer(principal).data)
 
-        elif details.get('role') == 'TEACHER':
+        elif details.get('role') == 'teachers':
             # Fetch all teacher accounts in the school, excluding the current user
             teachers = admin.school.teachers
             serialized_accounts = TeacherAccountSerializer(teachers, many=True).data
 
         else:
-            return {"error": "the role specified is invalid"}
+            return {"error": "could not proccess your request, the role specified is invalid"}
 
         return {"users": serialized_accounts}
 
