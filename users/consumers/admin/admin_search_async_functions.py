@@ -348,7 +348,6 @@ def search_accounts(user, role, details):
     except Exception as e:
         # Handle any unexpected errors with a general error message
         return {'error': str(e)} 
-
     
 
 @database_sync_to_async

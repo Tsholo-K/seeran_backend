@@ -13,7 +13,7 @@ from django.utils.translation import gettext as _
 # simple jwt
 
 # models 
-from users.models import BaseUser, Principal, Admin
+from users.models import BaseUser, Founder,Principal, Admin, Teacher, Student, Parent
 from schools.models import School
 from grades.models import Grade
 from classes.models import Classroom
@@ -135,56 +135,106 @@ def search_school_details(user, role, details):
 
 
 @database_sync_to_async
-def search_account_profile(user, details):
+def search_account_profile(user, role, details):
     """
-    Function to search and retrieve the profile of a user based on the access control logic.
+    Asynchronous function to search and retrieve a user's account profile based on their role and details.
 
-    This function performs the following steps:
-    1. Retrieve the account making the request.
-    2. Retrieve the requested user's account.
-    3. Check permissions using the `check_profile_or_id_view_permissions` function.
-    4. Serialize and return the requested user's profile.
+    This function:
+    - Maps user roles to their corresponding models and related fields.
+    - Retrieves both the requesting user's and the requested user's account details.
+    - Performs permission checks to ensure that the requesting user has access to view the requested profile.
+    - Returns the serialized profile of the requested user if permission is granted.
 
     Args:
-        user (str): The account ID of the user making the request.
-        details (dict): A dictionary containing the account_id of the requested user.
+        user (CustomUser): The authenticated user making the request.
+        role (str): The role of the requesting user (e.g., 'PARENT', 'PRINCIPAL').
+        details (dict): A dictionary containing additional details, including the account ID of the requested user.
 
     Returns:
-        dict: A dictionary containing either the requested user's profile data or an error message.
-
-    Raises:
-        CustomUser.DoesNotExist: If the user or requested user with the provided account ID does not exist.
-        Exception: For any other unexpected errors.
-
-    Example:
-        response = await search_account_profile(request.user.account_id, {'account_id': 'U123'})
-        if 'error' in response:
-            # Handle error
-        else:
-            profile = response['user']
-            # Process profile
+        dict: A dictionary containing the serialized user profile if successful, or an error message if an exception occurs.
     """
+
     try:
-        # Retrieve the account making the request
-        account = BaseUser.objects.get(account_id=user)
-        # Retrieve the requested user's account
-        requested_user = BaseUser.objects.get(account_id=details.get('account_id'))
+        # Define a mapping of roles to their corresponding models, select_related fields, and prefetch_related fields.
+        role_mapping = {
+            'PARENT': (Parent, None, 'children__school, children__enrolled_classes'),
+            'PRINCIPAL': (Principal, 'school', None),
+            'ADMIN': (Admin, 'school', None),
+            'TEACHER': (Teacher, 'school', 'taught_classes__students'),
+            'STUDENT': (Student, 'school', 'enrolled_classes'),
+        }
+
+        # Get the appropriate model, select_related, and prefetch_related fields based on the requesting user's role.
+        Model, select_related, prefetch_related = role_mapping[role]
+
+        # Initialize the queryset for the requesting user's role model.
+        queryset = Model.objects
         
-        # Check permissions
-        permission_error = permission_checks.check_profile_or_id_view_permissions(account, requested_user)
+        # Apply select_related if necessary to reduce database queries by fetching related objects in a single query.
+        if select_related:
+            queryset = queryset.select_related(select_related)
+        
+        # Apply prefetch_related if necessary to fetch many-to-many or reverse foreign key relationships.
+        if prefetch_related:
+            queryset = queryset.prefetch_related(*prefetch_related.split(', '))
+
+        # Retrieve the requesting user's account from the database.
+        requesting_account = queryset.get(account=user)
+
+        # Retrieve the requested user's base account details using the provided account ID.
+        requested_user = BaseUser.objects.get(account_id=details.get('account_id'))
+
+        # Get the model, select_related, and prefetch_related fields based on the requested user's role.
+        Model, select_related, prefetch_related = role_mapping[requested_user.role]
+
+        # Initialize the queryset for the requested user's role model.
+        queryset = Model.objects
+        
+        # Apply select_related and prefetch_related as needed for the requested user's account.
+        if select_related:
+            queryset = queryset.select_related(select_related)
+        if prefetch_related:
+            queryset = queryset.prefetch_related(*prefetch_related.split(', '))
+
+        # Retrieve the requested user's account from the database.
+        requested_account = queryset.get(account=requested_user)
+        
+        # Check if the requesting user has permission to view the requested user's profile.
+        permission_error = permission_checks.check_profile_or_id_view_permissions(requesting_account, requested_account)
         if permission_error:
             return permission_error
 
-        # Serialize the requested user's profile to return it in the response
-        serializer = SourceAccountSerializer(instance=requested_user)
-        return {"user": serializer.data}
+        # Serialize the requested user's profile for returning in the response.
+        serialized_user = SourceAccountSerializer(instance=requested_user).data
+
+        return {"user": serialized_user}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the requested principal account does not exist.
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the requested admin account does not exist.
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+               
+    except Teacher.DoesNotExist:
+        # Handle the case where the requested teacher account does not exist.
+        return {'error': 'a teacher account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Student.DoesNotExist:
+        # Handle the case where the requested student account does not exist.
+        return {'error': 'a student account with the provided credentials does not exist, please check the account details and try again'}
+               
+    except Parent.DoesNotExist:
+        # Handle the case where the requested parent account does not exist.
+        return {'error': 'a parent account with the provided credentials does not exist, please check the account details and try again'}
 
     except BaseUser.DoesNotExist:
-        # Handle case where the user or requested user account does not exist
+        # Handle the case where the base user account does not exist.
         return {'error': 'an account with the provided credentials does not exist, please check the account details and try again'}
     
     except Exception as e:
-        # Handle any other unexpected errors
+        # Handle any other unexpected errors and return the error message.
         return {'error': str(e)}
 
 
