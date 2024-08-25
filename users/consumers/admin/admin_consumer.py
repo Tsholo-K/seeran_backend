@@ -96,8 +96,6 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'my_security_information': general_get_async_functions.fetch_my_security_information,
             'email_information': general_get_async_functions.fetch_my_email_information,
 
-            "school_details": admin_get_async_functions.fetch_school_details,
-
             'grades': admin_get_async_functions.fetch_grades,
             'student_grades': admin_get_async_functions.fetch_student_grades,
 
@@ -115,6 +113,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
     async def handle_search(self, description, details, user, role, access_token):
         search_map = {
+            "school_details": general_search_async_functions.search_school_details,
+
             'accounts': admin_search_async_functions.search_accounts,
             'students': admin_search_async_functions.search_students,
             'parents': general_search_async_functions.search_parents,

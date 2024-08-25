@@ -14,7 +14,7 @@ from django.core.exceptions import ValidationError
 
 # models 
 from users.models import BaseUser, Principal, Admin, Teacher, Student, Parent
-from timetables.models import Session, Schedule, TeacherSchedule, GroupSchedule
+from schedules.models import Session, Schedule, TeacherSchedule, GroupSchedule
 from grades.models import Grade, Term, Subject
 from classes.models import Classroom
 

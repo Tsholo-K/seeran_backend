@@ -14,7 +14,7 @@ from django.db.models import Prefetch
 from users.models import Principal, Admin
 from grades.models import Grade, Subject, Term
 from classes.models import Classroom
-from timetables.models import GroupSchedule
+from schedules.models import GroupSchedule
 
 # serilializers
 from users.serializers.principals.principals_serializers import PrincipalAccountSerializer

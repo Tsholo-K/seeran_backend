@@ -11,7 +11,7 @@ from channels.db import database_sync_to_async
 
 # models 
 from users.models import Principal, Admin
-from timetables.models import GroupSchedule
+from schedules.models import GroupSchedule
 from grades.models import Subject
 from classes.models import Classroom
 

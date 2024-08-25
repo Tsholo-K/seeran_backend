@@ -33,22 +33,6 @@ def search_school(details):
     except Exception as e:
         return {"error": str(e)}
     
-    
-@database_sync_to_async
-def search_school_details(details):
-    try:
-        school = School.objects.get(school_id=details.get('school_id'))
-
-        serialized_school = SchoolDetailsSerializer(instance=school).data
-
-        return {"school": serialized_school}
-    
-    except School.DoesNotExist:
-        return {"error": "school with the provided credentials can not be found"}
-    
-    except Exception as e:
-        return {"error": str(e)}
-    
 
 @database_sync_to_async
 def search_principal_profile(details):

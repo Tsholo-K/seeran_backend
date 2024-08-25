@@ -14,12 +14,12 @@ from django.utils.dateparse import parse_time
 
 # models 
 from users.models import Teacher
-from timetables.models import Session, Schedule, TeacherSchedule, GroupSchedule
+from schedules.models import Session, Schedule, TeacherSchedule, GroupSchedule
 from grades.models import Grade
 from classes.models import Classroom
 
 # serilializers
-from timetables.serializers import ScheduleSerializer
+from schedules.serializers import ScheduleSerializer
 from classes.serializers import ClassSerializer, TeacherClassesSerializer, TeacherRegisterClassSerializer
 
 # utility functions 

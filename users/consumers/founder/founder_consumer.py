@@ -19,6 +19,7 @@ from . import founder_get_async_functions
 # general async functions 
 from users.consumers.general import general_post_async_functions
 from users.consumers.general import general_put_async_functions
+from users.consumers.general import general_search_async_functions
 from users.consumers.general import general_get_async_functions
 from users.consumers.general import general_verify_async_functions
 from users.consumers.general import general_email_async_functions
@@ -106,7 +107,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
     async def handle_search(self, description, details, user, role, access_token):
         search_map = {
             'school': founder_search_async_functions.search_school,
-            'school_details': founder_search_async_functions.search_school_details,
+            'school_details': general_search_async_functions.search_school_details,
 
             'principal_profile': founder_search_async_functions.search_principal_profile,
             'principal_details': founder_search_async_functions.search_principal_details,
@@ -120,7 +121,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
         func = search_map.get(description)
         if func:
-            return await func(details)
+            return await func(user, role, details) if description in ['school_details'] else await func(details)
         
         return {'error': 'Invalid search description'}
 

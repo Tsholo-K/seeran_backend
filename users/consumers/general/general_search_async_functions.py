@@ -13,26 +13,27 @@ from django.utils.translation import gettext as _
 # simple jwt
 
 # models 
-from users.models import BaseUser
-from email_bans.models import EmailBan
-from timetables.models import Schedule, TeacherSchedule, GroupSchedule
-from classes.models import Classroom
-from attendances.models import Absent, Late
+from users.models import BaseUser, Principal, Admin
+from schools.models import School
 from grades.models import Grade
+from classes.models import Classroom
+from email_bans.models import EmailBan
+from schedules.models import Schedule, TeacherSchedule, GroupSchedule
+from attendances.models import Absent, Late
 from announcements.models import Announcement
 from chats.models import ChatRoom, ChatRoomMessage
 from activities.models import Activity
 
 # serializers
 from users.serializers.general_serializers import DisplayAccountDetailsSerializer, SourceAccountSerializer
-from users.serializers.students.students_serializers import StudentAccountSerializer, LeastAccountDetailsSerializer
+from users.serializers.students.students_serializers import LeastAccountDetailsSerializer
 from users.serializers.parents.parents_serializers import ParentAccountSerializer
+from schools.serializers import SchoolDetailsSerializer
+from classes.serializers import TeacherClassesSerializer, ClassSerializer
 from email_bans.serializers import EmailBanSerializer
-from timetables.serializers import SessoinsSerializer, ScheduleSerializer
-from timetables.serializers import GroupScheduleSerializer
+from schedules.serializers import ScheduleSerializer, GroupScheduleSerializer, SessoinsSerializer
 from announcements.serializers import AnnouncementSerializer
 from chats.serializers import ChatRoomMessageSerializer
-from classes.serializers import TeacherClassesSerializer, ClassSerializer
 from activities.serializers import ActivitiesSerializer, ActivitySerializer
 
 # utility functions 
@@ -90,6 +91,47 @@ def search_my_email_ban(details):
     
     except Exception as e:
         return {'error': f'An unexpected error occurred while retrieving the email ban: {str(e)}'}
+    
+    
+@database_sync_to_async
+def search_school_details(user, role, details):
+    try:
+        if role not in ['FOUNDER', 'PRINCIPAL', 'ADMIN']:
+            return {"error": 'could not proccess your request.. your account either has insufficient permissions or is invalid for the action you are trying to perform'}
+
+        if details.get('school') == 'requesting my own school':
+            # Retrieve the user and related school in a single query using select_related
+            if role == 'PRINCIPAL':
+                admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+            else:
+                admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+
+            # Serialize the school object into a dictionary
+            serialized_school = SchoolDetailsSerializer(admin.school).data
+        
+        else:
+            school = School.objects.get(school_id=details.get('school'))
+
+            # Serialize the school object into a dictionary
+            serialized_school = SchoolDetailsSerializer(instance=school).data
+
+        return {"school": serialized_school}
+                   
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+
+    except School.DoesNotExist:
+        # Handle the case where the provided school ID does not exist
+        return {"error": "a school with the provided credentials does not exist"}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
 
 
 @database_sync_to_async
@@ -277,7 +319,40 @@ def search_parents(user, details):
     except Exception as e:
         # Handle any other unexpected errors
         return {'error': str(e)}
+
+
+@database_sync_to_async
+def search_teacher_classes(user, details):
+
+    try:
+        account = BaseUser.objects.get(account_id=user)
+
+        # If the requesting user is looking for their own classes
+        if details.get('teacher_id') == 'requesting_my_own_classes':
+            classes = account.taught_classes.exclude(register_class=True)
+
+        else:
+            if account.role not in ['ADMIN', 'PRINCIPAL']:
+                return {"error": "unauthorized access. you are not permitted to access classes of any teacher account with your role"}
+
+            teacher = BaseUser.objects.get(account_id=details.get('teacher_id'))
+
+            if teacher.role != 'TEACHER' or account.school != teacher.school:
+                return {"error": "unauthorized access. you are not permitted to view classses of teacher accounts outside your own school"}
+
+            classes = teacher.taught_classes
+
+        serializer = TeacherClassesSerializer(classes, many=True)
+
+        return {"classes": serializer.data}
+
+    except BaseUser.DoesNotExist:
+        # Handle case where the user account does not exist
+        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
     
+    except Exception as e:
+        return { 'error': str(e) }
+
 
 @database_sync_to_async
 def search_class(user, details):
@@ -422,39 +497,6 @@ def search_activity(user, details):
         # Handle any other unexpected errors
         return {'error': str(e)}
 
-    
-
-@database_sync_to_async
-def search_teacher_classes(user, details):
-
-    try:
-        account = BaseUser.objects.get(account_id=user)
-
-        # If the requesting user is looking for their own classes
-        if details.get('teacher_id') == 'requesting_my_own_classes':
-            classes = account.taught_classes.exclude(register_class=True)
-
-        else:
-            if account.role not in ['ADMIN', 'PRINCIPAL']:
-                return {"error": "unauthorized access. you are not permitted to access classes of any teacher account with your role"}
-
-            teacher = BaseUser.objects.get(account_id=details.get('teacher_id'))
-
-            if teacher.role != 'TEACHER' or account.school != teacher.school:
-                return {"error": "unauthorized access. you are not permitted to view classses of teacher accounts outside your own school"}
-
-            classes = teacher.taught_classes
-
-        serializer = TeacherClassesSerializer(classes, many=True)
-
-        return {"classes": serializer.data}
-
-    except BaseUser.DoesNotExist:
-        # Handle case where the user account does not exist
-        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
-    
-    except Exception as e:
-        return { 'error': str(e) }
     
     
 @database_sync_to_async

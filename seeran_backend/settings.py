@@ -55,7 +55,7 @@ INSTALLED_APPS = [
     'chats',
     'classes',
     'grades',
-    'timetables',
+    'schedules',
     'auth_tokens',
     'uploads',
     'announcements',

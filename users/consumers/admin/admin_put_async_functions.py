@@ -13,7 +13,7 @@ from django.core.exceptions import ValidationError
 
 # models 
 from users.models import Principal, Admin, Teacher, Student, Parent
-from timetables.models import GroupSchedule
+from schedules.models import GroupSchedule
 from classes.models import Classroom
 from grades.models import Grade, Term, Subject
 
