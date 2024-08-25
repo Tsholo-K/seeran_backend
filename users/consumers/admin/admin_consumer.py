@@ -265,6 +265,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
     async def handle_post(self, description, details, user, role, access_token):
         post_map = {
+            'delete_school_account': general_post_async_functions.delete_school_account,
+
             'create_account': admin_post_async_functions.create_account,
             'create_student_account': admin_post_async_functions.create_student_account,
             'link_parent': admin_post_async_functions.link_parent,

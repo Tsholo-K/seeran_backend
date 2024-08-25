@@ -178,7 +178,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
             return await founder_post_async_functions.create_school_account(details)
         
         elif description == 'delete_school_account':
-            return await founder_post_async_functions.delete_school_account(details)
+            return await general_post_async_functions.delete_school_account(user, role, details)
         
         elif description == 'create_principal_account':
             response = await founder_post_async_functions.create_principal_account(details)

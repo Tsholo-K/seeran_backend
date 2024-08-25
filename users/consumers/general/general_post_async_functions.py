@@ -17,8 +17,9 @@ from rest_framework_simplejwt.tokens import AccessToken as decode, TokenError
 from rest_framework_simplejwt.exceptions import TokenError
 
 # models 
-from users.models import BaseUser
 from auth_tokens.models import AccessToken
+from users.models import BaseUser, Principal
+from schools.models import School
 from classes.models import Classroom
 from attendances.models import Absent, Late
 from grades.models import Grade, Term, Subject
@@ -35,6 +36,40 @@ from assessments.serializers import AssessmentCreationSerializer
 
 # checks
 from users.checks import permission_checks
+
+
+@database_sync_to_async
+def delete_school_account(user, role, details):
+    try:
+        if role not in ['FOUNDER', 'PRINCIPAL']:
+            return {"error": 'could not proccess your request.. your account either has insufficient permissions or is invalid for the action you are trying to perform'}
+        
+        if details.get('school') == 'requesting my own school':
+            # Retrieve the user and related school in a single query using select_related
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+            school = admin.school
+
+        else:
+            # Retrieve the School instance by school_id from the provided details
+            school = School.objects.get(school_id=details.get('school'))
+
+        # Delete the School instance
+        school.delete()
+
+        # Return a success message
+        return {"message": "school account deleted successfully"}
+                   
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+
+    except School.DoesNotExist:
+        # Handle the case where the School does not exist
+        return {"error": "a school with the provided credentials does not exist"}
+    
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e).lower()}
     
 
 @database_sync_to_async

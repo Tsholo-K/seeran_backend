@@ -56,43 +56,6 @@ def create_school_account(details):
 
 
 @database_sync_to_async
-def delete_school_account(details):
-    """
-    Asynchronously deletes a School account based on the provided details.
-
-    This function attempts to find and delete a School account by its `school_id`. 
-    If the School account is found, it is deleted. If the School account cannot be found, 
-    or if any other error occurs, an appropriate error message is returned.
-
-    Args:
-        details (dict): A dictionary containing the `school_id` of the School account to be deleted.
-
-    Returns:
-        dict: A dictionary containing either a success message or an error message.
-            - If successful, returns {"message": "school account deleted successfully"}.
-            - If the School does not exist, returns {"error": "school with the provided credentials can not be found"}.
-            - If an exception occurs, returns {'error': str(e).lower()} with the exception message in lowercase.
-    """
-    try:
-        # Retrieve the School instance by school_id from the provided details
-        school = School.objects.get(school_id=details.get('school'))
-
-        # Delete the School instance
-        school.delete()
-
-        # Return a success message
-        return {"message": "school account deleted successfully"}
-    
-    except School.DoesNotExist:
-        # Handle the case where the School does not exist
-        return {"error": "a school with the provided credentials does not exist"}
-    
-    except Exception as e:
-        # Handle any unexpected errors with a general error message
-        return {'error': str(e).lower()}
-
-
-@database_sync_to_async
 def create_principal_account(details):
     """
     Asynchronously creates a new Principal account for a given school.
