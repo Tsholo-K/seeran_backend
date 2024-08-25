@@ -41,7 +41,6 @@ class StudentAccountSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
     surname = serializers.SerializerMethodField()
     identifier = serializers.SerializerMethodField()
-    id = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
 
     class Meta:
