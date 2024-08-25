@@ -267,10 +267,12 @@ class AdminConsumer(AsyncWebsocketConsumer):
         post_map = {
             'delete_school_account': general_post_async_functions.delete_school_account,
 
-            'create_account': admin_post_async_functions.create_account,
+            'create_admin_account': admin_post_async_functions.create_admin_account,
+            'create_teacher_account': admin_post_async_functions.create_teacher_account,
             'create_student_account': admin_post_async_functions.create_student_account,
-            'link_parent': admin_post_async_functions.link_parent,
             'delete_account': admin_post_async_functions.delete_account,
+
+            'link_parent': admin_post_async_functions.link_parent,
             'unlink_parent': admin_post_async_functions.unlink_parent,
 
             'create_term': admin_post_async_functions.create_term,
@@ -308,7 +310,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
                 return {'message': 'text message sent'}
 
-            elif response.get('user') and description in ['create_account', 'create_student_account', 'link_parent']:
+            elif response.get('user') and description in ['create_admin_account', 'create_teacher_account', 'create_student_account', 'link_parent']:
                 return await general_email_async_functions.send_account_confirmation_email(response['user'])
             
             return response

@@ -15,6 +15,11 @@ class TeacherAccountCreationSerializer(serializers.ModelSerializer):
         model = Teacher
         fields = ['name', 'surname', 'email', 'school', 'role']
 
+    def __init__(self, *args, **kwargs):
+        super(TeacherAccountCreationSerializer, self).__init__(*args, **kwargs)
+        # Remove the unique together validator that's added by DRF
+        self.fields['email'].validators = []
+
 
 class TeacherAccountUpdateSerializer(serializers.ModelSerializer):
 

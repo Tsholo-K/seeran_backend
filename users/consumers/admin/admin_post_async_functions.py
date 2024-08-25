@@ -19,6 +19,8 @@ from grades.models import Grade, Term, Subject
 from classes.models import Classroom
 
 # serilializers
+from users.serializers.admins.admins_serializers import AdminAccountCreationSerializer
+from users.serializers.teachers.teachers_serializers import TeacherAccountCreationSerializer
 from users.serializers.students.students_serializers import StudentAccountCreationSerializer
 from users.serializers.parents.parents_serializers import ParentAccountCreationSerializer
 from grades.serializers import GradeCreationSerializer, TermCreationSerializer, SubjectCreationSerializer
@@ -330,6 +332,88 @@ def delete_class(user, role, details):
     except Exception as e:
         # Handle any other unexpected errors
         return {'error': str(e).lower()}    
+
+
+@database_sync_to_async
+def create_admin_account(user, role, details):
+
+    try:
+        # Retrieve the user and related school in a single query using select_related
+        if role == 'PRINCIPAL':
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+        else:
+            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+
+        details['school'] = admin.school.pk
+        details['role'] = 'ADMIN'
+
+        serializer = AdminAccountCreationSerializer(data=details)
+        
+        if serializer.is_valid():
+            with transaction.atomic():
+                user = Admin.objects.create(**serializer.validated_data)
+            
+            return {'user' : user}
+            
+        # Return serializer errors if the data is not valid, format it as a string
+        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+    
+    except ValidationError as e:
+        # Handle validation errors separately with meaningful messages
+        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def create_teacher_account(user, role, details):
+
+    try:
+        # Retrieve the user and related school in a single query using select_related
+        if role == 'PRINCIPAL':
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+        else:
+            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+
+        details['school'] = admin.school.pk
+        details['role'] = 'STUDENT'
+
+        serializer = TeacherAccountCreationSerializer(data=details)
+        
+        if serializer.is_valid():
+            with transaction.atomic():
+                user = Student.objects.create(**serializer.validated_data)
+            
+            return {'user' : user}
+            
+        # Return serializer errors if the data is not valid, format it as a string
+        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+    
+    except ValidationError as e:
+        # Handle validation errors separately with meaningful messages
+        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
 
 
 @database_sync_to_async

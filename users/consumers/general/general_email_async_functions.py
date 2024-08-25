@@ -44,10 +44,13 @@ async def send_account_confirmation_email(user):
             response = await client.post( mailgun_api_url, headers=headers, data=email_data )
             
         if response.status_code == 200:
-            return {"message": f"an account confirmation email has been sent to the users email address"}
-            
+            return {"message": f"account successfully created, an account confirmation email has been sent to the accounts email address. the user can now sign-in and activate the account"}
+        elif response.status_code in [400, 401, 402, 403, 404]:
+            return {"error": f"account successfully created, but there was an error sending an account confirmation email to the accounts email address. please open a new bug ticket with the issue, error code {response.status_code}"}
+        elif response.status_code == 429:
+            return {"error": "account successfully created, but there was an error sending an account confirmation email to the accounts email address, the status code recieved could indicate a rate limit issue so please wait some few minutes before creating a new account"}
         else:
-            return {"error": "failed to send OTP to users email address"}
+            return {"error": "account successfully created, but there was an error sending an account confirmation email to the accounts email address."}
     
     except Exception as e:
         return {"error": str(e)}

@@ -16,7 +16,7 @@ from django.core.cache import cache
 from django.core.validators import validate_email
 
 # models
-from users.models import BaseUser, Founder,Principal, Admin, Teacher, Student, Parent
+from users.models import BaseUser, Principal, Admin, Teacher, Student
 from auth_tokens.models import AccessToken
 
 # serializers

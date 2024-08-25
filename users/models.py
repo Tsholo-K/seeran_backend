@@ -224,7 +224,7 @@ class Admin(BaseUser):
             raise ValidationError(_('all admin accounts in the system are required to have an email address linked to their account. please correct the provided information and try again'))
 
         if not self.school:
-            raise ValidationError(_('Principal accounts must be associated with a school'))
+            raise ValidationError(_('admin accounts must be associated with a school. please correct the provided information and try again'))
 
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -261,16 +261,16 @@ class Student(BaseUser):
             raise ValidationError(_('could not proccess your request, student accounts can only have a role of \'Student\'. please correct the provided information and try again'))
 
         if not self.id_number and not self.passport_number:
-            raise ValidationError(_('Either ID or Passport number is required for a student account'))
+            raise ValidationError(_('either ID or Passport number is required for every student account on the system'))
         
         if self.school and self.grade.school != self.school:
-            raise ValidationError(_('The grade must be associated with the school the student is linked to'))
+            raise ValidationError(_('the grade the student is getting assigned to must be associated with the school the student is linked to'))
         
         if self.school.type == 'PRIMARY' and int(self.grade.grade) > 7:
-            raise ValidationError(_('Primary school students cannot be assigned to grades higher than 7'))
+            raise ValidationError(_('primary school students cannot be assigned to grades higher than 7, please correct the provided information and try again'))
         
         if self.school.type == 'SECONDARY' and int(self.grade.grade) <= 7:
-            raise ValidationError(_('Secondary school students must be assigned to grades higher than 7'))
+            raise ValidationError(_('secondary school students must be assigned to grades higher than 7, please correct the provided information and try again'))
 
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -282,16 +282,16 @@ class Student(BaseUser):
             error_message = str(e).lower()
             if 'unique constraint' in error_message:
                 if 'id_number' in error_message:
-                    raise ValidationError(_('An account with the provided ID number already exists. Please use a different ID number.'))
+                    raise ValidationError(_('An account with the provided ID number already exists, please use a different ID number.'))
                 
                 elif 'passport_number' in error_message:
-                    raise ValidationError(_('An account with the provided passport number already exists. Please use a different passport number.'))
+                    raise ValidationError(_('An account with the provided passport number already exists, please use a different passport number.'))
                 
                 elif 'email' in error_message:
-                    raise ValidationError(_('an account with the provided email address already exists. Please use a different email address.'))
+                    raise ValidationError(_('an account with the provided email address already exists, please use a different email address.'))
 
                 else:
-                    raise ValidationError(_('A unique constraint was violated. Please check the data and try again.'))
+                    raise ValidationError(_('A unique constraint was violated, please check the provided information and try again.'))
             else:
                 raise
 
@@ -351,7 +351,7 @@ class Teacher(BaseUser):
             raise ValidationError(_('all teacher accounts in the system are required to have an email address linked to their account. please correct the provided information and try again'))
         
         if not self.school:
-            raise ValidationError(_('teacher accounts must be associated with a school'))
+            raise ValidationError(_('teacher accounts must be associated with a school. please correct the provided information and try again'))
 
     def save(self, *args, **kwargs):
         self.full_clean()
