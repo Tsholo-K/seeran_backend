@@ -81,18 +81,17 @@ def my_account_details(request):
             serialized_account = ParentAccountDetailsSerializer(instance=user).data
 
         else:
-            # Handle specific role-based serialization
-            role_serialization_mapping = {
-                'PRINCIPAL': PrincipalAccountDetailsSerializer(instance=user).data,
-                'ADMIN': AdminAccountDetailsSerializer(instance=user).data,
-                'TEACHER': TeacherAccountDetailsSerializer(instance=user).data,
-                'STUDENT': StudentAccountDetailsSerializer(instance=user).data
-            }
-
             if user.school.none_compliant:
                 return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
-
-            serialized_account = role_serialization_mapping[role]
+            
+            elif role == 'PRINCIPAL':
+                serialized_account = PrincipalAccountDetailsSerializer(instance=user).data
+            elif role == 'ADMIN':
+                serialized_account = AdminAccountDetailsSerializer(instance=user).data
+            elif role == 'TEACHER':
+                serialized_account = TeacherAccountDetailsSerializer(instance=user).data
+            elif role == 'STUDENT':
+                serialized_account = StudentAccountDetailsSerializer(instance=user).data
 
             # Fetch announcements relevant to the user's school
             unread_announcements = user.school.announcements.exclude(reached=request.user).count()
