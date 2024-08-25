@@ -51,15 +51,15 @@ def login(request):
         user = BaseUser.objects.prefetch_related('access_tokens').get(email=request.data.get('email'))
         
         # Access control based on user role and school compliance
-        if user.role not in ["FOUNDER", "PARENT"]:
-            if user.role == 'PRINCIPAL' and user.principal.school.none_compliant:
-                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
-            elif user.role == 'ADMIN' and user.admin.school.none_compliant:
-                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
-            elif user.role == 'TEACHER' and user.teacher.school.none_compliant:
-                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
-            elif user.role == 'STUDENT' and user.student.school.none_compliant:
-                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
+        role_check_mapping = {
+            'PRINCIPAL': user.principal.school.none_compliant,
+            'ADMIN': user.admin.school.none_compliant,
+            'TEACHER': user.teacher.school.none_compliant,
+            'STUDENT': user.student.school.none_compliant
+        }
+
+        if user.role in role_check_mapping and role_check_mapping[user.role]:
+            return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
      
         # Handle multi-factor authentication (MFA) if enabled for the user
         if user.multifactor_authentication:
@@ -161,7 +161,17 @@ def multi_factor_authentication_login(request):
     try:
         
         user = BaseUser.objects.get(email=email)
-    
+            # Access control based on user role and school compliance
+        role_check_mapping = {
+            'PRINCIPAL': user.principal.school.none_compliant,
+            'ADMIN': user.admin.school.none_compliant,
+            'TEACHER': user.teacher.school.none_compliant,
+            'STUDENT': user.student.school.none_compliant
+        }
+
+        if user.role in role_check_mapping and role_check_mapping[user.role]:
+            return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
+
         # after getting the user object retrieve the stored otp from cache 
         stored_hashed_otp_and_salt = cache.get(user.email+'login_otp')
         
@@ -285,15 +295,16 @@ def signin(request):
         # try to validate the credentials by getting a user with the provided credentials 
         user = BaseUser.objects.get(email=email)
 
-        if user.role not in ["FOUNDER", "PARENT"]:
-            if user.role == 'PRINCIPAL' and user.principal.school.none_compliant:
-                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
-            elif user.role == 'ADMIN' and user.admin.school.none_compliant:
-                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
-            elif user.role == 'TEACHER' and user.teacher.school.none_compliant:
-                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
-            elif user.role == 'STUDENT' and user.student.school.none_compliant:
-                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
+        # Access control based on user role and school compliance
+        role_check_mapping = {
+            'PRINCIPAL': user.principal.school.none_compliant,
+            'ADMIN': user.admin.school.none_compliant,
+            'TEACHER': user.teacher.school.none_compliant,
+            'STUDENT': user.student.school.none_compliant
+        }
+
+        if user.role in role_check_mapping and role_check_mapping[user.role]:
+            return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
             
         # check if the provided name and surname are correct
         name, surname = full_names.split(' ', 1)
@@ -416,6 +427,18 @@ def authenticate(request):
    
     # if the user is authenticated, return a 200 status code
     if request.user:
+        
+        # Access control based on user role and school compliance
+        role_check_mapping = {
+            'PRINCIPAL': request.user.principal.school.none_compliant,
+            'ADMIN': request.user.admin.school.none_compliant,
+            'TEACHER': request.user.teacher.school.none_compliant,
+            'STUDENT': request.user.student.school.none_compliant
+        }
+
+        if request.user.role in role_check_mapping and role_check_mapping[request.user.role]:
+            return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
+
         return Response({"role" : request.user.role.title()}, status=status.HTTP_200_OK)
 
     else:
@@ -487,9 +510,17 @@ def validate_password_reset(request):
         # try to get the user with the provided email
         user = BaseUser.objects.get(email=sent_email)
 
-        if user.role not in ["FOUNDER", "PARENT"] and user.school.none_compliant:
-            return Response({"denied": "access denied"}, status=status.HTTP_400_BAD_REQUEST)
-    
+        # Access control based on user role and school compliance
+        role_check_mapping = {
+            'PRINCIPAL': user.principal.school.none_compliant,
+            'ADMIN': user.admin.school.none_compliant,
+            'TEACHER': user.teacher.school.none_compliant,
+            'STUDENT': user.student.school.none_compliant
+        }
+
+        if user.role in role_check_mapping and role_check_mapping[user.role]:
+            return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
+            
         # check if the account is activated 
         if user.activated == False:
             return Response({"error": "action forbidden for account with provided credentials"}, status=status.HTTP_403_FORBIDDEN)
