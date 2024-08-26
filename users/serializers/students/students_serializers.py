@@ -20,6 +20,7 @@ class StudentAccountCreationSerializer(serializers.ModelSerializer):
         # Make some fields optional
         self.fields['id_number'].required = False
         self.fields['passport_number'].required = False
+        self.fields['email'].required = False
         self.fields['email'].validators = []
 
 
