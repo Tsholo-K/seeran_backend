@@ -13,7 +13,7 @@ class StudentAccountCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Student
-        fields = ['name', 'surname', 'email', 'school', 'role', 'id_number', 'passport_number']
+        fields = ['name', 'surname', 'email', 'role', 'id_number', 'passport_number', 'grade', 'school']
 
     def __init__(self, *args, **kwargs):
         super(StudentAccountCreationSerializer, self).__init__(*args, **kwargs)
