@@ -253,7 +253,7 @@ def search_parents(user, role, details):
             requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
 
             # Build the queryset for the requested account with the necessary related fields.
-            requested_account = Student.objects.select_related('school').prefecth_related('enrolled_classes', 'parents').get(account_id=details.get('account'))
+            requested_account = Student.objects.select_related('school').prefetch_related('enrolled_classes', 'parents').get(account_id=details.get('account'))
             
             # Check if the requesting user has permission to view the requested user's profile or details.
             permission_error = permission_checks.check_profile_or_details_view_permissions(requesting_account, requested_account)
