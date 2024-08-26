@@ -32,16 +32,12 @@ class GroupScheduleSerializer(serializers.ModelSerializer):
 # schedule days
 class ScheduleSerializer(serializers.ModelSerializer):
     
-    id = serializers.SerializerMethodField()
     day = serializers.SerializerMethodField()
 
     class Meta:
         model = Schedule
-        fields = [ 'day', 'id' ]
-    
-    def get_id(self, obj):
-        return str(obj.schedule_id)
-    
+        fields = [ 'day', 'schedule_id' ]
+        
     def get_day(self, obj):
         return obj.day.title()
 
