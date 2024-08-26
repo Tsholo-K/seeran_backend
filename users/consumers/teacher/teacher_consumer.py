@@ -205,18 +205,25 @@ class TeacherConsumer(AsyncWebsocketConsumer):
 
         func = put_map.get(description)
         if func:
-            response = await func(user, role, details, access_token) if description in ['update_email', 'update_password'] else await func(user, role, details)
+            if description in ['update_email', 'update_password']:
+                response = await func(user, role, details, access_token)
+
+            elif description in ['update_multi_factor_authentication']:
+                response = await func(user, details)
+
+            else:
+                response = await func(user, role, details)
                         
-            if response.get('user') and description in ['mark_messages_as_read']:
-                await connection_manager.send_message(response['user'], json.dumps({'description': 'read_receipt', 'chat': response['chat']}))
+            if response.get('user'):
+                if description in ['mark_messages_as_read']:
+                    await connection_manager.send_message(response['user'], json.dumps({'description': 'read_receipt', 'chat': response['chat']}))
+                    return {'message': 'read receipt sent'}
 
-                return {'message': 'read receipt sent'}
+                elif description in ['send_email_revalidation_otp']:
+                    response = await general_email_async_functions.send_email_revalidation_one_time_pin_email(response['user'])
 
-            if description == 'send_email_revalidation_otp' and response.get('user'):
-                response = await general_email_async_functions.send_email_revalidation_one_time_pin_email(response.get('user'))
-
-                if response.get('message'):
-                    return await general_put_async_functions.update_email_ban_otp_sends(details)
+                    if response.get('message'):
+                        return await general_put_async_functions.update_email_ban_otp_sends(details)
                 
             return response
         

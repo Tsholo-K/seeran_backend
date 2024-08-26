@@ -235,17 +235,18 @@ def update_multi_factor_authentication(user, details):
         
         if account.email_banned:
             return { "error" : "your email has been banned"}
-    
-        account.multifactor_authentication = details.get('toggle')
-        account.save()
         
-        return {'message': 'Multifactor authentication {} successfully'.format('enabled' if details.get('toggle') else 'disabled')}
+        with transaction.atomic():
+            account.multifactor_authentication = details.get('toggle')
+            account.save()
+        
+        return {'message': 'Multifactor authentication {} successfully'.format('enabled' if details['toggle'] else 'disabled')}
     
     except BaseUser.DoesNotExist:
-        return { 'error': 'user with the provided credentials does not exist' }
+        return {'error': 'an account with the provided credentials does not exist, please check the account details and try again'}
     
     except Exception as e:
-        return { 'error': str(e) }
+        return {'error': str(e)}
     
 
 @database_sync_to_async
