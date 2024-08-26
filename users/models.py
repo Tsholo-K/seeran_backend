@@ -119,7 +119,7 @@ class BaseUser(AbstractBaseUser, PermissionsMixin):
             raise ValidationError(_("surname cannot exceed 64 characters. please correct the surname and try again"))
                 
     def save(self, *args, **kwargs):
-        self.full_clean()
+        self.clean()
         
         try:
             super().save(*args, **kwargs)
@@ -145,7 +145,7 @@ class Founder(BaseUser):
             raise ValidationError(_('all founder accounts in the system are required to have an email address linked to their account. please correct the provided information and try again'))
 
     def save(self, *args, **kwargs):
-        self.full_clean()
+        self.clean()
         
         try:
             super().save(*args, **kwargs)
@@ -183,6 +183,8 @@ class Principal(BaseUser):
             raise ValidationError(_('principal accounts must be associated with a school. please correct the provided information and try again'))
 
     def save(self, *args, **kwargs):
+        self.clean()
+
         try:
             super().save(*args, **kwargs)
 
@@ -218,7 +220,7 @@ class Admin(BaseUser):
             raise ValidationError(_('admin accounts must be associated with a school. please correct the provided information and try again'))
 
     def save(self, *args, **kwargs):
-        self.full_clean()
+        self.clean()
         
         try:
             super().save(*args, **kwargs)
@@ -262,7 +264,7 @@ class Student(BaseUser):
             raise ValidationError(_('secondary school students must be assigned to grades higher than 7, please correct the provided information and try again'))
 
     def save(self, *args, **kwargs):
-        self.full_clean()
+        self.clean()
         
         try:
             super().save(*args, **kwargs)
@@ -308,7 +310,7 @@ class Parent(BaseUser):
                 raise ValidationError(_('an account cannot be it\'s own parent'))
 
     def save(self, *args, **kwargs):
-        self.full_clean()
+        self.clean()
         
         try:
             super().save(*args, **kwargs)
@@ -339,7 +341,7 @@ class Teacher(BaseUser):
             raise ValidationError(_('teacher accounts must be associated with a school. please correct the provided information and try again'))
 
     def save(self, *args, **kwargs):
-        self.full_clean()
+        self.clean()
         
         try:
             super().save(*args, **kwargs)
