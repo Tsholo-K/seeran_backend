@@ -117,10 +117,8 @@ class BaseUser(AbstractBaseUser, PermissionsMixin):
         
         if len(self.surname) > 64:
             raise ValidationError(_("surname cannot exceed 64 characters. please correct the surname and try again"))
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
         
+    def save(self, *args, **kwargs):
         try:
             super().save(*args, **kwargs)
 
