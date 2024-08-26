@@ -23,7 +23,11 @@ from users.serializers.admins.admins_serializers import AdminAccountSerializer
 from users.serializers.teachers.teachers_serializers import TeacherAccountSerializer
 from grades.serializers import GradeSerializer, GradeDetailsSerializer, TermsSerializer, TermSerializer, SubjectSerializer, SubjectDetailsSerializer, ClassesSerializer
 
-# utility functions 
+# mappings
+from users.maps import role_specific_maps
+
+# queries
+from users.complex_queries import queries
 
 
 @database_sync_to_async
@@ -322,15 +326,14 @@ def search_accounts(user, role, details):
 
 @database_sync_to_async
 def search_students(user, role, details):
-
     try:
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+        # Get the appropriate model for the requesting user's role from the mapping.
+        Model = role_specific_maps.account_access_control_mapping[role]
 
-        grade = Grade.objects.prefetch_related('students').get(grade_id=details.get('grade'), school=admin.school.pk)
+        # Build the queryset for the requesting account with the necessary related fields.
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+
+        grade = Grade.objects.prefetch_related('students').get(grade_id=details.get('grade'), school=requesting_account.school.pk)
 
         serialized_students = StudentAccountSerializer(grade.students.all(), many=True).data
 

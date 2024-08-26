@@ -50,6 +50,7 @@ account_model_and_security_serializer_mapping = {
 
 account_access_control_mapping = {
     'PRINCIPAL': Principal,
+    'PARENT': Parent,
     'ADMIN': Admin,
     'TEACHER': Teacher,
     'STUDENT': Student,

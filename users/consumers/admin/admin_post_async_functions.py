@@ -419,21 +419,20 @@ def delete_account(user, role, details):
         if details['role'] == 'ADMIN' and role != 'PRINCIPAL':
             return {"error": 'could not proccess your request, your accounts role does not have sufficient permission to perform this action'}
 
-        # Get the appropriate model and related fields (select_related and prefetch_related)
-        # for the requesting user's role from the mapping.
+        # Get the appropriate model for the requesting user's role from the mapping.
         Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[role]
 
         # Build the queryset for the requesting account with the necessary related fields.
         requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
 
         if details['role'] in ['ADMIN', 'TEACHER', 'STUDENT']:
-            # Retrieve the base account details of the requested user using the provided account ID.
+            # Get the appropriate model for the requested user's role from the mapping.
             Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[details['role']]
 
             # Build the queryset for the requested account with the necessary related fields.
             requested_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=details.get('account'))
 
-            # Check if the requesting user has permission to view the requested user's profile.
+            # Check if the requesting user has permission to update the requested user's account.
             permission_error = permission_checks.check_update_details_permissions(requesting_account, requested_account)
             if permission_error:
                 return permission_error
