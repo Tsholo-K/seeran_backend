@@ -29,10 +29,10 @@ class AdminAccountUpdateSerializer(serializers.ModelSerializer):
 
     def __init__(self, *args, **kwargs):
         super(AdminAccountUpdateSerializer, self).__init__(*args, **kwargs)
+        self.fields['email'].validators = []
         # Make all fields optional 
         for field in self.fields:
             self.fields[field].required = False
-        self.fields['email'].validators = []
 
 
 class AdminSecurityInformationSerializer(serializers.ModelSerializer):
