@@ -23,7 +23,7 @@ class StudentAccountUpdateSerializer(serializers.ModelSerializer):
         fields = ['name', 'surname', 'email']
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(StudentAccountUpdateSerializer, self).__init__(*args, **kwargs)
         # Make all fields optional 
         for field in self.fields:
             self.fields[field].required = False
