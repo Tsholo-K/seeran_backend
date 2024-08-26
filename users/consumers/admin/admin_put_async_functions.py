@@ -225,7 +225,7 @@ def update_account(user, role, details):
             return {"user" : serialized_user}
             
         # Return serializer errors if the data is not valid, format it as a string
-        return {"hmm": '; '.join([f"{key}: {', '.join(value)}, okay it must be the serializer" for key, value in serializer.errors.items()])}
+        return {"error": '; '.join([f"{key}: {', '.join(value)}, okay it must be the serializer" for key, value in serializer.errors.items()])}
                
     except Principal.DoesNotExist:
         # Handle the case where the requested principal account does not exist.
@@ -249,7 +249,7 @@ def update_account(user, role, details):
 
     except ValidationError as e:
         # Handle validation errors separately with meaningful messages
-        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
+        return {"hmmm": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
 
     except Exception as e:
         # Handle any unexpected errors with a general error message
