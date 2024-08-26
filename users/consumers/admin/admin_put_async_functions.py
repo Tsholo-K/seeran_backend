@@ -249,7 +249,7 @@ def update_account(user, role, details):
 
     except ValidationError as e:
         # Handle validation errors separately with meaningful messages
-        return {"hmmm": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
+        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
 
     except Exception as e:
         # Handle any unexpected errors with a general error message

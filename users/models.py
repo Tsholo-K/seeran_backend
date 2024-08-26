@@ -125,12 +125,11 @@ class BaseUser(AbstractBaseUser, PermissionsMixin):
             super().save(*args, **kwargs)
 
         except IntegrityError as e:
-            # Handle integrity error
-            if 'unique constraint' in str(e).lower():
-                raise ValidationError(_('a account with the provided email address already exists. please use a different email address'))
-            
+            # Handle unique constraint violation on the email field
+            if 'unique constraint' in str(e).lower() and 'email' in str(e).lower():
+                raise ValidationError(_('An account with the provided email address already exists. Please use a different email address.'))
             else:
-                raise
+                raise e  # Re-raise the exception if it's a different IntegrityError
 
 
 class Founder(BaseUser):
