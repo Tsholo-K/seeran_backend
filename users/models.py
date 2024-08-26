@@ -117,17 +117,9 @@ class BaseUser(AbstractBaseUser, PermissionsMixin):
         
         if len(self.surname) > 64:
             raise ValidationError(_("surname cannot exceed 64 characters. please correct the surname and try again"))
-        
-    def validate_unique(self, *args, **kwargs):
-        try:
-            super().validate_unique(*args, **kwargs)
-        except ValidationError as e:
-            if 'email' in e.message_dict:
-                e.message_dict['email'] = [_("an account with the provided email address already exists. please use a different email address.")]
-            raise e
-        
+                
     def save(self, *args, **kwargs):
-        self.full_clean(exclude=['email'])
+        self.full_clean()
         
         try:
             super().save(*args, **kwargs)
@@ -146,8 +138,6 @@ class Founder(BaseUser):
         ...
 
     def clean(self):
-        super().clean()
-
         if not self.role == 'FOUNDER':
             raise ValidationError(_('could not proccess your request, founder accounts can only have a role of \'Founder\'. please correct the provided information and try again'))
 
@@ -177,8 +167,6 @@ class Principal(BaseUser):
         ...
 
     def clean(self):
-        super().clean()
-
         if not self.role == 'PRINCIPAL':
             raise ValidationError(_('could not proccess your request, principal accounts can only have a role of \'Principal\'. please correct the provided information and try again'))
 
@@ -195,8 +183,6 @@ class Principal(BaseUser):
             raise ValidationError(_('principal accounts must be associated with a school. please correct the provided information and try again'))
 
     def save(self, *args, **kwargs):
-        self.full_clean()
-        
         try:
             super().save(*args, **kwargs)
 
@@ -222,8 +208,6 @@ class Admin(BaseUser):
         ...
 
     def clean(self):
-        super().clean()
-
         if not self.role == 'ADMIN':
             raise ValidationError(_('could not proccess your request, admin accounts can only have a role of \'Admin\'. please correct the provided information and try again'))
 
@@ -262,8 +246,6 @@ class Student(BaseUser):
         ...
 
     def clean(self):
-        super().clean()
-
         if not self.role == 'STUDENT':
             raise ValidationError(_('could not proccess your request, student accounts can only have a role of \'Student\'. please correct the provided information and try again'))
 
@@ -312,8 +294,6 @@ class Parent(BaseUser):
         ...
 
     def clean(self):
-        super().clean()
-
         if not self.role == 'PARENT':
             raise ValidationError(_('could not proccess your request, parent accounts can only have a role of \'Parent\'. please correct the provided information and try again'))
 
@@ -349,8 +329,6 @@ class Teacher(BaseUser):
         ...
 
     def clean(self):
-        super().clean()
-
         if not self.role == 'TEACHER':
             raise ValidationError(_('could not proccess your request, teacher accounts can only have a role of \'Teacher\'. please correct the provided information and try again'))
 
