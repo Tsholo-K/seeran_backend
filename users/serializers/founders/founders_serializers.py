@@ -38,15 +38,8 @@ class FounderAccountDetailsSerializer(serializers.ModelSerializer):
 
 
 class FounderSecurityInformationSerializer(serializers.ModelSerializer):
-    
-    event_emails = serializers.SerializerMethodField()
 
     class Meta:
         model = Founder
         fields = ['multifactor_authentication']
-    
-    def get_event_emails(self, obj):
-        if obj.event_emails:
-            return obj.event_emails
-        return None
 
