@@ -106,7 +106,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         func = get_map.get(description)
         if func:
-            return await func(user, role)
+            return await func(user) if description in ['chats'] else await func(user, role)
         
         return {'error': 'Invalid get description'}
 

@@ -123,31 +123,6 @@ def fetch_my_email_information(user):
 
 @database_sync_to_async
 def fetch_chats(user):
-    """
-    Retrieves chat rooms associated with the user.
-
-    This function fetches all chat rooms where the user is either `user_one` or `user_two`.
-
-    Args:
-        user (str): The account ID of the user whose chat rooms are to be fetched.
-
-    Returns:
-        dict: A dictionary containing:
-            - 'chats': Serialized data of chat rooms associated with the user.
-            - 'error': A string containing an error message if an exception is raised.
-
-    Raises:
-        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
-        Exception: For any other unexpected errors.
-
-    Example:
-        response = await fetch_chats('user123')
-        if 'error' in response:
-            # Handle error
-        else:
-            chat_rooms = response['chats']
-            # Process chat rooms
-    """
     try:
         # Retrieve the user account
         account = BaseUser.objects.get(account_id=user)
