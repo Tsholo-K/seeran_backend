@@ -157,10 +157,10 @@ class Term(models.Model):
     school_days = models.IntegerField(default=0)
 
     # grade linked to
-    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='grade_terms')
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='terms')
 
     # The school the term is linked to
-    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='school_terms')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='terms')
 
     # term id 
     term_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)

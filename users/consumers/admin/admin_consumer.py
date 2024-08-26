@@ -125,7 +125,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             "subject_details": admin_search_async_functions.search_subject_details,
 
-            "school_terms": admin_search_async_functions.search_school_terms,
+            "grade_terms": admin_search_async_functions.search_grade_terms,
             'term_details': admin_search_async_functions.search_term_details,
 
             'teacher_schedule_schedules': general_search_async_functions.search_teacher_schedule_schedules,
@@ -266,9 +266,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
         post_map = {
             'delete_school_account': general_post_async_functions.delete_school_account,
 
-            'create_admin_account': admin_post_async_functions.create_admin_account,
-            'create_teacher_account': admin_post_async_functions.create_teacher_account,
-            'create_student_account': admin_post_async_functions.create_student_account,
+            'create_account': admin_post_async_functions.create_account,
             'delete_account': admin_post_async_functions.delete_account,
 
             'link_parent': admin_post_async_functions.link_parent,

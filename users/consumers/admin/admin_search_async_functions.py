@@ -94,8 +94,44 @@ def search_grade_details(user, role, details):
 
 
 @database_sync_to_async
-def search_grade_register_classes(user, role, details):
+def search_grade_terms(user, role, details):
+    try:
+        # Retrieve the user and related school in a single query using select_related
+        if role == 'PRINCIPAL':
+            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+        else:
+            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
 
+        grade = Grade.objects.prefetch_related('grade_terms').get(grade_id=details.get('grade'), school=admin.school)
+
+        # Prefetch related school terms to minimize database hits
+        grade_terms = grade.terms.all()
+        
+        # Serialize the school terms
+        serialized_terms = TermsSerializer(grade_terms, many=True).data
+        
+        # Return the serialized terms in a dictionary
+        return {'terms': serialized_terms}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+    
+    except Grade.DoesNotExist:
+        # Handle the case where the provided grade ID does not exist
+        return {'error': 'a grade in your school with the provided credentials does not exist, please check the grade details and try again'}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': f'An unexpected error occurred: {str(e)}'}
+
+
+@database_sync_to_async
+def search_grade_register_classes(user, role, details):
     try:
         # Retrieve the user and related school in a single query using select_related
         if role == 'PRINCIPAL':
@@ -126,56 +162,6 @@ def search_grade_register_classes(user, role, details):
     except Exception as e:
         # Handle any unexpected errors with a general error message
         return {'error': str(e)}
-    
-
-@database_sync_to_async
-def search_school_terms(user, role, details):
-    """
-    Fetch all the terms associated with the school linked to a given user.
-
-    This function retrieves the school associated with the provided user account,
-    and then fetches all the terms related to that school. It handles cases where
-    the user does not exist and returns a descriptive error message in such scenarios.
-
-    Args:
-        user (str): The account ID of the user whose school terms are to be fetched.
-
-    Returns:
-        dict: A dictionary containing either the serialized terms data or an error message.
-    """
-    try:
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
-
-        grade = Grade.objects.prefetch_related('grade_terms').get(grade_id=details.get('grade'), school=admin.school)
-
-        # Prefetch related school terms to minimize database hits
-        grade_terms = grade.grade_terms.all()
-        
-        # Serialize the school terms
-        serialized_terms = TermsSerializer(grade_terms, many=True).data
-        
-        # Return the serialized terms in a dictionary
-        return {'terms': serialized_terms}
-               
-    except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
-    
-    except Grade.DoesNotExist:
-        # Handle the case where the provided grade ID does not exist
-        return {'error': 'a grade in your school with the provided credentials does not exist, please check the grade details and try again'}
-
-    except Exception as e:
-        # Handle any unexpected errors with a general error message
-        return {'error': f'An unexpected error occurred: {str(e)}'}
     
 
 @database_sync_to_async
@@ -214,22 +200,6 @@ def search_term_details(user, role, details):
 
 @database_sync_to_async
 def search_subject(user, role, details):
-    """
-    Asynchronous function to search for and retrieve subject details.
-
-    This function checks if the requesting user is authorized to access or update 
-    the subject information. If the subject is found and the user has the correct 
-    permissions, the function returns the serialized subject data.
-
-    Args:
-        user (str): The account_id of the user making the request.
-        details (dict): A dictionary containing the details of the subject being searched, specifically the 'subject_id'.
-
-    Returns:
-        dict: A dictionary containing the serialized subject data if found and accessible, 
-            or an error message if the subject or user account is not found, or if there is 
-            a permission issue.
-    """
     try:
         # Retrieve the user and related school in a single query using select_related
         if role == 'PRINCIPAL':
@@ -385,21 +355,6 @@ def search_students(user, role, details):
 
 @database_sync_to_async
 def search_subscribed_students(user, role, details):
-    """
-    Searches and retrieves students subscribed to a specific group schedule.
-
-    Args:
-        user (str): The account ID of the user making the request.
-        details (dict): A dictionary containing the group_schedule_id to identify the group schedule.
-
-    Returns:
-        dict: A dictionary containing the list of subscribed students or an error message.
-
-    Raises:
-        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
-        GroupSchedule.DoesNotExist: If the group schedule with the provided ID does not exist.
-        Exception: For any other unexpected errors.
-    """
     try:
         # Retrieve the user and related school in a single query using select_related
         if role == 'PRINCIPAL':

@@ -30,20 +30,12 @@ from announcements.serializers import AnnouncementCreationSerializer
 # checks
 from users.checks import permission_checks
 
+# mappings
+from users.maps import role_specific_maps
+
 
 @database_sync_to_async
 def create_grade(user, role, details):
-    """
-    Creates a new grade for a school based on the provided details.
-
-    Args:
-        user (str): The account ID of the user attempting to create the grade.
-        details (dict): A dictionary containing grade details, including 'grade' and other necessary fields.
-
-    Returns:
-        dict: A dictionary containing a success message if the grade is created,
-              or an error message if something goes wrong.
-    """
     try:
         # Retrieve the user and related school in a single query using select_related
         if role == 'PRINCIPAL':
@@ -87,7 +79,6 @@ def create_grade(user, role, details):
 
 @database_sync_to_async
 def create_subject(user, role, details):
-
     try:
         # Retrieve the user and related school in a single query using select_related
         if role == 'PRINCIPAL':
@@ -136,20 +127,6 @@ def create_subject(user, role, details):
 
 @database_sync_to_async
 def create_term(user, role, details):
-    """
-    Asynchronously creates a new school term associated with the provided user's school and grade.
-
-    This function fetches the school associated with the user and attempts to create a new term
-    using the provided details. The process is wrapped in a database transaction for safety.
-    It handles various exceptions such as non-existent users, validation errors, and unexpected exceptions.
-
-    Args:
-        user (str): The account ID of the user.
-        details (dict): A dictionary containing the details required to create a new term.
-
-    Returns:
-        dict: A dictionary containing either a success message or an error message.
-    """
     try:
         # Retrieve the user and related school in a single query using select_related
         if role == 'PRINCIPAL':
@@ -184,7 +161,6 @@ def create_term(user, role, details):
     except Admin.DoesNotExist:
         # Handle the case where the provided account ID does not exist
         return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
-        return {'error': 'an account with the provided credentials does not exist, please check the account details and try again'}
             
     except Grade.DoesNotExist:
         return { 'error': 'a grade in your school with the provided credentials does not exist' }
@@ -200,28 +176,6 @@ def create_term(user, role, details):
 
 @database_sync_to_async
 def create_class(user, role, details):
-    """
-    Creates a new class, either a register class or a subject class, based on the provided details.
-
-    Args:
-        user (str): The account ID of the user making the request.
-        details (dict): A dictionary containing:
-            - classroom_teacher (str): The account ID of the teacher for the class (optional).
-            - grade_id (str): The ID of the grade.
-            - register (bool): A boolean indicating if the class is a register class.
-            - group (str): The group identifier for the class.
-            - classroom (str): The classroom identifier.
-            - subject_id (str): The ID of the subject (optional, required if register is False).
-
-    Returns:
-        dict: A dictionary containing a success message or an error message.
-
-    Raises:
-        CustomUser.DoesNotExist: If the user or teacher with the provided account ID does not exist.
-        Grade.DoesNotExist: If the grade with the provided grade ID does not exist.
-        Subject.DoesNotExist: If the subject with the provided subject ID does not exist (when creating a subject class).
-        Exception: For any other unexpected errors.
-    """
     try:
         # Retrieve the user and related school in a single query using select_related
         if role == 'PRINCIPAL':
@@ -305,7 +259,7 @@ def delete_class(user, role, details):
             admin = Admin.objects.select_related('school').only('school').get(account_id=user)
 
         # Retrieve the grade
-        classroom = Classroom.objects.select_related('grade').get(class_id=details.get('class'), school=admin.school)
+        classroom = Classroom.objects.select_related('grade').only('grade__grade').get(class_id=details.get('class'), school=admin.school)
 
         response = {'message': f'grade {classroom.grade.grade} classroom deleted successfully, the classroom will no longer be accessible or available in your schools data'}
         
@@ -336,23 +290,35 @@ def delete_class(user, role, details):
 
 
 @database_sync_to_async
-def create_admin_account(user, role, details):
+def create_account(user, role, details):
 
     try:
+        if details.get('role') not in ['ADMIN', 'TEACHER', 'STUDENT']:
+            return {"error": 'could not proccess your request, the provided account role is invalid'}
+        
         # Retrieve the user and related school in a single query using select_related
         if role == 'PRINCIPAL':
             admin = Principal.objects.select_related('school').only('school').get(account_id=user)
         else:
+            if details['role'] == 'ADMIN':
+                return {"error": 'could not proccess your request, your accounts role does not have sufficient permission to perform this action'}
             admin = Admin.objects.select_related('school').only('school').get(account_id=user)
 
         details['school'] = admin.school.pk
-        details['role'] = 'ADMIN'
 
-        serializer = AdminAccountCreationSerializer(data=details)
+        if details['role'] == 'STUDENT':
+            grade = Grade.objects.get(grade_id=details.get('grade'), school=admin.school)
+            details['grade'] = grade.pk
+
+        # Get the appropriate model and related fields (select_related and prefetch_related)
+        # for the requesting user's role from the mapping.
+        Model, Serializer = role_specific_maps.account_creation_model_and_serializer_mapping[details['role']]
+
+        serializer = Serializer(data=details)
         
         if serializer.is_valid():
             with transaction.atomic():
-                user = Admin.objects.create(**serializer.validated_data)
+                user = Model.objects.create(**serializer.validated_data)
             
             return {'user' : user}
             
@@ -366,97 +332,6 @@ def create_admin_account(user, role, details):
     except Admin.DoesNotExist:
         # Handle the case where the provided account ID does not exist
         return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
-    
-    except ValidationError as e:
-        # Handle validation errors separately with meaningful messages
-        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
-
-    except Exception as e:
-        # Handle any unexpected errors with a general error message
-        return {'error': str(e)}
-
-
-@database_sync_to_async
-def create_teacher_account(user, role, details):
-
-    try:
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
-
-        details['school'] = admin.school.pk
-        details['role'] = 'TEACHER'
-
-        serializer = TeacherAccountCreationSerializer(data=details)
-        if serializer.is_valid():
-            with transaction.atomic():
-                user = Teacher.objects.create(**serializer.validated_data)
-            
-            return {'user' : user}
-            
-        # Return serializer errors if the data is not valid, format it as a string
-        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
-               
-    except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
-    
-    except ValidationError as e:
-        # Handle validation errors separately with meaningful messages
-        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
-
-    except Exception as e:
-        # Handle any unexpected errors with a general error message
-        return {'error': str(e)}
-
-
-@database_sync_to_async
-def create_student_account(user, role, details):
-
-    try:
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
-
-        grade = Grade.objects.get(grade_id=details.get('grade'), school=admin.school)
-
-        details['school'] = admin.school.pk
-        details['grade'] = grade.pk
-        details['role'] = 'STUDENT'
-
-        serializer = StudentAccountCreationSerializer(data=details)
-        
-        if serializer.is_valid():
-            with transaction.atomic():
-                user = Student.objects.create(**serializer.validated_data)
-            
-            if details.get('email'):
-                return {'user' : user }
-            
-            else:
-                return {'message' : 'student account successfully created.. you can now link a parent, add to classes, track performance and much more'}
-            
-        # Return serializer errors if the data is not valid, format it as a string
-        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
-               
-    except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
-    
-    except Grade.DoesNotExist:
-        return { 'error': 'a grade in your school with the provided credentials does not exist' }
     
     except ValidationError as e:
         # Handle validation errors separately with meaningful messages
