@@ -16,23 +16,20 @@ from django.core.cache import cache
 from django.core.validators import validate_email
 
 # models
-from users.models import BaseUser, Principal, Admin, Teacher, Student
+from users.models import BaseUser
 from auth_tokens.models import AccessToken
 
 # serializers
 from .serializers import CustomTokenObtainPairSerializer
-from users.serializers.founders.founders_serializers import FounderAccountDetailsSerializer
-from users.serializers.principals.principals_serializers import PrincipalAccountDetailsSerializer
-from users.serializers.admins.admins_serializers import AdminAccountDetailsSerializer
-from users.serializers.teachers.teachers_serializers import TeacherAccountDetailsSerializer
-from users.serializers.students.students_serializers import StudentAccountDetailsSerializer
-from users.serializers.parents.parents_serializers import ParentAccountDetailsSerializer
 
 # utility functions 
 from .utils import generate_token, generate_otp, verify_user_otp, validate_names, send_otp_email
 
 # custom decorators
 from .decorators import token_required
+
+# maops
+from users.maps import role_specific_maps
 
 
 class CustomRateThrottle(UserRateThrottle):
@@ -57,17 +54,10 @@ def login(request):
         user = BaseUser.objects.prefetch_related('access_tokens').get(email=request.data.get('email'))
         
         # Access control based on user role and school compliance
-        role_mapping = {
-            'PRINCIPAL': Principal,
-            'ADMIN': Admin,
-            'TEACHER': Teacher,
-            'STUDENT': Student,
-        }
-
-        if user.role in role_mapping:
-            # Fetch the corresponding child model and serializer based on the user's role
-            Model = role_mapping[user.role]
-            account = Model.objects.get(account_id=user.account_id)
+        if user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
+            # Fetch the corresponding child model based on the user's role
+            Model = role_specific_maps.account_access_control_mapping[user.role]
+            account = Model.objects.select_related('school').only('school').get(account_id=user.account_id)
 
             if account.school.none_compliant:
                 return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
@@ -159,32 +149,23 @@ def login(request):
 @api_view(['POST'])
 @throttle_classes([CustomRateThrottle])
 def multi_factor_authentication_login(request):
-    # retrieve the provided email, otp and the authorization otp in the cookie
-    email = request.data.get('email')
-    otp = request.data.get('otp')
-    authorization_cookie_otp = request.COOKIES.get('login_authorization_otp')
-    
-    # if anyone of these is missing return a 400 error
-    if not email or not otp or not authorization_cookie_otp:
-        return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
-    
     # try to get the user object using the provided email address
     try:
+        # retrieve the provided email, otp and the authorization otp in the cookie
+        email = request.data.get('email')
+        otp = request.data.get('otp')
+        authorization_cookie_otp = request.COOKIES.get('login_authorization_otp')
+        
+        # if anyone of these is missing return a 400 error
+        if not email or not otp or not authorization_cookie_otp:
+            return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
         
         user = BaseUser.objects.get(email=email)
-        
-        # Access control based on user role and school compliance
-        role_mapping = {
-            'PRINCIPAL': Principal,
-            'ADMIN': Admin,
-            'TEACHER': Teacher,
-            'STUDENT': Student,
-        }
 
-        if user.role in role_mapping:
-            # Fetch the corresponding child model and serializer based on the user's role
-            Model = role_mapping[user.role]
-            account = Model.objects.get(account_id=user.account_id)
+        if user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
+            # Fetch the corresponding child model based on the user's role
+            Model = role_specific_maps.account_access_control_mapping[user.role]
+            account = Model.objects.select_related('school').only('school').get(account_id=user.account_id)
 
             if account.school.none_compliant:
                 return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
@@ -313,15 +294,13 @@ def signin(request):
         user = BaseUser.objects.get(email=email)
 
         # Access control based on user role and school compliance
-        role_check_mapping = {
-            'PRINCIPAL': user.principal.school.none_compliant,
-            'ADMIN': user.admin.school.none_compliant,
-            'TEACHER': user.teacher.school.none_compliant,
-            'STUDENT': user.student.school.none_compliant
-        }
+        if user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
+            # Fetch the corresponding child model based on the user's role
+            Model = role_specific_maps.account_access_control_mapping[user.role]
+            account = Model.objects.select_related('school').only('school').get(account_id=user.account_id)
 
-        if user.role in role_check_mapping and role_check_mapping[user.role]:
-            return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
+            if account.school.none_compliant:
+                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
             
         # check if the provided name and surname are correct
         name, surname = full_names.split(' ', 1)
@@ -450,17 +429,10 @@ def authenticate(request):
             return Response({"error": "your request could not be processed, your account has an invalid role"}, status=status.HTTP_401_UNAUTHORIZED)
 
         # Access control based on user role and school compliance
-        role_mapping = {
-            'PRINCIPAL': Principal,
-            'ADMIN': Admin,
-            'TEACHER': Teacher,
-            'STUDENT': Student,
-        }
-
-        if role in role_mapping:
-            # Fetch the corresponding child model and serializer based on the user's role
-            Model = role_mapping[role]
-            account = Model.objects.get(account_id=request.user.account_id)
+        if request.user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
+            # Fetch the corresponding child model based on the user's role
+            Model = role_specific_maps.account_access_control_mapping[request.user.role]
+            account = Model.objects.select_related('school').only('school').get(account_id=request.user.account_id)
 
             if account.school.none_compliant:
                 return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
@@ -537,15 +509,13 @@ def validate_password_reset(request):
         user = BaseUser.objects.get(email=sent_email)
 
         # Access control based on user role and school compliance
-        role_check_mapping = {
-            'PRINCIPAL': user.principal.school.none_compliant,
-            'ADMIN': user.admin.school.none_compliant,
-            'TEACHER': user.teacher.school.none_compliant,
-            'STUDENT': user.student.school.none_compliant
-        }
+        if user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
+            # Fetch the corresponding child model based on the user's role
+            Model = role_specific_maps.account_access_control_mapping[user.role]
+            account = Model.objects.select_related('school').only('school').get(account_id=user.account_id)
 
-        if user.role in role_check_mapping and role_check_mapping[user.role]:
-            return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
+            if account.school.none_compliant:
+                return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
             
         # check if the account is activated 
         if user.activated == False:

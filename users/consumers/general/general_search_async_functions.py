@@ -234,7 +234,6 @@ def search_account(user, role, details):
         return {'error': str(e)}
 
 
-
 @database_sync_to_async
 def search_parents(user, details):
     """

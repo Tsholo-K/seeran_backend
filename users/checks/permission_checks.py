@@ -15,14 +15,14 @@ def check_update_details_permissions(requesting_account, requested_account):
 
     # No one can view the profile of a user with role not in ['PARENT', 'STUDENT', 'ADMIN', 'TEACHER']
     if requested_account.role not in ['PARENT', 'STUDENT', 'ADMIN', 'TEACHER']:
-        return {"error": "unauthorized access. you are not permitted to view profiles outside of parents, students, principals, admins, and teachers"}
+        return {"error": "unauthorized access. you are not permitted to update profiles outside of parents, students, admins, and teachers"}
 
     # Admins and principals can only view profiles of accounts linked to their own school
     if requesting_account.role in ['PRINCIPAL', 'ADMIN']:
         if requested_account.role != 'PARENT' and requesting_account.school != requested_account.school:
-            return {"error": "unauthorized access. you are not permitted to view profiles of accounts outside your own school"}
+            return {"error": "unauthorized access. you are not permitted to update profiles of accounts outside your own school"}
         if requested_account.role == 'PARENT' and not requested_account.children.filter(school=requesting_account.school).exists():
-            return {"error": "unauthorized access. you can only view parent profiles associated with students in your school"}
+            return {"error": "unauthorized access. you can only update parent profiles associated with students in your school"}
 
     # If no errors, return None indicating permission granted
     return None

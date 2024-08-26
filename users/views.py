@@ -18,11 +18,12 @@ from announcements.models import Announcement
 
 # serilializers
 from users.serializers.founders.founders_serializers import FounderAccountDetailsSerializer
-from users.serializers.principals.principals_serializers import PrincipalAccountDetailsSerializer
-from users.serializers.admins.admins_serializers import AdminAccountDetailsSerializer
-from users.serializers.teachers.teachers_serializers import TeacherAccountDetailsSerializer
-from users.serializers.students.students_serializers import StudentAccountDetailsSerializer
-from users.serializers.parents.parents_serializers import ParentAccountDetailsSerializer
+
+# maops
+from users.maps import role_specific_maps
+
+# queries
+from users.complex_queries import queries
 
 
 @api_view(["GET"])
@@ -30,35 +31,24 @@ from users.serializers.parents.parents_serializers import ParentAccountDetailsSe
 def my_account_details(request):
     # Ensure the user is authenticated
     if request.user:
-        role = request.user.role
-        account_id = request.user.account_id
-
-        # Define a mapping of roles to models and serializers
-        role_mapping = {
-            'PARENT': (Parent, ParentAccountDetailsSerializer),
-            'PRINCIPAL': (Principal, PrincipalAccountDetailsSerializer),
-            'ADMIN': (Admin, AdminAccountDetailsSerializer),
-            'TEACHER': (Teacher, TeacherAccountDetailsSerializer),
-            'STUDENT': (Student, StudentAccountDetailsSerializer),
-        }
-
         # Handle FOUNDER-specific serialization
-        if role == 'FOUNDER':
-            founder = Founder.objects.get(account_id=account_id)
+        if request.user.role == 'FOUNDER':
+            founder = Founder.objects.get(account_id=request.user.account_id)
             serialized_founder = FounderAccountDetailsSerializer(instance=founder).data
             return Response({'user': serialized_founder}, status=status.HTTP_200_OK)
 
         # Check if the role is valid
-        elif role in role_mapping:
+        elif request.user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT', 'PARENT']:
             # Fetch the corresponding child model and serializer based on the user's role
-            Model, Serializer = role_mapping[role]
-            account = Model.objects.get(account_id=account_id)
+            Model, Serializer, select_related, prefetch_related = role_specific_maps.account_model_details_and_attr_serializer_mapping[request.user.role]
+            account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=request.user.account_id)
 
             # Determine unread announcements based on user role
-            if role == 'PARENT':
+            if request.user.role == 'PARENT':
                 # Fetch announcements for the schools the parent's children are enrolled in
                 children_schools = account.children.values_list('school', flat=True)
                 unread_announcements = Announcement.objects.filter(school__in=children_schools).exclude(reached=request.user).count()
+
             else:
                 if account.school.none_compliant:
                     return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)

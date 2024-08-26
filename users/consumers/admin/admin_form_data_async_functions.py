@@ -107,7 +107,7 @@ def form_data_for_updating_class(user, role, details):
         else:
             admin = Admin.objects.select_related('school').only('school').get(account_id=user)
 
-        classroom = Classroom.objects.select_related('subject', 'teacher').get(class_id=details.get('class_id'), school=admin.school)
+        classroom = Classroom.objects.select_related('subject', 'teacher').get(class_id=details.get('class'), school=admin.school)
 
         # Determine the query based on the classroom type
         if classroom.subject:

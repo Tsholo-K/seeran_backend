@@ -74,7 +74,7 @@ class StudentAccountDetailsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Student
-        fields = ['name', 'surname', 'email', 'identifier', 'role', 'image']
+        fields = ['name', 'surname', 'email', 'identifier', 'role', 'image', 'account_id']
     
     def get_name(self, obj):
         return obj.name.title()

@@ -28,6 +28,11 @@ from classes.serializers import UpdateClassSerializer
 # checks
 from users.checks import permission_checks
 
+# mappings
+from users.maps import role_specific_maps
+
+# queries
+from users.complex_queries import queries
 
 
 @database_sync_to_async
@@ -179,26 +184,8 @@ def update_subject_details(user, role, details):
 @database_sync_to_async
 def update_account(user, role, details):
     try:
-        child_model_mapping = {
-            'PARENT': (Parent, None, 'children__school'),
-            'ADMIN': (Admin, 'school', None),
-            'TEACHER': (Teacher, 'school', None),
-            'STUDENT': (Student, 'school', None),
-        }
-
-        update_serializer_mapping = {
-            'PARENT': ParentAccountUpdateSerializer,
-            'ADMIN': AdminAccountUpdateSerializer,
-            'TEACHER': TeacherAccountUpdateSerializer,
-            'STUDENT': StudentAccountUpdateSerializer,
-        }
-
-        role_serializer_mapping = {
-            'PARENT': ParentAccountDetailsSerializer,
-            'ADMIN': AdminAccountDetailsSerializer,
-            'TEACHER': TeacherAccountDetailsSerializer,
-            'STUDENT': StudentAccountDetailsSerializer,
-        }
+        if details.get('role') not in ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT']:
+            return {"error": 'could not proccess your request, the provided account role is invalid'}
 
         # Retrieve the user and related school in a single query using select_related
         if role == 'PRINCIPAL':
@@ -208,49 +195,37 @@ def update_account(user, role, details):
                 return {"error": 'could not proccess your request, your accounts role does not have enough permissions to perform this action'}
             requesting_account = Admin.objects.select_related('school').only('school').get(account_id=user)
 
-        if details.get('role') in child_model_mapping:
-            # Get the model, select_related, and prefetch_related fields based on the requested user's role.
-            Model, select_related, prefetch_related = child_model_mapping[details['role']]
+        # Get the model, select_related, and prefetch_related fields based on the requested user's role.
+        Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[details['role']]
 
-            # Initialize the queryset for the requested user's role model.
-            queryset = Model.objects
-            
-            # Apply select_related and prefetch_related as needed for the requested user's account.
-            if select_related:
-                queryset = queryset.select_related(select_related)
-            if prefetch_related:
-                queryset = queryset.prefetch_related(*prefetch_related.split(', '))
+        # Retrieve the requested user's account from the database.
+        requested_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=details.get('account'))
+        
+        # Check if the requesting user has permission to view the requested user's profile.
+        permission_error = permission_checks.check_update_details_permissions(requesting_account, requested_account)
+        if permission_error:
+            return permission_error
+        
+        # Get the appropriate serializer
+        Serializer = role_specific_maps.account_update_serializer_mapping[details['role']]
 
-            # Retrieve the requested user's account from the database.
-            requested_account = queryset.get(account_id=details.get('account'))
+        # Serialize the requested user's profile for returning in the response.
+        serializer = Serializer(instance=requested_account, data=details['updates'])
+        if serializer.is_valid():
             
-            # Check if the requesting user has permission to view the requested user's profile.
-            permission_error = permission_checks.check_update_details_permissions(requesting_account, requested_account)
-            if permission_error:
-                return permission_error
+            with transaction.atomic():
+                serializer.save()
             
             # Get the appropriate serializer
-            Serializer = update_serializer_mapping[details['role']]
+            Serializer = role_specific_maps.account_details_serializer_mapping[details['role']]
 
             # Serialize the requested user's profile for returning in the response.
-            serializer = Serializer(instance=requested_account, data=details['updates'])
-            if serializer.is_valid():
-                
-                with transaction.atomic():
-                    serializer.save()
-                
-                # Get the appropriate serializer
-                Serializer = role_serializer_mapping[details['role']]
+            serialized_user = Serializer(instance=requested_account).data
 
-                # Serialize the requested user's profile for returning in the response.
-                serialized_user = Serializer(instance=requested_account).data
-
-                return {"user" : serialized_user}
-                
-            # Return serializer errors if the data is not valid, format it as a string
-            return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
-
-        return {"error": 'could not proccess your request, the provided account role is invalid'}
+            return {"user" : serialized_user}
+            
+        # Return serializer errors if the data is not valid, format it as a string
+        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
                
     except Principal.DoesNotExist:
         # Handle the case where the requested principal account does not exist.
@@ -283,28 +258,25 @@ def update_account(user, role, details):
 
 @database_sync_to_async
 def update_class(user, role, details):
-
     try:
-        updates = details.get('updates')
-
         # Retrieve the user and related school in a single query using select_related
         if role == 'PRINCIPAL':
             admin = Principal.objects.select_related('school').only('school').get(account_id=user)
         else:
             admin = Admin.objects.select_related('school').only('school').get(account_id=user)
 
-        classroom = Classroom.objects.get(class_id=details.get('class_id'), school=admin.school)
+        classroom = Classroom.objects.get(class_id=details.get('class'), school=admin.school)
 
-        serializer = UpdateClassSerializer(instance=classroom, data=updates)
+        serializer = UpdateClassSerializer(instance=classroom, data=details.get('updates'))
         if serializer.is_valid():
             with transaction.atomic():
                 serializer.save()
 
-                if updates.get('teacher'):
-                    if updates.get('teacher') == 'remove teacher':
+                if details['updates']['teacher']:
+                    if details['updates']['teacher'] == 'remove teacher':
                         classroom.update_teacher(teacher=None)
                     else:
-                        classroom.update_teacher(teacher=updates['teacher'])
+                        classroom.update_teacher(teacher=details['updates']['teacher'])
 
             return {"message" : 'classroom details have been successfully updated'}
             
