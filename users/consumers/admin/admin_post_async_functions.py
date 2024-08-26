@@ -529,7 +529,6 @@ def delete_account(user, role, details):
 
     try:
         child_model_mapping = {
-            'PARENT': (Parent, None, 'children__school'),
             'ADMIN': (Admin, 'school', None),
             'TEACHER': (Teacher, 'school', None),
             'STUDENT': (Student, 'school', None),
@@ -566,7 +565,14 @@ def delete_account(user, role, details):
 
             with transaction.atomic():
                 requested_account.delete()
-                                
+
+                if details['role'] == 'ADMIN':
+                    requesting_account.school.admin_count = requesting_account.school.principal.count() + requesting_account.school.admins.count()
+                elif details['role'] == 'STUDENT':
+                    requesting_account.school.student_count = requesting_account.school.students.count()
+                elif details['role'] == 'TEACHER':
+                    requesting_account.school.teacher_count = requesting_account.school.teachers.count()
+
             return {"message" : 'account successfully deleted'}
         
         return {"error": 'could not proccess your request, the provided account role is invalid'}
