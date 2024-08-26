@@ -1,6 +1,34 @@
+def check_update_details_permissions(requesting_account, requested_account):
+    """
+    Check if the account has permission to update the requested user's details.
+
+    Args:
+        account (CustomUser): The user making the request.
+        requested_user (CustomUser): The user whose profile is being requested.
+
+    Returns:
+        dict: A dictionary containing an error message if the user doesn't have permission,
+              or None if the user has permission.
+    """
+    if requesting_account.role not in ['PRINCIPAL', 'ADMIN']:
+        return {"error": "unauthorized access. invalid role provided"}
+
+    # No one can view the profile of a user with role not in ['PARENT', 'STUDENT', 'ADMIN', 'TEACHER']
+    if requested_account.role not in ['PARENT', 'STUDENT', 'ADMIN', 'TEACHER']:
+        return {"error": "unauthorized access. you are not permitted to view profiles outside of parents, students, principals, admins, and teachers"}
+
+    # Admins and principals can only view profiles of accounts linked to their own school
+    if requesting_account.role in ['PRINCIPAL', 'ADMIN']:
+        if requested_account.role != 'PARENT' and requesting_account.school != requested_account.school:
+            return {"error": "unauthorized access. you are not permitted to view profiles of accounts outside your own school"}
+        if requested_account.role == 'PARENT' and not requested_account.children.filter(school=requesting_account.school).exists():
+            return {"error": "unauthorized access. you can only view parent profiles associated with students in your school"}
+
+    # If no errors, return None indicating permission granted
+    return None
 
 
-def check_profile_or_id_view_permissions(requesting_account, requested_account):
+def check_profile_or_details_view_permissions(requesting_account, requested_account):
     """
     Check if the account has permission to view the requested user's profile or ID.
 

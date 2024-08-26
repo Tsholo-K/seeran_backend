@@ -74,7 +74,7 @@ class StudentAccountDetailsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Student
-        fields = [ 'name', 'surname', 'identifier', 'role', 'image', 'account_id' ]
+        fields = ['name', 'surname', 'email', 'identifier', 'role', 'image']
     
     def get_name(self, obj):
         return obj.name.title()
@@ -83,7 +83,7 @@ class StudentAccountDetailsSerializer(serializers.ModelSerializer):
         return obj.surname.title()
     
     def get_identifier(self, obj):
-        return obj.id_number or obj.passport_number or obj.email
+        return obj.id_number or obj.passport_number
       
     def get_role(self, obj):
         return obj.role.title()

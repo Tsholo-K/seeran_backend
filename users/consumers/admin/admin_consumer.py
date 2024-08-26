@@ -232,7 +232,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'mark_messages_as_read': general_put_async_functions.mark_messages_as_read,
 
-            # 'update_account': admin_put_async_functions.update_account,
+            'update_account': admin_put_async_functions.update_account,
 
             'update_class': admin_put_async_functions.update_class,
             'update_class_students': admin_put_async_functions.update_class_students,

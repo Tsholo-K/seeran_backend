@@ -18,14 +18,15 @@ from classes.models import Classroom
 from grades.models import Grade, Term, Subject
 
 # serilializers
-from users.serializers.admins.admins_serializers import AdminAccountUpdateSerializer, AdminAccountSerializer
-from users.serializers.teachers.teachers_serializers import TeacherAccountUpdateSerializer, TeacherAccountSerializer
-from users.serializers.parents.parents_serializers import ParentAccountUpdateSerializer, ParentAccountSerializer
-from users.serializers.students.students_serializers import StudentAccountUpdateSerializer, StudentAccountSerializer
+from users.serializers.admins.admins_serializers import AdminAccountUpdateSerializer, AdminAccountDetailsSerializer
+from users.serializers.teachers.teachers_serializers import TeacherAccountUpdateSerializer, TeacherAccountDetailsSerializer
+from users.serializers.students.students_serializers import StudentAccountUpdateSerializer, StudentAccountDetailsSerializer
+from users.serializers.parents.parents_serializers import ParentAccountUpdateSerializer, ParentAccountDetailsSerializer
 from grades.serializers import UpdateGradeSerializer, UpdateTermSerializer, GradeDetailsSerializer, TermSerializer, UpdateSubjectSerializer, SubjectDetailsSerializer
 from classes.serializers import UpdateClassSerializer
 
-# utility functions 
+# checks
+from users.checks import permission_checks
 
 
 
@@ -176,167 +177,104 @@ def update_subject_details(user, role, details):
     
 
 @database_sync_to_async
-def update_admin_account(user, role, details):
-
+def update_account(user, role, details):
     try:
-        # Retrieve the user and related school in a single query using select_related
-        if not role == 'PRINCIPAL':
-            return { "error" : 'unauthorized access.. permission denied' }
-        
-        principal = Principal.objects.select_related('school').only('school').get(account_id=user)
+        child_model_mapping = {
+            'PARENT': (Parent, None, 'children__school'),
+            'ADMIN': (Admin, 'school', None),
+            'TEACHER': (Teacher, 'school', None),
+            'STUDENT': (Student, 'school', None),
+        }
 
-        admin  = Admin.objects.get(account_id=details.get('account_id'), school=principal.school)
-        
-        serializer = AdminAccountUpdateSerializer(instance=admin, data=details.get('updates'))
-        if serializer.is_valid():
-            
-            with transaction.atomic():
-                serializer.save()
-            
-            serialized_admin = AdminAccountSerializer(instance=admin).data
+        update_serializer_mapping = {
+            'PARENT': ParentAccountUpdateSerializer,
+            'ADMIN': AdminAccountUpdateSerializer,
+            'TEACHER': TeacherAccountUpdateSerializer,
+            'STUDENT': StudentAccountUpdateSerializer,
+        }
 
-            return {"admin" : serialized_admin}
-            
-        # Return serializer errors if the data is not valid, format it as a string
-        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
-               
-    except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'an admin account for your school with the provided credentials does not exist, please check the account details and try again'}
+        role_serializer_mapping = {
+            'PARENT': ParentAccountDetailsSerializer,
+            'ADMIN': AdminAccountDetailsSerializer,
+            'TEACHER': TeacherAccountDetailsSerializer,
+            'STUDENT': StudentAccountDetailsSerializer,
+        }
 
-    except Exception as e:
-        # Handle any unexpected errors with a general error message
-        return {'error': str(e)}
-
-
-@database_sync_to_async
-def update_teacher_account(user, role, details):
-
-    try:
         # Retrieve the user and related school in a single query using select_related
         if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+            requesting_account = Principal.objects.select_related('school').only('school').get(account_id=user)
         else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+            if details.get('role') == 'ADMIN':
+                return {"error": 'could not proccess your request, your accounts role does not have enough permissions to perform this action'}
+            requesting_account = Admin.objects.select_related('school').only('school').get(account_id=user)
 
-        teacher  = Teacher.objects.get(account_id=details.get('account_id'), school=admin.school)
-        
-        serializer = TeacherAccountUpdateSerializer(instance=teacher, data=details.get('updates'))
-        if serializer.is_valid():
-            
-            with transaction.atomic():
-                serializer.save()
-            
-            serialized_teacher = TeacherAccountSerializer(instance=teacher).data
+        if details.get('role') in child_model_mapping:
+            # Get the model, select_related, and prefetch_related fields based on the requested user's role.
+            Model, select_related, prefetch_related = child_model_mapping[details['role']]
 
-            return {"teacher" : serialized_teacher}
+            # Initialize the queryset for the requested user's role model.
+            queryset = Model.objects
             
-        # Return serializer errors if the data is not valid, format it as a string
-        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
+            # Apply select_related and prefetch_related as needed for the requested user's account.
+            if select_related:
+                queryset = queryset.select_related(select_related)
+            if prefetch_related:
+                queryset = queryset.prefetch_related(*prefetch_related.split(', '))
+
+            # Retrieve the requested user's account from the database.
+            requested_account = queryset.get(account_id=details.get('account'))
+            
+            # Check if the requesting user has permission to view the requested user's profile.
+            permission_error = permission_checks.check_update_details_permissions(requesting_account, requested_account)
+            if permission_error:
+                return permission_error
+            
+            # Get the appropriate serializer
+            Serializer = update_serializer_mapping[details['role']]
+
+            # Serialize the requested user's profile for returning in the response.
+            serializer = Serializer(instance=requested_account, data=details['updates'])
+            if serializer.is_valid():
+                
+                with transaction.atomic():
+                    serializer.save()
+                
+                # Get the appropriate serializer
+                Serializer = role_serializer_mapping[details['role']]
+
+                # Serialize the requested user's profile for returning in the response.
+                serialized_user = Serializer(instance=requested_account).data
+
+                return {"user" : serialized_user}
+                
+            # Return serializer errors if the data is not valid, format it as a string
+            return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
+
+        return {"error": 'could not proccess your request, the provided account role is invalid'}
                
     except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
+        # Handle the case where the requested principal account does not exist.
         return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
                    
     except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
+        # Handle the case where the requested admin account does not exist.
         return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
-                   
+               
     except Teacher.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a teacher account in your school with the provided credentials does not exist, please check the account details and try again'}
-
-    except Exception as e:
-        # Handle any unexpected errors with a general error message
-        return {'error': str(e)}
-
-
-@database_sync_to_async
-def update_student_account(user, role, details):
-
-    try:
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
-
-        student  = Student.objects.get(account_id=details.get('account_id'), school=admin.school)
-        
-        serializer = StudentAccountUpdateSerializer(instance=student, data=details.get('updates'))
-        
-        if serializer.is_valid():
-            
-            with transaction.atomic():
-                serializer.save()
-            
-            serialized_student = StudentAccountSerializer(instance=student).data
-
-            return {"student" : serialized_student}
-            
-        # Return serializer errors if the data is not valid, format it as a string
-        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
-               
-    except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+        # Handle the case where the requested teacher account does not exist.
+        return {'error': 'a teacher account with the provided credentials does not exist, please check the account details and try again'}
                    
     except Student.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a student account in your school with the provided credentials does not exist, please check the account details and try again'}
-
-    except Exception as e:
-        # Handle any unexpected errors with a general error message
-        return {'error': str(e)}
-
-
-@database_sync_to_async
-def update_parent_account(user, role, details):
-
-    try:
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
-            
-        parent  = Parent.objects.prefetch_related('children__school').get(account_id=details.get('account_id'))
-
-        if not parent.children.filter(school=admin.school).exists():
-            return {"error": "could not proccess your request, the specified parent account is not linked to any student in your school. please ensure you are attempting to update a parent that is linked to at least one student in your school"}
-
-        serializer = ParentAccountUpdateSerializer(instance=parent, data=details.get('updates'))
-        if serializer.is_valid():
-            
-            with transaction.atomic():
-                serializer.save()
-            
-            serialized_parent = ParentAccountSerializer(instance=parent).data
-
-            return {"student" : serialized_parent}
-            
-        # Return serializer errors if the data is not valid, format it as a string
-        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
+        # Handle the case where the requested student account does not exist.
+        return {'error': 'a student account with the provided credentials does not exist, please check the account details and try again'}
                
-    except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
-                   
     except Parent.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
+        # Handle the case where the requested parent account does not exist.
         return {'error': 'a parent account with the provided credentials does not exist, please check the account details and try again'}
+
+    except ValidationError as e:
+        # Handle validation errors separately with meaningful messages
+        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
 
     except Exception as e:
         # Handle any unexpected errors with a general error message

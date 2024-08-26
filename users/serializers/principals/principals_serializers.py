@@ -97,7 +97,7 @@ class PrincipalAccountDetailsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Principal
-        fields = ['name', 'surname', 'identifier', 'contact_number', 'image', 'role', 'account_id']
+        fields = ['name', 'surname', 'identifier', 'contact_number', 'image', 'role']
     
     def get_name(self, obj):
         return obj.name.title()

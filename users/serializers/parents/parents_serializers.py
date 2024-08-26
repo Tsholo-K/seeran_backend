@@ -74,7 +74,7 @@ class ParentAccountDetailsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Parent
-        fields = [ 'name', 'surname', 'identifier', 'role', 'image', 'account_id' ]
+        fields = ['name', 'surname', 'identifier', 'role', 'image']
     
     def get_name(self, obj):
         return obj.name.title()

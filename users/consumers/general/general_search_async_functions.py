@@ -211,7 +211,7 @@ def search_account(user, role, details):
         requested_account = queryset.get(account_id=requested_user.account_id)
         
         # Check if the requesting user has permission to view the requested user's profile.
-        permission_error = permission_checks.check_profile_or_id_view_permissions(requesting_account, requested_account)
+        permission_error = permission_checks.check_profile_or_details_view_permissions(requesting_account, requested_account)
         if permission_error:
             return permission_error
 
@@ -437,7 +437,7 @@ def search_student_class_card(user, details):
         student = BaseUser.objects.get(account_id=details.get('account_id'))
 
         # Check permissions
-        permission_error = permission_checks.check_profile_or_id_view_permissions(account, student)
+        permission_error = permission_checks.check_profile_or_details_view_permissions(account, student)
         if permission_error:
             return permission_error
         
