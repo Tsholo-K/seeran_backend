@@ -27,7 +27,8 @@ from grades.serializers import GradeCreationSerializer, TermCreationSerializer, 
 from classes.serializers import ClassCreationSerializer
 from announcements.serializers import AnnouncementCreationSerializer
 
-# utility functions 
+# checks
+from users.checks import permission_checks
 
 
 @database_sync_to_async
@@ -527,33 +528,69 @@ def link_parent(user, role, details):
 def delete_account(user, role, details):
 
     try:
+        child_model_mapping = {
+            'PARENT': (Parent, None, 'children__school'),
+            'ADMIN': (Admin, 'school', None),
+            'TEACHER': (Teacher, 'school', None),
+            'STUDENT': (Student, 'school', None),
+        }
+
         # Retrieve the user and related school in a single query using select_related
         if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+            requesting_account = Principal.objects.select_related('school').only('school').get(account_id=user)
         else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+            if details.get('role') == 'ADMIN':
+                return {"error": 'could not proccess your request, your accounts role does not have enough permissions to perform this action'}
+            requesting_account = Admin.objects.select_related('school').only('school').get(account_id=user)
 
-        requested_user  = BaseUser.objects.select_related('school').get(account_id=details.get('account_id'))
+        if details.get('role') in child_model_mapping:
+            # Get the model, select_related, and prefetch_related fields based on the requested user's role.
+            Model, select_related, prefetch_related = child_model_mapping[details['role']]
 
-        if requested_user.role == 'FOUNDER' or (requested_user.role in ['PRINCIPAL', 'ADMIN'] and admin.role != 'PRINCIPAL') or (requested_user.role != 'PARENT' and admin.school != requested_user.school) or (requested_user.role == 'PARENT' and not requested_user.children.filter(school=admin.school).exists()):
-            return { "error" : 'unauthorized action.. permission denied' }
+            # Initialize the queryset for the requested user's role model.
+            queryset = Model.objects
+            
+            # Apply select_related and prefetch_related as needed for the requested user's account.
+            if select_related:
+                queryset = queryset.select_related(select_related)
+            if prefetch_related:
+                queryset = queryset.prefetch_related(*prefetch_related.split(', '))
+
+            # Retrieve the requested user's account from the database.
+            requested_account = queryset.get(account_id=details.get('account'))
+            
+            # Check if the requesting user has permission to view the requested user's profile.
+            permission_error = permission_checks.check_update_details_permissions(requesting_account, requested_account)
+            if permission_error:
+                return permission_error
+
+            with transaction.atomic():
+                requested_account.delete()
+                                
+            return {"message" : 'account successfully deleted'}
         
-        if requested_user.role == 'PARENT' and requested_user.children.exists():
-            return { "error" : 'the parent account is still linked to a student account.. permission denied' }
-
-        with transaction.atomic():
-            requested_user.delete()
-                            
-        return {"message" : 'account successfully deleted'}
+        return {"error": 'could not proccess your request, the provided account role is invalid'}
                
     except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
+        # Handle the case where the requested principal account does not exist.
         return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
                    
     except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
+        # Handle the case where the requested admin account does not exist.
         return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
-    
+               
+    except Teacher.DoesNotExist:
+        # Handle the case where the requested teacher account does not exist.
+        return {'error': 'a teacher account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Student.DoesNotExist:
+        # Handle the case where the requested student account does not exist.
+        return {'error': 'a student account with the provided credentials does not exist, please check the account details and try again'}
+               
+    except Parent.DoesNotExist:
+        # Handle the case where the requested parent account does not exist.
+        return {'error': 'a parent account with the provided credentials does not exist, please check the account details and try again'}
+
     except ValidationError as e:
         # Handle validation errors separately with meaningful messages
         return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
