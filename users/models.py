@@ -126,7 +126,7 @@ class BaseUser(AbstractBaseUser, PermissionsMixin):
 
         except IntegrityError as e:
             # Handle integrity error
-            if 'email address' in str(e).lower():
+            if 'unique constraint' in str(e).lower():
                 raise ValidationError(_('a account with the provided email address already exists. please use a different email address'))
             
             else:

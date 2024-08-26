@@ -214,8 +214,13 @@ def update_account(user, role, details):
         if serializer.is_valid():
             
             with transaction.atomic():
-                serializer.save()
-            
+                # Update the model fields manually
+                for field, value in serializer.validated_data.items():
+                    setattr(requested_account, field, value)
+                
+                # Save the instance
+                requested_account.save()            
+                
             # Get the appropriate serializer
             Serializer = role_specific_maps.account_details_serializer_mapping[details['role']]
 
