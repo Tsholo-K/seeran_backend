@@ -128,16 +128,17 @@ def create_subject(user, role, details):
 @database_sync_to_async
 def create_term(user, role, details):
     try:
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+        # Get the appropriate model and related fields (select_related and prefetch_related)
+        # for the requesting user's role from the mapping.
+        Model = role_specific_maps.account_access_control_mapping[role]
 
-        grade = Grade.objects.get(grade_id=details.get('grade'), school=admin.school)
+        # Retrieve the user and related school in a single query using select_related
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+
+        grade = Grade.objects.get(grade_id=details.get('grade'), school=requesting_account.school)
 
         # Add the school ID to the term details
-        details['school'] = admin.school.pk
+        details['school'] = requesting_account.school.pk
         details['grade'] = grade.pk
 
         # Initialize the serializer with the incoming data
@@ -544,40 +545,22 @@ def unlink_parent(user, role, details):
 
 @database_sync_to_async
 def create_schedule(user, role, details):
-    """
-    Creates a schedule for a teacher or a group based on the provided details.
-
-    Args:
-        user (str): The account ID of the user creating the schedule.
-        details (dict): A dictionary containing the schedule details.
-            - 'day' (str): The day of the week for the schedule.
-            - 'for_group' (bool): Indicates whether the schedule is for a group.
-            - 'group_schedule_id' (str, optional): The ID of the group schedule (if for_group is True).
-            - 'account_id' (str, optional): The account ID of the teacher (if for_group is False).
-            - 'sessions' (list): A list of session details, each containing:
-                - 'class' (str): The type of class for the session.
-                - 'classroom' (str, optional): The classroom for the session.
-                - 'startTime' (dict): A dictionary with 'hour', 'minute', and 'second' for the start time.
-                - 'endTime' (dict): A dictionary with 'hour', 'minute', and 'second' for the end time.
-
-    Returns:
-        dict: A response dictionary with a 'message' key for success or an 'error' key for any issues.
-    """
     try:
+        # Get the appropriate model and related fields (select_related and prefetch_related)
+        # for the requesting user's role from the mapping.
+        Model = role_specific_maps.account_access_control_mapping[role]
+
         # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
 
-        if details.get('for_group'):
-            group_schedule = GroupSchedule.objects.get(group_schedule_id=details.get('group_schedule_id'), grade__school=admin.school)
+        if details.get('group schedule'):
+            group_schedule = GroupSchedule.objects.get(group_schedule_id=details['group schedule'], grade__school=requesting_account.school)
         
-        if details.get('for_teacher'):
-            teacher = Teacher.objects.get(account_id=details.get('account_id'), school=admin.school)
+        elif details.get('teacher'):
+            teacher = Teacher.objects.get(account_id=details['teacher'], school=requesting_account.school)
 
         else:
-            return {"error": ''}
+            return {"error": 'could not proccess your request, invalid information provided'}
 
         # Validate the day
         day = details.get('day', '').upper()
@@ -600,13 +583,13 @@ def create_schedule(user, role, details):
             Session.objects.bulk_create(sessions)
             schedule.sessions.add(*sessions)
             
-            if details.get('for_group'):
+            if details.get('group schedule'):
                 group_schedule.schedules.filter(day=day).delete()
                 group_schedule.schedules.add(schedule)
                 
                 response = {'message': 'a new schedule has been added to the group\'s weekly schedules. all subscribed students should be able to view all the sessions concerning the schedule when they visit their schedules again.'}
 
-            if details.get('for_teacher'):
+            elif details.get('teacher'):
                 teacher_schedule, created = TeacherSchedule.objects.get_or_create(teacher=teacher)
                 if not created:
                     teacher_schedule.schedules.filter(day=day).delete()

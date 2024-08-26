@@ -29,17 +29,12 @@ class Schedule(models.Model):
 
     sessions = models.ManyToManyField(Session)
 
-    DAY_OF_THE_WEEK_ORDER = {
-        'MONDAY': 1, 'TUESDAY': 2, 'WEDNESDAY': 3, 
-        'THURSDAY': 4, 'FRIDAY': 5, 'SATURDAY': 6, 'SUNDAY': 7
-    }
+    DAY_OF_THE_WEEK_ORDER = {'MONDAY': 1, 'TUESDAY': 2, 'WEDNESDAY': 3, 'THURSDAY': 4, 'FRIDAY': 5, 'SATURDAY': 6, 'SUNDAY': 7}
     day_order = models.PositiveIntegerField(choices=[(v, k) for k, v in DAY_OF_THE_WEEK_ORDER.items()])
 
     schedule_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
-        verbose_name = _('schedule')
-        verbose_name_plural = _('schedules')
         ordering = ['-day_order']
 
     def __str__(self):
@@ -75,8 +70,6 @@ class GroupSchedule(models.Model):
     group_schedule_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
-        verbose_name = _('group schedule')
-        verbose_name_plural = _('group schedules')
         ordering = ['group_name']
 
     def __str__(self):
