@@ -128,15 +128,15 @@ class AdminConsumer(AsyncWebsocketConsumer):
             "grade_terms": admin_search_async_functions.search_grade_terms,
             'term_details': admin_search_async_functions.search_term_details,
 
+            'teacher_classes': general_search_async_functions.search_teacher_classes,
+            'register_classes': admin_search_async_functions.search_grade_register_classes,
+
             'teacher_schedule_schedules': general_search_async_functions.search_teacher_schedule_schedules,
             'group_schedule_schedules': general_search_async_functions.search_group_schedule_schedules,
             'group_schedules': general_search_async_functions.search_group_schedules,
             'schedule_sessions': general_search_async_functions.search_for_schedule_sessions,
 
             'subscribed_students': admin_search_async_functions.search_subscribed_students,
-
-            'teacher_classes': general_search_async_functions.search_teacher_classes,
-            'register_classes': admin_search_async_functions.search_grade_register_classes,
 
             'month_attendance_records': general_search_async_functions.search_month_attendance_records,
 

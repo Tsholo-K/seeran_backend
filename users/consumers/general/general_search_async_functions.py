@@ -496,77 +496,43 @@ def search_activity(user, details):
         # Handle any other unexpected errors
         return {'error': str(e)}
 
-    
-    
+
 @database_sync_to_async
-def search_teacher_schedule_schedules(user, details):
-    """
-    Function to search and retrieve schedules for a specific teacher.
-
-    This function performs the following steps:
-    1. Determine if the user is requesting their own schedule or another teacher's schedule.
-    2. Retrieve the teacher's account and validate their role.
-    3. Verify the requester's permissions:
-       - Teachers can request their own schedules.
-       - Admins and Principals from the same school can access a teacher's schedule.
-    4. Retrieve and serialize the teacher's schedules.
-
-    Args:
-        user (str): The account ID of the user making the request.
-        details (dict): A dictionary containing the account_id of the teacher.
-
-    Returns:
-        dict: A dictionary containing either the teacher schedules or an error message.
-
-    Raises:
-        CustomUser.DoesNotExist: If the user or teacher with the provided account ID does not exist.
-        TeacherSchedule.DoesNotExist: If the teacher does not have a schedule.
-        Exception: For any other unexpected errors.
-
-    Example:
-        response = await search_teacher_schedule_schedules(request.user.account_id, {'account_id': 'T123'})
-        if 'error' in response:
-            # Handle error
-        else:
-            schedules = response['schedules']
-            # Process schedules
-    """
+def search_teacher_schedule_schedules(user, role, details):
     try:
-        # Check if the user is requesting their own schedule
-        if details.get('account_id') == 'requesting_my_own_schedule':
-            # Retrieve the teacher's account
-            teacher = BaseUser.objects.get(account_id=user)
+        if role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
+            return {"error": 'could not proccess your request.. your account either has insufficient permissions or is invalid for the action you are trying to perform'}
 
-            # Ensure the user has the role of 'TEACHER'
-            if teacher.role != 'TEACHER':
-                return {"error": "Only teachers or admins and principals from the same school can make requests and access their schedules."}
+        # Get the appropriate model and related fields (select_related and prefetch_related)
+        # for the requesting user's role from the mapping.
+        Model = role_specific_maps.account_access_control_mapping[role]
 
-        else:
-            # Retrieve the account making the request
-            account = BaseUser.objects.get(account_id=user)
-            
-            # Retrieve the teacher's account
-            teacher = BaseUser.objects.get(account_id=details.get('account_id'))
+        if details.get('teacher') == 'requesting my own schedules' and role == 'TEACHER':
+            teacher = Model.objects.prefetch_related('teacher_schedule__schedules').get(account_id=user)
 
-            # Ensure the teacher's role and the requester's permissions
-            if teacher.role != 'TEACHER' or account.school != teacher.school or account.role not in ['ADMIN', 'PRINCIPAL']:
-                return {"error": "Only admins and principals from the same school can access a teacher's schedule."}
+        elif role in ['ADMIN', 'PRINCIPAL']:
+            requesting_account = Model.objects.select_related('school').get(account_id=user)
+            teacher = Teacher.objects.prefetch_related('teacher_schedule__schedules').get(account_id=details['teacher'], school=requesting_account.school)
 
         # Retrieve the teacher's schedule
-        teacher_schedule = TeacherSchedule.objects.get(teacher=teacher)
-        schedules = teacher_schedule.schedules.all()
+        schedules = teacher.teacher_schedule.schedules.all()
 
         # Serialize the schedules to return them in the response
         serializer = ScheduleSerializer(schedules, many=True)
-        return {"schedules": serializer.data}
 
-    except BaseUser.DoesNotExist:
-        # Handle case where the user or teacher account does not exist
-        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
-    
-    except TeacherSchedule.DoesNotExist:
-        # Handle case where the teacher does not have a schedule
-        return {'schedules': []}
+        return {"schedules": serializer.data}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the requested principal account does not exist.
+        return {'error': 'A principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the requested admin account does not exist.
+        return {'error': 'An admin account with the provided credentials does not exist, please check the account details and try again'}
+               
+    except Teacher.DoesNotExist:
+        # Handle the case where the requested teacher account does not exist.
+        return {'error': 'A teacher account with the provided credentials does not exist, please check the account details and try again'}
     
     except Exception as e:
         # Handle any other unexpected errors
