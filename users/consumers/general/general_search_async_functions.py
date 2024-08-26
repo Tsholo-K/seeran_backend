@@ -235,81 +235,70 @@ def search_account(user, role, details):
 
 
 @database_sync_to_async
-def search_parents(user, details):
-    """
-    Function to search and retrieve the parents of a specific student.
-
-    This function performs the following steps:
-    1. Determine if the user is requesting their own parents or the parents of another student.
-    2. Retrieve the student's account and validate their role.
-    3. Verify the requester's permissions:
-       - Students can request their own parents.
-       - Admins and Principals from the same school can access a student's parents.
-       - Teachers can access the parents of students they teach.
-       - Parents can access their own children's parents but cannot access parents of other students.
-    4. Retrieve and serialize the parents associated with the student.
-
-    Args:
-        user (str): The account ID of the user making the request.
-        details (dict): A dictionary containing the account_id of the student.
-
-    Returns:
-        dict: A dictionary containing either the parents or an error message.
-
-    Raises:
-        CustomUser.DoesNotExist: If the user or student with the provided account ID does not exist.
-        Exception: For any other unexpected errors.
-
-    Example:
-        response = await search_parents(request.user.account_id, {'account_id': 'S123'})
-        if 'error' in response:
-            # Handle error
-        else:
-            parents = response['parents']
-            # Process parents
-    """
+def search_parents(user, role, details):
     try:
+        # Get the appropriate model and related fields (select_related and prefetch_related)
+        # for the requesting user's role from the mapping.
+        Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[role]
+
+        # Build the queryset for the requesting account with the necessary related fields.
+        requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
+
         # Check if the user is requesting their own parents
-        if user == details.get('account_id'):
+        if role == 'STUDENT' and user == details.get('parent') == 'requesting my own parents':
             student = BaseUser.objects.get(account_id=user)
 
             if student.role != 'STUDENT':
                 return {"error": "Unauthorized request.. permission denied"}
 
-        else:
-            # Retrieve the account making the request
-            account = BaseUser.objects.get(account_id=user)
-            # Retrieve the student's account
-            student = BaseUser.objects.get(account_id=details.get('account_id'))
-
-            # Ensure the requester's role and permissions
-            if account.role not in ['ADMIN', 'PRINCIPAL', 'TEACHER', 'PARENT']:
-                return {"error": "Invalid role for request.. permission denied"}
-            
-            if student.role != 'STUDENT':
-                return {"error": "Unauthorized request.. permission denied"}
-
-            if account.role in ['ADMIN', 'PRINCIPAL'] and account.school != student.school:
-                return {"error": "Unauthorized request.. permission denied"}
-                
-            if account.role == 'TEACHER' and not account.taught_classes.filter(students=student).exists():
-                return {"error": "Unauthorized access.. permission denied"}
-                
-            if account.role == 'PARENT' and account not in student.children.all():
-                return {"error": "Unauthorized access.. permission denied"}
-
             parents = student.parents.filter(children=student).exclude(account) if account.role == 'PARENT' else student.parents.filter(children=student)
+
+        elif role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'PARENT']:
+            # Build the queryset for the requested account with the necessary related fields.
+            requested_account = Student.objects.prefetch_related('parents').get(account_id=details.get('account'))
+            
+            # Check if the requesting user has permission to view the requested user's profile or details.
+            permission_error = permission_checks.check_profile_or_details_view_permissions(requesting_account, requested_account)
+            if permission_error:
+                # Return an error message if the requesting user does not have the necessary permissions.
+                return permission_error
+        
+            parents = student.parents.filter(children=student).exclude(requesting_account) if requesting_account.role == 'PARENT' else student.parents
+
+        else:
+            # Return an error message if an invalid reason is provided.
+            return {"error": 'Could not process your request, your accounts role is invalid'}
 
         # Serialize the parents to return them in the response
         serializer = ParentAccountSerializer(parents, many=True)
         return {"parents": serializer.data}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the requested principal account does not exist.
+        return {'error': 'A principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the requested admin account does not exist.
+        return {'error': 'An admin account with the provided credentials does not exist, please check the account details and try again'}
+               
+    except Teacher.DoesNotExist:
+        # Handle the case where the requested teacher account does not exist.
+        return {'error': 'A teacher account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Student.DoesNotExist:
+        # Handle the case where the requested student account does not exist.
+        return {'error': 'A student account with the provided credentials does not exist, please check the account details and try again'}
+               
+    except Parent.DoesNotExist:
+        # Handle the case where the requested parent account does not exist.
+        return {'error': 'A parent account with the provided credentials does not exist, please check the account details and try again'}
 
     except BaseUser.DoesNotExist:
-        # Handle case where the user or teacher account does not exist
-        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
+        # Handle the case where the base user account does not exist.
+        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
     
     except Exception as e:
-        # Handle any other unexpected errors
+        # Handle any other unexpected errors and return the error message.
         return {'error': str(e)}
 
 

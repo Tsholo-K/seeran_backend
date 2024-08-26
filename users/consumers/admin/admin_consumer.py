@@ -313,7 +313,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
                 return {'message': 'text message sent'}
 
-            elif response.get('user') and description in ['create_admin_account', 'create_teacher_account', 'create_student_account', 'link_parent']:
+            elif response.get('user') and description in ['create_account', 'link_parent']:
                 return await general_email_async_functions.send_account_confirmation_email(response['user'])
             
             return response
