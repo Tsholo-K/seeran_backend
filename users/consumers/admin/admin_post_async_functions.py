@@ -387,13 +387,12 @@ def create_teacher_account(user, role, details):
             admin = Admin.objects.select_related('school').only('school').get(account_id=user)
 
         details['school'] = admin.school.pk
-        details['role'] = 'STUDENT'
+        details['role'] = 'TEACHER'
 
         serializer = TeacherAccountCreationSerializer(data=details)
-        
         if serializer.is_valid():
             with transaction.atomic():
-                user = Student.objects.create(**serializer.validated_data)
+                user = Teacher.objects.create(**serializer.validated_data)
             
             return {'user' : user}
             
@@ -572,6 +571,8 @@ def delete_account(user, role, details):
                     requesting_account.school.student_count = requesting_account.school.students.count()
                 elif details['role'] == 'TEACHER':
                     requesting_account.school.teacher_count = requesting_account.school.teachers.count()
+
+                requesting_account.school.save()
 
             return {"message" : 'account successfully deleted'}
         
