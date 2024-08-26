@@ -214,13 +214,8 @@ def update_account(user, role, details):
         if serializer.is_valid():
             
             with transaction.atomic():
-                # Update the model fields manually
-                for field, value in serializer.validated_data.items():
-                    setattr(requested_account, field, value)
-                
-                # Save the instance
-                requested_account.save()            
-                
+                serializer.save()
+            
             # Get the appropriate serializer
             Serializer = role_specific_maps.account_details_serializer_mapping[details['role']]
 
@@ -230,7 +225,7 @@ def update_account(user, role, details):
             return {"user" : serialized_user}
             
         # Return serializer errors if the data is not valid, format it as a string
-        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
+        return {"error": '; '.join([f"{key}: {', '.join(value)}, okay it must be the serializer" for key, value in serializer.errors.items()])}
                
     except Principal.DoesNotExist:
         # Handle the case where the requested principal account does not exist.
