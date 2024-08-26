@@ -237,25 +237,23 @@ def search_account(user, role, details):
 @database_sync_to_async
 def search_parents(user, role, details):
     try:
-        # Get the appropriate model and related fields (select_related and prefetch_related)
-        # for the requesting user's role from the mapping.
-        Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[role]
-
-        # Build the queryset for the requesting account with the necessary related fields.
-        requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
-
         # Check if the user is requesting their own parents
-        if role == 'STUDENT' and user == details.get('parent') == 'requesting my own parents':
-            student = BaseUser.objects.get(account_id=user)
+        if role == 'STUDENT' and user == details.get('account') == 'requesting my own parents':
+            # Build the queryset for the requested account with the necessary related fields.
+            requesting_account = Student.objects.prefetch_related('parents').get(account_id=details.get('account'))
 
-            if student.role != 'STUDENT':
-                return {"error": "Unauthorized request.. permission denied"}
-
-            parents = student.parents.filter(children=student).exclude(account) if account.role == 'PARENT' else student.parents.filter(children=student)
+            parents =  requesting_account.parents.all()
 
         elif role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'PARENT']:
+            # Get the appropriate model and related fields (select_related and prefetch_related)
+            # for the requesting user's role from the mapping.
+            Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[role]
+
+            # Build the queryset for the requesting account with the necessary related fields.
+            requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
+
             # Build the queryset for the requested account with the necessary related fields.
-            requested_account = Student.objects.prefetch_related('parents').get(account_id=details.get('account'))
+            requested_account = Student.objects.select_related('school').prefecth_related('enrolled_classes', 'parents').get(account_id=details.get('account'))
             
             # Check if the requesting user has permission to view the requested user's profile or details.
             permission_error = permission_checks.check_profile_or_details_view_permissions(requesting_account, requested_account)
@@ -263,15 +261,16 @@ def search_parents(user, role, details):
                 # Return an error message if the requesting user does not have the necessary permissions.
                 return permission_error
         
-            parents = student.parents.filter(children=student).exclude(requesting_account) if requesting_account.role == 'PARENT' else student.parents
+            parents = requested_account.parents.all().exclude(account_id=requesting_account.account_id) if role == 'PARENT' else requested_account.parents.all()
 
         else:
             # Return an error message if an invalid reason is provided.
-            return {"error": 'Could not process your request, your accounts role is invalid'}
+            return {"error": 'could not process your request, your accounts role is invalid'}
 
         # Serialize the parents to return them in the response
-        serializer = ParentAccountSerializer(parents, many=True)
-        return {"parents": serializer.data}
+        serialized_parents = ParentAccountSerializer(parents, many=True).data
+
+        return {"parents": serialized_parents}
                
     except Principal.DoesNotExist:
         # Handle the case where the requested principal account does not exist.
@@ -292,10 +291,6 @@ def search_parents(user, role, details):
     except Parent.DoesNotExist:
         # Handle the case where the requested parent account does not exist.
         return {'error': 'A parent account with the provided credentials does not exist, please check the account details and try again'}
-
-    except BaseUser.DoesNotExist:
-        # Handle the case where the base user account does not exist.
-        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
     
     except Exception as e:
         # Handle any other unexpected errors and return the error message.
@@ -840,36 +835,27 @@ def search_announcement(user, details):
 
 @database_sync_to_async
 def search_chat_room(user, details):
-    """
-    Search for an existing chat room between two users and return the requested user's details.
-
-    Args:
-        user (str): The account ID of the user making the request.
-        details (dict): A dictionary containing the details of the request, including:
-            - 'account_id' (str): The account ID of the user to search for.
-
-    Returns:
-        dict: A dictionary containing the serialized requested user's data, a flag indicating if a chat room exists, the chat room ID if it exists, or an error message.
-    """
     try:
         # Retrieve the account making the request
-        account = BaseUser.objects.get(account_id=user)
+        requesting_account = BaseUser.objects.get(account_id=user)
 
         # Retrieve the requested user's account
-        requested_user = BaseUser.objects.get(account_id=details.get('account_id'))
+        requested_account = BaseUser.objects.get(account_id=details.get('account_id'))
         
         # Check permissions
-        permission_error = permission_checks.check_message_permissions(account, requested_user)
+        permission_error = permission_checks.check_message_permissions(requesting_account, requested_account)
         if permission_error:
             return {'error': permission_error}
         
         # Check if a chat room exists between the two users
-        chat_room = ChatRoom.objects.filter(Q(user_one=account, user_two=requested_user) | Q(user_one=requested_user, user_two=account)).first()
+        chat_room = ChatRoom.objects.filter(Q(user_one=requesting_account, user_two=requested_account) | Q(user_one=requested_account, user_two=requesting_account)).first()
         
         chat_room_exists = bool(chat_room)
+        
+        serializerd_user = DisplayAccountDetailsSerializer(requested_account).data
 
         # Serialize the requested user's data
-        return {'user': DisplayAccountDetailsSerializer(requested_user).data, 'chat': chat_room_exists}
+        return {'user': serializerd_user, 'chat': chat_room_exists}
 
     except BaseUser.DoesNotExist:
         # Handle case where the user does not exist

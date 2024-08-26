@@ -125,15 +125,15 @@ def fetch_my_email_information(user):
 def fetch_chats(user):
     try:
         # Retrieve the user account
-        account = BaseUser.objects.get(account_id=user)
+        requesting_account = BaseUser.objects.get(account_id=user)
         
         # Fetch chat rooms where the user is involved and order by latest message timestamp
-        chat_rooms = ChatRoom.objects.filter(Q(user_one=account) | Q(user_two=account)).order_by('-latest_message_timestamp')
+        chat_rooms = ChatRoom.objects.filter(Q(user_one=requesting_account) | Q(user_two=requesting_account)).order_by('-latest_message_timestamp')
 
         # Serialize chat room data
-        serializer = ChatSerializer(chat_rooms, many=True, context={'user': user})
+        serialized_chats = ChatSerializer(chat_rooms, many=True, context={'user': user}).data
         
-        return {'chats': serializer.data}
+        return {'chats': serialized_chats}
 
     except BaseUser.DoesNotExist:
         return {'error': 'An account with the provided ID does not exist. Please check the account details and try again.'}
