@@ -42,7 +42,7 @@ class BaseUserManager(BaseUserManager):
             user.save(using=self._db)
         except IntegrityError as e:
             # Handle integrity error
-            if 'unique constraint' in str(e).lower():
+            if 'email address' in str(e).lower():
                 raise ValidationError(_('a account with the provided email address already exists. please use a different email address'))
             else:
                 raise
