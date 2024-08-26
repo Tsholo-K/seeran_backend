@@ -16,7 +16,7 @@ class StudentAccountCreationSerializer(serializers.ModelSerializer):
         fields = ['name', 'surname', 'email', 'school', 'role', 'id_number', 'passport_number']
 
     def __init__(self, *args, **kwargs):
-        super(StudentAccountUpdateSerializer, self).__init__(*args, **kwargs)
+        super(StudentAccountCreationSerializer, self).__init__(*args, **kwargs)
         # Make some fields optional
         self.fields['id_number'].required = False
         self.fields['passport_number'].required = False
