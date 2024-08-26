@@ -314,33 +314,40 @@ def search_parents(user, details):
 
 
 @database_sync_to_async
-def search_teacher_classes(user, details):
-
+def search_teacher_classes(user, role, details):
     try:
-        account = BaseUser.objects.get(account_id=user)
+        if role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
+            return {"error": 'could not proccess your request.. your account either has insufficient permissions or is invalid for the action you are trying to perform'}
 
-        # If the requesting user is looking for their own classes
-        if details.get('teacher_id') == 'requesting_my_own_classes':
-            classes = account.taught_classes.exclude(register_class=True)
+        # Get the appropriate model and related fields (select_related and prefetch_related)
+        # for the requesting user's role from the mapping.
+        Model = role_specific_maps.account_access_control_mapping[role]
 
-        else:
-            if account.role not in ['ADMIN', 'PRINCIPAL']:
-                return {"error": "unauthorized access. you are not permitted to access classes of any teacher account with your role"}
+        if details.get('teacher') == 'requesting my own classes' and role == 'TEACHER':
+            requesting_account = Model.objects.prefetch_related('taught_classes').get(account_id=user)
+            classes = requesting_account.taught_classes.exclude(register_class=True)
 
-            teacher = BaseUser.objects.get(account_id=details.get('teacher_id'))
-
-            if teacher.role != 'TEACHER' or account.school != teacher.school:
-                return {"error": "unauthorized access. you are not permitted to view classses of teacher accounts outside your own school"}
+        elif role in ['ADMIN', 'PRINCIPAL']:
+            requesting_account = Model.objects.select_related('school').get(account_id=user)
+            teacher = Teacher.objects.prefetch_related('taught_classes').get(account_id=details['teacher'], school=requesting_account.school)
 
             classes = teacher.taught_classes
 
         serializer = TeacherClassesSerializer(classes, many=True)
 
         return {"classes": serializer.data}
-
-    except BaseUser.DoesNotExist:
-        # Handle case where the user account does not exist
-        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the requested principal account does not exist.
+        return {'error': 'A principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the requested admin account does not exist.
+        return {'error': 'An admin account with the provided credentials does not exist, please check the account details and try again'}
+               
+    except Teacher.DoesNotExist:
+        # Handle the case where the requested teacher account does not exist.
+        return {'error': 'A teacher account with the provided credentials does not exist, please check the account details and try again'}
     
     except Exception as e:
         return { 'error': str(e) }
