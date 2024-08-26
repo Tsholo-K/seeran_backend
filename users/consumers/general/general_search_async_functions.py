@@ -514,9 +514,12 @@ def search_teacher_schedule_schedules(user, role, details):
             requesting_account = Model.objects.select_related('school').get(account_id=user)
             teacher = Teacher.objects.prefetch_related('teacher_schedule__schedules').get(account_id=details['teacher'], school=requesting_account.school)
 
-        # Retrieve the teacher's schedule
-        schedules = teacher.teacher_schedule.schedules.all()
-
+        # Check if the teacher has a schedule
+        if hasattr(teacher, 'teacher_schedule'):
+            schedules = teacher.teacher_schedule.schedules.all()
+        else:
+            return {'schedules': []}
+        
         # Serialize the schedules to return them in the response
         serializer = ScheduleSerializer(schedules, many=True)
 

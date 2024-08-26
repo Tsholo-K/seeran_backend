@@ -53,8 +53,7 @@ class TeacherSchedule(models.Model):
     teacher_schedule_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
-        verbose_name = _('teacher schedule')
-        verbose_name_plural = _('teacher schedules')
+        ...
 
     def __str__(self):
         return self.teacher_schedule_id
