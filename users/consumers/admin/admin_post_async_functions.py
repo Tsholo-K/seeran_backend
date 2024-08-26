@@ -33,6 +33,9 @@ from users.checks import permission_checks
 # mappings
 from users.maps import role_specific_maps
 
+# queries
+from users.complex_queries import queries
+
 
 @database_sync_to_async
 def create_grade(user, role, details):
@@ -296,19 +299,21 @@ def create_account(user, role, details):
     try:
         if details.get('role') not in ['ADMIN', 'TEACHER', 'STUDENT']:
             return {"error": 'could not proccess your request, the provided account role is invalid'}
-        
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            if details['role'] == 'ADMIN':
-                return {"error": 'could not proccess your request, your accounts role does not have sufficient permission to perform this action'}
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
 
-        details['school'] = admin.school.pk
+        if details['role'] == 'ADMIN' and role != 'PRINCIPAL':
+            return {"error": 'could not proccess your request, your accounts role does not have sufficient permission to perform this action'}
+        
+        # Get the appropriate model and related fields (select_related and prefetch_related)
+        # for the requesting user's role from the mapping.
+        Model = role_specific_maps.account_access_control_mapping[role]
+
+        # Retrieve the user and related school in a single query using select_related
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+
+        details['school'] = requesting_account.school.pk
 
         if details['role'] == 'STUDENT':
-            grade = Grade.objects.get(grade_id=details.get('grade'), school=admin.school)
+            grade = Grade.objects.get(grade_id=details.get('grade'), school=requesting_account.school)
             details['grade'] = grade.pk
 
         # Get the appropriate model and related fields (select_related and prefetch_related)
@@ -316,10 +321,12 @@ def create_account(user, role, details):
         Model, Serializer = role_specific_maps.account_creation_model_and_serializer_mapping[details['role']]
 
         serializer = Serializer(data=details)
-        
         if serializer.is_valid():
             with transaction.atomic():
                 user = Model.objects.create(**serializer.validated_data)
+
+            if details['role'] == 'STUDENT' and not details.get('email'):
+                return {'message' : 'the students account has been successfully created, accounts with no email addresses can not '}
             
             return {'user' : user}
             
@@ -333,7 +340,11 @@ def create_account(user, role, details):
     except Admin.DoesNotExist:
         # Handle the case where the provided account ID does not exist
         return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
-    
+        
+    except Grade.DoesNotExist:
+        # Handle the case where the provided grade ID does not exist
+        return {'error': 'a grade in your school with the provided credentials does not exist. please check the grade details and try again.'}
+
     except ValidationError as e:
         # Handle validation errors separately with meaningful messages
         return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
@@ -401,38 +412,27 @@ def link_parent(user, role, details):
     
 @database_sync_to_async
 def delete_account(user, role, details):
-
     try:
-        child_model_mapping = {
-            'ADMIN': (Admin, 'school', None),
-            'TEACHER': (Teacher, 'school', None),
-            'STUDENT': (Student, 'school', None),
-        }
+        if details.get('role') not in ['ADMIN', 'TEACHER', 'STUDENT']:
+            return {"error": 'could not proccess your request, the provided account role is invalid'}
 
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            requesting_account = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            if details.get('role') == 'ADMIN':
-                return {"error": 'could not proccess your request, your accounts role does not have enough permissions to perform this action'}
-            requesting_account = Admin.objects.select_related('school').only('school').get(account_id=user)
+        if details['role'] == 'ADMIN' and role != 'PRINCIPAL':
+            return {"error": 'could not proccess your request, your accounts role does not have sufficient permission to perform this action'}
 
-        if details.get('role') in child_model_mapping:
-            # Get the model, select_related, and prefetch_related fields based on the requested user's role.
-            Model, select_related, prefetch_related = child_model_mapping[details['role']]
+        # Get the appropriate model and related fields (select_related and prefetch_related)
+        # for the requesting user's role from the mapping.
+        Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[role]
 
-            # Initialize the queryset for the requested user's role model.
-            queryset = Model.objects
-            
-            # Apply select_related and prefetch_related as needed for the requested user's account.
-            if select_related:
-                queryset = queryset.select_related(select_related)
-            if prefetch_related:
-                queryset = queryset.prefetch_related(*prefetch_related.split(', '))
+        # Build the queryset for the requesting account with the necessary related fields.
+        requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
 
-            # Retrieve the requested user's account from the database.
-            requested_account = queryset.get(account_id=details.get('account'))
-            
+        if details['role'] in ['ADMIN', 'TEACHER', 'STUDENT']:
+            # Retrieve the base account details of the requested user using the provided account ID.
+            Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[details['role']]
+
+            # Build the queryset for the requested account with the necessary related fields.
+            requested_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=details.get('account'))
+
             # Check if the requesting user has permission to view the requested user's profile.
             permission_error = permission_checks.check_update_details_permissions(requesting_account, requested_account)
             if permission_error:
@@ -451,25 +451,25 @@ def delete_account(user, role, details):
                 requesting_account.school.save()
 
             return {"message" : 'account successfully deleted'}
-        
+
         return {"error": 'could not proccess your request, the provided account role is invalid'}
-               
+
     except Principal.DoesNotExist:
         # Handle the case where the requested principal account does not exist.
         return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
+
     except Admin.DoesNotExist:
         # Handle the case where the requested admin account does not exist.
         return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
-               
+
     except Teacher.DoesNotExist:
         # Handle the case where the requested teacher account does not exist.
         return {'error': 'a teacher account with the provided credentials does not exist, please check the account details and try again'}
-                   
+
     except Student.DoesNotExist:
         # Handle the case where the requested student account does not exist.
         return {'error': 'a student account with the provided credentials does not exist, please check the account details and try again'}
-               
+
     except Parent.DoesNotExist:
         # Handle the case where the requested parent account does not exist.
         return {'error': 'a parent account with the provided credentials does not exist, please check the account details and try again'}
