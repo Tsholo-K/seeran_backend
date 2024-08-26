@@ -118,14 +118,24 @@ class BaseUser(AbstractBaseUser, PermissionsMixin):
         if len(self.surname) > 64:
             raise ValidationError(_("surname cannot exceed 64 characters. please correct the surname and try again"))
         
+    def validate_unique(self, *args, **kwargs):
+        try:
+            super().validate_unique(*args, **kwargs)
+        except ValidationError as e:
+            if 'email' in e.message_dict:
+                e.message_dict['email'] = [_("an account with the provided email address already exists. please use a different email address.")]
+            raise e
+        
     def save(self, *args, **kwargs):
+        self.full_clean(exclude=['email'])
+        
         try:
             super().save(*args, **kwargs)
 
         except IntegrityError as e:
             # Handle unique constraint violation on the email field
             if 'unique constraint' in str(e).lower() and 'email' in str(e).lower():
-                raise ValidationError(_('An account with the provided email address already exists. Please use a different email address.'))
+                raise ValidationError(_('an account with the provided email address already exists. please use a different email address.'))
             else:
                 raise e  # Re-raise the exception if it's a different IntegrityError
 
