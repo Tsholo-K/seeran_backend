@@ -94,7 +94,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
     async def handle_get(self, description, details, user, role, access_token):
         if description == 'my_security_information':
-            return await general_get_async_functions.fetch_my_security_information(user, role)
+            return await general_get_async_functions.fetch_security_information(user, role)
         
         elif description == 'schools':
             return await founder_get_async_functions.fetch_schools()

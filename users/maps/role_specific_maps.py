@@ -9,15 +9,16 @@
 # simple jwt
 
 # models 
-from users.models import Principal, Admin, Teacher, Student, Parent
+from users.models import Founder, Principal, Admin, Teacher, Student, Parent
 
 # serializers
 from users.serializers.general_serializers import DisplayAccountDetailsSerializer, SourceAccountSerializer
-from users.serializers.principals.principals_serializers import PrincipalAccountDetailsSerializer
-from users.serializers.admins.admins_serializers import AdminAccountCreationSerializer, AdminAccountUpdateSerializer, AdminAccountDetailsSerializer
-from users.serializers.teachers.teachers_serializers import TeacherAccountCreationSerializer, TeacherAccountUpdateSerializer, TeacherAccountDetailsSerializer
-from users.serializers.students.students_serializers import StudentAccountCreationSerializer, StudentAccountUpdateSerializer, StudentAccountDetailsSerializer
-from users.serializers.parents.parents_serializers import ParentAccountCreationSerializer, ParentAccountUpdateSerializer, ParentAccountDetailsSerializer
+from users.serializers.founders.founders_serializers import FounderSecurityInformationSerializer
+from users.serializers.principals.principals_serializers import PrincipalAccountDetailsSerializer, PrincipalSecurityInformationSerializer
+from users.serializers.admins.admins_serializers import AdminAccountCreationSerializer, AdminAccountUpdateSerializer, AdminAccountDetailsSerializer, AdminSecurityInformationSerializer
+from users.serializers.teachers.teachers_serializers import TeacherAccountCreationSerializer, TeacherAccountUpdateSerializer, TeacherAccountDetailsSerializer, TeacherSecurityInformationSerializer
+from users.serializers.students.students_serializers import StudentAccountCreationSerializer, StudentAccountUpdateSerializer, StudentAccountDetailsSerializer, StudentSecurityInformationSerializer
+from users.serializers.parents.parents_serializers import ParentAccountCreationSerializer, ParentAccountUpdateSerializer, ParentAccountDetailsSerializer, ParentSecurityInformationSerializer
 
 # utility functions 
 
@@ -36,6 +37,14 @@ account_update_serializer_mapping = {
     'ADMIN': AdminAccountUpdateSerializer,
     'TEACHER': TeacherAccountUpdateSerializer,
     'STUDENT': StudentAccountUpdateSerializer,
+}
+
+account_model_and_security_serializer_mapping = {
+    'FOUNDER': (Founder, FounderSecurityInformationSerializer),
+    'PARENT': (Parent, ParentSecurityInformationSerializer),
+    'ADMIN': (Admin, AdminSecurityInformationSerializer),
+    'TEACHER': (Teacher, TeacherSecurityInformationSerializer),
+    'STUDENT': (Student, StudentSecurityInformationSerializer),
 }
 
 account_access_control_mapping = {

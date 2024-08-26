@@ -37,7 +37,7 @@ class FounderAccountDetailsSerializer(serializers.ModelSerializer):
         return obj.email
 
 
-class MySecurityInformationSerializer(serializers.ModelSerializer):
+class FounderSecurityInformationSerializer(serializers.ModelSerializer):
     
     event_emails = serializers.SerializerMethodField()
 

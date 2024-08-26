@@ -12,7 +12,7 @@ from django.utils.translation import gettext as _
 # simple jwt
 
 # models 
-from users.models import BaseUser
+from users.models import BaseUser, Principal, Admin, Teacher, Student, Parent
 from email_bans.models import EmailBan
 from announcements.models import Announcement
 from chats.models import ChatRoom
@@ -24,55 +24,47 @@ from chats.serializers import ChatSerializer
 
 # utility functions 
 
-# checks
+# mappings
+from users.maps import role_specific_maps
 
 
 @database_sync_to_async
-def fetch_my_security_information(user):
-    """
-    Retrieves security-related information for a given user.
-
-    This function fetches the multi-factor authentication (MFA) status and event email settings
-    for the user identified by `user`. The retrieved information includes whether MFA is enabled
-    and the settings for event-related emails.
-
-    Args:
-        user (str): The account ID of the user whose security information is to be fetched.
-
-    Returns:
-        dict: A dictionary containing:
-            - 'multifactor_authentication': A boolean indicating whether multi-factor authentication is enabled for the user.
-            - 'event_emails': A boolean indicating whether event-related emails are enabled for the user.
-            - 'error': A string containing an error message if an exception is raised.
-
-    Raises:
-        CustomUser.DoesNotExist: If no user is found with the provided account ID.
-        Exception: For any other errors that occur during the process.
-
-    Example:
-        response = await fetch_my_security_information(request.user.account_id)
-        if 'error' in response:
-            # Handle error, e.g., display error message to the user
-        else:
-            security_info = response
-            # Process security information
-    """
+def fetch_security_information(user, role):
     try:
+        # Get the appropriate model and related fields (select_related and prefetch_related)
+        # for the requesting user's role from the mapping.
+        Model, Serializer = role_specific_maps.account_model_and_security_serializer_mapping[role]
+
         # Retrieve the user's security settings from the database
-        account = BaseUser.objects.values('multifactor_authentication', 'event_emails').get(account_id=user)
+        account = Model.objects.get(account_id=user)
+
+        serialized_user = Serializer(account).data
         
         # Return the retrieved security information
-        return {
-            'multifactor_authentication': account['multifactor_authentication'],  # MFA status
-            'event_emails': account['event_emails']  # Event email settings
-        }
-
-    except BaseUser.DoesNotExist:
-        # Handle the case where no user is found with the provided account ID
-        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
+        return {'info': serialized_user}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the requested principal account does not exist.
+        return {'error': 'A principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the requested admin account does not exist.
+        return {'error': 'An admin account with the provided credentials does not exist, please check the account details and try again'}
+               
+    except Teacher.DoesNotExist:
+        # Handle the case where the requested teacher account does not exist.
+        return {'error': 'A teacher account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Student.DoesNotExist:
+        # Handle the case where the requested student account does not exist.
+        return {'error': 'A student account with the provided credentials does not exist, please check the account details and try again'}
+               
+    except Parent.DoesNotExist:
+        # Handle the case where the requested parent account does not exist.
+        return {'error': 'A parent account with the provided credentials does not exist, please check the account details and try again'}
     
     except Exception as e:
-        # Handle any other unexpected errors and return a descriptive error message
+        # Handle any other unexpected errors and return the error message.
         return {'error': str(e)}
 
 

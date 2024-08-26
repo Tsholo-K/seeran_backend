@@ -93,7 +93,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
     async def handle_get(self, description, details, user, role, access_token):
         get_map = {
-            'my_security_information': general_get_async_functions.fetch_my_security_information,
+            'my_security_information': general_get_async_functions.fetch_security_information,
             'email_information': general_get_async_functions.fetch_my_email_information,
 
             'grades': admin_get_async_functions.fetch_grades,
