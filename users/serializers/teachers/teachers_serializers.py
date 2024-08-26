@@ -32,6 +32,7 @@ class TeacherAccountUpdateSerializer(serializers.ModelSerializer):
         # Make all fields optional 
         for field in self.fields:
             self.fields[field].required = False
+        self.fields['email'].validators = []
 
 
 class TeacherSecurityInformationSerializer(serializers.ModelSerializer):
