@@ -709,7 +709,7 @@ def search_group_schedules(user, details):
 def search_schedule_sessions(details):
 
     try:
-        schedule = Schedule.objects.select_related('sessions').get(schedule_id=details.get('schedule'))
+        schedule = Schedule.objects.prefetch_related('sessions').get(schedule_id=details.get('schedule'))
     
         sessions = schedule.sessions.all()
         serialized_sessions = SessoinsSerializer(sessions, many=True).data
