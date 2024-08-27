@@ -382,6 +382,7 @@ def link_parent(user, role, details):
         if serializer.is_valid():
             with transaction.atomic():
                 parent = Parent.objects.create(**serializer.validated_data)
+                parent.save()
                 parent.children.add(student)
 
             return {'user' : parent}
