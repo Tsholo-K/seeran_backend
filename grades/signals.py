@@ -7,6 +7,9 @@ from django.dispatch import receiver
 from users.models import BaseUser, Student
 from classes.models import Classroom
 
+# mappings
+from users.maps import role_specific_maps
+
 
 @receiver(post_save, sender=Student)
 def update_grade_counts_on_create(sender, instance, created, **kwargs):
@@ -14,7 +17,13 @@ def update_grade_counts_on_create(sender, instance, created, **kwargs):
         role = instance.role
         
         if role == 'STUDENT':
-            grade = instance.grade
+            # Get the appropriate model for the requesting user's role from the mapping.
+            Model= role_specific_maps.account_access_control_mapping[role]
+
+            # Build the queryset for the requesting account with the necessary related fields.
+            created_account = Model.objects.get(account_id=instance.account_id)
+
+            grade = created_account.grade
 
             grade.student_count = grade.students.count()
             grade.save()
@@ -23,25 +32,32 @@ def update_grade_counts_on_create(sender, instance, created, **kwargs):
 @receiver(post_delete, sender=BaseUser)
 def update_grade_and_subject_counts_on_delete(sender, instance, **kwargs):
     role = instance.role
-    
-    if role == 'STUDENT':
-        grade = instance.grade
 
-        grade.student_count = grade.students.count()
-        grade.save()
+    if role in ['STUDENT', 'TEACHER']:
+        # Get the appropriate model for the requesting user's role from the mapping.
+        Model= role_specific_maps.account_access_control_mapping[role]
 
-        for classroom in instance.enrolled_classes.all().exclude(subject=None, register_class=True):
-            if classroom.subject:
-                # Update the subject student count
-                classroom.subject.student_count = classroom.grade.classes.filter(subject=classroom.subject).aggregate(student_count=models.Count('students'))['student_count'] or 0
-                classroom.subject.save()
+        # Build the queryset for the requesting account with the necessary related fields.
+        deleted_account = Model.objects.get(account_id=instance.account_id)
 
-    elif role == 'TEACHER':
-        # Update teacher count for all related subjects
-        for classroom in instance.taught_classes.all().exclude(subject=None, register_class=True):
-            if classroom.subject:
-                classroom.subject.teacher_count = classroom.grade.classes.filter(subject=classroom.subject).exclude(teacher=None).values_list('teacher', flat=True).distinct().count()
-                classroom.subject.save()
+        if role == 'STUDENT':
+            grade = deleted_account.grade
+
+            grade.student_count = grade.students.count()
+            grade.save()
+
+            for classroom in deleted_account.enrolled_classes.all().exclude(subject=None, register_class=True):
+                if classroom.subject:
+                    # Update the subject student count
+                    classroom.subject.student_count = classroom.grade.classes.filter(subject=classroom.subject).aggregate(student_count=models.Count('students'))['student_count'] or 0
+                    classroom.subject.save()
+
+        elif role == 'TEACHER':
+            # Update teacher count for all related subjects
+            for classroom in deleted_account.taught_classes.all().exclude(subject=None, register_class=True):
+                if classroom.subject:
+                    classroom.subject.teacher_count = classroom.grade.classes.filter(subject=classroom.subject).exclude(teacher=None).values_list('teacher', flat=True).distinct().count()
+                    classroom.subject.save()
 
 
 @receiver(post_save, sender=Classroom)
