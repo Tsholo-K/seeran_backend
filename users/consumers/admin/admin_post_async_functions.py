@@ -358,35 +358,32 @@ def create_account(user, role, details):
 def link_parent(user, role, details):
 
     try:    
-        # Check if an account with the provided email already exists
-        existing_parent = BaseUser.objects.filter(email=details.get('email')).first()
-        if existing_parent:
-            if existing_parent.role != 'PARENT':
-                return {"error": "an account with the provided email address already exists, but the accounts role is not parent"}
-            return {'alert': 'There is already a parent account created with the provided email address', 'parent': existing_parent.account_id}
-       
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+        # Get the appropriate model and related fields (select_related and prefetch_related)
+        # for the requesting user's role from the mapping.
+        Model = role_specific_maps.account_access_control_mapping[role]
 
-        child = Student.objects.get(account_id=details.get('child'), school=admin.school)
+        # Retrieve the user and related school in a single query using select_related
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+
+        student = Student.objects.get(account_id=details.get('student'), school=requesting_account.school)
 
         # Check if the child already has two or more parents linked
-        student_parent_count = Parent.objects.filter(children=child).count()
+        student_parent_count = Parent.objects.filter(children=student).count()
         if student_parent_count >= 2:
             return {"error": "the provided student account has reached the maximum number of linked parents. please unlink one of the existing parents to link a new one"}
+        
+        # Check if an account with the provided email already exists
+        existing_parent = Parent.objects.filter(email=details.get('email')).first()
+        if existing_parent:
+            return {'alert': {'name': existing_parent.name.title(), 'surname': existing_parent.surname.title()}}
 
         details['role'] = 'PARENT'
         
         serializer = ParentAccountCreationSerializer(data=details)
-        
         if serializer.is_valid():
-            
             with transaction.atomic():
                 parent = Parent.objects.create(**serializer.validated_data)
-                parent.children.add(child)
+                parent.children.add(student)
 
             return {'user' : parent}
             
@@ -400,7 +397,15 @@ def link_parent(user, role, details):
     except Admin.DoesNotExist:
         # Handle the case where the provided account ID does not exist
         return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
-    
+                                      
+    except Student.DoesNotExist:
+        # Handle the case where the requested student account does not exist.
+        return {'error': 'A student account with the provided credentials does not exist, please check the account details and try again'}
+
+    except Parent.DoesNotExist:
+        # Handle the case where the requested parent account does not exist.
+        return {'error': 'A parent account with the provided credentials does not exist, please check the account details and try again'}
+
     except ValidationError as e:
         # Handle validation errors separately with meaningful messages
         return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
