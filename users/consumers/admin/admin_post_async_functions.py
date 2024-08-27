@@ -669,37 +669,26 @@ def create_group_schedule(user, role, details):
 
 @database_sync_to_async
 def delete_schedule(user, role, details):
-    """
-    Deletes a specific schedule for a teacher or group.
-
-    Args:
-        user (str): The account ID of the user requesting the deletion.
-        details (dict): A dictionary containing the schedule details.
-            - 'schedule_id' (str): The ID of the schedule to be deleted.
-            - 'for_group' (bool): Indicates whether the schedule is for a group.
-
-    Returns:
-        dict: A response dictionary with a 'message' key for success or an 'error' key for any issues.
-    """
     try:
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+        # Get the appropriate model and related fields (select_related and prefetch_related)
+        # for the requesting user's role from the mapping.
+        Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[role]
 
-        if details.get('for_group'):
-            schedule = Schedule.objects.get(schedule_id=details.get('schedule_id'), group_linked_to__grade__school=admin.school)
+        # Build the queryset for the requesting account with the necessary related fields.
+        requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
+
+        if details.get('type') == 'group':
+            schedule = Schedule.objects.get(schedule_id=details.get('schedule'), group_linked_to__grade__school=requesting_account.school)
 
             response = {'message': 'the schedule has been successfully deleted from the group schedule and will be removed from schedules of all students subscribed to the group schedule'}
             
-        if details.get('for_teacher'):
-            schedule = Schedule.objects.get(schedule_id=details.get('schedule_id'), teacher_schedule_linked_to__teacher__school=admin.school)
+        if details.get('type') == 'teacher':
+            schedule = Schedule.objects.get(schedule_id=details.get('schedule'), teacher_schedule_linked_to__teacher__school=requesting_account.school)
 
             response = {'message': 'the schedule has been successfully deleted from the teachers schedule and will no longer be available to the teacher'}
             
         else:
-            return {"error": ''}
+            return {"error": 'could not process your request, the provided type is invalid'}
         
         with transaction.atomic():
             schedule.delete()
