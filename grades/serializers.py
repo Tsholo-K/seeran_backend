@@ -182,7 +182,7 @@ class SubjectSerializer(serializers.ModelSerializer):
         fields = ['classes']
     
     def get_classes(self, obj):
-        return ClassesSerializer(obj.subject_classes.all(), many=True).data
+        return ClassesSerializer(obj.classes.all(), many=True).data
 
 
 class SubjectDetailsSerializer(serializers.ModelSerializer):

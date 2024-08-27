@@ -212,7 +212,7 @@ def search_subject(user, role, details):
         requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
 
         # Retrieve the subject and its related grade
-        subject = Subject.objects.get(subject_id=details.get('subject_id'), grade__school=requesting_account.school)
+        subject = Subject.objects.get(subject_id=details.get('subject'), grade__school=requesting_account.school)
 
         # Serialize the subject data
         serialized_subject = SubjectSerializer(subject).data
