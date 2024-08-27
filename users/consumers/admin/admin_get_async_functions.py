@@ -16,20 +16,24 @@ from users.models import Principal, Admin
 from grades.serializers import GradesSerializer, StudentGradesSerializer
 from schools.serializers import SchoolDetailsSerializer
 
-# utility functions
+# mappings
+from users.maps import role_specific_maps
+
+# queries
+from users.complex_queries import queries
 
 
 @database_sync_to_async
 def fetch_grades(user, role):
 
     try:
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+        # Get the appropriate model for the requesting user's role from the mapping.
+        Model = role_specific_maps.account_access_control_mapping[role]
+
+        # Build the queryset for the requesting account with the necessary related fields.
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
             
-        grades = admin.school.grades.all()
+        grades = requesting_account.school.grades.all()
 
         # Serialize the grade objects into a dictionary
         serialized_grades = GradesSerializer(grades, many=True).data
@@ -53,13 +57,13 @@ def fetch_grades(user, role):
 def fetch_student_grades(user, role):
 
     try:
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+        # Get the appropriate model for the requesting user's role from the mapping.
+        Model = role_specific_maps.account_access_control_mapping[role]
 
-        grades = admin.school.grades.all()
+        # Build the queryset for the requesting account with the necessary related fields.
+        requesting_account = Model.objects.select_related('school').prefetch_related('school__grades').get(account_id=user)
+
+        grades = requesting_account.school.grades.all()
 
         serialized_grades = StudentGradesSerializer(grades, many=True).data
 

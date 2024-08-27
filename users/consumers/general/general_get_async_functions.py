@@ -70,29 +70,6 @@ def fetch_security_information(user, role):
 
 @database_sync_to_async
 def fetch_my_email_information(user):
-    """
-    Retrieves user information and associated email ban records.
-
-    This function fetches specific fields for the user identified by `user`. 
-    It retrieves the user's email address, the number of email bans, 
-    and whether the email is currently banned. It also fetches and serializes
-    all email ban records associated with the user's email address.
-
-    Args:
-        user (str): The account ID of the user whose information is to be retrieved.
-
-    Returns:
-        dict: A dictionary containing:
-            - 'information': A dictionary with the following keys:
-                - 'email_bans': A list of serialized email ban records associated with the user's email address.
-                - 'strikes': The number of email bans associated with the user's email.
-                - 'banned': A boolean indicating whether the user's email is currently banned.
-            - 'error': A string containing an error message if an exception is raised.
-    
-    Raises:
-        CustomUser.DoesNotExist: If no user is found with the provided account ID.
-        Exception: For any other errors that occur during the process.
-    """
     try:
         # Retrieve the user's email address and email ban details
         account = BaseUser.objects.values('email', 'email_ban_amount', 'email_banned').get(account_id=user)
@@ -104,13 +81,7 @@ def fetch_my_email_information(user):
         serializer = EmailBansSerializer(email_bans, many=True)
     
         # Construct and return the response containing user information and email ban details
-        return {
-            'information': {
-                'email_bans': serializer.data,  # Serialized data for email bans
-                'strikes': account['email_ban_amount'],  # Number of times the email has been banned
-                'banned': account['email_banned']  # Whether the email is currently banned
-            }
-        }
+        return {'information': {'email_bans': serializer.data, 'strikes': account['email_ban_amount'], 'banned': account['email_banned']}}
 
     except BaseUser.DoesNotExist:
         # Handle the case where no user is found with the provided account ID
@@ -143,60 +114,55 @@ def fetch_chats(user):
 
 
 @database_sync_to_async
-def fetch_announcements(user):
-    """
-    Fetch announcements for a user based on their role and associated schools.
-
-    This function performs the following steps:
-    1. Fetch the user account making the request.
-    2. Validate the user's role to ensure it is authorized to access announcements.
-    3. Retrieve announcements based on the user's role:
-       - For parents, fetch announcements related to their children's schools.
-       - For other roles (Student, Admin, Principal), fetch announcements related to the user's school.
-    4. Serialize the announcements and return them.
-
-    Args:
-        user (CustomUser): The user object making the request.
-
-    Returns:
-        dict: A dictionary containing serialized announcements or an error message.
-
-    Raises:
-        CustomUser.DoesNotExist: If the user does not exist in the database.
-        Exception: For any other unexpected errors.
-
-    Example:
-        response = await search_announcements(request.user)
-        if 'error' in response:
-            # Handle error
-        else:
-            announcements = response['announcements']
-            # Process announcements
-    """
+def fetch_announcements(user, role):
     try:
-        # Fetch the user account making the request
-        account = BaseUser.objects.get(account_id=user)
+        if role not in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT', 'PARENT']:
+            return {"error": 'could not proccess your request.. your account either has insufficient permissions or is invalid for the action you are trying to perform'}
 
-        # Validate user role
-        if account.role not in ['PARENT', 'STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL']:
-            return {"error": "the specified account's role is invalid. Please ensure you are attempting to access announcements from an authorized account."}
+        # Get the appropriate model for the requesting user's role from the mapping.
+        Model = role_specific_maps.account_access_control_mapping[role]
 
         # Fetch announcements based on role
-        if account.role == 'PARENT':
-            # Fetch announcements related to the schools of the user's children
-            children_schools = account.children.values_list('school', flat=True)
-            announcements = Announcement.objects.filter(school__in=children_schools)
+        if role == 'PARENT':
+            # Build the queryset for the requesting account with the necessary related fields.
+            requesting_account = Model.objects.prefetch_related('children__school__announcements').get(account_id=user)
+
+            # Collect all announcements from each child's school
+            announcements = []
+            for child in requesting_account.children.all():
+                announcements.extend(child.school.announcements.all())
 
         else:
+            # Build the queryset for the requesting account with the necessary related fields.
+            requesting_account = Model.objects.prefetch_related('school__announcements').get(account_id=user)
+
             # Fetch announcements related to the user's school
-            announcements = Announcement.objects.filter(school=account.school)
+            announcements = requesting_account.school.announcements.all()
 
         # Serialize the announcements
         serializer = AnnouncementsSerializer(announcements, many=True, context={'user': user})
-        return {'announcements': serializer.data}
 
-    except BaseUser.DoesNotExist:
-        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
+        return {'announcements': serializer.data}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the requested principal account does not exist.
+        return {'error': 'A principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the requested admin account does not exist.
+        return {'error': 'An admin account with the provided credentials does not exist, please check the account details and try again'}
+               
+    except Teacher.DoesNotExist:
+        # Handle the case where the requested teacher account does not exist.
+        return {'error': 'A teacher account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Student.DoesNotExist:
+        # Handle the case where the requested student account does not exist.
+        return {'error': 'A student account with the provided credentials does not exist, please check the account details and try again'}
+               
+    except Parent.DoesNotExist:
+        # Handle the case where the requested parent account does not exist.
+        return {'error': 'A parent account with the provided credentials does not exist, please check the account details and try again'}
 
     except Exception as e:
         return {'error': str(e)}

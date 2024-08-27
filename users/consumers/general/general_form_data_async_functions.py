@@ -12,53 +12,38 @@ from django.utils.translation import gettext as _
 # simple jwt
 
 # models 
-from users.models import BaseUser
+from users.models import BaseUser, Teacher
 from classes.models import Classroom
 from attendances.models import Absent
 
 # serializers
 from users.serializers.students.students_serializers import StudentAccountSerializer
 
-# utility functions 
+# mappings
+from users.maps import role_specific_maps
 
-# checks
+# queries
+from users.complex_queries import queries
 
 
 @database_sync_to_async
-def form_data_for_assessment_setting(user, details):
+def form_data_for_assessment_setting(user, role, details):
 
     try:
-        account = BaseUser.objects.get(account_id=user)
-
-        if details.get('class_id') == 'requesting_my_own_class':
-            classroom = Classroom.objects.select_related('school').get(teacher=account, register_class=True)
-
-            if account.role != 'TEACHER' or classroom.school != account.school:
-                return {"error": "unauthorized access. the account making the request has an invalid role or the classroom you are trying to access is not from your school"}
-
-        else:
-            if account.role not in ['ADMIN', 'PRINCIPAL']:
-                return { "error" : 'unauthorized request.. only the class teacher or school admin can submit the attendance register for a class' }
-
-            classroom = Classroom.objects.get(class_id=details.get('class_id'), register_class=True, school=account.school)
+        if role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
+            return {"error": 'could not proccess your request.. your account either has insufficient permissions or is invalid for the action you are trying to perform'}
         
-        # Get today's date
-        today = timezone.localdate()
-            
-        # Check if an Absent instance exists for today and the given class
-        attendance = Absent.objects.filter(date__date=today, classroom=classroom).first()
+        requesting_user = BaseUser.objects.get(account_id=user)
 
-        if attendance:
-            students = attendance.absent_students.all()
-            attendance_register_taken = True
+        # Get the appropriate model for the requesting user's role from the mapping.
+        Model = role_specific_maps.account_access_control_mapping[role]
 
-        else:
-            students = classroom.students.all()
-            attendance_register_taken = False
+        # Build the queryset for the requesting account with the necessary related fields.
+        requesting_account = Model.objects.select_related('school').get(account_id=user)
 
-        serializer = StudentAccountSerializer(students, many=True)
+        classroom = Classroom.objects.get(class_id=details.get('class'), register_class=True, school=requesting_account.school)
 
-        return {"students": serializer.data, "attendance_register_taken" : attendance_register_taken}
+        return {"terms": ''}
     
     except BaseUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }
@@ -71,28 +56,32 @@ def form_data_for_assessment_setting(user, details):
     
 
 @database_sync_to_async
-def form_data_for_attendance_register(user, details):
+def form_data_for_attendance_register(user, role, details):
 
     try:
-        account = BaseUser.objects.get(account_id=user)
+        if role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
+            return {"error": 'could not proccess your request.. your account either has insufficient permissions or is invalid for the action you are trying to perform'}
 
-        if details.get('class_id') == 'requesting_my_own_class':
-            classroom = Classroom.objects.select_related('school').get(teacher=account, register_class=True)
+        # Get the appropriate model for the requesting user's role from the mapping.
+        Model = role_specific_maps.account_access_control_mapping[role]
 
-            if account.role != 'TEACHER' or classroom.school != account.school:
-                return {"error": "unauthorized access. the account making the request has an invalid role or the classroom you are trying to access is not from your school"}
+        # Build the queryset for the requesting account with the necessary related fields.
+        requesting_account = Model.objects.select_related('school').prefetch_related('school__teachers__taught_classes').get(account_id=user)
+
+        if details.get('class') == 'requesting my own classes data':
+            classroom = Classroom.objects.get(teacher=requesting_account, register_class=True, school=requesting_account.school)
+
+        elif details.get('class') and role in ['ADMIN', 'PRINCIPAL']:
+            classroom = Classroom.objects.get(class_id=details.get('class'), register_class=True, school=requesting_account.school)
 
         else:
-            if account.role not in ['ADMIN', 'PRINCIPAL']:
-                return { "error" : 'unauthorized request.. only the class teacher or school admin can submit the attendance register for a class' }
+            return { "error" : 'unauthorized request.. only the class teacher or school admin can submit the attendance register for a class' }
 
-            classroom = Classroom.objects.get(class_id=details.get('class_id'), register_class=True, school=account.school)
-        
         # Get today's date
         today = timezone.localdate()
             
         # Check if an Absent instance exists for today and the given class
-        attendance = Absent.objects.filter(date__date=today, classroom=classroom).first()
+        attendance = Absent.objects.prefetch_related('absent_students').filter(date__date=today, classroom=classroom).first()
 
         if attendance:
             students = attendance.absent_students.all()
@@ -102,9 +91,9 @@ def form_data_for_attendance_register(user, details):
             students = classroom.students.all()
             attendance_register_taken = False
 
-        serializer = StudentAccountSerializer(students, many=True)
+        serialized_students = StudentAccountSerializer(students, many=True).data
 
-        return {"students": serializer.data, "attendance_register_taken" : attendance_register_taken}
+        return {"students": serialized_students, "attendance_register_taken" : attendance_register_taken}
     
     except BaseUser.DoesNotExist:
         return { 'error': 'account with the provided credentials does not exist' }

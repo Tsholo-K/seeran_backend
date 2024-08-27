@@ -40,14 +40,14 @@ from users.complex_queries import queries
 @database_sync_to_async
 def create_grade(user, role, details):
     try:
+        # Get the appropriate model for the requesting user's role
+        Model = role_specific_maps.account_access_control_mapping[role]
+
         # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
 
         # Set the school field in the details to the user's school ID
-        details['school'] = admin.school.pk
+        details['school'] = requesting_account.school.pk
 
         # Serialize the details for grade creation
         serializer = GradeCreationSerializer(data=details)
@@ -83,13 +83,13 @@ def create_grade(user, role, details):
 @database_sync_to_async
 def create_subject(user, role, details):
     try:
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+        # Get the appropriate model for the requesting user's role
+        Model = role_specific_maps.account_access_control_mapping[role]
 
-        grade = Grade.objects.get(grade_id=details.get('grade'), school=admin.school)
+        # Retrieve the user and related school in a single query using select_related
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+
+        grade = Grade.objects.get(grade_id=details.get('grade'), school=requesting_account.school)
 
         # Set the school and grade fields
         details['grade'] = grade.pk
@@ -131,8 +131,7 @@ def create_subject(user, role, details):
 @database_sync_to_async
 def create_term(user, role, details):
     try:
-        # Get the appropriate model and related fields (select_related and prefetch_related)
-        # for the requesting user's role from the mapping.
+        # Get the appropriate model for the requesting user's role
         Model = role_specific_maps.account_access_control_mapping[role]
 
         # Retrieve the user and related school in a single query using select_related
@@ -181,14 +180,14 @@ def create_term(user, role, details):
 @database_sync_to_async
 def create_class(user, role, details):
     try:
+        # Get the appropriate model for the requesting user's role
+        Model = role_specific_maps.account_access_control_mapping[role]
+
         # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
 
         # Retrieve the grade and validate school ownership
-        grade = Grade.objects.select_related('school').get(grade_id=details.get('grade'), school=admin.school)
+        grade = Grade.objects.select_related('school').get(grade_id=details.get('grade'), school=requesting_account.school)
 
         if details.get('register_class'):
             details['subject'] = None
@@ -208,11 +207,11 @@ def create_class(user, role, details):
             return {"error": "invalid classroom creation details. please provide all required information and try again."}
 
         # Set the school and grade fields
-        details.update({'school': admin.school.pk, 'grade': grade.pk})
+        details.update({'school': requesting_account.school.pk, 'grade': grade.pk})
 
         # If a teacher is specified, update the teacher for the class
         if details.get('teacher'):
-            details['teacher'] = Teacher.objects.get(account_id=details['teacher'], school=admin.school).pk
+            details['teacher'] = Teacher.objects.get(account_id=details['teacher'], school=requesting_account.school).pk
 
         # Serialize and validate the data
         serializer = ClassCreationSerializer(data=details)
@@ -256,14 +255,14 @@ def create_class(user, role, details):
 @database_sync_to_async
 def delete_class(user, role, details):
     try:
+        # Get the appropriate model for the requesting user's role
+        Model = role_specific_maps.account_access_control_mapping[role]
+
         # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
 
         # Retrieve the grade
-        classroom = Classroom.objects.select_related('grade').only('grade__grade').get(class_id=details.get('class'), school=admin.school)
+        classroom = Classroom.objects.select_related('grade').only('grade__grade').get(class_id=details.get('class'), school=requesting_account.school)
 
         response = {'message': f'grade {classroom.grade.grade} classroom deleted successfully, the classroom will no longer be accessible or available in your schools data'}
         
@@ -382,7 +381,6 @@ def link_parent(user, role, details):
         if serializer.is_valid():
             with transaction.atomic():
                 parent = Parent.objects.create(**serializer.validated_data)
-                parent.save()
                 
                 parent.children.add(student)
 
@@ -492,15 +490,14 @@ def unlink_parent(user, role, details):
         dict: A dictionary containing either a success message or an error message.
     """
     try:
-        # Fetch the account of the user making the request
+        # Get the appropriate model for the requesting user's role
+        Model = role_specific_maps.account_access_control_mapping[role]
+
         # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
 
         # Fetch the student account using the provided child ID
-        student = Student.objects.get(account_id=details.get('child_id'), school=admin.school)
+        student = Student.objects.get(account_id=details.get('child_id'), school=requesting_account.school)
 
         # Fetch the parent account using the provided parent ID
         parent = Parent.objects.prefetch_related('children').get(account_id=details.get('parent_id'))
@@ -621,26 +618,14 @@ def create_schedule(user, role, details):
 
 @database_sync_to_async
 def create_group_schedule(user, role, details):
-    """
-    Creates a group schedule for a specified grade.
-
-    Args:
-        user (str): The account ID of the user creating the group schedule.
-        details (dict): A dictionary containing the group schedule details.
-            - 'group_name' (str): The name of the group.
-            - 'grade_id' (str): The ID of the grade.
-
-    Returns:
-        dict: A response dictionary with a 'message' key for success or an 'error' key for any issues.
-    """
     try:
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+        # Get the appropriate model for the requesting user's role
+        Model = role_specific_maps.account_access_control_mapping[role]
 
-        grade = Grade.objects.get(grade_id=details.get('grade_id'), school=admin.school)
+        # Retrieve the user and related school in a single query using select_related
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+
+        grade = Grade.objects.get(grade_id=details.get('grade_id'), school=requesting_account.school)
 
         with transaction.atomic():
             GroupSchedule.objects.create(group_name=details.get('group_name'), grade=grade)
@@ -718,25 +703,14 @@ def delete_schedule(user, role, details):
 
 @database_sync_to_async
 def delete_group_schedule(user, role, details):
-    """
-    Deletes a specific group schedule.
-
-    Args:
-        user (str): The account ID of the user requesting the deletion.
-        details (dict): A dictionary containing the group schedule details.
-            - 'group_schedule_id' (str): The ID of the group schedule to be deleted.
-
-    Returns:
-        dict: A response dictionary with a 'message' key for success or an 'error' key for any issues.
-    """
     try:
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+        # Get the appropriate model for the requesting user's role
+        Model = role_specific_maps.account_access_control_mapping[role]
 
-        group_schedule = GroupSchedule.objects.get(group_schedule_id=details.get('group_schedule_id'), grade__school=admin.school)
+        # Retrieve the user and related school in a single query using select_related
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+
+        group_schedule = GroupSchedule.objects.get(group_schedule_id=details.get('group_schedule_id'), grade__school=requesting_account.school)
         
         with transaction.atomic():
             group_schedule.delete()
@@ -765,26 +739,15 @@ def delete_group_schedule(user, role, details):
 
 @database_sync_to_async
 def announce(user, role, details):
-    """
-    Creates an announcement and associates it with the user and school.
-
-    Args:
-        user (str): The unique identifier (account_id) of the user making the request.
-        details (dict): A dictionary containing announcement details.
-
-    Returns:
-        dict: A dictionary containing a success message or an error message.
-    """
     try:
-        # Retrieve the user account
+        # Get the appropriate model for the requesting user's role
+        Model = role_specific_maps.account_access_control_mapping[role]
+
         # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
 
         # Add user and school information to the announcement details
-        details.update({'announce_by': admin.pk, 'school': admin.school.pk})
+        details.update({'announce_by': requesting_account.pk, 'school': requesting_account.school.pk})
 
         # Serialize the announcement data
         serializer = AnnouncementCreationSerializer(data=details)

@@ -53,47 +53,18 @@ from users.complex_queries import queries
 
 
 @database_sync_to_async
-def search_my_email_ban(details):
-    """
-    Retrieves information about a specific email ban based on the provided details.
-
-    This function fetches the details of an email ban using the provided `email_ban_id` and checks
-    whether a new OTP can be requested for the given email. 
-
-    Args:
-        details (dict): A dictionary containing:
-            - 'email_ban_id': The ID of the email ban to be retrieved.
-            - 'email': The email address to check if OTP can be requested.
-
-    Returns:
-        dict: A dictionary containing:
-            - 'email_ban': Serialized data of the email ban if it exists.
-            - 'can_request': A boolean indicating whether a new OTP request is allowed.
-            - 'error': A string containing an error message if an exception is raised.
-
-    Raises:
-        EmailBan.DoesNotExist: If no email ban is found with the provided ID.
-        Exception: For any other unexpected errors.
-
-    Example:
-        response = await search_my_email_ban({'email_ban_id': 123, 'email': 'user@example.com'})
-        if 'error' in response:
-            # Handle error
-        else:
-            email_ban_info = response
-            # Process email ban information
-    """
+def search_email_ban(details):
     try:
         # Retrieve the email ban record from the database
-        email_ban = EmailBan.objects.get(ban_id=details.get('email_ban_id'))
+        email_ban = EmailBan.objects.get(ban_id=details.get('email_ban'))
 
         # Determine if a new OTP request can be made
         can_request = not cache.get(details.get('email') + 'email_revalidation_otp')
         
         # Serialize the email ban record
-        serializer = EmailBanSerializer(email_ban)
+        serialized_email_ban = EmailBanSerializer(email_ban).data
         
-        return {"email_ban": serializer.data, "can_request": can_request}
+        return {"email_ban": serialized_email_ban, "can_request": can_request}
         
     except EmailBan.DoesNotExist:
         return {'error': 'Email ban with the provided ID does not exist. Please verify the ID and try again.'}
@@ -109,14 +80,14 @@ def search_school_details(user, role, details):
             return {"error": 'could not proccess your request.. your account either has insufficient permissions or is invalid for the action you are trying to perform'}
 
         if details.get('school') == 'requesting my own school':
-            # Retrieve the user and related school in a single query using select_related
-            if role == 'PRINCIPAL':
-                admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-            else:
-                admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+            # Get the appropriate model for the requesting user's role from the mapping.
+            Model = role_specific_maps.account_access_control_mapping[role]
+
+            # Build the queryset for the requesting account with the necessary related fields.
+            requesting_account = Model.objects.select_related('school').prefetch_related('school__teachers__taught_classes').get(account_id=user)
 
             # Serialize the school object into a dictionary
-            serialized_school = SchoolDetailsSerializer(admin.school).data
+            serialized_school = SchoolDetailsSerializer(requesting_account.school).data
         
         else:
             school = School.objects.get(school_id=details.get('school'))
@@ -145,21 +116,6 @@ def search_school_details(user, role, details):
 
 @database_sync_to_async
 def search_account(user, role, details):
-    """
-    Retrieves the account details or profile of a requested user based on the account ID and role provided.
-    This function dynamically handles different roles and fetches the necessary related data based on the 
-    role-specific requirements.
-
-    Parameters:
-    - user: The account ID of the requesting user.
-    - role: The role of the requesting user (e.g., 'PARENT', 'PRINCIPAL', etc.).
-    - details: A dictionary containing the account ID of the requested user and the reason for the request 
-      (e.g., 'details' or 'profile').
-
-    Returns:
-    - A dictionary containing the serialized user data or an error message if the operation fails.
-    """
-
     try:
         # Get the appropriate model and related fields (select_related and prefetch_related)
         # for the requesting user's role from the mapping.
@@ -312,7 +268,7 @@ def search_teacher_classes(user, role, details):
             classes = requesting_account.taught_classes.exclude(register_class=True)
 
         elif role in ['ADMIN', 'PRINCIPAL']:
-            requesting_account = Model.objects.select_related('school').get(account_id=user)
+            requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
             teacher = Teacher.objects.prefetch_related('taught_classes').get(account_id=details['teacher'], school=requesting_account.school)
 
             classes = teacher.taught_classes
@@ -338,47 +294,52 @@ def search_teacher_classes(user, role, details):
 
 
 @database_sync_to_async
-def search_class(user, details):
-    """
-    Searches for a classroom based on the user's role and provided details.
-
-    Args:
-        user (str): The account ID of the user making the request.
-        details (dict): A dictionary containing the search criteria, such as 'class_id'.
-
-    Returns:
-        dict: A dictionary containing the search results or error messages.
-    """
+def search_class(user, role, details):
     try:
-        # Retrieve the user account
-        account = BaseUser.objects.select_related('school').get(account_id=user)
+        if role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
+            return {"error": 'could not proccess your request.. your account either has insufficient permissions or is invalid for the action you are trying to perform'}
 
         # Determine the classroom based on the request details
-        if details.get('class') == 'requesting_my_own_class':
+        if details.get('class') == 'requesting my own class':
+            # Build the queryset for the requesting account with the necessary related fields.
+            requesting_account = Teacher.objects.get(account_id=user)
+
             # Fetch the classroom where the user is the teacher and it is a register class
-            classroom = Classroom.objects.select_related('school').filter(teacher=account, register_class=True).first()
+            classroom = requesting_account.taught_classes.filter(register_class=True).first()
             if classroom is None:
                 return {"class": None}
 
-            if account.role != 'TEACHER' or classroom.school != account.school:
-                return {"error": _("Unauthorized access. The account making the request has an invalid role or the classroom is not from your school.")}
-
         else:
+            # Get the appropriate model for the requesting user's role from the mapping.
+            Model = role_specific_maps.account_access_control_mapping[role]
+
+            # Build the queryset for the requesting account with the necessary related fields.
+            requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+
             # Fetch the specific classroom based on class_id and school
-            classroom = Classroom.objects.get(class_id=details.get('class'), school=account.school)
+            classroom = Classroom.objects.select_related('school').get(class_id=details.get('class'), school=requesting_account.school)
         
-        # Check permissions
-        permission_error = permission_checks.check_class_permissions(account, classroom)
-        if permission_error:
-            return permission_error
+            # Check permissions
+            permission_error = permission_checks.check_class_permissions(requesting_account, classroom)
+            if permission_error:
+                return permission_error
 
         # Serialize and return the classroom data
-        serializer = ClassSerializer(classroom)
-        return {"class": serializer.data}
+        serialized_class = ClassSerializer(classroom).data
 
-    except BaseUser.DoesNotExist:
-        # Handle case where the user account does not exist
-        return {'error': _('An account with the provided credentials does not exist. Please check the account details and try again.')}
+        return {"class": serialized_class}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the requested principal account does not exist.
+        return {'error': 'A principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the requested admin account does not exist.
+        return {'error': 'An admin account with the provided credentials does not exist, please check the account details and try again'}
+               
+    except Teacher.DoesNotExist:
+        # Handle the case where the requested teacher account does not exist.
+        return {'error': 'A teacher account with the provided credentials does not exist, please check the account details and try again'}
     
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
@@ -390,48 +351,68 @@ def search_class(user, details):
 
 
 @database_sync_to_async
-def search_student_class_card(user, details):
+def search_student_class_card(user, role, details):
 
     try:
-        # Retrieve the account making the request
-        account = BaseUser.objects.get(account_id=user)
-        # Retrieve the requested user's account
-        student = BaseUser.objects.get(account_id=details.get('account_id'))
+        if role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
+            return {"error": 'could not proccess your request.. your account either has insufficient permissions or is invalid for the action you are trying to perform'}
+        
+        # Get the appropriate model and related fields (select_related and prefetch_related)
+        # for the requesting user's role from the mapping.
+        Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[role]
+
+        # Build the queryset for the requesting account with the necessary related fields.
+        requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
+
+        # Get the appropriate model and related fields for the requested user's role.
+        Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping['STUDENT']
+
+        # Build the queryset for the requested account with the necessary related fields.
+        requested_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=details.get('account'))
 
         # Check permissions
-        permission_error = permission_checks.check_profile_or_details_view_permissions(account, student)
+        permission_error = permission_checks.check_profile_or_details_view_permissions(requesting_account, requested_account)
         if permission_error:
             return permission_error
         
         # Determine the classroom based on the request details
-        if details.get('class') == 'requesting_my_own_class':
+        if details.get('class') == 'requesting my own class data':
             # Fetch the classroom where the user is the teacher and it is a register class
-            classroom = Classroom.objects.select_related('school').filter(teacher=account, register_class=True).first()
+            classroom = requesting_account.taught_classes.filter(register_class=True).first()
             if classroom is None:
                 return {"error": _("could not proccess your request. the account making the request has no register class assigned to it")}
 
-            if account.role != 'TEACHER' or classroom.school != account.school:
-                return {"error": _("could not proccess your request. the account making the request has an invalid role or the classroom is not from your school")}
-
         else:
             # Fetch the specific classroom based on class_id and school
-            classroom = Classroom.objects.get(class_id=details.get('class'))
-
-            if account.school != classroom.school:
-                return {"error": "could not proccess your request. you are not permitted to view information about classses outside your own school"}
+            classroom = Classroom.objects.get(class_id=details.get('class'), school=requesting_account.school)
 
         # retrieve the students activities 
-        activities = Activity.objects.filter(classroom=classroom, recipient=student)
-
-        return {"user": SourceAccountSerializer(instance=student).data, 'activities' : ActivitiesSerializer(activities, many=True).data}
-
-    except BaseUser.DoesNotExist:
-        # Handle case where the user or requested user account does not exist
-        return {'error': 'an account with the provided credentials does not exist, please check the account details and try again'}
+        activities = requested_account.my_activities.filter(classroom=classroom)
         
+        serialized_student = StudentSourceAccountSerializer(instance=requested_account).data
+        serialized_activities = ActivitiesSerializer(activities, many=True).data
+
+        return {"user": serialized_student, 'activities': serialized_activities}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the requested principal account does not exist.
+        return {'error': 'A principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the requested admin account does not exist.
+        return {'error': 'An admin account with the provided credentials does not exist, please check the account details and try again'}
+               
+    except Teacher.DoesNotExist:
+        # Handle the case where the requested teacher account does not exist.
+        return {'error': 'A teacher account with the provided credentials does not exist, please check the account details and try again'}
+                           
+    except Student.DoesNotExist:
+        # Handle the case where the requested student account does not exist.
+        return {'error': 'A student account with the provided credentials does not exist, please check the account details and try again'}
+
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
-        return {'error': 'a classroom with the provided credentials does not exist. please check the classroom details and try again.'}
+        return {'error': 'a classroom in your school with the provided credentials does not exist. please check the classroom details and try again.'}
 
     except Exception as e:
         # Handle any other unexpected errors
@@ -439,27 +420,20 @@ def search_student_class_card(user, details):
 
 
 @database_sync_to_async
-def search_activity(user, details):
-    """
-    Search for an activity by its ID and check if the user has the necessary permissions to access it.
-
-    Args:
-        user (int): The ID of the user making the request.
-        details (dict): A dictionary containing the details of the activity being requested, including the 'activity_id'.
-
-    Returns:
-        dict: A dictionary containing the serialized activity data if the user has permission,
-              or an error message if there was an issue.
-    """
+def search_activity(user, role, details):
     try:
-        # Retrieve the account making the request
-        account = BaseUser.objects.select_related('school').get(account_id=user)
+        # Get the appropriate model and related fields (select_related and prefetch_related)
+        # for the requesting user's role from the mapping.
+        Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[role]
+
+        # Build the queryset for the requesting account with the necessary related fields.
+        requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
 
         # Retrieve the activity based on the provided activity_id
-        activity = Activity.objects.select_related('school', 'logger', 'recipient', 'classroom').get(activity_id=details.get('activity_id'))
+        activity = Activity.objects.select_related('school', 'logger', 'recipient', 'classroom').get(activity_id=details.get('activity'))
 
         # Check permissions
-        permission_error = permission_checks.check_activity_permissions(account, activity)
+        permission_error = permission_checks.check_activity_permissions(requesting_account, activity)
         if permission_error:
             return permission_error
         
@@ -492,7 +466,7 @@ def search_teacher_schedule_schedules(user, role, details):
         Model = role_specific_maps.account_access_control_mapping[role]
 
         if details.get('teacher') == 'requesting my own schedules' and role == 'TEACHER':
-            teacher = Model.objects.prefetch_related('teacher_schedule__schedules').get(account_id=user)
+            teacher = Teacher.objects.prefetch_related('teacher_schedule__schedules').get(account_id=user)
 
         elif role in ['ADMIN', 'PRINCIPAL']:
             requesting_account = Model.objects.select_related('school').get(account_id=user)
@@ -501,13 +475,14 @@ def search_teacher_schedule_schedules(user, role, details):
         # Check if the teacher has a schedule
         if hasattr(teacher, 'teacher_schedule'):
             schedules = teacher.teacher_schedule.schedules.all()
+
         else:
             return {'schedules': []}
         
         # Serialize the schedules to return them in the response
-        serializer = ScheduleSerializer(schedules, many=True)
+        serialized_schedules = ScheduleSerializer(schedules, many=True).data
 
-        return {"schedules": serializer.data}
+        return {"schedules": serialized_schedules}
                
     except Principal.DoesNotExist:
         # Handle the case where the requested principal account does not exist.
@@ -527,72 +502,47 @@ def search_teacher_schedule_schedules(user, role, details):
 
 
 @database_sync_to_async
-def search_group_schedule_schedules(user, details):
-    """
-    Function to search and retrieve weekly schedules for a specific group schedule.
-
-    This function performs the following steps:
-    1. Retrieve the account making the request.
-    2. Retrieve the specified group schedule.
-    3. Check permissions based on the user's role:
-       - Founders are not allowed to access group schedules.
-       - Students can only access schedules if they are subscribed to the group schedule.
-       - Parents can only access schedules if at least one of their children is subscribed to the group schedule.
-       - Teachers, Admins, and Principals can only access schedules if they belong to the same school as the group schedule's grade.
-    4. Serialize and return the schedules associated with the group schedule.
-
-    Args:
-        user (str): The account ID of the user making the request.
-        details (dict): A dictionary containing the group_schedule_id to identify the group schedule.
-
-    Returns:
-        dict: A dictionary containing either the schedules or an error message.
-
-    Raises:
-        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
-        GroupSchedule.DoesNotExist: If the group schedule with the provided ID does not exist.
-        Exception: For any other unexpected errors.
-
-    Example:
-        response = await search_group_schedule_schedules(request.user.account_id, {'group_schedule_id': 'GS123'})
-        if 'error' in response:
-            # Handle error
-        else:
-            schedules = response['schedules']
-            # Process schedules
-    """
+def search_group_schedule_schedules(user, role, details):
     try:
-        # Retrieve the account making the request
-        account = BaseUser.objects.get(account_id=user)
+        # Get the appropriate model and related fields (select_related and prefetch_related)
+        # for the requesting user's role from the mapping.
+        Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[role]
+
+        # Build the queryset for the requesting account with the necessary related fields.
+        requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
         
         # Retrieve the specified group schedule
-        group_schedule = GroupSchedule.objects.get(group_schedule_id=details.get('group_schedule_id'))
+        group_schedule = GroupSchedule.objects.select_related('students', 'grade__school').get(group_schedule_id=details.get('group_schedule'))
 
-        # Check permissions for various roles
-
-        # Founders are not allowed to access group schedules
-        if account.role == 'FOUNDER':
-            return {"error": "Founders are not authorized to access group schedules"}
-
-        # Students can only access schedules if they are in the group schedule's students
-        if account.role == 'STUDENT' and account not in group_schedule.students.all():
-            return {"error": "As a student, you can only view schedules for group schedules you are subscribed to. Please check your group schedule assignments and try again"}
-
-        # Parents can only access schedules if at least one of their children is in the group schedule's students
-        if account.role == 'PARENT' and not any(child in group_schedule.students.all() for child in account.children.all()):
-            return {"error": "As a parent, you can only view schedules for group schedules that your children are subscribed to. Please check your child's group schedule assignments and try again"}
-
-        # Teachers, Admins, and Principals can only access schedules if they belong to the same school as the group schedule's grade
-        if account.role in ['TEACHER', 'ADMIN', 'PRINCIPAL'] and account.school != group_schedule.grade.school:
-            return {"error": "You can only view schedules for group schedules within your own school. Please check the group schedule and try again"}
+        # Check permissions
+        permission_error = permission_checks.check_group_schedule_permissions(requesting_account, group_schedule)
+        if permission_error:
+            return permission_error
 
         # Serialize and return the schedules associated with the group schedule
-        serializer = ScheduleSerializer(group_schedule.schedules.all(), many=True)
-        return {"schedules": serializer.data}
-    
-    except BaseUser.DoesNotExist:
-        # Handle case where the user account does not exist
-        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again'}
+        serialized_schedules = ScheduleSerializer(group_schedule.schedules.all(), many=True).data
+
+        return {"schedules": serialized_schedules}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the requested principal account does not exist.
+        return {'error': 'A principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the requested admin account does not exist.
+        return {'error': 'An admin account with the provided credentials does not exist, please check the account details and try again'}
+               
+    except Teacher.DoesNotExist:
+        # Handle the case where the requested teacher account does not exist.
+        return {'error': 'A teacher account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Student.DoesNotExist:
+        # Handle the case where the requested student account does not exist.
+        return {'error': 'A student account with the provided credentials does not exist, please check the account details and try again'}
+               
+    except Parent.DoesNotExist:
+        # Handle the case where the requested parent account does not exist.
+        return {'error': 'A parent account with the provided credentials does not exist, please check the account details and try again'}
     
     except GroupSchedule.DoesNotExist:
         # Handle case where the group schedule does not exist
@@ -604,82 +554,74 @@ def search_group_schedule_schedules(user, details):
     
 
 @database_sync_to_async
-def search_group_schedules(user, details):
-    """
-    Function to search and retrieve group schedules for a specific grade or student.
-
-    Args:
-        user (str): The account ID of the user making the request.
-        details (dict): A dictionary containing the grade_id to identify the grade.
-
-    Returns:
-        dict: A dictionary containing either the group schedules or an error message.
-
-    Raises:
-        CustomUser.DoesNotExist: If the user with the provided account ID does not exist.
-        Grade.DoesNotExist: If the grade with the provided ID does not exist.
-        Exception: For any other unexpected errors.
-    """
+def search_group_schedules(user, role, details):
     try:
-        # Retrieve the account making the request
-        account = BaseUser.objects.get(account_id=user)
-        
         # Ensure the specified role is valid
-        if account.role not in ['ADMIN', 'PRINCIPAL', 'PARENT', 'TEACHER', 'STUDENT']:
+        if role not in ['ADMIN', 'PRINCIPAL', 'PARENT', 'TEACHER', 'STUDENT']:
             return {"error": "The specified account's role is invalid. please ensure you are attempting to access group schedules from an authorized account."}
+        
+        # Get the appropriate model for the requesting user's role from the mapping.
+        Model = role_specific_maps.account_access_control_mapping[role]
 
         group_schedules = []
+        if role in ['ADMIN', 'PRINCIPAL']:
+            # Build the queryset for the requesting account with the necessary related fields.
+            requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
 
-        if account.role in ['ADMIN', 'PRINCIPAL']:
-            if details.get('account_id'):
+            if details.get('account'):
                 # Retrieve the student
-                student = BaseUser.objects.get(account_id=details.get('account_id'))
-
-                if student.role != 'STUDENT' or account.school != student.school:
-                    return {"error": "unauthorized access. you can only view group schedules of students in your school."}
+                student = Student.objects.prefetch_related('my_group_schedule').get(account_id=details['account'])
                 
                 # Retrieve all group schedules associated with the student
                 if hasattr(student, 'my_group_schedule'):
                     group_schedules = student.my_group_schedule.all()
+
                 else:
                     return {"schedules": []}
                 
-            if details.get('grade_id'):
+            elif details.get('grade'):
                 # Retrieve the specified grade
-                grade = Grade.objects.get(grade_id=details.get('grade_id'))
-
-                # Ensure the specified grade belongs to the same school as the account's school
-                if account.school != grade.school:
-                    return {"error": "the specified grade does not belong to your school. please ensure you are attempting to access group schedules for a grade in your own school."}
+                grade = Grade.objects.get(grade_id=details['grade'], school=requesting_account.school)
 
                 # Retrieve all group schedules associated with the specified grade
                 group_schedules = GroupSchedule.objects.filter(grade=grade)
 
-        if account.role in ['PARENT']:
-            # Retrieve the account's child
-            child = BaseUser.objects.get(account_id=details.get('account_id'))
+        elif role in ['PARENT']:
+            # Build the queryset for the requesting account with the necessary related fields.
+            requesting_account = Model.objects.prefetch_related('children').get(account_id=user)
 
-            if child.role != 'STUDENT' or child not in account.children.all():
+            # Retrieve the student
+            student = Student.objects.prefetch_related('my_group_schedule').get(account_id=details['account'])
+
+            if requesting_account.children.filter(account_id=student.account_id).exists():
                 return {"error": "unauthorized access. you are only permitted to view group schedules of students who are your children."}
             
             # Retrieve all group schedules associated with the child
-            if hasattr(child, 'my_group_schedule'):
-                group_schedules = child.my_group_schedule.all()
+            if hasattr(student, 'my_group_schedule'):
+                group_schedules = student.my_group_schedule.all()
+
             else:
                 return {"schedules": []}
 
-        if account.role in ['STUDENT']:
+        elif role in ['STUDENT']:
+            # Build the queryset for the requesting account with the necessary related fields.
+            requesting_account = Student.objects.prefetch_related('my_group_schedule').get(account_id=user)
+
             # Retrieve all group schedules associated with the account
-            if hasattr(account, 'my_group_schedule'):
-                group_schedules = account.my_group_schedule.all()
+            if hasattr(requesting_account, 'my_group_schedule'):
+                group_schedules = requesting_account.my_group_schedule.all()
+
             else:
                 return {"schedules": []}
 
-        if account.role in ['TEACHER']:
-            # Retrieve the student
-            student = BaseUser.objects.get(account_id=details.get('account_id'))
+        elif role in ['TEACHER']:
+            # Build the queryset for the requesting account with the necessary related fields.
+            requesting_account = Model.objects.prefetch_related('taught_classes').get(account_id=user)
 
-            if student.role != 'STUDENT' or not account.taught_classes.filter(students=student).exists():
+            # Retrieve the student
+            student = Student.objects.prefetch_related('my_group_schedule').get(account_id=details['account'])
+
+            if not requesting_account.taught_classes.filter(students=student).exists():
                 return {"error": "unauthorized access. you can only view group schedules of students you teach."}
             
             # Retrieve all group schedules associated with the student
@@ -689,12 +631,29 @@ def search_group_schedules(user, details):
                 return {"schedules": []}
 
         # Serialize the group schedules to return them in the response
-        serializer = GroupScheduleSerializer(group_schedules, many=True)
-        return {"schedules": serializer.data}
-    
-    except BaseUser.DoesNotExist:
-        # Handle case where the user account does not exist
-        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
+        serialized_schedules = GroupScheduleSerializer(group_schedules, many=True).data
+
+        return {"schedules": serialized_schedules}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the requested principal account does not exist.
+        return {'error': 'A principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the requested admin account does not exist.
+        return {'error': 'An admin account with the provided credentials does not exist, please check the account details and try again'}
+               
+    except Teacher.DoesNotExist:
+        # Handle the case where the requested teacher account does not exist.
+        return {'error': 'A teacher account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Student.DoesNotExist:
+        # Handle the case where the requested student account does not exist.
+        return {'error': 'A student account with the provided credentials does not exist, please check the account details and try again'}
+               
+    except Parent.DoesNotExist:
+        # Handle the case where the requested parent account does not exist.
+        return {'error': 'A parent account with the provided credentials does not exist, please check the account details and try again'}
     
     except Grade.DoesNotExist:
         # Handle case where the grade does not exist
@@ -712,6 +671,7 @@ def search_schedule_sessions(details):
         schedule = Schedule.objects.prefetch_related('sessions').get(schedule_id=details.get('schedule'))
     
         sessions = schedule.sessions.all()
+
         serialized_sessions = SessoinsSerializer(sessions, many=True).data
         
         return {"sessions": serialized_sessions}
@@ -724,19 +684,28 @@ def search_schedule_sessions(details):
 
 
 @database_sync_to_async
-def search_month_attendance_records(user, details):
-
+def search_month_attendance_records(user, role, details):
     try:
-        account = BaseUser.objects.get(account_id=user)
+        # Ensure the specified role is valid
+        if role not in ['ADMIN', 'PRINCIPAL', 'TEACHER']:
+            return {"error": "The specified account's role is invalid. please ensure you are attempting to access group schedules from an authorized account."}
+
+        # Get the appropriate model for the requesting user's role from the mapping.
+        Model = role_specific_maps.account_access_control_mapping[role]
  
-        if details.get('class_id') == 'requesting_my_own_class':
-            classroom = Classroom.objects.get(teacher=account, register_class=True, school=account.school)
+        if details.get('class') == 'requesting my own classes data' and role == 'TEACHER':
+            # Build the queryset for the requesting account with the necessary related fields.
+            requesting_account = Model.objects.select_related('school').prefetch_related('taught_classes').get(account_id=user)
 
-        else:
-            if account.role not in ['ADMIN', 'PRINCIPAL']:
-                return { "error" : 'unauthorized request.. only the class teacher or school admin can view the attendance records for a class' }
+            classroom = requesting_account.taught_classes.filter(register_class=True).first()
+            if not classroom:
+                return {"error": _("could not proccess your request. the account making the request has no register class assigned to it")}
 
-            classroom = Classroom.objects.get(class_id=details.get('class_id'), school=account.school, register_class=True)
+        elif details.get('class') and role in ['ADMIN', 'PRINCIPAL']:
+            # Build the queryset for the requesting account with the necessary related fields.
+            requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+
+            classroom = Classroom.objects.get(class_id=details.get('class'), school=requesting_account.school, register_class=True)
         
         start_date, end_date = get_month_dates(details.get('month_name'))
 
@@ -756,8 +725,17 @@ def search_month_attendance_records(user, details):
 
         return {'records': attendance_records}
                
-    except BaseUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
+    except Principal.DoesNotExist:
+        # Handle the case where the requested principal account does not exist.
+        return {'error': 'A principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the requested admin account does not exist.
+        return {'error': 'An admin account with the provided credentials does not exist, please check the account details and try again'}
+               
+    except Teacher.DoesNotExist:
+        # Handle the case where the requested teacher account does not exist.
+        return {'error': 'A teacher account with the provided credentials does not exist, please check the account details and try again'}
     
     except Classroom.DoesNotExist:
         return { 'error': 'a classroom in your school with the provided credentials does not exist' }
@@ -767,66 +745,71 @@ def search_month_attendance_records(user, details):
 
 
 @database_sync_to_async
-def search_announcement(user, details):
-    """
-    Function to search and retrieve a specific announcement based on user role and permissions.
-
-    This function checks the user's role and school association to determine if they have the appropriate
-    permissions to access the announcement. The function also verifies that the announcement belongs to 
-    a school associated with the user.
-
-    Args:
-        user (str): The account ID of the user making the request.
-        details (dict): A dictionary containing the `announcement_id` to identify the specific announcement.
-
-    Returns:
-        dict: A dictionary containing either the requested announcement data or an error message.
-
-    Raises:
-        CustomUser.DoesNotExist: If the user or announcement with the provided ID does not exist.
-        Exception: For any other unexpected errors.
-
-    Example:
-        response = await search_announcement(request.user.account_id, {'announcement_id': 'AN123'})
-        if 'error' in response:
-            # Handle error
-        else:
-            announcement_data = response['announcement']
-            # Process announcement data
-    """
+def search_announcement(user, role, details):
     try:
-        # Retrieve the user account making the request
-        account = BaseUser.objects.get(account_id=user)
-
         # Validate user role
-        if account.role not in ['PARENT', 'STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL']:
+        if role not in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT', 'PARENT']:
             return {"error": "The specified account's role is invalid. Please ensure you are attempting to access an announcement from an authorized account."}
+        
+        # Retrieve the account making the request
+        requesting_user = BaseUser.objects.get(account_id=user)
+
+        # Get the appropriate model for the requesting user's role from the mapping.
+        Model = role_specific_maps.account_access_control_mapping[role]
 
         # Retrieve the specified announcement
-        announcement = Announcement.objects.get(announcement_id=details.get('announcement_id'))
+        announcement = Announcement.objects.select_related('school').get(announcement_id=details.get('announcement_id'))
 
         # Check access based on user role
-        if account.role == 'PARENT':
+        if role == 'PARENT':
+            # Build the queryset for the requesting account with the necessary related fields.
+            requesting_account = Model.objects.prefetch_related('children__school').get(account_id=user)
+
             # Parents can only access announcements related to the schools of their children
-            children_schools = account.children.values_list('school', flat=True)
+            children_schools = requesting_account.children.values_list('school', flat=True)
             if announcement.school.id not in children_schools:
                 return {"error": "Unauthorized request. You can only view announcements from schools your children are linked to. Please check announcement details and try again."}
+        
         else:
+            # Build the queryset for the requesting account with the necessary related fields.
+            requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+
             # Other roles can only access announcements from their own school
-            if announcement.school != account.school:
+            if announcement.school != requesting_account.school:
                 return {"error": "Unauthorized request. You can only view announcements from your own school. Please check announcement details and try again."}
 
         # Check if the user is already in the reached list and add if not
-        if not announcement.reached.filter(pk=account.pk).exists():
-            announcement.reached.add(account)
+        if not announcement.reached.filter(pk=requesting_account.pk).exists():
+            announcement.reached.add(requesting_user)
 
         # Serialize and return the announcement data
-        serializer = AnnouncementSerializer(announcement)
-        return {'announcement': serializer.data}
+        serialized_announcement = AnnouncementSerializer(announcement).data
 
+        return {'announcement': serialized_announcement}
+               
     except BaseUser.DoesNotExist:
-        # Handle case where the user or announcement does not exist
+        # Handle case where the user does not exist
         return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+
+    except Principal.DoesNotExist:
+        # Handle the case where the requested principal account does not exist.
+        return {'error': 'A principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the requested admin account does not exist.
+        return {'error': 'An admin account with the provided credentials does not exist, please check the account details and try again'}
+               
+    except Teacher.DoesNotExist:
+        # Handle the case where the requested teacher account does not exist.
+        return {'error': 'A teacher account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Student.DoesNotExist:
+        # Handle the case where the requested student account does not exist.
+        return {'error': 'A student account with the provided credentials does not exist, please check the account details and try again'}
+               
+    except Parent.DoesNotExist:
+        # Handle the case where the requested parent account does not exist.
+        return {'error': 'A parent account with the provided credentials does not exist, please check the account details and try again'}
     
     except Exception as e:
         # Handle any other unexpected errors
@@ -840,7 +823,7 @@ def search_chat_room(user, details):
         requesting_account = BaseUser.objects.get(account_id=user)
 
         # Retrieve the requested user's account
-        requested_account = BaseUser.objects.get(account_id=details.get('account_id'))
+        requested_account = BaseUser.objects.get(account_id=details.get('account'))
         
         # Check permissions
         permission_error = permission_checks.check_message_permissions(requesting_account, requested_account)
@@ -868,25 +851,13 @@ def search_chat_room(user, details):
 
 @database_sync_to_async
 def search_chat_room_messages(user, details):
-    """
-    Fetch messages from a chat room with pagination support and mark unread messages as read.
-
-    Args:
-        user (str): The account ID of the user making the request.
-        details (dict): A dictionary containing the details of the request, including:
-            - 'chatroom_id' (str): The ID of the chat room.
-            - 'cursor' (str, optional): The timestamp to fetch messages before.
-
-    Returns:
-        dict: A dictionary containing the serialized messages and the next cursor for pagination, or an error message.
-    """
     try:
         # Retrieve the account making the request
-        account = BaseUser.objects.get(account_id=user)
-        requested_user = BaseUser.objects.get(account_id=details.get('account_id'))
+        requesting_user = BaseUser.objects.get(account_id=user)
+        requested_user = BaseUser.objects.get(account_id=details.get('account'))
         
         # Check if a chat room exists between the two users
-        chat_room = ChatRoom.objects.filter(Q(user_one=account, user_two=requested_user) | Q(user_one=requested_user, user_two=account)).select_related('user_one', 'user_two').first()
+        chat_room = ChatRoom.objects.filter(Q(user_one=requesting_user, user_two=requested_user) | Q(user_one=requested_user, user_two=requesting_user)).select_related('user_one', 'user_two').first()
         
         if not chat_room:
             return {"not_found": 'No such chat room exists'}
@@ -913,14 +884,14 @@ def search_chat_room_messages(user, details):
         next_cursor = messages[0].timestamp.isoformat() if len(messages) > 19 else None
 
         # Mark unread messages as read and count them in one query
-        unread_messages = ChatRoomMessage.objects.filter(chat_room=chat_room, read_receipt=False).exclude(sender=account)
+        unread_messages = ChatRoomMessage.objects.filter(chat_room=chat_room, read_receipt=False).exclude(sender=requesting_user)
 
         # Check if there are any messages that match the criteria
         unread_count = unread_messages.count()
         if unread_count > 0:
             # Mark the messages as read
             unread_messages.update(read_receipt=True)
-            return {'messages': serializer.data, 'next_cursor': next_cursor, 'unread_messages': unread_count, 'user': str(requested_user.account_id), 'chat': str(account.account_id)}
+            return {'messages': serializer.data, 'next_cursor': next_cursor, 'unread_messages': unread_count, 'user': str(requested_user.account_id), 'chat': str(requesting_user.account_id)}
         
         else:
             # Handle the case where no messages need to be updated

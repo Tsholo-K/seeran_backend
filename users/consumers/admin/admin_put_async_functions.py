@@ -38,19 +38,17 @@ from users.complex_queries import queries
 @database_sync_to_async
 def update_grade_details(user, role, details):
     try:
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+        # Get the appropriate model for the requesting user's role
+        Model = role_specific_maps.account_access_control_mapping[role]
 
-        grade = Grade.objects.get(grade_id=details.get('grade'), school=admin.school)
+        # Retrieve the user and related school in a single query using select_related
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+
+        grade = Grade.objects.get(grade_id=details.get('grade'), school=requesting_account.school)
 
         # Initialize the serializer with the existing school instance and incoming data
         serializer = UpdateGradeSerializer(instance=grade, data=details)
-        # Validate the incoming data
         if serializer.is_valid():
-            # Use an atomic transaction to ensure the database is updated safely
             with transaction.atomic():
                 serializer.save()
             
@@ -87,13 +85,13 @@ def update_grade_details(user, role, details):
 @database_sync_to_async
 def update_term_details(user, role, details):
     try:
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+        # Get the appropriate model for the requesting user's role
+        Model = role_specific_maps.account_access_control_mapping[role]
 
-        term = Term.objects.get(term_id=details.get('term'), school=admin.school)
+        # Retrieve the user and related school in a single query using select_related
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+
+        term = Term.objects.get(term_id=details.get('term'), school=requesting_account.school)
 
         # Initialize the serializer with the existing school instance and incoming data
         serializer = UpdateTermSerializer(instance=term, data=details)
@@ -135,13 +133,13 @@ def update_term_details(user, role, details):
 @database_sync_to_async
 def update_subject_details(user, role, details):
     try:
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+        # Get the appropriate model for the requesting user's role
+        Model = role_specific_maps.account_access_control_mapping[role]
 
-        subject = Subject.objects.get(subject_id=details.get('subject'), grade__school=admin.school)
+        # Retrieve the user and related school in a single query using select_related
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+
+        subject = Subject.objects.get(subject_id=details.get('subject'), grade__school=requesting_account.school)
 
         # Initialize the serializer with the existing school instance and incoming data
         serializer = UpdateSubjectSerializer(instance=subject, data=details)
@@ -187,13 +185,14 @@ def update_account(user, role, details):
         if details.get('role') not in ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT']:
             return {"error": 'could not proccess your request, the provided account role is invalid'}
 
+        if details['role'] == 'ADMIN' and role == 'ADMIN':
+            return {"error": 'could not proccess your request, your accounts role does not have enough permissions to perform this action'}
+
+        # Get the model, select_related, and prefetch_related fields based on the requesting user's role.
+        Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[role]
+
         # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            requesting_account = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            if details.get('role') == 'ADMIN':
-                return {"error": 'could not proccess your request, your accounts role does not have enough permissions to perform this action'}
-            requesting_account = Admin.objects.select_related('school').only('school').get(account_id=user)
+        requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
 
         # Get the model, select_related, and prefetch_related fields based on the requested user's role.
         Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[details['role']]
@@ -212,7 +211,6 @@ def update_account(user, role, details):
         # Serialize the requested user's profile for returning in the response.
         serializer = Serializer(instance=requested_account, data=details['updates'])
         if serializer.is_valid():
-            
             with transaction.atomic():
                 serializer.save()
             
@@ -259,13 +257,13 @@ def update_account(user, role, details):
 @database_sync_to_async
 def update_class(user, role, details):
     try:
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+        # Get the appropriate model for the requesting user's role
+        Model = role_specific_maps.account_access_control_mapping[role]
 
-        classroom = Classroom.objects.get(class_id=details.get('class'), school=admin.school)
+        # Retrieve the user and related school in a single query using select_related
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+
+        classroom = Classroom.objects.get(class_id=details.get('class'), school=requesting_account.school)
 
         serializer = UpdateClassSerializer(instance=classroom, data=details.get('updates'))
         if serializer.is_valid():
@@ -301,31 +299,18 @@ def update_class(user, role, details):
 
 @database_sync_to_async
 def update_class_students(user, role, details):
-    """
-    Adds or removes students to/from a specified classroom.
-
-    Args:
-        user (str): The unique identifier (account_id) of the user making the request.
-        details (dict): A dictionary containing class and student details.
-            - 'class_id' (str): The ID of the classroom.
-            - 'students' (str): A comma-separated string of student account IDs to be added.
-            - 'register' (bool): Indicates if the classroom is a register class.
-
-    Returns:
-        dict: A dictionary containing a success message or an error message.
-    """
     try:
         students_list = details.get('students', '').split(', ')
         if not students_list or students_list == ['']:
             return {'error': 'your request could not be proccessed.. no students were provided'}
         
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+        # Get the appropriate model for the requesting user's role
+        Model = role_specific_maps.account_access_control_mapping[role]
 
-        classroom = Classroom.objects.select_related('grade', 'subject').get(class_id=details.get('class'), school=admin.school)
+        # Retrieve the user and related school in a single query using select_related
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+
+        classroom = Classroom.objects.select_related('grade', 'subject').get(class_id=details.get('class'), school=requesting_account.school)
 
         with transaction.atomic():
             # Check for validation errors and perform student updates
@@ -354,34 +339,20 @@ def update_class_students(user, role, details):
 
 @database_sync_to_async
 def add_students_to_group_schedule(user, role, details):
-    """
-    Adds students to a specified group schedule.
-
-    Args:
-        user (str): The unique identifier (account_id) of the user making the request.
-        details (dict): A dictionary containing the group schedule and students' details.
-            - 'group_schedule_id' (str): The ID of the group schedule.
-            - 'students' (str): A comma-separated string of student account IDs to be added.
-
-    Returns:
-        dict: A dictionary containing:
-            - 'message': A success message if the addition is successful.
-            - 'error': An error message if an exception occurs.
-    """
     try:
         # Get the list of student IDs from the details
         students_list = details.get('students', '').split(', ')
         if not students_list or students_list == ['']:
             return {'error': 'your request could not be proccessed.. no students were provided'}
 
+        # Get the appropriate model for the requesting user's role
+        Model = role_specific_maps.account_access_control_mapping[role]
+
         # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
 
         # Retrieve the group schedule object with related grade and school for permission check
-        group_schedule = GroupSchedule.objects.prefetch_related('students').select_related('grade').get(group_schedule_id=details.get('group_schedule_id'), grade__school=admin.school)
+        group_schedule = GroupSchedule.objects.prefetch_related('students').select_related('grade').get(group_schedule_id=details.get('group_schedule_id'), grade__school=requesting_account.school)
         
         # Retrieve the existing students in the group schedule
         existing_students = group_schedule.students.filter(account_id__in=students_list).values_list('account_id', flat=True)
@@ -390,7 +361,7 @@ def add_students_to_group_schedule(user, role, details):
             existing_students_str = ', '.join(existing_students)
             return {'error': f'Invalid request. The following students are already in this class: {existing_students_str}. Please review the list of students and try again.'}
         
-        students_to_add = Student.objects.filter(account_id__in=students_list, school=admin.school, grade=group_schedule.grade)        
+        students_to_add = Student.objects.filter(account_id__in=students_list, school=requesting_account.school, grade=group_schedule.grade)        
         
         # Add students to the group schedule within a transaction
         with transaction.atomic():

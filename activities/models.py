@@ -35,8 +35,8 @@ class Activity(models.Model):
 
     date_logged = models.DateTimeField(auto_now_add=True)
 
-    classroom = models.ForeignKey(Classroom, on_delete=models.SET_NULL, related_name='classroom_activities', null=True, blank=True)
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='school_activities')
+    classroom = models.ForeignKey(Classroom, on_delete=models.SET_NULL, related_name='activities', null=True, blank=True)
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='activities')
 
     # Prevent the activity ID from being edited after creation
     activity_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)

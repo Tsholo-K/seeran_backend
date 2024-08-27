@@ -103,7 +103,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
 
         func = get_map.get(description)
         if func:
-            return await func(user, role)
+            return await func(user) if description in ['chats', 'email_information'] else await func(user, role)
         
         return {'error': 'Invalid get description'}
 
@@ -136,13 +136,13 @@ class TeacherConsumer(AsyncWebsocketConsumer):
 
             'activity': general_search_async_functions.search_activity,
 
-            'email_ban': general_search_async_functions.search_my_email_ban,
+            'email_ban': general_search_async_functions.search_email_ban,
         }
 
         func = search_map.get(description)
         
         if func:
-            response = await func(details) if description in ['schedule_sessions'] else await func(user, role, details)
+            response = await func(details) if description in ['schedule_sessions', 'email_ban'] else await func(user, role, details)
             
             if response.get('user') and description in ['chat_room_messages']:
                 await connection_manager.send_message(response['user'], json.dumps({'description': 'read_receipt', 'chat': response['chat']}))
@@ -169,7 +169,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
 
         func = verify_map.get(description)
         if func:
-            response = await func(details) if description == 'verify_email' else await func(user, role, details)
+            response = await func(details) if description == 'verify_email' else await func(user, details)
             if response.get('user'):
                 if description == 'verify_email' or description == 'verify_password':
                     return await general_email_async_functions.send_one_time_pin_email(response.get('user'), reason='This OTP was generated in response to your request.')
@@ -237,8 +237,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
         post_map = {
             'text': general_post_async_functions.text,
 
-            'submit_absentes': general_post_async_functions.submit_absentes,
-            'submit_late_arrivals': general_post_async_functions.submit_late_arrivals,
+            'submit_attendance': general_post_async_functions.submit_attendance,
             
             'log_activity': general_post_async_functions.log_activity,
 

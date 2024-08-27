@@ -18,13 +18,14 @@ from rest_framework_simplejwt.exceptions import TokenError
 
 # models 
 from auth_tokens.models import AccessToken
-from users.models import BaseUser, Principal, Admin, Teacher, Student
+from users.models import BaseUser, Principal, Admin, Teacher, Student, Parent
 from schools.models import School
-from classes.models import Classroom
-from attendances.models import Absent, Late
 from grades.models import Grade, Term, Subject
-from chats.models import ChatRoom, ChatRoomMessage
+from classes.models import Classroom
 from assessments.models import Topic
+from activities.models import Activity
+from attendances.models import Absent, Late
+from chats.models import ChatRoom, ChatRoomMessage
 
 # serializers
 from users.serializers.general_serializers import BareAccountDetailsSerializer
@@ -32,10 +33,14 @@ from chats.serializers import ChatRoomMessageSerializer
 from activities.serializers import ActivityCreationSerializer
 from assessments.serializers import AssessmentCreationSerializer
 
-# utility functions 
-
 # checks
 from users.checks import permission_checks
+
+# mappings
+from users.maps import role_specific_maps
+
+# queries
+from users.complex_queries import queries
 
 
 @database_sync_to_async
@@ -82,38 +87,76 @@ def delete_school_account(user, role, details):
     
 
 @database_sync_to_async
-def submit_absentes(user, details):
-
+def submit_attendance(user, role, details):
     try:
-        account = BaseUser.objects.get(account_id=user)
+        if role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
+            return {"error": 'could not proccess your request.. your account either has insufficient permissions or is invalid for the action you are trying to perform'}
 
-        if details.get('class_id') == 'requesting_my_own_class':
-            classroom = Classroom.objects.select_related('school').get(teacher=account, register_class=True)
+        # Get the appropriate model for the requesting user's role from the mapping.
+        Model = role_specific_maps.account_access_control_mapping[role]
 
-            if account.role != 'TEACHER' or classroom.school != account.school:
-                return {"error": "unauthorized access. the account making the request has an invalid role or the classroom you are trying to access is not from your school"}
+        requesting_user = BaseUser.objects.get(account_id=user)
 
-        else:
-            if account.role not in ['ADMIN', 'PRINCIPAL']:
-                return { "error" : 'unauthorized request.. only the class teacher or school admin can view the attendance records for a class' }
+        if details.get('class') == 'submitting my own classes data' and role == 'TEACHER':
+            # Build the queryset for the requesting account with the necessary related fields.
+            requesting_account = Teacher.objects.prefetch_related('taught_classes').get(account_id=user)
+          
+            classroom = requesting_account.taught_classes.prefetch_related('attendances').filter(register_class=True).first()
+            if not classroom:
+                return {"error": _("could not proccess your request. the account making the request has no register class assigned to it")}
 
-            classroom = Classroom.objects.get(class_id=details.get('class_id'), school=account.school, register_class=True)
+        elif details.get('class') and role in ['PRINCIPAL', 'ADMIN']:
+            # Build the queryset for the requesting account with the necessary related fields.
+            requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
 
+            classroom = Classroom.objects.prefetch_related('attendances').get(class_id=details.get('class'), school=requesting_account.school, register_class=True)
+        
         today = timezone.localdate()
 
-        if Absent.objects.filter(date__date=today, classroom=classroom).exists():
-            return {'error': 'attendance register for this class has already been subimitted today.. can not resubmit'}
+        if details.get('absent'):
+            if classroom.attendances.filter(date__date=today).exists():
+                return {'error': 'attendance register for this class has already been subimitted today.. can not resubmit'}
 
-        with transaction.atomic():
-            register = Absent.objects.create(submitted_by=account, classroom=classroom)
-            if details.get('students'):
-                register.absentes = True
-                for student in details.get('students').split(', '):
-                    register.absent_students.add(BaseUser.objects.get(account_id=student))
+            with transaction.atomic():
+                register = Absent.objects.create(submitted_by=requesting_user, classroom=classroom)
 
-            register.save()
-        
-        return { 'message': 'attendance register successfully taken for today'}
+                if details.get('students'):
+                    register.absentes = True
+                    for student in details['students'].split(', '):
+                        register.absent_students.add(Student.objects.get(account_id=student))
+
+                register.save()
+            
+            response =  {'message': 'attendance register successfully taken for today'}
+
+        if details.get('late'):
+            if not details.get('students'):
+                return {"error" : 'invalid request.. no students were provided.. at least one student is needed to be marked as late'}
+
+            absentes = classroom.attendances.prefetch_related('absent_students').filter(date__date=today).first()
+            if not absentes:
+                return {'error': 'attendance register for this class has not been submitted today.. can not submit late arrivals before the attendance register'}
+
+            if not absentes.absent_students.exists():
+                return {'error': 'todays attendance register for this class has all students accounted for'}
+
+            register = Late.objects.filter(date__date=today, classroom=classroom).first()
+            
+            with transaction.atomic():
+                if not register:
+                    register = Late.objects.create(submitted_by=requesting_user, classroom=classroom)
+                    
+                for student in details['students'].split(', '):
+                    student = Student.objects.get(account_id=student)
+                    absentes.absent_students.remove(student)
+                    register.late_students.add(student)
+
+                absentes.save()
+                register.save()
+
+            response =  {'message': 'students marked as late, attendance register successfully updated'}
+
+        return response
 
     except BaseUser.DoesNotExist:
         # Handle case where the user or teacher account does not exist
@@ -127,123 +170,52 @@ def submit_absentes(user, details):
 
 
 @database_sync_to_async
-def submit_late_arrivals(user, details):
-
+def log_activity(user, role, details):
     try:
-        if not details.get('students'):
-            return {"error" : 'invalid request.. no students provided.. at least one student is needed to be marked as late'}
-
-        account = BaseUser.objects.get(account_id=user)
-
-        if details.get('class_id') == 'requesting_my_own_class':
-            classroom = Classroom.objects.select_related('school').get(teacher=account, register_class=True)
-
-            if account.role != 'TEACHER' or classroom.school != account.school:
-                return {"error": "unauthorized access. the account making the request has an invalid role or the classroom you are trying to access is not from your school"}
-
-        else:
-            if account.role not in ['ADMIN', 'PRINCIPAL']:
-                return { "error" : 'unauthorized request.. only the class teacher or school admin can view the attendance records for a class' }
-
-            classroom = Classroom.objects.get(class_id=details.get('class_id'), school=account.school, register_class=True)
-
-        today = timezone.localdate()
-
-        absentes = Absent.objects.filter(date__date=today, classroom=classroom).first()
-        if not absentes:
-            return {'error': 'attendance register for this class has not been submitted today.. can not submit late arrivals before the attendance register'}
-
-        if absentes and not absentes.absent_students.exists():
-            return {'error': 'attendance register for this class has all students present or marked as late for today.. can not submit late arrivals when all students are accounted for'}
-
-        register = Late.objects.filter(date__date=today, classroom=classroom).first()
-        
-        with transaction.atomic():
-            if not register:
-                register = Late.objects.create(submitted_by=account, classroom=classroom)
-                
-            for student in details.get('students').split(', '):
-                student = BaseUser.objects.get(account_id=student)
-                absentes.absent_students.remove(student)
-                register.late_students.add(student)
-
-            absentes.save()
-            register.save()
-
-        return { 'message': 'students marked as late, attendance register successfully updated'}
-               
-    except BaseUser.DoesNotExist:
-        return { 'error': 'account with the provided credentials does not exist' }
-    
-    except Classroom.DoesNotExist:
-        return { 'error': 'class with the provided credentials does not exist' }
-
-    except Exception as e:
-        return { 'error': str(e) }
-
-
-@database_sync_to_async
-def log_activity(user, details):
-    """
-    Log an activity for a student by an authorized user (Principal, Admin, Teacher).
-
-    Args:
-        user (str): The account ID of the user logging the activity.
-        details (dict): A dictionary containing the details of the activity. It should include:
-            - 'recipient' (str): The account ID of the student for whom the activity is being logged.
-            - Additional fields required by the ActivityCreationSerializer.
-
-    Returns:
-        dict: A dictionary containing a success message if the activity was logged successfully,
-              or an error message if there was an issue.
-    """
-    try:
-        # Retrieve the user account and the student account using select_related to minimize database hits
-        account = BaseUser.objects.select_related('school').get(account_id=user)
-        student = BaseUser.objects.select_related('school').get(account_id=details.get('recipient'))
-
         # Ensure the account has a valid role to log activities
-        if account.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
+        if role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
             return {"error": "could not proccess your request. you do not have sufficient permissions to log activities."}
 
-        # Ensure the student belongs to the same school and has the 'STUDENT' role
-        if account.school != student.school or student.role != 'STUDENT':
-            return {"error": "could not proccess your request. the provided student account is either not a student or does not belong to your school. please check the account details and try again."}
-
+        requesting_user = BaseUser.objects.get(account_id=user)
+        
         # If the account is a teacher, ensure they are teaching the student and the teacher of the class
-        if account.role == 'TEACHER':
+        if role == 'TEACHER':
+            requesting_account = Teacher.objects.select_related('school').prefetch_related('taught_classes').get(account_id=user)
                     
             # Determine the classroom based on the request details
-            if details.get('class') == 'requesting_my_own_class':
+            if details.get('class') == 'submitting my own classes data':
                 # Fetch the classroom where the user is the teacher and it is a register class
-                classroom = Classroom.objects.select_related('school').filter(teacher=account, register_class=True).first()
+                classroom = requesting_account.taught_classes.filter(register_class=True).first()
                 if not classroom:
                     return {"error": _("could not proccess your request. the account making the request has no register class assigned to it")}
 
             else:
                 # Fetch the specific classroom based on class_id and school
-                classroom = Classroom.objects.get(class_id=details.get('class'))
+                classroom = Classroom.objects.get(class_id=details.get('class'), school=requesting_account.school)
 
-            if classroom.school != account.school:
-                return {"error": _("could not proccess your request. you are not permitted to access information about classses outside your own school or those you do not teach")}
-
-            if classroom not in account.taught_classes.all() or not account.taught_classes.filter(students=student).exists():
+            if classroom.teacher != requesting_account or not requesting_account.taught_classes.filter(students=requested_account).exists():
                 return {"error": "unauthorized access. you can only log activities for classrooms and students you teach."}
   
             details['classroom'] = classroom.pk
+        
+        else:
+            # Retrieve the user account and the student account using select_related to minimize database hits
+            # Get the appropriate model for the requesting user's role from the mapping.
+            Model = role_specific_maps.account_access_control_mapping[role]
+
+            requesting_account = Model.objects.select_related('school').get(account_id=user)
+            requested_account = Student.objects.select_related('school').get(account_id=details.get('recipient'), school=requesting_account.school)
 
         # Prepare the data for serialization
-        details['recipient'] = student.pk
-        details['logger'] = account.pk
-        details['school'] = account.school.pk
+        details['recipient'] = requested_account.pk
+        details['logger'] = requesting_user.pk
+        details['school'] = requesting_account.school.pk
 
         # Initialize the serializer with the prepared data
         serializer = ActivityCreationSerializer(data=details)
-
-        # Validate the serializer data and save the activity within an atomic transaction
         if serializer.is_valid():
             with transaction.atomic():
-                serializer.save()
+                Activity.objects.create(**serializer.validated_data)
 
             return {'message': 'activity successfully logged. the activity is now available to everyone with access to the student\'s data.'}
 
@@ -253,6 +225,18 @@ def log_activity(user, details):
     except BaseUser.DoesNotExist:
         # Handle case where the user or student account does not exist
         return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
+
+    except Principal.DoesNotExist:
+        # Handle the case where the requested principal account does not exist.
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+
+    except Admin.DoesNotExist:
+        # Handle the case where the requested admin account does not exist.
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+
+    except Teacher.DoesNotExist:
+        # Handle the case where the requested teacher account does not exist.
+        return {'error': 'a teacher account with the provided credentials does not exist, please check the account details and try again'}
 
     except Exception as e:
         # Handle any other unexpected exceptions
@@ -380,57 +364,48 @@ def log_out(access_token):
 
 
 @database_sync_to_async
-def text(user, details):
-    """
-    Handle sending a text message. 
-    
-    This function performs the following steps:
-    1. Retrieves the user making the request and the requested user's account.
-    2. Checks if the user has the necessary permissions to send the message.
-    3. Retrieves or creates a chat room between the two users.
-    4. Checks the last message and updates its 'last' field if necessary.
-    5. Creates and saves a new message in the chat room.
-    6. Serializes the new message and returns it.
-    7. Includes the recipient's account ID in the response for further processing.
-
-    Args:
-        user (str): The account ID of the user sending the message.
-        details (dict): A dictionary containing the details of the message, including:
-            - 'account_id' (str): The account ID of the user to whom the message is sent.
-            - 'message' (str): The content of the message.
-
-    Returns:
-        dict: A dictionary containing the serialized message data and the recipient's account ID or an error message.
-    """
+def text(user, role, details):
     try:
         # Validate users
-        if user == details.get('account_id'):
+        if user == details.get('account'):
             return {"error": "validation error. you can not send a text message to yourself, it violates database constraints and is therefore not allowed."}
 
         # Retrieve the user making the request
-        account = BaseUser.objects.get(account_id=user)
+        requesting_user = BaseUser.objects.get(account_id=user)
+        
+        # Get the appropriate model for the requesting user's role from the mapping.
+        Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[role]
+
+        # Build the queryset for the requesting account with the necessary related fields.
+        requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
 
         # Retrieve the requested user's account
-        requested_user = BaseUser.objects.get(account_id=details.get('account_id'))
+        requested_user = BaseUser.objects.get(account_id=details.get('account'))
         
+        # Get the appropriate model for the requesting user's role from the mapping.
+        Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[requested_user.role]
+
+        # Build the queryset for the requesting account with the necessary related fields.
+        requested_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
+
         # Check permissions
-        permission_error = permission_checks.check_message_permissions(account, requested_user)
+        permission_error = permission_checks.check_message_permissions(requesting_account, requested_account)
         if permission_error:
             return {'error': permission_error}
 
         # Retrieve or create the chat room
-        chat_room, created = ChatRoom.objects.get_or_create(user_one=account if account.pk < requested_user.pk else requested_user, user_two=requested_user if account.pk < requested_user.pk else account, defaults={'user_one': account, 'user_two': requested_user})
+        chat_room, created = ChatRoom.objects.get_or_create(user_one=requesting_user if requesting_user.pk < requested_user.pk else requested_user, user_two=requested_user if requesting_user.pk < requested_user.pk else requesting_user, defaults={'user_one': requesting_user, 'user_two': requested_user})
 
         with transaction.atomic():
             # Retrieve the last message in the chat room
             last_message = ChatRoomMessage.objects.filter(chat_room=chat_room).order_by('-timestamp').first()
             # Update the last message's 'last' field if it's from the same sender
-            if last_message and last_message.sender == account:
+            if last_message and last_message.sender == requesting_user:
                 last_message.last = False
                 last_message.save()
 
             # Create the new message
-            new_message = ChatRoomMessage.objects.create(sender=account, content=details.get('message'), chat_room=chat_room)
+            new_message = ChatRoomMessage.objects.create(sender=requesting_user, content=details.get('message'), chat_room=chat_room)
 
             # Update the chat room's latest message timestamp
             chat_room.latest_message_timestamp = new_message.timestamp
@@ -440,11 +415,31 @@ def text(user, details):
         serializer = ChatRoomMessageSerializer(new_message, context={'user': user})
         message_data = serializer.data
 
-        return {'message': message_data, 'sender': BareAccountDetailsSerializer(account).data, 'reciever':  BareAccountDetailsSerializer(requested_user).data}
+        return {'message': message_data, 'sender': BareAccountDetailsSerializer(requesting_user).data, 'reciever':  BareAccountDetailsSerializer(requested_user).data}
 
     except BaseUser.DoesNotExist:
         return {'error': 'User account not found. Please verify the account details.'}
     
+    except Principal.DoesNotExist:
+        # Handle the case where the requested principal account does not exist.
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+
+    except Admin.DoesNotExist:
+        # Handle the case where the requested admin account does not exist.
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+
+    except Teacher.DoesNotExist:
+        # Handle the case where the requested teacher account does not exist.
+        return {'error': 'a teacher account with the provided credentials does not exist, please check the account details and try again'}
+
+    except Student.DoesNotExist:
+        # Handle the case where the requested student account does not exist.
+        return {'error': 'a student account with the provided credentials does not exist, please check the account details and try again'}
+
+    except Parent.DoesNotExist:
+        # Handle the case where the requested parent account does not exist.
+        return {'error': 'a parent account with the provided credentials does not exist, please check the account details and try again'}
+
     except Exception as e:
         return {'error': str(e)}
     

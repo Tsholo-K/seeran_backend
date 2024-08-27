@@ -146,7 +146,7 @@ def check_message_permissions(account, requested_user):
         return {"error": "unauthorized access. invalid role provided"}
 
     # No one can message a user with role not in ['PARENT', 'STUDENT', 'PRINCIPAL', 'ADMIN', 'TEACHER']
-    if requested_user.role not in ['PARENT', 'STUDENT', 'PRINCIPAL', 'ADMIN', 'TEACHER']:
+    if requested_user.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'PARENT', 'STUDENT']:
         return {"error": "unauthorized access. you are not permitted to view profiles outside of parents, students, principals, admins, and teachers"}
 
     # Admins and principals can only message accounts linked to their own school
@@ -191,7 +191,7 @@ def check_message_permissions(account, requested_user):
     return None
 
 
-def check_activity_permissions(account, activity):
+def check_activity_permissions(requesting_account, activity):
     """
     Check if the account has permission to access an activity's details.
 
@@ -204,28 +204,49 @@ def check_activity_permissions(account, activity):
               or None if the user has permission.
     """
     # Ensure the account has a valid role
-    if account.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'PARENT', 'STUDENT']:
+    if requesting_account.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'PARENT', 'STUDENT']:
         return {"error": "Unauthorized access. Invalid role provided."}
 
     # Admins and principals can only access activities within their own school
-    if account.role in ['PRINCIPAL', 'ADMIN']:
-        if account.school != activity.school:
+    if requesting_account.role in ['PRINCIPAL', 'ADMIN']:
+        if requesting_account.school != activity.school:
             return {"error": "Unauthorized access. You are not permitted to access activities outside your own school."}
 
     # Teachers can only access activities they have logged, within their own school
-    if account.role == 'TEACHER':
-        if account.school != activity.school or not activity.logger == account:
+    if requesting_account.role == 'TEACHER':
+        if requesting_account.school != activity.school or not activity.logger == requesting_account:
             return {"error": "Unauthorized access. You can only access activities that you have logged."}
 
     # Parents can access activities where their children are the recipient, within their children's school
-    if account.role == 'PARENT':
-        if account.school != activity.school or not account.children.filter(id=activity.recipient.id).exists():
+    if requesting_account.role == 'PARENT':
+        if requesting_account.school != activity.school or not requesting_account.children.filter(id=activity.recipient.id).exists():
             return {"error": "Unauthorized access. You are not permitted to access activities involving students who are not your children."}
 
     # Students can only access activities where they are the recipient, within their own school
-    if account.role == 'STUDENT':
-        if account.school != activity.school or activity.recipient != account:
+    if requesting_account.role == 'STUDENT':
+        if requesting_account.school != activity.school or activity.recipient != requesting_account:
             return {"error": "Unauthorized access. You can only access activities that involve you as the recipient."}
+
+    # If no errors, return None indicating permission granted
+    return None
+
+
+def check_group_schedule_permissions(requesting_account, group_schedule):
+    # Ensure the account has a valid role
+    if requesting_account.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'PARENT', 'STUDENT']:
+        return {"error": "Unauthorized access. Invalid role provided."}
+    
+    # Students can only access schedules if they are in the group schedule's students
+    if requesting_account.role == 'STUDENT' and not group_schedule.students.filter(id=requesting_account.id).exists():
+        return {"error": "As a student, you can only view schedules for groups you are subscribed to. Please check your group assignments and try again."}
+
+    # Parents can only access schedules if at least one of their children is in the group schedule's students
+    if requesting_account.role == 'PARENT' and not group_schedule.students.filter(id__in=requesting_account.children.values_list('id', flat=True)).exists():
+        return {"error": "As a parent, you can only view schedules for groups that your children are subscribed to. Please check your child's group assignments and try again."}
+
+    # Teachers, Admins, and Principals can only access schedules if they belong to the same school as the group schedule's grade
+    if requesting_account.role in ['TEACHER', 'ADMIN', 'PRINCIPAL'] and requesting_account.school != group_schedule.grade.school:
+        return {"error": "You can only view schedules for groups within your own school. Please check the group schedule and try again."}
 
     # If no errors, return None indicating permission granted
     return None
