@@ -132,9 +132,11 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'register_classes': admin_search_async_functions.search_grade_register_classes,
 
             'teacher_schedule_schedules': general_search_async_functions.search_teacher_schedule_schedules,
+
             'group_schedule_schedules': general_search_async_functions.search_group_schedule_schedules,
             'group_schedules': general_search_async_functions.search_group_schedules,
-            'schedule_sessions': general_search_async_functions.search_for_schedule_sessions,
+
+            'schedule_sessions': general_search_async_functions.search_schedule_sessions,
 
             'subscribed_students': admin_search_async_functions.search_subscribed_students,
 
@@ -159,7 +161,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
         func = search_map.get(description)
         
         if func:
-            response = await func(role, details) if description in ['schedule_sessions'] else await func(user, role, details)
+            response = await func(details) if description in ['schedule_sessions'] else await func(user, role, details)
             
             if response.get('user') and description in ['chat_room_messages']:
                 await connection_manager.send_message(response['user'], json.dumps({'description': 'read_receipt', 'chat': response['chat']}))

@@ -118,9 +118,11 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             'teacher_classes': general_search_async_functions.search_teacher_classes,
 
             'teacher_schedule_schedules': general_search_async_functions.search_teacher_schedule_schedules,
+
             'group_schedule_schedules': general_search_async_functions.search_group_schedule_schedules,
             'group_schedules': general_search_async_functions.search_group_schedules,
-            'schedule_sessions': general_search_async_functions.search_for_schedule_sessions,
+
+            'schedule_sessions': general_search_async_functions.search_schedule_sessions,
 
             'month_attendance_records': general_search_async_functions.search_month_attendance_records,
 

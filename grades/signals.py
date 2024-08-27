@@ -1,6 +1,6 @@
 # django
 from django.db import models
-from django.db.models.signals import post_save, post_delete, pre_delete
+from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
 
 # models
@@ -23,10 +23,8 @@ def update_grade_counts_on_create(sender, instance, created, **kwargs):
             # Build the queryset for the requesting account with the necessary related fields.
             created_account = Model.objects.get(account_id=instance.account_id)
 
-            grade = created_account.grade
-
-            grade.student_count = grade.students.count()
-            grade.save()
+            created_account.grade.student_count = created_account.grade.students.count()
+            created_account.grade.save()
 
 
 @receiver(pre_delete, sender=BaseUser)

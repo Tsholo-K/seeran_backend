@@ -706,18 +706,18 @@ def search_group_schedules(user, details):
     
 
 @database_sync_to_async
-def search_for_schedule_sessions(details):
+def search_schedule_sessions(details):
 
     try:
-        schedule = Schedule.objects.get(schedule_id=details.get('schedule_id'))
+        schedule = Schedule.objects.select_related('sessions').get(schedule_id=details.get('schedule'))
     
         sessions = schedule.sessions.all()
-        serializer = SessoinsSerializer(sessions, many=True)
+        serialized_sessions = SessoinsSerializer(sessions, many=True).data
         
-        return { "sessions" : serializer.data }
+        return {"sessions": serialized_sessions}
     
     except Schedule.DoesNotExist:
-        return {"error" : "schedule with the provided ID does not exist"}
+        return {"error" : "a schedule with the provided credentials does not exist"}
     
     except Exception as e:
         return { 'error': str(e) }
