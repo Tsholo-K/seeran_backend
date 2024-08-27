@@ -364,10 +364,10 @@ def link_parent(user, role, details):
         # Retrieve the user and related school in a single query using select_related
         requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
 
-        student = Student.objects.get(account_id=details.get('student'), school=requesting_account.school)
+        student = Student.objects.prefetch_related('parents').get(account_id=details.get('student'), school=requesting_account.school)
 
         # Check if the child already has two or more parents linked
-        student_parent_count = Parent.objects.filter(children=student).count()
+        student_parent_count = student.parents.count()
         if student_parent_count >= 2:
             return {"error": "the provided student account has reached the maximum number of linked parents. please unlink one of the existing parents to link a new one"}
         
@@ -383,6 +383,7 @@ def link_parent(user, role, details):
             with transaction.atomic():
                 parent = Parent.objects.create(**serializer.validated_data)
                 parent.save()
+                
                 parent.children.add(student)
 
             return {'user' : parent}

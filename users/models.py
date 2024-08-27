@@ -302,7 +302,7 @@ class Parent(BaseUser):
         if not self.email:
             raise ValidationError(_('all parent accounts in the system are required to have an email address linked to their account. please correct the provided information and try again'))
 
-        if self.children.exists():
+        if self.pk and  self.children.exists():
             if any(child.role != 'STUDENT' for child in self.children.all()):
                 raise ValidationError(_('only student accounts can be assigned as children'))
             
