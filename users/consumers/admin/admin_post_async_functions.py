@@ -356,7 +356,6 @@ def create_account(user, role, details):
 
 @database_sync_to_async
 def link_parent(user, role, details):
-
     try:    
         # Get the appropriate model and related fields (select_related and prefetch_related)
         # for the requesting user's role from the mapping.

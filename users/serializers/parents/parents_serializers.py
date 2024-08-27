@@ -13,7 +13,12 @@ class ParentAccountCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Parent
-        fields = ['name', 'surname', 'email', 'school', 'role']
+        fields = ['name', 'surname', 'email', 'role']
+
+    def __init__(self, *args, **kwargs):
+        super(ParentAccountCreationSerializer, self).__init__(*args, **kwargs)
+        # remove email validation
+        self.fields['email'].validators = []
 
 
 class ParentAccountUpdateSerializer(serializers.ModelSerializer):
