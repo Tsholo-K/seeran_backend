@@ -17,7 +17,7 @@ from classes.models import Classroom
 
 # serilializers
 from users.serializers.teachers.teachers_serializers import TeacherAccountSerializer
-from users.serializers.students.students_serializers import StudentAccountSerializer
+from users.serializers.students.students_serializers import StudentSourceAccountSerializer
 
 # mappings
 from users.maps import role_specific_maps
@@ -152,7 +152,7 @@ def form_data_for_adding_students_to_class(user, role, details):
             return {"error": "Invalid reason provided."}
 
         # Serialize the list of students to return them in the response
-        serialized_students = StudentAccountSerializer(students, many=True).data
+        serialized_students = StudentSourceAccountSerializer(students, many=True).data
 
         return {"students": serialized_students}
                
@@ -189,7 +189,7 @@ def form_data_for_adding_students_to_group_schedule(user, role, details):
         students = requesting_account.school.students.all().filter(grade=group_schedule.grade).exclude(my_group_schedule=group_schedule)
 
         # Serialize the list of students to return them in the response
-        serialized_students = StudentAccountSerializer(students, many=True).data
+        serialized_students = StudentSourceAccountSerializer(students, many=True).data
 
         return {"students": serialized_students}
                
