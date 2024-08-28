@@ -17,7 +17,7 @@ from classes.models import Classroom
 from attendances.models import Absent
 
 # serializers
-from users.serializers.students.students_serializers import StudentAccountSerializer
+from users.serializers.students.students_serializers import StudentSourceAccountSerializer
 
 # mappings
 from users.maps import role_specific_maps
@@ -91,7 +91,7 @@ def form_data_for_attendance_register(user, role, details):
             students = classroom.students.all()
             attendance_register_taken = False
 
-        serialized_students = StudentAccountSerializer(students, many=True).data
+        serialized_students = StudentSourceAccountSerializer(students, many=True).data
 
         return {"students": serialized_students, "attendance_register_taken" : attendance_register_taken}
     
