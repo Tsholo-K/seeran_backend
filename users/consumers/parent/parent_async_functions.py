@@ -11,7 +11,6 @@ from seeran_backend.middleware import connection_manager
 from authentication.utils import validate_access_token
 
 # async functions 
-from . import teacher_get_async_functions
 
 # general async functions 
 from users.consumers.general import general_post_async_functions
