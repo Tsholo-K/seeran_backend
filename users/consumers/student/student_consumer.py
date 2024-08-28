@@ -92,7 +92,7 @@ class StudentConsumer(AsyncWebsocketConsumer):
 
     async def handle_get(self, description, details, user, access_token):
         get_map = {
-            'my_security_information': general_get_async_functions.fetch_my_security_information,
+            'my_security_information': general_get_async_functions.fetch_security_information,
             'email_information': general_get_async_functions.fetch_my_email_information,
 
             'chats': general_get_async_functions.fetch_chats,
@@ -112,12 +112,11 @@ class StudentConsumer(AsyncWebsocketConsumer):
         search_map = {
             'parents': general_search_async_functions.search_parents,
 
-            'account_profile': general_search_async_functions.search_account_profile,
-            'account_id': general_search_async_functions.search_account_id,
+            'account': general_search_async_functions.search_account,
 
             'group_schedule_schedules': general_search_async_functions.search_group_schedule_schedules,
             'group_schedules': general_search_async_functions.search_group_schedules,
-            'schedule_sessions': general_search_async_functions.search_for_schedule_sessions,
+            'schedule_sessions': general_search_async_functions.search_schedule_sessions,
 
             'month_attendance_records': general_search_async_functions.search_month_attendance_records,
 
@@ -131,7 +130,7 @@ class StudentConsumer(AsyncWebsocketConsumer):
 
             'activity': general_search_async_functions.search_activity,
 
-            'email_ban': general_search_async_functions.search_my_email_ban,
+            'email_ban': general_search_async_functions.search_email_ban,
         }
 
         func = search_map.get(description)
