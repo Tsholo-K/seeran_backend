@@ -282,6 +282,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'create_term': admin_post_async_functions.create_term,
 
             'create_grade': admin_post_async_functions.create_grade,
+            'delete_grade': admin_post_async_functions.delete_grade,
+
             'create_subject': admin_post_async_functions.create_subject,
 
             'create_class': admin_post_async_functions.create_class,

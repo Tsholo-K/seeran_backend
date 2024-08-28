@@ -15,8 +15,6 @@ from schools.models import School
 from classes.serializers import ClassesSerializer
 
 
-                                                            # Grade
-
 
 class GradeCreationSerializer(serializers.ModelSerializer):
 
@@ -68,8 +66,6 @@ class GradeDetailsSerializer(serializers.ModelSerializer):
         model = Grade
         fields = ['major_subjects', 'none_major_subjects', 'student_count']
 
-
-                                                            # Term
 
 
 class TermCreationSerializer(serializers.ModelSerializer):
@@ -126,8 +122,6 @@ class TermSerializer(serializers.ModelSerializer):
     def get_term(self, obj):
         return obj.term.title()
 
-
-                                                            # Subject
 
 
 class SubjectCreationSerializer(serializers.ModelSerializer):

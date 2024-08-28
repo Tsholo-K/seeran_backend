@@ -81,6 +81,42 @@ def create_grade(user, role, details):
 
 
 @database_sync_to_async
+def delete_grade(user, role, details):
+    try:
+        # Get the appropriate model for the requesting user's role
+        Model = role_specific_maps.account_access_control_mapping[role]
+
+        # Retrieve the user and related school in a single query using select_related
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+
+        # Create the grade within a transaction to ensure atomicity
+        with transaction.atomic():
+            Grade.objects.get(grade_id=details.get('grade'), school=requesting_account.school).delete()
+        
+        return {"message": f"the grade has been successfully deleted. the grade and all data associated with it will also no longer be assessible on the system"}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Grade.DoesNotExist:
+        # Handle the case where the provided grade ID does not exist
+        return { 'error': 'a grade in your school with the provided credentials does not exist' }
+
+    except ValidationError as e:
+        # Handle validation errors separately with meaningful messages
+        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
+    
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
+    
+
+@database_sync_to_async
 def create_subject(user, role, details):
     try:
         # Get the appropriate model for the requesting user's role
@@ -117,6 +153,7 @@ def create_subject(user, role, details):
         return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
                
     except Grade.DoesNotExist:
+        # Handle the case where the provided grade ID does not exist
         return { 'error': 'a grade in your school with the provided credentials does not exist' }
     
     except ValidationError as e:
