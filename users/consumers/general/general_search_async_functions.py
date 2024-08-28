@@ -300,7 +300,7 @@ def search_class(user, role, details):
             return {"error": 'could not proccess your request.. your account either has insufficient permissions or is invalid for the action you are trying to perform'}
 
         # Determine the classroom based on the request details
-        if details.get('class') == 'requesting my own class':
+        if details.get('class') == 'requesting my own class' and role == 'TEACHER':
             # Build the queryset for the requesting account with the necessary related fields.
             requesting_account = Teacher.objects.get(account_id=user)
 
@@ -309,7 +309,7 @@ def search_class(user, role, details):
             if classroom is None:
                 return {"class": None}
 
-        else:
+        elif details.get('class') and role in ['PRINCIPAL', 'ADMIN']:
             # Get the appropriate model for the requesting user's role from the mapping.
             Model = role_specific_maps.account_access_control_mapping[role]
 
