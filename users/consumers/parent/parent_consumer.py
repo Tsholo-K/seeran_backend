@@ -22,7 +22,7 @@ from users.consumers.general import general_email_async_functions
 from users.consumers.general import general_form_data_async_functions
 
 
-class TeacherConsumer(AsyncWebsocketConsumer):
+class ParentConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
         # Get the user's role from the scope
