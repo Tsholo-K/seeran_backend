@@ -31,7 +31,7 @@ def fetch_grades(user, role):
         Model = role_specific_maps.account_access_control_mapping[role]
 
         # Build the queryset for the requesting account with the necessary related fields.
-        requesting_account = Model.objects.select_related('school').prefetch_related('grades').only('school').get(account_id=user)
+        requesting_account = Model.objects.select_related('school').prefetch_related('school__grades').only('school').get(account_id=user)
             
         grades = requesting_account.school.grades.all()
 
