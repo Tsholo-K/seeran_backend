@@ -866,10 +866,10 @@ def search_chat_room_messages(user, details):
         cursor = details.get('cursor')
         if cursor:
             # Fetch messages before the cursor with a limit of 20
-            messages = ChatRoomMessage.objects.filter(chat_room=chat_room, timestamp__lt=cursor).order_by('-timestamp')[:20]
+            messages = chat_room.messages.filter(timestamp__lt=cursor).order_by('-timestamp')[:20]
         else:
             # Fetch the latest 20 messages
-            messages = ChatRoomMessage.objects.filter(chat_room=chat_room).order_by('-timestamp')[:20]
+            messages = chat_room.messages.order_by('-timestamp')[:20]
 
         if not messages.exists():
             return {'messages': [], 'next_cursor': None, 'unread_messages': 0}
@@ -878,24 +878,24 @@ def search_chat_room_messages(user, details):
         messages = list(messages)[::-1]
 
         # Serialize the messages
-        serializer = ChatRoomMessageSerializer(messages, many=True, context={'user': user})
+        serialized_messages = ChatRoomMessageSerializer(messages, many=True, context={'user': user}).data
         
         # Determine the next cursor
         next_cursor = messages[0].timestamp.isoformat() if len(messages) > 19 else None
 
         # Mark unread messages as read and count them in one query
-        unread_messages = ChatRoomMessage.objects.filter(chat_room=chat_room, read_receipt=False).exclude(sender=requesting_user)
+        unread_messages = chat_room.messages.filter(read_receipt=False).exclude(sender=requesting_user)
 
         # Check if there are any messages that match the criteria
         unread_count = unread_messages.count()
         if unread_count > 0:
             # Mark the messages as read
             unread_messages.update(read_receipt=True)
-            return {'messages': serializer.data, 'next_cursor': next_cursor, 'unread_messages': unread_count, 'user': str(requested_user.account_id), 'chat': str(requesting_user.account_id)}
+            return {'messages': serialized_messages, 'next_cursor': next_cursor, 'unread_messages': unread_count, 'user': str(requested_user.account_id), 'chat': str(requesting_user.account_id)}
         
         else:
             # Handle the case where no messages need to be updated
-            return {'messages': serializer.data, 'next_cursor': next_cursor, 'unread_messages': 0}
+            return {'messages': serialized_messages, 'next_cursor': next_cursor, 'unread_messages': 0}
 
     except BaseUser.DoesNotExist:
         # Handle case where the user does not exist

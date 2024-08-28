@@ -160,7 +160,14 @@ class AdminConsumer(AsyncWebsocketConsumer):
         func = search_map.get(description)
         
         if func:
-            response = await func(details) if description in ['schedule_sessions', 'email_ban'] else await func(user, role, details)
+            if description in ['schedule_sessions', 'email_ban']:
+                response = await func(details) 
+            
+            elif description in ['chat_room_messages']:
+                response = await func(user, details)
+            
+            else:
+                response =  await func(user, role, details)
             
             if response.get('user') and description in ['chat_room_messages']:
                 await connection_manager.send_message(response['user'], json.dumps({'description': 'read_receipt', 'chat': response['chat']}))
