@@ -27,6 +27,11 @@ class GradeCreationSerializer(serializers.ModelSerializer):
         model = Grade
         fields = ['major_subjects', 'none_major_subjects', 'grade', 'school']
 
+    def __init__(self, *args, **kwargs):
+        super(GradeCreationSerializer, self).__init__(*args, **kwargs)
+        # Remove the unique together validator that's added by DRF
+        self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
+
 
 class UpdateGradeSerializer(serializers.ModelSerializer):
 
