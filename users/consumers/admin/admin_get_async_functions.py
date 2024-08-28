@@ -13,7 +13,7 @@ from channels.db import database_sync_to_async
 from users.models import Principal, Admin
 
 # serilializers
-from grades.serializers import GradesSerializer, StudentGradesSerializer
+from grades.serializers import GradesSerializer
 from schools.serializers import SchoolDetailsSerializer
 
 # mappings
@@ -31,7 +31,7 @@ def fetch_grades(user, role):
         Model = role_specific_maps.account_access_control_mapping[role]
 
         # Build the queryset for the requesting account with the necessary related fields.
-        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+        requesting_account = Model.objects.select_related('school').prefetch_related('grades').only('school').get(account_id=user)
             
         grades = requesting_account.school.grades.all()
 
@@ -52,33 +52,5 @@ def fetch_grades(user, role):
         # Handle any unexpected errors with a general error message
         return {'error': str(e)}
 
-
-@database_sync_to_async
-def fetch_student_grades(user, role):
-
-    try:
-        # Get the appropriate model for the requesting user's role from the mapping.
-        Model = role_specific_maps.account_access_control_mapping[role]
-
-        # Build the queryset for the requesting account with the necessary related fields.
-        requesting_account = Model.objects.select_related('school').prefetch_related('school__grades').get(account_id=user)
-
-        grades = requesting_account.school.grades.all()
-
-        serialized_grades = StudentGradesSerializer(grades, many=True).data
-
-        return {'grades': serialized_grades}
-               
-    except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
-
-    except Exception as e:
-        # Handle any unexpected errors with a general error message
-        return {'error': str(e)}
 
     

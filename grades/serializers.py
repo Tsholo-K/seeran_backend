@@ -47,13 +47,6 @@ class GradesSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Grade
-        fields = ['grade', 'grade_id']
-
-
-class StudentGradesSerializer(serializers.ModelSerializer):
-    
-    class Meta:
-        model = Grade
         fields = ['grade', 'grade_id', 'student_count']
 
 
