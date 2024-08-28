@@ -817,13 +817,26 @@ def search_announcement(user, role, details):
     
 
 @database_sync_to_async
-def search_chat_room(user, details):
+def search_chat_room(user, role, details):
     try:
         # Retrieve the account making the request
-        requesting_account = BaseUser.objects.get(account_id=user)
+        requesting_user = BaseUser.objects.get(account_id=user)
+
+        # Get the appropriate model and related fields (select_related and prefetch_related)
+        # for the requesting user's role from the mapping.
+        Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[role]
+
+        # Build the queryset for the requesting account with the necessary related fields.
+        requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
 
         # Retrieve the requested user's account
-        requested_account = BaseUser.objects.get(account_id=details.get('account'))
+        requested_user = BaseUser.objects.get(account_id=details.get('account'))
+
+        # Get the appropriate model and related fields for the requested user's role.
+        Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[requested_user.role]
+
+        # Build the queryset for the requested account with the necessary related fields.
+        requested_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=details.get('account'))
         
         # Check permissions
         permission_error = permission_checks.check_message_permissions(requesting_account, requested_account)
@@ -831,11 +844,11 @@ def search_chat_room(user, details):
             return {'error': permission_error}
         
         # Check if a chat room exists between the two users
-        chat_room = ChatRoom.objects.filter(Q(user_one=requesting_account, user_two=requested_account) | Q(user_one=requested_account, user_two=requesting_account)).first()
+        chat_room = ChatRoom.objects.filter(Q(user_one=requesting_user, user_two=requested_user) | Q(user_one=requested_user, user_two=requesting_user)).first()
         
         chat_room_exists = bool(chat_room)
         
-        serializerd_user = DisplayAccountDetailsSerializer(requested_account).data
+        serializerd_user = DisplayAccountDetailsSerializer(requested_user).data
 
         # Serialize the requested user's data
         return {'user': serializerd_user, 'chat': chat_room_exists}

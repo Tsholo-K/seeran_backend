@@ -163,7 +163,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             if description in ['schedule_sessions', 'email_ban']:
                 response = await func(details) 
             
-            elif description in ['chat_room_messages', 'chat_room']:
+            elif description in ['chat_room_messages']:
                 response = await func(user, details)
             
             else:
