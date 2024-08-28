@@ -29,7 +29,7 @@ class ParentConsumer(AsyncWebsocketConsumer):
         role = self.scope.get('role')
 
         # Check if the user has the required role
-        if role not in ['TEACHER']:
+        if role not in ['PARENT']:
             return await self.close()
                 
         account_id = self.scope['user']
