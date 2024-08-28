@@ -386,7 +386,7 @@ def text(user, role, details):
         Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[requested_user.role]
 
         # Build the queryset for the requesting account with the necessary related fields.
-        requested_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
+        requested_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=details.get('account'))
 
         # Check permissions
         permission_error = permission_checks.check_message_permissions(requesting_account, requested_account)
