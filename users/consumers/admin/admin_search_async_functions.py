@@ -18,7 +18,7 @@ from schedules.models import GroupSchedule
 
 # serilializers
 from users.serializers.principals.principals_serializers import PrincipalAccountSerializer
-from users.serializers.students.students_serializers import StudentAccountSerializer
+from users.serializers.students.students_serializers import StudentSourceAccountSerializer
 from users.serializers.admins.admins_serializers import AdminAccountSerializer
 from users.serializers.teachers.teachers_serializers import TeacherAccountSerializer
 from grades.serializers import GradeSerializer, GradeDetailsSerializer, TermsSerializer, TermSerializer, SubjectSerializer, SubjectDetailsSerializer, ClassesSerializer
@@ -328,7 +328,7 @@ def search_students(user, role, details):
 
         grade = Grade.objects.prefetch_related('students').get(grade_id=details.get('grade'), school=requesting_account.school.pk)
 
-        serialized_students = StudentAccountSerializer(grade.students.all(), many=True).data
+        serialized_students = StudentSourceAccountSerializer(grade.students.all(), many=True).data
 
         return {"students": serialized_students}
                
@@ -365,7 +365,7 @@ def search_subscribed_students(user, role, details):
         students = group_schedule.students.all()
 
         # Serialize the students
-        serialized_students = StudentAccountSerializer(students, many=True).data
+        serialized_students = StudentSourceAccountSerializer(students, many=True).data
 
         return {"students": serialized_students}
                
