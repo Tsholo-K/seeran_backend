@@ -42,10 +42,10 @@ class StudentSecurityInformationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
         fields = ['multifactor_authentication', 'event_emails']
-    
 
-class StudentAccountSerializer(serializers.ModelSerializer):
     
+class StudentSourceAccountSerializer(serializers.ModelSerializer):
+
     name = serializers.SerializerMethodField()
     surname = serializers.SerializerMethodField()
     identifier = serializers.SerializerMethodField()
@@ -53,7 +53,7 @@ class StudentAccountSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Student
-        fields = ['name', 'surname', 'identifier', 'image', 'account_id']
+        fields = ['name', 'surname', 'identifier', 'account_id', 'image']
     
     def get_name(self, obj):
         """Return the formatted name of the user."""
@@ -70,7 +70,7 @@ class StudentAccountSerializer(serializers.ModelSerializer):
     def get_identifier(self, obj):
         """Return the identifier for the user: ID number, passport number, or email."""
         return obj.id_number or obj.passport_number or obj.email
-    
+
 
 class StudentAccountDetailsSerializer(serializers.ModelSerializer):
 
@@ -114,30 +114,3 @@ class LeastAccountDetailsSerializer(serializers.ModelSerializer):
     
     def get_surname(self, obj):
         return obj.surname.title()
-
-class StudentSourceAccountSerializer(serializers.ModelSerializer):
-
-    name = serializers.SerializerMethodField()
-    surname = serializers.SerializerMethodField()
-    identifier = serializers.SerializerMethodField()
-    image = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Student
-        fields = ['name', 'surname', 'identifier', 'image']
-    
-    def get_name(self, obj):
-        """Return the formatted name of the user."""
-        return obj.name.title()
-
-    def get_surname(self, obj):
-        """Return the formatted surname of the user."""
-        return obj.surname.title()
-            
-    def get_image(self, obj):
-        """Return the URL of the user's image or a default image."""
-        return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
-
-    def get_identifier(self, obj):
-        """Return the identifier for the user: ID number, passport number, or email."""
-        return obj.id_number or obj.passport_number or obj.email

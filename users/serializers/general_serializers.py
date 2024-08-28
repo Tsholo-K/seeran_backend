@@ -41,7 +41,7 @@ class SourceAccountSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = BaseUser
-        fields = ['name', 'surname', 'identifier', 'image']
+        fields = ['name', 'surname', 'identifier', 'account_id', 'image']
     
     def get_name(self, obj):
         """Return the formatted name of the user."""
