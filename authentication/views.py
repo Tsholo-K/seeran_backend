@@ -11,7 +11,7 @@ from rest_framework.throttling import UserRateThrottle
 from django.db import transaction
 from django.utils import timezone
 from django.core.exceptions import ValidationError
-from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth import authenticate as authenticate_user, password_validation
 from django.core.cache import cache
 from django.core.validators import validate_email
 
@@ -20,7 +20,6 @@ from users.models import BaseUser
 from auth_tokens.models import AccessToken
 
 # serializers
-from .serializers import CustomTokenObtainPairSerializer
 
 # utility functions 
 from .utils import generate_token, generate_otp, verify_user_otp, validate_names, send_otp_email
@@ -46,12 +45,13 @@ class CustomRateThrottle(UserRateThrottle):
 @throttle_classes([CustomRateThrottle])
 def login(request):
     try:
-        serializer = CustomTokenObtainPairSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        token = serializer.validated_data
+        email = request.data.get('email')
+        password = request.data.get('password')
         
-        # Retrieve user and related school
-        user = BaseUser.objects.prefetch_related('access_tokens').get(email=request.data.get('email'))
+        # Verify user credentials
+        user = authenticate_user(email=email, password=password)
+        if user is None:
+            return Response({"error": "the provided credentials are invalid, please check your email and password and try again"}, status=status.HTTP_401_UNAUTHORIZED)
         
         # Access control based on user role and school compliance
         if user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
@@ -61,7 +61,10 @@ def login(request):
 
             if account.school.none_compliant:
                 return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
-     
+            
+        # generate an access token for the user 
+        token = generate_token(user)
+
         # Handle multi-factor authentication (MFA) if enabled for the user
         if user.multifactor_authentication:
             # Disable MFA if email is banned (for security reasons)
@@ -145,7 +148,6 @@ def login(request):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-
 @api_view(['POST'])
 @throttle_classes([CustomRateThrottle])
 def multi_factor_authentication_login(request):
@@ -176,7 +178,7 @@ def multi_factor_authentication_login(request):
         # try to get the the authorization otp from cache
         hashed_authorization_otp_and_salt = cache.get(user.email + 'login_authorization_otp')
         
-        if not ( hashed_authorization_otp_and_salt and stored_hashed_otp_and_salt ):
+        if not (hashed_authorization_otp_and_salt and stored_hashed_otp_and_salt):
             # if there's no authorization otp in cache( wasn't provided in the first place, or expired since it also has a 5 minute lifespan )
             return Response({"denied": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
     
@@ -608,7 +610,7 @@ def reset_password(request):
         if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=hashed_authorization_otp_and_salt):
             response = Response({"denied": "requests provided authorization OTP is invalid.. process forrbiden"}, status=status.HTTP_403_FORBIDDEN)
         
-        validate_password(new_password)
+        password_validation.validate_password(new_password)
 
         # update the user's password
         user.set_password(new_password)
