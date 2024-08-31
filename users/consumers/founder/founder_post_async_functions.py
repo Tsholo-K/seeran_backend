@@ -87,7 +87,7 @@ def create_principal_account(details):
         school = School.objects.get(school_id=details.get('school'))
 
         # Check if the School already has a Principal account associated with it
-        if Principal.objects.filter(school=school).exists():
+        if school.principal.exists():
             return {"error": "could not process your request, the provided school already has a principal account linked to it"}
 
         # Add the School's primary key and role to the details

@@ -70,7 +70,7 @@ def search_principal_details(details):
 @database_sync_to_async
 def search_principal_invoices(details):
     try:
-        principal = Principal.objects.get(account_id=details.get('principal_id'))
+        principal = Principal.objects.prefetch_related('bills').get(account_id=details.get('principal'))
         principal_bills = principal.bills
         
         if not principal_bills:
@@ -90,9 +90,11 @@ def search_principal_invoices(details):
 @database_sync_to_async
 def search_principal_invoice(details):
     try:
-        bill = Bill.objects.get(bill_id=details.get('invoice_id'))
-        serializer = BillSerializer(instance=bill)
-        return {"invoice": serializer.data}
+        bill = Bill.objects.get(bill_id=details.get('invoice'))
+
+        serialized_invoice = BillSerializer(instance=bill).data
+
+        return {"invoice": serialized_invoice}
     
     except Bill.DoesNotExist:
         return {"error": "a bill with the provided ID does not exist"}

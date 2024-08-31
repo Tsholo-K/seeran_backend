@@ -104,12 +104,10 @@ def search_grade_terms(user, role, details):
         Model = role_specific_maps.account_access_control_mapping[role]
 
         # Retrieve the user and related school in a single query using select_related
-        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
-
-        grade = Grade.objects.prefetch_related('grade_terms').get(grade_id=details.get('grade'), school=requesting_account.school)
+        requesting_account = Model.objects.select_related('school').prefetch_related('school__terms').only('school').get(account_id=user)
 
         # Prefetch related school terms to minimize database hits
-        grade_terms = grade.terms.all()
+        grade_terms = requesting_account.school.terms.all()
         
         # Serialize the school terms
         serialized_terms = TermsSerializer(grade_terms, many=True).data
