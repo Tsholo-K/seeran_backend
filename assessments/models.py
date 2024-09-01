@@ -25,7 +25,7 @@ class Assessment(models.Model):
     # The user who set the assessment
     assessor = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, related_name='assessed_assessments', null=True)
     # The date and time when the assessment was created
-    date_set = models.DateTimeField(auto_now_add=True)  # Allowed format: yyyy-mm-ddThh:mm
+    date_set = models.DateTimeField(auto_now_add=True, default=timezone.now)  # Allowed format: yyyy-mm-ddThh:mm
 
     # The date and time when the assessment is due
     due_date = models.DateTimeField()  # Allowed format: yyyy-mm-ddThh:mm
