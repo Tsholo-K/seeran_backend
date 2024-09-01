@@ -45,15 +45,18 @@ INSTALLED_APPS = [
 
     # project apps 
     'authentication',
+    'permissions',
     'audit_logs',
     'users',
     'access_tokens',
     'schools',
     'balances',
+    'invoices',
     'chats',
     'grades',
     'terms',
     'subjects',
+    'subject_scores',
     'classes',
     'attendances',
     'emergencies',
@@ -68,6 +71,7 @@ INSTALLED_APPS = [
     'daily_schedules',
     'student_group_timetables',
     'teacher_timetables',
+    'sessions',
     'uploads',
     
     # third party apps
