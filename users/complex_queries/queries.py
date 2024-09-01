@@ -1,20 +1,3 @@
-# python 
-
-# httpx
-
-# channels
-
-# django
-
-# simple jwt
-
-# models 
-
-# serializers
-
-# utility functions 
-
-
 def account_and_its_attr_query_build(model, select_related, prefetch_related):
     # Initialize the queryset for the requested user's role model.
     queryset = model.objects

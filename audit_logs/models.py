@@ -13,9 +13,12 @@ class AuditLog(models.Model):
 
     ACTION_CHOICES = [
         ('CREATE', 'Create'),
-        ('DELETE', 'Delete'),
         ('UPDATE', 'Update'),
+        ('DELETE', 'Delete'),
+        ('SUBMIT', 'Submit'),
+        ('GRADE', 'Grade'),
         ('LINK', 'Link'),
+        ('UNLINK', 'Unlink'),
     ]
 
     TARGET_MODEL_CHOICES = [
@@ -24,13 +27,20 @@ class AuditLog(models.Model):
         ('TERM', 'Term'),
         ('SUBJECT', 'Subject'),
         ('CLASSROOM', 'Classroom'),
+        ('ATTENDANCE', 'Attendance'),
         ('ANNOUNCEMENT', 'Announcement'),
+        ('ASSESSMENT', 'Assessment'),
+        ('DAILY_SCHEDULE', 'Daily Schedule'),
+        ('GROUP_TIMETABLE', 'Group Timetable'),
+        ('TEACHER_TIMETABLE', 'Teacher Timetable'),
     ]
     
     OUTCOME_CHOICES = [
         ('CREATED', 'Created'),
-        ('DELETED', 'Deleted'),
         ('UPDATED', 'Updated'),
+        ('DELETED', 'Deleted'),
+        ('SUBMITED', 'Submited'),
+        ('GRADED', 'Graded'),
         ('DENIED', 'Denied'),
         ('ERROR', 'Error'),
         ('LINKED', 'Linked'),

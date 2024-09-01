@@ -2,16 +2,12 @@
 from rest_framework import serializers
 
 # models
-from .models import Balance, Bill
+from .models import Balance
 
 # serializers
 from users.serializers.general_serializers import SourceAccountSerializer
 
 
-### users balance serilizers ###
-
-
-# user profile information
 class BalanceSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -19,25 +15,24 @@ class BalanceSerializer(serializers.ModelSerializer):
         fields = [ 'amount', 'last_updated' ]
 
 
-# user profile information
-class BillsSerializer(serializers.ModelSerializer):
+# class BillsSerializer(serializers.ModelSerializer):
     
-    class Meta:
-        model = Bill
-        fields = [ 'amount', 'date_billed', 'is_paid', 'bill_id' ]
+#     class Meta:
+#         model = Bill
+#         fields = [ 'amount', 'date_billed', 'is_paid', 'bill_id' ]
 
 
-class BillSerializer(serializers.ModelSerializer):
+# class BillSerializer(serializers.ModelSerializer):
 
-    user = serializers.SerializerMethodField()
+#     user = serializers.SerializerMethodField()
  
-    class Meta:
-        model = Bill
-        fields = ['user', 'amount', 'date_billed', 'is_paid']
+#     class Meta:
+#         model = Bill
+#         fields = ['user', 'amount', 'date_billed', 'is_paid']
 
-    def get_user(self, obj):
-        if obj.user:
-            return SourceAccountSerializer(obj.user).data
-        else:
-            return None
+#     def get_user(self, obj):
+#         if obj.user:
+#             return SourceAccountSerializer(obj.user).data
+#         else:
+#             return None
                 

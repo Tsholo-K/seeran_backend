@@ -21,7 +21,8 @@ def update_grade_counts_on_create(sender, instance, created, **kwargs):
             Model= role_specific_maps.account_access_control_mapping[role]
 
             # Build the queryset for the requesting account with the necessary related fields.
-            grade = Model.objects.get(account_id=instance.account_id).grade
+            student = Model.objects.select_related('grade').get(account_id=instance.account_id)
+            grade = student.grade
 
             grade.student_count = grade.students.count()
             grade.save()

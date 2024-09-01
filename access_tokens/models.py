@@ -6,16 +6,6 @@ from users.models import BaseUser
 
 
 class AccessToken(models.Model):
-    """
-    AccessToken model keeps track of access tokens issued to users. 
-    Each token is unique and associated with a user.
-
-    Fields:
-        user (ForeignKey): The user associated with this access token.
-        token (CharField): The unique token string.
-        created_at (DateTimeField): The date and time when the token was created.
-    """
-
     # The user who owns this access token. If the user is deleted, all associated tokens will be deleted as well.
     user = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='access_tokens')
 

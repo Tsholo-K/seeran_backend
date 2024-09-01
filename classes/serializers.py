@@ -9,7 +9,8 @@ from rest_framework import serializers
 from .models import Classroom
 from users.models import Teacher
 from schools.models import School
-from grades.models import Grade, Subject
+from grades.models import Grade
+from subjects.models import Subject
 
 # serilializers
 from users.serializers.students.students_serializers import StudentSourceAccountSerializer

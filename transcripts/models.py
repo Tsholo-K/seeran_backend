@@ -2,7 +2,7 @@
 import uuid
 
 # django 
-from django.db import models
+from django.db import models, IntegrityError
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 
@@ -12,11 +12,8 @@ from assessments.models import Assessment
 
 
 class Transcript(models.Model):
-    """
-    Model to represent a student's transcript for a specific assessment.
-    """
     # The student who received the score
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='my_transcripts')
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='transcripts')
 
     # The score the student received in the assessment
     score = models.DecimalField(max_digits=5, decimal_places=2)
@@ -27,24 +24,25 @@ class Transcript(models.Model):
     moderated_date = models.DateTimeField(null=True, blank=True)
 
     # The assessment for which the score is recorded
-    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='student_scores')
+    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='scores')
 
     # transcript id
     transcript_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
-        ordering = ['-assessment__due_date']
+        unique_together = ('student', 'assessment')
+        ordering = ['student__surname', 'student__name', 'student__account_id']
         indexes = [models.Index(fields=['student', 'assessment'])]  # Index for performance
 
     def __str__(self):
         return f"{self.assessment.unique_identifier} - {self.student.name}"
 
     def clean(self):
-        if self.moderated_score is not None and (self.moderated_score < 0 or self.moderated_score > self.assessment.total):
-            raise ValidationError(f'the students moderated score must be within the range of 0 to {self.assessment.total}')
-
         if self.score < 0 or self.score > self.assessment.total:
             raise ValidationError(f'the students score must be within the range of 0 to {self.assessment.total}')
+        
+        if self.moderated_score and (self.moderated_score < 0 or self.moderated_score > self.assessment.total):
+            raise ValidationError(f'the students moderated score must be within the range of 0 to {self.assessment.total}')
         
     def save(self, *args, **kwargs):
         """
@@ -54,5 +52,14 @@ class Transcript(models.Model):
 
         try:
             super().save(*args, **kwargs)
+
+        except IntegrityError as e:
+            # Check if the error is related to unique constraints
+            if 'unique constraint' in str(e).lower():
+                raise ValidationError(_('the provided student already has a transcript for this assessment. duplicate assessment transcripts for the same student and assessment is not permitted.'))
+            else:
+                # Re-raise the original exception if it's not related to unique constraints
+                raise
+
         except Exception as e:
             raise ValidationError(_(str(e).lower()))

@@ -31,7 +31,6 @@ SCHOOL_GRADES_CHOICES = [
     ('12', 'Grade 12')
 ]
 
-
 class Grade(models.Model):
 
     # grade level

@@ -6,7 +6,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 # models
-from daily_schedules.models import Schedule
+from daily_schedules.models import DailySchedule
 
 
 class Session(models.Model):
@@ -17,5 +17,5 @@ class Session(models.Model):
     start_time = models.TimeField()
     end_time = models.TimeField()
 
-    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, related_name='sessions')
+    schedule = models.ForeignKey(DailySchedule, on_delete=models.CASCADE, related_name='sessions')
 

@@ -1,13 +1,3 @@
-# python 
-
-# httpx
-
-# channels
-
-# django
-
-# simple jwt
-
 # models 
 from users.models import Founder, Principal, Admin, Teacher, Student, Parent
 

@@ -12,20 +12,6 @@ from classes.models import Classroom
 
 
 class Activity(models.Model):
-    """
-    Model to log activities related to students, such as offences or other notable events.
-    
-    Attributes:
-        logger (ForeignKey): The user (e.g., teacher, principal) who logged the activity.
-        recipient (ForeignKey): The student for whom the activity is logged.
-        offence (CharField): A short code or description of the offence or activity.
-        details (TextField): Additional details about the activity.
-        date_logged (DateTimeField): The date and time when the activity was logged.
-        classroom (ForeignKey): The classroom associated with the activity (optional).
-        school (ForeignKey): The school associated with the activity.
-        activity_id (CharField): A unique identifier for the activity, generated if not provided.
-    """
-    
     # In case the logger is deleted, we keep the log but set the logger to null
     logger = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, related_name='logged_activities', null=True, blank=True)
     recipient = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='my_activities')

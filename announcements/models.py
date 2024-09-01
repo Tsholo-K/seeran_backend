@@ -11,14 +11,13 @@ from schools.models import School
 
 
 class Announcement(models.Model):
+    announcer = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='my_announcements', help_text="User who made the announcement")
+    announced_at = models.DateTimeField(auto_now_add=True, help_text="Time when the announcement was made")
 
     title = models.CharField(max_length=124, help_text="Title of the announcement")
     message = models.TextField(max_length=1024, help_text="Message of the announcement")
 
     reached = models.ManyToManyField(BaseUser, help_text="All users who have seen the announcement")
-
-    announced_at = models.DateTimeField(auto_now_add=True, help_text="Time when the announcement was made")
-    announcer = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='my_announcements', help_text="User who made the announcement")
    
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='announcements', help_text="School related to the announcement")
 
@@ -28,7 +27,5 @@ class Announcement(models.Model):
         return self.title
 
     class Meta:
-        verbose_name = _('announcement')
-        verbose_name_plural = _('announcements')
-        ordering = ['announced_at']
+        ordering = ['-announced_at']
 

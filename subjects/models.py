@@ -7,10 +7,11 @@ from django.db import models, IntegrityError
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 
+# logging
+# logger = logging.getLogger(__name__)
+
 # models
 from grades.models import Grade
-
-# logger = logging.getLogger(__name__)
 
 
 # subject choices
@@ -36,19 +37,19 @@ SCHOOL_SUBJECTS_CHOICES = [
 ]
 
 class Subject(models.Model):
-
-    # grade linked to
-    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='grade_subjects')
     subject = models.CharField(_('grade subject'), max_length=64, choices=SCHOOL_SUBJECTS_CHOICES, default="ENGLISH")
-
-    student_count = models.IntegerField(default=0)
-    teacher_count = models.IntegerField(default=0)
-    classes_count = models.IntegerField(default=0)
 
     # field to indicate if it's a major subject
     major_subject = models.BooleanField(default=False)
     # subject-specific pass mark
     pass_mark = models.DecimalField(max_digits=5, decimal_places=2, default=40.00)
+
+    student_count = models.IntegerField(default=0)
+    teacher_count = models.IntegerField(default=0)
+    classes_count = models.IntegerField(default=0)
+
+    # grade linked to
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='grade_subjects')
 
     # subject id
     subject_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -100,3 +101,4 @@ class Subject(models.Model):
 
             # Re-raise the original exception if it's not handled
             raise
+

@@ -91,6 +91,9 @@ class Term(models.Model):
                 # Re-raise the original exception if it's not related to unique constraints
                 raise
 
+        except Exception as e:
+            raise ValidationError(_(str(e).lower()))
+
     def calculate_total_school_days(self):
         """
         Calculate the total number of school days (weekdays) between start_date and end_date, excluding weekends.

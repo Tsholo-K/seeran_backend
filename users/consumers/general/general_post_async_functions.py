@@ -11,6 +11,7 @@ from django.utils import timezone
 from django.db import  transaction
 from django.core.cache import cache
 from django.utils.translation import gettext as _
+from django.core.exceptions import ValidationError
 
 # simple jwt
 from rest_framework_simplejwt.tokens import AccessToken as decode, TokenError
@@ -21,9 +22,9 @@ from access_tokens.models import AccessToken
 from users.models import BaseUser, Principal, Admin, Teacher, Student, Parent
 from schools.models import School
 from grades.models import Grade
-from terms.models import Term
-from subjects.models import Subject
 from classes.models import Classroom
+from assessments.models import Assessment
+from transcripts.models import Transcript
 from assessments.models import Topic
 from activities.models import Activity
 from attendances.models import Attendance
@@ -44,6 +45,11 @@ from users.maps import role_specific_maps
 # queries
 from users.complex_queries import queries
 
+# utlity functions
+from users.utils import get_account_and_its_school
+from permissions.utils import has_permission
+from audit_logs.utils import log_audit
+
 
 @database_sync_to_async
 def delete_school_account(user, role, details):
@@ -53,7 +59,7 @@ def delete_school_account(user, role, details):
         
         elif details.get('school') == 'requesting my own school':
             # Retrieve the user and related school in a single query using select_related
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
+            admin = get_account_and_its_school(user, role)
             school = admin.school
 
         else:
@@ -86,6 +92,388 @@ def delete_school_account(user, role, details):
     except Exception as e:
         # Handle any unexpected errors with a general error message
         return {'error': str(e).lower()}
+
+
+@database_sync_to_async
+def set_assessment(user, role, details):
+    try:
+        if role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
+            return {"error": 'could not proccess your request.. your account either has insufficient permissions or is invalid for the action you are trying to perform'}
+
+        assessment = None  # Initialize assessment as None to prevent issues in error handling
+
+        # Retrieve the user and related school in a single query using select_related
+        requesting_account = get_account_and_its_school(user, role)
+
+        # Check if the user has permission to create an assessment
+        if role != 'PRINCIPAL' and not has_permission(requesting_account, 'CREATE', 'ASSESSMENT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to create assessments.'
+
+            log_audit(
+                actor=requesting_account,
+                action='CREATE',
+                target_model='ASSESSMENT',
+                outcome='DENIED',
+                response=response,
+                school=requesting_account.school
+            )
+
+            return {'error': response}
+
+        if role == 'TEACHER':
+            classroom = requesting_account.taught_classes.select_related('students', 'grade').filter(classroom_id=details.get('classroom')).first()
+
+            if not classroom:
+                response = "the provided classroom is either not assigned to you or does not exist. please check the classroom details and try again"
+
+                log_audit(
+                    actor=requesting_account,
+                    action='CREATE',
+                    target_model='ASSESSMENT',
+                    outcome='DENIED',
+                    response=response,
+                    school=requesting_account.school
+                )
+
+                return {'error': response}
+            
+            details['classroom'] = classroom.pk
+            details['grade'] = classroom.grade.pk
+ 
+        elif role in ['PRINCIPAL', 'ADMIN']:
+            grade = requesting_account.school.grades.prefetch_related('students').filter(grade_id=details.get('grade')).first()
+
+            if not grade:
+                response = "the provided grade is either not from your school or does not exist. please check the grade details and try again"
+
+                log_audit(
+                    actor=requesting_account,
+                    action='CREATE',
+                    target_model='ASSESSMENT',
+                    outcome='DENIED',
+                    response=response,
+                    school=requesting_account.school
+                )
+
+                return {'error': response}
+            
+            details['grade'] = grade.pk
+        
+        else:
+            return {'error': "could not proccess your request, invalid assessment creation details. please provide all required information and try again."}
+
+        # Set the school field in the details to the user's school ID
+        details['assessor'] = requesting_account.pk
+        details['school'] = requesting_account.school.pk
+
+        # Serialize the details for assessment creation
+        serializer = AssessmentCreationSerializer(data=details)
+        if serializer.is_valid():
+            # Create the assessment within a transaction to ensure atomicity
+            with transaction.atomic():
+                assessment = Assessment.objects.create(**serializer.validated_data)
+
+                if role == 'TEACHER':
+                    assessment.students_assessed.add(*classroom.students)
+        
+                elif role in ['PRINCIPAL', 'ADMIN']:
+                    assessment.students_assessed.add(*grade.students)
+
+                if details.get('topics'):
+                    topics = []
+                    for name in details.get('topics'):
+                        topic, _ = Topic.objects.get_or_create(name=name)
+                        topics.append(topic)
+
+                    assessment.topics.set(topics)
+                    
+                response = f'assessment {assessment.unique_identifier} has been successfully created, and will become accessible to all the students being assessed and their parents'
+
+                log_audit(
+                    actor=requesting_account,
+                    action='CREATE',
+                    target_model='ASSESSMENT',
+                    target_object_id=str(assessment.assessment_id),
+                    outcome='CREATED',
+                    response=response,
+                    school=requesting_account.school,
+                )
+
+            return {"message": response}
+        
+        error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
+
+        log_audit(
+            actor=requesting_account,
+            action='CREATE',
+            target_model='ASSESSMENT',
+            outcome='ERROR',
+            response=f'Validation failed: {error_response}',
+            school=requesting_account.school
+        )
+
+        return {"error": error_response}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check your account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check your account details and try again'}
+                   
+    except Teacher.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a teacher account with the provided credentials does not exist, please check your account details and try again'}
+        
+    except Grade.DoesNotExist:
+        # Handle the case where the provided grade ID does not exist
+        return {'error': 'a grade in your school with the provided credentials does not exist. please check the grade details and try again.'}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+
+        log_audit(
+            actor=requesting_account,
+            action='CREATE',
+            target_model='ASSESSMENT',
+            target_object_id=str(assessment.assessment_id) if assessment else 'N/A',
+            outcome='ERROR',
+            response=error_message,
+            school=requesting_account.school
+        )
+
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+
+        log_audit(
+            actor=requesting_account,
+            action='CREATE',
+            target_model='ASSESSMENT',
+            target_object_id=str(assessment.assessment_id) if assessment else 'N/A',
+            outcome='ERROR',
+            response=error_message,
+            school=requesting_account.school
+        )
+
+        return {'error': error_message}
+
+
+@database_sync_to_async
+def delete_assessment(user, role, details):
+    try:
+        if role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
+            return {"error": 'could not proccess your request.. your account either has insufficient permissions or is invalid for the action you are trying to perform'}
+
+        assessment = None  # Initialize assessment as None to prevent issues in error handling
+
+        # Retrieve the user and related school in a single query using select_related
+        requesting_account = get_account_and_its_school(user, role)
+
+        # Check if the user has permission to create an assessment
+        if role != 'PRINCIPAL' and not has_permission(requesting_account, 'DELETE', 'ASSESSMENT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to delete assessments.'
+
+            log_audit(
+                actor=requesting_account,
+                action='DELETE',
+                target_model='ASSESSMENT',
+                outcome='DENIED',
+                response=response,
+                school=requesting_account.school
+            )
+
+            return {'error': response}
+
+        assessment = Assessment.objects.select_related('assessor').get(assessment_id=details.get('assessment'), school=requesting_account.school)
+
+        # Ensure only authorized users can delete
+        if role == 'TEACHER' and assessment.assessor != requesting_account:
+            response = f'could not proccess your request, you do not have the necessary permissions to delete assessments that are not assessed by you.'
+
+            log_audit(
+                actor=requesting_account,
+                action='DELETE',
+                target_model='ASSESSMENT',
+                outcome='DENIED',
+                response=response,
+                school=requesting_account.school
+            )
+
+            return {'error': response}
+
+        with transaction.atomic():
+            response = f"assessment with assessment ID {assessment.assessment_id} has been successfully deleted, along with it's associated data"
+
+            log_audit(
+                actor=requesting_account,
+                action='DELETE',
+                target_model='ASSESSMENT',
+                target_object_id=str(assessment.assessment_id),
+                outcome='DELETED',
+                response=response,
+                school=requesting_account.school
+            )
+
+            assessment.delete()
+
+        return {"message": response}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check your account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check your account details and try again'}
+                   
+    except Teacher.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a teacher account with the provided credentials does not exist, please check your account details and try again'}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+
+        log_audit(
+            actor=requesting_account,
+            action='DELETE',
+            target_model='ASSESSMENT',
+            target_object_id=str(assessment.assessment_id) if assessment else 'N/A',
+            outcome='ERROR',
+            response=error_message,
+            school=requesting_account.school
+        )
+
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+
+        log_audit(
+            actor=requesting_account,
+            action='DELETE',
+            target_model='ASSESSMENT',
+            target_object_id=str(assessment.assessment_id) if assessment else 'N/A',
+            outcome='ERROR',
+            response=error_message,
+            school=requesting_account.school
+        )
+
+        return {'error': error_message}
+
+
+@database_sync_to_async
+def grade_student(user, role, details):
+    try:
+        if role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
+            return {"error": 'could not proccess your request.. your account either has insufficient permissions or is invalid for the action you are trying to perform'}
+
+        assessment = None  # Initialize assessment as None to prevent issues in error handling
+
+        # Retrieve the user and related school in a single query using select_related
+        requesting_account = get_account_and_its_school(user, role)
+
+        # Check if the user has permission to create an assessment
+        if role != 'PRINCIPAL' and not has_permission(requesting_account, 'GRADE', 'ASSESSMENT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to grade assessments.'
+
+            log_audit(
+                actor=requesting_account,
+                action='GRADE',
+                target_model='ASSESSMENT',
+                outcome='DENIED',
+                response=response,
+                school=requesting_account.school
+            )
+
+            return {'error': response}
+
+        assessment = Assessment.objects.select_related('assessor').get(assessment_id=details.get('assessment'), school=requesting_account.school)
+
+        # Ensure only authorized users can delete
+        if role == 'TEACHER' and assessment.assessor != requesting_account:
+            response = f'could not proccess your request, you do not have the necessary permissions to grade assessments that are not assessed by you.'
+
+            log_audit(
+                actor=requesting_account,
+                action='GRADE',
+                target_model='ASSESSMENT',
+                outcome='DENIED',
+                response=response,
+                school=requesting_account.school
+            )
+
+            return {'error': response}
+        
+        student = Student.objects.get(student_id=details.get('student'))
+        
+        with transaction.atomic():
+            transcript = Transcript.objects.create(student=student, score=details.get('student'), assessment=assessment)
+            response = f"student graded for assessment {assessment.unique_identifier}."
+
+            log_audit(
+                actor=user,
+                action='GRADE',
+                target_model='ASSESSMENT',
+                target_object_id=str(transcript.transcript_id),
+                outcome='GRADED',
+                response=response,
+                school=assessment.school
+            )
+
+        return {"message": response}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check your account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check your account details and try again'}
+                   
+    except Teacher.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a teacher account with the provided credentials does not exist, please check your account details and try again'}
+
+    except Student.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a student account with the provided credentials does not exist, please check the accounts details and try again'}
+
+    except Assessment.DoesNotExist:
+        # Handle the case where the provided assessment ID does not exist
+        return {'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
+    
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+
+        log_audit(
+            actor=requesting_account,
+            action='GRADE',
+            target_model='ASSESSMENT',
+            target_object_id=str(assessment.assessment_id) if assessment else 'N/A',
+            outcome='ERROR',
+            response=error_message,
+            school=requesting_account.school
+        )
+
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+
+        log_audit(
+            actor=requesting_account,
+            action='GRADE',
+            target_model='ASSESSMENT',
+            target_object_id=str(assessment.assessment_id) if assessment else 'N/A',
+            outcome='ERROR',
+            response=error_message,
+            school=requesting_account.school
+        )
+
+        return {'error': error_message}
     
 
 @database_sync_to_async
@@ -93,9 +481,6 @@ def submit_attendance(user, role, details):
     try:
         if role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
             return {"error": 'could not proccess your request.. your account either has insufficient permissions or is invalid for the action you are trying to perform'}
-
-        # Get the appropriate model for the requesting user's role from the mapping.
-        Model = role_specific_maps.account_access_control_mapping[role]
 
         requesting_user = BaseUser.objects.get(account_id=user)
 
@@ -109,7 +494,7 @@ def submit_attendance(user, role, details):
 
         elif details.get('class') and role in ['PRINCIPAL', 'ADMIN']:
             # Build the queryset for the requesting account with the necessary related fields.
-            requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+            requesting_account = get_account_and_its_school(user, role)
 
             classroom = Classroom.objects.prefetch_related('attendances').get(class_id=details.get('class'), school=requesting_account.school, register_class=True)
         
@@ -202,10 +587,7 @@ def log_activity(user, role, details):
         
         else:
             # Retrieve the user account and the student account using select_related to minimize database hits
-            # Get the appropriate model for the requesting user's role from the mapping.
-            Model = role_specific_maps.account_access_control_mapping[role]
-
-            requesting_account = Model.objects.select_related('school').get(account_id=user)
+            requesting_account = get_account_and_its_school(user, role)
             requested_account = Student.objects.select_related('school').get(account_id=details.get('recipient'), school=requesting_account.school)
 
         # Prepare the data for serialization
@@ -239,101 +621,6 @@ def log_activity(user, role, details):
     except Teacher.DoesNotExist:
         # Handle the case where the requested teacher account does not exist.
         return {'error': 'a teacher account with the provided credentials does not exist, please check the account details and try again'}
-
-    except Exception as e:
-        # Handle any other unexpected exceptions
-        return {'error': str(e)}
-
-
-@database_sync_to_async
-def set_assessment(user, details):
-    """
-    Sets an assessment based on the provided details and user account.
-
-    Args:
-        user (str): The account ID of the user setting the assessment.
-        details (dict): A dictionary containing all the necessary details to create the assessment.
-
-    Returns:
-        dict: A dictionary containing either a success message or an error message.
-    """
-    try:
-        # Retrieve the user's account, including the related school in one query.
-        account = BaseUser.objects.select_related('school').get(account_id=user)
-
-        # Ensure the user has the correct role to set an assessment.
-        if account.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
-            return {"error": "Unauthorized request. You do not have sufficient permissions to set an assessment."}
-
-        # If the user is a teacher, validate their permissions for the specific classroom.
-        if account.role == 'TEACHER':
-            # Retrieve the classroom and its related grade, subject, and school.
-            classroom = Classroom.objects.select_related('grade', 'subject', 'school').get(class_id=details.get('class'))
-
-            # Ensure the teacher is setting the assessment for their own class in their own school.
-            if account.school != classroom.school or classroom.teacher != account:
-                return {"error": "Unauthorized access. You are not permitted to access or update information about classes outside your own school or those you do not teach."}
-
-            # Update the details dictionary with the related IDs from the classroom.
-            details.update({'classroom': classroom.pk, 'grade': classroom.grade.pk, 'subject': classroom.subject.pk})
-
-        else:
-            # For non-teacher roles, retrieve and set the grade and subject IDs from the provided details.
-            details.update({
-                'grade': Grade.objects.values_list('pk', flat=True).get(grade_id=details.get('grade_id')),
-                'subject': Subject.objects.values_list('pk', flat=True).get(subject_id=details.get('subject_id')),
-            })
-
-        # Update the details dictionary with the user's ID, the term ID, and the school ID.
-        details.update({
-            'set_by': account.pk,
-            'term': Term.objects.values_list('pk', flat=True).get(term=details.get('term'), school=account.school),
-            'school': account.school.pk,
-        })
-
-        # Initialize the serializer with the prepared data.
-        serializer = AssessmentCreationSerializer(data=details)
-
-        # Validate the serializer data and save the assessment within an atomic transaction.
-        if serializer.is_valid():
-            with transaction.atomic():
-                assessment = serializer.save()
-
-                # Retrieve or create topics based on the provided list of topic names.
-                topic_names = details.get('topics', '')
-
-                if topic_names:
-                    topics_list = [topic.strip() for topic in topic_names.split(',')]
-                else:
-                    topics_list = []
-
-                existing_topics = Topic.objects.filter(name__in=topics_list)
-
-                # Determine which topics are new and need to be created.
-                new_topic_names = set(topics_list) - set(existing_topics.values_list('name', flat=True))
-                new_topics = [Topic(name=name) for name in new_topic_names]
-                Topic.objects.bulk_create(new_topics)  # Create new topics in bulk.
-
-                # Combine existing and new topics and set them for the assessment.
-                all_topics = list(existing_topics) + new_topics
-                assessment.topics.set(all_topics)
-
-            return {'message': 'Assessment successfully set. The assessment is now available to everyone affected by its creation.'}
-
-        # Return validation errors if the serializer is not valid.
-        return {"error": serializer.errors}
-
-    except BaseUser.DoesNotExist:
-        # Handle case where the user or student account does not exist
-        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
-
-    except Term.DoesNotExist:
-        # Handle case where the term does not exist
-        return {'error': 'a term with the provided credentials does not exist. Please check the term details and try again.'}
-
-    except Subject.DoesNotExist:
-        # Handle case where the subject does not exist
-        return {'error': 'a subject with the provided credentials does not exist. Please check the subjects details and try again.'}
 
     except Exception as e:
         # Handle any other unexpected exceptions
