@@ -9,7 +9,8 @@ from django.utils.translation import gettext_lazy as _
 # models
 from users.models import Teacher, Student
 from schools.models import School
-from grades.models import Grade, Subject
+from grades.models import Grade
+from subjects.models import Subject
 
 
 class Classroom(models.Model):
@@ -54,7 +55,7 @@ class Classroom(models.Model):
 
     school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='classes', help_text='School to which the classroom belongs.')
 
-    class_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    classroom_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
         unique_together = (

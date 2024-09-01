@@ -18,7 +18,7 @@ from django.utils.translation import gettext as _
 from rest_framework_simplejwt.tokens import AccessToken as decode
 
 # models 
-from auth_tokens.models import AccessToken
+from access_tokens.models import AccessToken
 from users.models import BaseUser, Principal, Admin
 from schools.models import School
 from email_bans.models import EmailBan

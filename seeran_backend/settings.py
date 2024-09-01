@@ -2,6 +2,7 @@
 from pathlib import Path
 from datetime import timedelta
 from decouple import config
+import os
 
 
 # celery
@@ -44,22 +45,27 @@ INSTALLED_APPS = [
 
     # project apps 
     'authentication',
-    'schools',
+    'audit_logs',
     'users',
+    'access_tokens',
+    'schools',
     'balances',
+    'chats',
+    'grades',
+    'terms',
+    'subjects',
+    'classes',
+    'attendances',
+    'emergencies',
+    'assessments',
+    'transcripts',
+    'report_cards',
+    'announcements',
+    'activities',
     'bug_reports',
     'email_bans',
-    'activities',
-    'assessments',
-    'attendances',
-    'chats',
-    'classes',
-    'grades',
     'schedules',
-    'auth_tokens',
     'uploads',
-    'announcements',
-    'reports',
     
     # third party apps
     'corsheaders', # handle cors 
@@ -223,22 +229,22 @@ CACHES = {
 
 # postfres database
 # application database
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_ENDPOINT'),
-        'PORT': '5432',
-    }
-}
 # DATABASES = {
 #     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': config('DB_NAME'),
+#         'USER': config('DB_USER'),
+#         'PASSWORD': config('DB_PASSWORD'),
+#         'HOST': config('DB_ENDPOINT'),
+#         'PORT': '5432',
 #     }
 # }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+    }
+}
 
 
 # ssl config

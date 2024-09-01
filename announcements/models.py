@@ -18,7 +18,7 @@ class Announcement(models.Model):
     reached = models.ManyToManyField(BaseUser, help_text="All users who have seen the announcement")
 
     announced_at = models.DateTimeField(auto_now_add=True, help_text="Time when the announcement was made")
-    announce_by = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='my_announcements', help_text="User who made the announcement")
+    announcer = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='my_announcements', help_text="User who made the announcement")
    
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='announcements', help_text="School related to the announcement")
 

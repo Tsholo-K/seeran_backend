@@ -12,9 +12,11 @@ from django.db.models import Prefetch
 
 # models 
 from users.models import Principal, Admin
-from grades.models import Grade, Subject, Term
+from grades.models import Grade
+from terms.models import Term
+from subjects.models import Subject
 from classes.models import Classroom
-from schedules.models import GroupSchedule
+from student_group_timetables.models import StudentGroupTimetable
 
 # serilializers
 from users.serializers.principals.principals_serializers import PrincipalAccountSerializer
@@ -357,7 +359,7 @@ def search_subscribed_students(user, role, details):
         requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
 
         # Retrieve the group schedule
-        group_schedule = GroupSchedule.objects.prefetch_related('students').get(group_schedule_id=details.get('group_schedule_id'), grade__school=requesting_account.school)
+        group_schedule = StudentGroupTimetable.objects.prefetch_related('students').get(group_schedule_id=details.get('group_schedule_id'), grade__school=requesting_account.school)
 
         # Get all students subscribed to this group schedule
         students = group_schedule.students.all()
@@ -375,7 +377,7 @@ def search_subscribed_students(user, role, details):
         # Handle the case where the provided account ID does not exist
         return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
                 
-    except GroupSchedule.DoesNotExist:
+    except StudentGroupTimetable.DoesNotExist:
         return {'error': 'a group schedule in your school with the provided credentials does not exist. Please check the group schedule details and try again.'}
 
     except Exception as e:

@@ -12,7 +12,7 @@ class AnnouncementCreationSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Announcement
-        fields = ['title', 'message', 'school', 'announce_by']
+        fields = ['title', 'message', 'announcer', 'school']
 
 
 class AnnouncementsSerializer(serializers.ModelSerializer):
@@ -37,16 +37,16 @@ class AnnouncementsSerializer(serializers.ModelSerializer):
 class AnnouncementSerializer(serializers.ModelSerializer):
     
     title = serializers.SerializerMethodField()
-    announce_by = serializers.SerializerMethodField()
+    announcer = serializers.SerializerMethodField()
 
     class Meta:
         model = Announcement
-        fields = ['title', 'message', 'announce_by', 'announced_at']
+        fields = ['title', 'message', 'announcer', 'announced_at']
         
     def get_title(self, obj):
         return obj.title.title()
 
-    def get_announce_by(self, obj):    
+    def get_announcer(self, obj):    
         if obj.announce_by:
             return SourceAccountSerializer(obj.announce_by).data
         else:

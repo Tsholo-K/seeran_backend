@@ -8,7 +8,7 @@ from channels.db import database_sync_to_async
 # models 
 from users.models import Principal
 from schools.models import School
-from balances.models import Bill
+from invoices.models import Invoice
 from bug_reports.models import BugReport
 
 # serializers
@@ -90,13 +90,13 @@ def search_principal_invoices(details):
 @database_sync_to_async
 def search_principal_invoice(details):
     try:
-        bill = Bill.objects.get(bill_id=details.get('invoice'))
+        bill = Invoice.objects.get(Invoice_id=details.get('invoice'))
 
         serialized_invoice = BillSerializer(instance=bill).data
 
         return {"invoice": serialized_invoice}
     
-    except Bill.DoesNotExist:
+    except Invoice.DoesNotExist:
         return {"error": "a bill with the provided ID does not exist"}
     
     except Exception as e:

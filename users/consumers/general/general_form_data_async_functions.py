@@ -14,7 +14,7 @@ from django.utils.translation import gettext as _
 # models 
 from users.models import BaseUser, Teacher
 from classes.models import Classroom
-from attendances.models import Absent
+from attendances.models import Attendance
 
 # serializers
 from users.serializers.students.students_serializers import StudentSourceAccountSerializer
@@ -81,7 +81,7 @@ def form_data_for_attendance_register(user, role, details):
         today = timezone.localdate()
             
         # Check if an Absent instance exists for today and the given class
-        attendance = Absent.objects.prefetch_related('absent_students').filter(date__date=today, classroom=classroom).first()
+        attendance = Attendance.objects.prefetch_related('absent_students').filter(date__date=today, classroom=classroom).first()
 
         if attendance:
             students = attendance.absent_students.all()

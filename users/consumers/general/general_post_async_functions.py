@@ -17,14 +17,16 @@ from rest_framework_simplejwt.tokens import AccessToken as decode, TokenError
 from rest_framework_simplejwt.exceptions import TokenError
 
 # models 
-from auth_tokens.models import AccessToken
+from access_tokens.models import AccessToken
 from users.models import BaseUser, Principal, Admin, Teacher, Student, Parent
 from schools.models import School
-from grades.models import Grade, Term, Subject
+from grades.models import Grade
+from terms.models import Term
+from subjects.models import Subject
 from classes.models import Classroom
 from assessments.models import Topic
 from activities.models import Activity
-from attendances.models import Absent, Late
+from attendances.models import Attendance
 from chats.models import ChatRoom, ChatRoomMessage
 
 # serializers
@@ -118,7 +120,7 @@ def submit_attendance(user, role, details):
                 return {'error': 'attendance register for this class has already been subimitted today.. can not resubmit'}
 
             with transaction.atomic():
-                register = Absent.objects.create(submitted_by=requesting_user, classroom=classroom)
+                register = Attendance.objects.create(submitted_by=requesting_user, classroom=classroom)
 
                 if details.get('students'):
                     register.absentes = True
@@ -140,11 +142,11 @@ def submit_attendance(user, role, details):
             if not absentes.absent_students.exists():
                 return {'error': 'todays attendance register for this class has all students accounted for'}
 
-            register = Late.objects.filter(date__date=today, classroom=classroom).first()
+            register = Attendance.objects.filter(date__date=today, classroom=classroom).first()
             
             with transaction.atomic():
                 if not register:
-                    register = Late.objects.create(submitted_by=requesting_user, classroom=classroom)
+                    register = Attendance.objects.create(submitted_by=requesting_user, classroom=classroom)
                     
                 for student in details['students'].split(', '):
                     student = Student.objects.get(account_id=student)

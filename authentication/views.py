@@ -17,12 +17,12 @@ from django.core.validators import validate_email
 
 # models
 from users.models import BaseUser
-from auth_tokens.models import AccessToken
+from access_tokens.models import AccessToken
 
 # serializers
 
 # utility functions 
-from .utils import generate_token, generate_otp, verify_user_otp, validate_names, send_otp_email
+from .utils import manage_user_sessions, generate_token, generate_otp, verify_user_otp, validate_names, send_otp_email
 
 # custom decorators
 from .decorators import token_required
@@ -74,20 +74,9 @@ def login(request):
                 
                 # Clear old access tokens if any, to limit active sessions
                 if 'access' in token:
-                    cutoff_time = timezone.now() - timedelta(hours=24)
-
-                    with transaction.atomic():
-                        expired_access_tokens = user.access_tokens.filter(created_at__lt=cutoff_time)
-                        if expired_access_tokens.exists():
-                            expired_access_tokens.delete()
-
-                    access_tokens_count = user.access_tokens.count()
-                    
-                    if access_tokens_count >= 3:
-                        return Response({"error": "You have reached the maximum number of connected devices. Please disconnect another device to proceed"}, status=status.HTTP_403_FORBIDDEN)
-                    
-                    with transaction.atomic():
-                        AccessToken.objects.create(user=user, token=token['access'])
+                    session_response = manage_user_sessions(user, token)
+                    if session_response:  # If the function returns a response, it indicates an error
+                        return session_response
 
                     # Set access token cookie with custom expiration (24 hours)
                     response = Response({"message": "You will have access to your dashboard for the next 24 hours, until your session ends", "alert" : "Your email address has been blacklisted", "role" : user.role.title()}, status=status.HTTP_200_OK)
@@ -102,8 +91,9 @@ def login(request):
             email_response = send_otp_email(user, otp, reason="Your account has multi-factor authentication toggled on, this OTP was generated in response to your login request.")
             
             if email_response['status'] == 'success':
-                cache.set(user.email+'login_otp', (hashed_otp, salt), timeout=300)  # Cache OTP for 5 mins
                 login_authorization_otp, hashed_login_authorization_otp, salt = generate_otp()
+
+                cache.set(user.email+'login_otp', (hashed_otp, salt), timeout=300)  # Cache OTP for 5 mins
                 cache.set(user.email+'login_authorization_otp', (hashed_login_authorization_otp, salt), timeout=300)  # Cache auth OTP for 5 mins
 
                 response = Response({"multifactor_authentication": "A new OTP has been sent to your email address. Please check your inbox"}, status=status.HTTP_200_OK)
@@ -115,28 +105,17 @@ def login(request):
 
         # Handle login without MFA
         if 'access' in token:
-            cutoff_time = timezone.now() - timedelta(hours=24)
-
-            with transaction.atomic():
-                expired_access_tokens = user.access_tokens.filter(created_at__lt=cutoff_time)
-                if expired_access_tokens.exists():
-                    expired_access_tokens.delete()
-                    
-            access_tokens_count = user.access_tokens.count()
-            
-            if access_tokens_count >= 3:
-                return Response({"error": "You have reached the maximum number of connected devices. Please disconnect another device to proceed"}, status=status.HTTP_403_FORBIDDEN)
+            session_response = manage_user_sessions(user, token)
+            if session_response:  # If the function returns a response, it indicates an error
+                return session_response
             
             response = Response({"message": "You will have access to your dashboard for the next 24 hours, until your session ends", "role" : user.role.title()}, status=status.HTTP_200_OK)
-                    
-            with transaction.atomic():
-                AccessToken.objects.create(user=user, token=token['access'])
         
             # Set access token cookie with custom expiration (24 hours)
             response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
         
         else:
-            response = Response({"error": "Server error.. Could not generate access token for your account"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            response = Response({"error": "Server error.. Could not generate access token for your account, please try again in a moment"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return response
     
@@ -205,23 +184,9 @@ def multi_factor_authentication_login(request):
             token = generate_token(user)
             
             if 'access' in token:
-                # Calculate cutoff time for expired tokens
-                cutoff_time = timezone.now() - timedelta(hours=24)
-            
-                with transaction.atomic():
-                    # Delete all RefreshToken objects for the user that were created before the cutoff_time
-                    expired_access_tokens = user.access_tokens.filter(created_at__lt=cutoff_time)
-                    if expired_access_tokens.exists():
-                        expired_access_tokens.delete()
-
-                # Count the remaining RefreshToken objects for the user
-                access_tokens_count = user.access_tokens.count()
-                
-                if access_tokens_count >= 3:
-                    return Response({"error": "maximum number of connected devices reached"}, status=status.HTTP_403_FORBIDDEN)
-                
-                with transaction.atomic():
-                    AccessToken.objects.create(user=user, token=token['access'])
+                session_response = manage_user_sessions(user, token)
+                if session_response:  # If the function returns a response, it indicates an error
+                    return session_response
                 
                 # set access token cookie with custom expiration (5 mins)
                 response = Response({"message": "you will have access to your dashboard for the next 24 hours, until your session ends", "role" : user.role.title()}, status=status.HTTP_200_OK)
@@ -626,38 +591,4 @@ def reset_password(request):
 
     except Exception as e:
         return Response({"error": {str(e)}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-# Request otp view
-@api_view(['POST'])
-def resend_otp(request):
-    
-    # try to get the user
-    try:
-    
-        email = request.data.get('email')
-    
-        if not email:
-            return Response({"error" : "an email is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        user = BaseUser.objects.get(email=email)
-     
-        if user.email_banned:
-            return Response({ "error" : "your email address has been banned, failed to send OTP"})
-        
-        # otp, hashed_otp = generate_otp()
-    
-        # Send the OTP via email
-        # cache.set(user.email, hashed_otp, timeout=300)  # 300 seconds = 5 mins
-        return Response({"message": "OTP created and sent to your email"}, status=status.HTTP_200_OK)
-    
-        # else:
-        #     return Response({"error": "failed to send OTP via email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-      
-    except BaseUser.DoesNotExist:
-        # if theres no user with the provided email return an error
-        return Response({"denied": "an account with the provided credentials does not exist. please check the account details and try again"}, status=status.HTTP_404_NOT_FOUND)
-
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 

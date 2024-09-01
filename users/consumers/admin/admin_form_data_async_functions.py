@@ -11,8 +11,8 @@ from channels.db import database_sync_to_async
 
 # models 
 from users.models import Principal, Admin
-from schedules.models import GroupSchedule
-from grades.models import Subject
+from student_group_timetables.models import StudentGroupTimetable
+from subjects.models import Subject
 from classes.models import Classroom
 
 # serilializers
@@ -183,7 +183,7 @@ def form_data_for_adding_students_to_group_schedule(user, role, details):
         requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
         
         # Retrieve the group schedule with the provided ID and related data
-        group_schedule = GroupSchedule.objects.select_related('grade').get(group_schedule_id=details.get('group_schedule_id'), grade__school=requesting_account.school)
+        group_schedule = StudentGroupTimetable.objects.select_related('grade').get(group_schedule_id=details.get('group_schedule_id'), grade__school=requesting_account.school)
 
         # Fetch all students in the same grade who are not already subscribed to the group schedule
         students = requesting_account.school.students.all().filter(grade=group_schedule.grade).exclude(my_group_schedule=group_schedule)
@@ -201,7 +201,7 @@ def form_data_for_adding_students_to_group_schedule(user, role, details):
         # Handle the case where the provided account ID does not exist
         return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
     
-    except GroupSchedule.DoesNotExist:
+    except StudentGroupTimetable.DoesNotExist:
         # Handle case where the group schedule does not exist
         return {'error': 'a group schedule in your school with the provided credentials does not exist. Please check the group schedule details and try again.'}
 

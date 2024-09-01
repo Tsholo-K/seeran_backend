@@ -296,10 +296,10 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'create_class': admin_post_async_functions.create_class,
             'delete_class': admin_post_async_functions.delete_class,
 
-            'create_schedule': admin_post_async_functions.create_schedule,
-            'delete_schedule': admin_post_async_functions.delete_schedule,
+            'create_schedule': admin_post_async_functions.create_daily_schedule,
+            'delete_schedule': admin_post_async_functions.delete_daily_schedule,
 
-            'create_group_schedule': admin_post_async_functions.create_group_schedule,
+            'create_group_schedule': admin_post_async_functions.create_group_timetable,
             'delete_group_schedule': admin_post_async_functions.delete_group_schedule,
 
             'announce': admin_post_async_functions.announce,

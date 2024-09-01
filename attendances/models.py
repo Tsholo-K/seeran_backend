@@ -9,7 +9,7 @@ from schools.models import School
 from classes.models import Classroom
 
 
-class Absent(models.Model):
+class Attendance(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     classroom = models.ForeignKey(Classroom, on_delete=models.SET_NULL, null=True, related_name='attendances')
@@ -17,39 +17,23 @@ class Absent(models.Model):
     absent_students = models.ManyToManyField(Student, related_name='absences')
     absentes = models.BooleanField(default=False) # helps in querying 
 
-    submitted_by = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, null=True, related_name='submitted_attendances')
-
-    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='absences', help_text='School to which the absences belong.')
-
-    class Meta:
-        unique_together = ('date', 'classroom') # this will prevent the creation of duplicate instances
-        ordering = ['-date']
-        indexes = [models.Index(fields=['date'])]  # Index for performance
-
-    def clean(self):
-        super().clean()
-
-        if self.submitted_by and self.submitted_by.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
-            raise ValidationError('Submitted by user must be an Admin or Teacher.')
-
-
-class Late(models.Model):
-    date = models.DateTimeField(auto_now_add=True)
-
-    classroom = models.ForeignKey(Classroom, on_delete=models.SET_NULL, null=True, related_name='late_arrivals')
     late_students = models.ManyToManyField(Student, related_name='late_arrivals')
 
-    submitted_by = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, null=True, related_name='submitted_late_arrivals')
+    submitted_by = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, null=True, related_name='submitted_attendances')
 
-    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='late_arrivals', help_text='School to which the late_arrivals belong.')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='absences', help_text='School to which the attendace belong.')
 
     class Meta:
         unique_together = ('date', 'classroom') # this will prevent the creation of duplicate instances
         ordering = ['-date']
-        indexes = [models.Index(fields=['date'])]  # Index for performance
+        indexes = [models.Index(fields=['date', 'classroom'])]  # Index for performance
+
+    def clean(self):
+        if self.submitted_by and self.submitted_by.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
+            raise ValidationError('only principals, admins or teachers can submit a classroom attendance record')
 
 
-class Emergency(models.Model):
+class EmergencyAttendance(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     emergency = models.CharField(max_length=124, default='fire drill')
@@ -74,7 +58,5 @@ class Emergency(models.Model):
         indexes = [models.Index(fields=['date'])] 
 
     def clean(self):
-        super().clean()
-
         if self.submitted_by and self.submitted_by.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
-            raise ValidationError('Submitted by user must be an Admin or Teacher.')
+            raise ValidationError('only principals, admins or teachers can submit a classroom attendance record')

@@ -18,8 +18,9 @@ from schools.models import School
 from grades.models import Grade
 from classes.models import Classroom
 from email_bans.models import EmailBan
-from schedules.models import Schedule, TeacherSchedule, GroupSchedule
-from attendances.models import Absent, Late
+from student_group_timetables.models import StudentGroupTimetable
+from daily_schedules.models import DailySchedule
+from attendances.models import Attendance
 from announcements.models import Announcement
 from chats.models import ChatRoom, ChatRoomMessage
 from activities.models import Activity
@@ -34,13 +35,13 @@ from users.serializers.parents.parents_serializers import ParentAccountSerialize
 from schools.serializers import SchoolDetailsSerializer
 from classes.serializers import TeacherClassesSerializer, ClassSerializer
 from email_bans.serializers import EmailBanSerializer
-from schedules.serializers import ScheduleSerializer, GroupScheduleSerializer, SessoinsSerializer
+from sessions.serializers import ScheduleSerializer, GroupScheduleSerializer, SessoinsSerializer
 from announcements.serializers import AnnouncementSerializer
 from chats.serializers import ChatRoomMessageSerializer
 from activities.serializers import ActivitiesSerializer, ActivitySerializer
 
 # utility functions 
-from attendances.utility_functions import get_month_dates
+from attendances.utils import get_month_dates
 
 # checks
 from users.checks import permission_checks
@@ -512,7 +513,7 @@ def search_group_schedule_schedules(user, role, details):
         requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
         
         # Retrieve the specified group schedule
-        group_schedule = GroupSchedule.objects.select_related('students', 'grade__school').get(group_schedule_id=details.get('group_schedule'))
+        group_schedule = StudentGroupTimetable.objects.select_related('students', 'grade__school').get(group_schedule_id=details.get('group_schedule'))
 
         # Check permissions
         permission_error = permission_checks.check_group_schedule_permissions(requesting_account, group_schedule)
@@ -544,7 +545,7 @@ def search_group_schedule_schedules(user, role, details):
         # Handle the case where the requested parent account does not exist.
         return {'error': 'A parent account with the provided credentials does not exist, please check the account details and try again'}
     
-    except GroupSchedule.DoesNotExist:
+    except StudentGroupTimetable.DoesNotExist:
         # Handle case where the group schedule does not exist
         return {'error': 'a group schedule with the provided credentials does not exist. Please check the group schedule details and try again'}
     
@@ -584,7 +585,7 @@ def search_group_schedules(user, role, details):
                 grade = Grade.objects.get(grade_id=details['grade'], school=requesting_account.school)
 
                 # Retrieve all group schedules associated with the specified grade
-                group_schedules = GroupSchedule.objects.filter(grade=grade)
+                group_schedules = StudentGroupTimetable.objects.filter(grade=grade)
 
         elif role in ['PARENT']:
             # Build the queryset for the requesting account with the necessary related fields.
@@ -668,7 +669,7 @@ def search_group_schedules(user, role, details):
 def search_schedule_sessions(details):
 
     try:
-        schedule = Schedule.objects.prefetch_related('sessions').get(schedule_id=details.get('schedule'))
+        schedule = DailySchedule.objects.prefetch_related('sessions').get(schedule_id=details.get('schedule'))
     
         sessions = schedule.sessions.all()
 
@@ -676,7 +677,7 @@ def search_schedule_sessions(details):
         
         return {"sessions": serialized_sessions}
     
-    except Schedule.DoesNotExist:
+    except DailySchedule.DoesNotExist:
         return {"error" : "a schedule with the provided credentials does not exist"}
     
     except Exception as e:
@@ -710,12 +711,12 @@ def search_month_attendance_records(user, role, details):
         start_date, end_date = get_month_dates(details.get('month_name'))
 
         # Query for the Absent instances where absentes is True
-        absents = Absent.objects.prefetch_related('absent_students').filter(Q(date__gte=start_date) & Q(date__lt=end_date) & Q(classroom=classroom) & Q(absentes=True))
+        absents = Attendance.objects.prefetch_related('absent_students').filter(Q(date__gte=start_date) & Q(date__lt=end_date) & Q(classroom=classroom) & Q(absentes=True))
 
         # For each absent instance, get the corresponding Late instance
         attendance_records = []
         for absent in absents:
-            late = Late.objects.prefetch_related('late_students').filter(date__date=absent.date.date(), classroom=classroom).first()
+            late = Attendance.objects.prefetch_related('late_students').filter(date__date=absent.date.date(), classroom=classroom).first()
             record = {
                 'date': absent.date.isoformat(),
                 'absent_students': LeastAccountDetailsSerializer(absent.absent_students.all(), many=True).data,

@@ -13,15 +13,13 @@ from django.core.exceptions import ValidationError
 
 # models 
 from users.models import Principal, Admin, Teacher, Student, Parent
-from schedules.models import GroupSchedule
+from student_group_timetables.models import StudentGroupTimetable
 from classes.models import Classroom
-from grades.models import Grade, Term, Subject
+from grades.models import Grade
+from terms.models import Term
+from subjects.models import Subject
 
 # serilializers
-from users.serializers.admins.admins_serializers import AdminAccountUpdateSerializer, AdminAccountDetailsSerializer
-from users.serializers.teachers.teachers_serializers import TeacherAccountUpdateSerializer, TeacherAccountDetailsSerializer
-from users.serializers.students.students_serializers import StudentAccountUpdateSerializer, StudentAccountDetailsSerializer
-from users.serializers.parents.parents_serializers import ParentAccountUpdateSerializer, ParentAccountDetailsSerializer
 from grades.serializers import UpdateGradeSerializer, UpdateTermSerializer, GradeDetailsSerializer, TermSerializer, UpdateSubjectSerializer, SubjectDetailsSerializer
 from classes.serializers import UpdateClassSerializer
 
@@ -352,7 +350,7 @@ def add_students_to_group_schedule(user, role, details):
         requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
 
         # Retrieve the group schedule object with related grade and school for permission check
-        group_schedule = GroupSchedule.objects.prefetch_related('students').select_related('grade').get(group_schedule_id=details.get('group_schedule_id'), grade__school=requesting_account.school)
+        group_schedule = StudentGroupTimetable.objects.prefetch_related('students').select_related('grade').get(group_schedule_id=details.get('group_schedule_id'), grade__school=requesting_account.school)
         
         # Retrieve the existing students in the group schedule
         existing_students = group_schedule.students.filter(account_id__in=students_list).values_list('account_id', flat=True)
@@ -377,7 +375,7 @@ def add_students_to_group_schedule(user, role, details):
         # Handle the case where the provided account ID does not exist
         return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
             
-    except GroupSchedule.DoesNotExist:
+    except StudentGroupTimetable.DoesNotExist:
         # Handle the case where the provided group schedule ID does not exist
         return {'error': 'A group schedule in your school with the provided credentials does not exist. Please check the group schedule details and try again.'}
 
@@ -415,7 +413,7 @@ def remove_students_from_group_schedule(user, role, details):
             admin = Admin.objects.select_related('school').only('school').get(account_id=user)
 
         # Retrieve the group schedule object with related grade and school for permission check
-        group_schedule = GroupSchedule.objects.select_related('grade').get(group_schedule_id=details.get('group_schedule_id'), grade__school=admin.school)
+        group_schedule = StudentGroupTimetable.objects.select_related('grade').get(group_schedule_id=details.get('group_schedule_id'), grade__school=admin.school)
 
         # Retrieve the students that need to be removed in a single query for efficiency
         students_to_remove = Student.objects.filter(account_id__in=students_list, school=admin.school, grade=group_schedule.grade)
@@ -434,7 +432,7 @@ def remove_students_from_group_schedule(user, role, details):
         # Handle the case where the provided account ID does not exist
         return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
             
-    except GroupSchedule.DoesNotExist:
+    except StudentGroupTimetable.DoesNotExist:
         # Handle the case where the provided group schedule ID does not exist
         return {'error': 'A group schedule in your school with the provided credentials does not exist. Please check the group schedule details and try again.'}
 

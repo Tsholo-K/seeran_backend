@@ -318,7 +318,7 @@ class Parent(BaseUser):
         except IntegrityError as e:
             # Handle integrity error
             if 'unique constraint' in str(e).lower():
-                raise ValidationError(_('an account with the provided email address already exists. please use a different email address'))
+                raise ValidationError(_('an account with the provided email address and a role that\'s not a parent already exists. please use a different email address'))
             
             else:
                 raise
