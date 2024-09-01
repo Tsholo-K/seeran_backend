@@ -9,7 +9,7 @@ from django.utils.translation import gettext_lazy as _
 from daily_schedules.models import DailySchedule
 
 
-class Session(models.Model):
+class DailyScheduleSession(models.Model):
     session_type = models.CharField(_('session class type'), max_length=64)
 
     classroom = models.CharField(max_length=6, null=True, blank=True)

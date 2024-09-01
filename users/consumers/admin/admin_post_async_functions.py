@@ -19,7 +19,7 @@ from terms.models import Term
 from subjects.models import Subject
 from classes.models import Classroom
 from announcements.models import Announcement
-from sessions.models import Session
+from daily_schedule_sessions.models import Session
 from student_group_timetables.models import StudentGroupTimetable
 from teacher_timetables.models import TeacherTimetable
 from daily_schedules.models import DailySchedule
@@ -28,7 +28,7 @@ from daily_schedules.models import DailySchedule
 from users.serializers.parents.parents_serializers import ParentAccountCreationSerializer
 from grades.serializers import GradeCreationSerializer, TermCreationSerializer, SubjectCreationSerializer
 from classes.serializers import ClassCreationSerializer
-from sessions.serializers import GroupScheduleCreationSerializer
+from daily_schedule_sessions.serializers import GroupScheduleCreationSerializer
 from announcements.serializers import AnnouncementCreationSerializer
 
 # checks

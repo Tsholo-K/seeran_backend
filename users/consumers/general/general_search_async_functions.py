@@ -35,7 +35,7 @@ from users.serializers.parents.parents_serializers import ParentAccountSerialize
 from schools.serializers import SchoolDetailsSerializer
 from classes.serializers import TeacherClassesSerializer, ClassSerializer
 from email_bans.serializers import EmailBanSerializer
-from sessions.serializers import ScheduleSerializer, GroupScheduleSerializer, SessoinsSerializer
+from daily_schedule_sessions.serializers import ScheduleSerializer, GroupScheduleSerializer, SessoinsSerializer
 from announcements.serializers import AnnouncementSerializer
 from chats.serializers import ChatRoomMessageSerializer
 from activities.serializers import ActivitiesSerializer, ActivitySerializer

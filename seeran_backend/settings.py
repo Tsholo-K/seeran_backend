@@ -71,7 +71,7 @@ INSTALLED_APPS = [
     'daily_schedules',
     'student_group_timetables',
     'teacher_timetables',
-    'sessions',
+    'daily_schedule_sessions',
     'uploads',
     
     # third party apps
