@@ -14,7 +14,7 @@ from bug_reports.models import BugReport
 # serializers
 from users.serializers.principals.principals_serializers import PrincipalAccountSerializer, PrincipalAccountDetailsSerializer
 from schools.serializers import SchoolSerializer
-from balances.serializers import BillsSerializer, BillSerializer
+from invoices.serializers import InvoiceSerializer, InvoicesSerializer
 from bug_reports.serializers import BugReportsSerializer, BugReportSerializer
 
     
@@ -76,7 +76,7 @@ def search_principal_invoices(details):
         if not principal_bills:
             return {'message': 'success', "invoices": None, 'in_arrears': principal.school.in_arrears}
         
-        serialized_bills = BillsSerializer(principal_bills, many=True).data
+        serialized_bills = InvoicesSerializer(principal_bills, many=True).data
 
         return {'message': 'success', "invoices": serialized_bills, 'in_arrears': principal.school.in_arrears}
     
@@ -92,7 +92,7 @@ def search_principal_invoice(details):
     try:
         bill = Invoice.objects.get(Invoice_id=details.get('invoice'))
 
-        serialized_invoice = BillSerializer(instance=bill).data
+        serialized_invoice = InvoiceSerializer(instance=bill).data
 
         return {"invoice": serialized_invoice}
     

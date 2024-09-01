@@ -9,14 +9,14 @@ from users.serializers.general_serializers import SourceAccountSerializer
 
 
 
-class BillsSerializer(serializers.ModelSerializer):
+class InvoicesSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Invoice
         fields = [ 'amount', 'date_billed', 'is_paid', 'bill_id' ]
 
 
-class BillSerializer(serializers.ModelSerializer):
+class InvoiceSerializer(serializers.ModelSerializer):
 
     user = serializers.SerializerMethodField()
  
