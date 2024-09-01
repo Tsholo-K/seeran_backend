@@ -720,7 +720,7 @@ def create_account(user, role, details):
         if serializer.is_valid():
             with transaction.atomic():
                 created_account = Model.objects.create(**serializer.validated_data)
-                response = f'{details['role']} account successfully created. the {details['role']} can now sign-in and activate the account'.lower()
+                response = f"{details['role']} account successfully created. the {details['role']} can now sign-in and activate the account".lower()
 
                 log_audit(
                     actor=requesting_account,
