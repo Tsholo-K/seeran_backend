@@ -20,7 +20,9 @@ from terms.models import Term
 from subjects.models import Subject
 
 # serilializers
-from grades.serializers import UpdateGradeSerializer, UpdateTermSerializer, GradeDetailsSerializer, TermSerializer, UpdateSubjectSerializer, SubjectDetailsSerializer
+from grades.serializers import UpdateGradeSerializer, GradeDetailsSerializer
+from terms.serializers import UpdateTermSerializer, TermSerializer
+from subjects.serializers import UpdateSubjectSerializer, SubjectDetailsSerializer
 from classes.serializers import UpdateClassSerializer
 
 # checks

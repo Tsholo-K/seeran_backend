@@ -23,7 +23,9 @@ from users.serializers.principals.principals_serializers import PrincipalAccount
 from users.serializers.students.students_serializers import StudentSourceAccountSerializer
 from users.serializers.admins.admins_serializers import AdminAccountSerializer
 from users.serializers.teachers.teachers_serializers import TeacherAccountSerializer
-from grades.serializers import GradeSerializer, GradeDetailsSerializer, TermsSerializer, TermSerializer, SubjectSerializer, SubjectDetailsSerializer, ClassesSerializer
+from grades.serializers import GradeSerializer, GradeDetailsSerializer
+from terms.serializers import  TermsSerializer, TermSerializer, ClassesSerializer
+from subjects.serializers import SubjectSerializer, SubjectDetailsSerializer
 
 # mappings
 from users.maps import role_specific_maps

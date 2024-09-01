@@ -19,16 +19,18 @@ from terms.models import Term
 from subjects.models import Subject
 from classes.models import Classroom
 from announcements.models import Announcement
-from daily_schedule_sessions.models import Session
+from daily_schedule_sessions.models import DailyScheduleSession
 from student_group_timetables.models import StudentGroupTimetable
 from teacher_timetables.models import TeacherTimetable
 from daily_schedules.models import DailySchedule
 
 # serilializers
 from users.serializers.parents.parents_serializers import ParentAccountCreationSerializer
-from grades.serializers import GradeCreationSerializer, TermCreationSerializer, SubjectCreationSerializer
+from grades.serializers import GradeCreationSerializer
+from terms.serializers import  TermCreationSerializer
+from subjects.serializers import  SubjectCreationSerializer
 from classes.serializers import ClassCreationSerializer
-from daily_schedule_sessions.serializers import GroupScheduleCreationSerializer
+from student_group_timetables.serializers import StudentGroupScheduleCreationSerializer
 from announcements.serializers import AnnouncementCreationSerializer
 
 # checks
@@ -718,6 +720,7 @@ def create_account(user, role, details):
         if serializer.is_valid():
             with transaction.atomic():
                 created_account = Model.objects.create(**serializer.validated_data)
+                response = f'{details['role']} account successfully created. the {details['role']} can now sign-in and activate the account'.lower()
 
                 log_audit(
                     actor=requesting_account,
@@ -725,7 +728,7 @@ def create_account(user, role, details):
                     target_model='ACCOUNT',
                     target_object_id=str(created_account.account_id),
                     outcome='CREATED',
-                    response=f'{details['role']} account successfully created. the {details['role']} can now sign-in and activate the account'.lower(),
+                    response=response,
                     school=requesting_account.school,
                 )
 
@@ -1223,7 +1226,7 @@ def create_daily_schedule(user, role, details):
             daily_schedule = DailySchedule.objects.create(day_of_week=day, day_of_week_order=DailySchedule.DAY_OF_THE_WEEK_ORDER[day])
 
             sessions = [
-                Session(
+                DailyScheduleSession(
                     session_type=session_info['class'],
                     classroom=session_info.get('classroom'),
                     start_time=parse_time(f"{session_info['start_time']['hour']}:{session_info['start_time']['minute']}:{session_info['start_time']['second']}"),
@@ -1231,7 +1234,7 @@ def create_daily_schedule(user, role, details):
                 ) for session_info in details.get('sessions', [])
             ]
 
-            Session.objects.bulk_create(sessions)
+            DailyScheduleSession.objects.bulk_create(sessions)
             daily_schedule.sessions.add(*sessions)
             
             if details.get('group'):
@@ -1334,7 +1337,7 @@ def create_group_timetable(user, role, details):
         grade = Grade.objects.get(grade_id=details.get('grade'), school=requesting_account.school)
         details['grade'] = grade.pk
 
-        serializer = GroupScheduleCreationSerializer(data=details)
+        serializer = StudentGroupScheduleCreationSerializer(data=details)
         if serializer.is_valid():
             with transaction.atomic():
                 group_timetable = StudentGroupTimetable.objects.create(**serializer.validated_data)
