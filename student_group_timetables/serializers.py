@@ -5,14 +5,14 @@ from rest_framework import serializers
 from .models import StudentGroupTimetable
 
 
-class GroupScheduleCreationSerializer(serializers.ModelSerializer):
+class StudentGroupScheduleCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StudentGroupTimetable
         fields = ['group_name', 'grade']
 
 
-class GroupScheduleSerializer(serializers.ModelSerializer):
+class StudentGroupScheduleSerializer(serializers.ModelSerializer):
     
     id = serializers.SerializerMethodField()
     group_name = serializers.SerializerMethodField()

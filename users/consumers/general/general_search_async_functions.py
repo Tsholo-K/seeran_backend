@@ -35,7 +35,9 @@ from users.serializers.parents.parents_serializers import ParentAccountSerialize
 from schools.serializers import SchoolDetailsSerializer
 from classes.serializers import TeacherClassesSerializer, ClassSerializer
 from email_bans.serializers import EmailBanSerializer
-from daily_schedule_sessions.serializers import ScheduleSerializer, GroupScheduleSerializer, SessoinsSerializer
+from student_group_timetables.serializers import StudentGroupScheduleSerializer
+from daily_schedules.serializers import DailyScheduleSerializer
+from daily_schedule_sessions.serializers import DailyScheduleSession
 from announcements.serializers import AnnouncementSerializer
 from chats.serializers import ChatRoomMessageSerializer
 from activities.serializers import ActivitiesSerializer, ActivitySerializer
@@ -481,7 +483,7 @@ def search_teacher_schedule_schedules(user, role, details):
             return {'schedules': []}
         
         # Serialize the schedules to return them in the response
-        serialized_schedules = ScheduleSerializer(schedules, many=True).data
+        serialized_schedules = DailyScheduleSerializer(schedules, many=True).data
 
         return {"schedules": serialized_schedules}
                
@@ -521,7 +523,7 @@ def search_group_schedule_schedules(user, role, details):
             return permission_error
 
         # Serialize and return the schedules associated with the group schedule
-        serialized_schedules = ScheduleSerializer(group_schedule.schedules.all(), many=True).data
+        serialized_schedules = DailyScheduleSerializer(group_schedule.schedules.all(), many=True).data
 
         return {"schedules": serialized_schedules}
                
@@ -632,7 +634,7 @@ def search_group_schedules(user, role, details):
                 return {"schedules": []}
 
         # Serialize the group schedules to return them in the response
-        serialized_schedules = GroupScheduleSerializer(group_schedules, many=True).data
+        serialized_schedules = StudentGroupScheduleSerializer(group_schedules, many=True).data
 
         return {"schedules": serialized_schedules}
                
@@ -673,7 +675,7 @@ def search_schedule_sessions(details):
     
         sessions = schedule.sessions.all()
 
-        serialized_sessions = SessoinsSerializer(sessions, many=True).data
+        serialized_sessions = DailyScheduleSession(sessions, many=True).data
         
         return {"sessions": serialized_sessions}
     

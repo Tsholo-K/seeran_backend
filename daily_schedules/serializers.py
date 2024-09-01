@@ -6,7 +6,7 @@ from .models import DailySchedule
 
 
 # schedule days
-class ScheduleSerializer(serializers.ModelSerializer):
+class DailyScheduleSerializer(serializers.ModelSerializer):
     
     day = serializers.SerializerMethodField()
 
