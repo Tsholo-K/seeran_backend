@@ -23,7 +23,7 @@ class AdminPermissionGroup(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='permission_groups')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='admin_permission_groups')
 
     permission_group_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
@@ -97,7 +97,7 @@ class TeacherPermissionGroup(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='permission_groups')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='teacher_permission_groups')
 
     permission_group_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
