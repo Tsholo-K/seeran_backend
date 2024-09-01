@@ -39,14 +39,14 @@ class AuditLog(models.Model):
     
     actor = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='audit_logs')
 
-    action = models.CharField(choices=ACTION_CHOICES)
+    action = models.CharField(choices=ACTION_CHOICES, max_length=32)
     timestamp = models.DateTimeField(auto_now_add=True)
 
-    target_model = models.CharField(choices=TARGET_MODEL_CHOICES)
+    target_model = models.CharField(choices=TARGET_MODEL_CHOICES, max_length=32)
 
     target_object_id = models.CharField(max_length=36, null=True)
 
-    outcome = models.CharField(choices=OUTCOME_CHOICES)
+    outcome = models.CharField(choices=OUTCOME_CHOICES, max_length=32)
     response = models.TextField()
 
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='audit_logs')

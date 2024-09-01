@@ -64,7 +64,9 @@ INSTALLED_APPS = [
     'activities',
     'bug_reports',
     'email_bans',
-    'schedules',
+    'daily_schedules',
+    'student_group_timetables',
+    'teacher_timetables',
     'uploads',
     
     # third party apps

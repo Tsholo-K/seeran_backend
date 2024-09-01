@@ -75,7 +75,7 @@ class BaseUser(AbstractBaseUser, PermissionsMixin):
 
     email = models.EmailField(_('email address'), unique=True, blank=True, null=True)
 
-    role = models.CharField(choices=ROLE_CHOICES)
+    role = models.CharField(choices=ROLE_CHOICES, max_length=16)
 
     activated = models.BooleanField(_('account active or not'), default=False)
     profile_picture = models.ImageField(upload_to=get_upload_path, blank=True, null=True)
