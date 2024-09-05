@@ -221,27 +221,6 @@ def multi_factor_authentication_login(request):
 @api_view(['POST'])
 @throttle_classes([CustomRateThrottle])
 def signin(request):
-
-    """
-        This view handles the first-time sign-in process. It expects a POST request with the user's full name and email.
-
-        Steps:
-        1. It retrieves the provided full name and email.
-        2. If any of these are missing, it returns a 400 Bad Request error.
-        3. It validates the email format and the full name format.
-        4. It tries to get the user object using the provided email address.
-        5. If no user exists or if the user is not a "FOUNDER" and their school is non-compliant, it returns an error.
-        6. It checks if the provided name and surname are correct.
-        7. If the user's account has already been activated, it returns a 403 Forbidden error.
-        8. If the user's email is banned, it returns an alert.
-        9. If everything checks out, it creates an OTP for the user and tries to send it to their email address.
-        10. If the OTP email is successfully sent, it caches the OTP and returns a successful response.
-        11. If there was an error sending the OTP email, it returns a 500 Internal Server Error.
-
-        Note: All exceptions are handled and appropriate HTTP status codes are returned.
-    """
-    
-    # retrieve provided infomation
     try:
         full_names = request.data.get('fullname')
         email = request.data.get('email')

@@ -19,6 +19,9 @@ class AdminPermissionGroup(models.Model):
     description = models.TextField(blank=True, null=True)
 
     actors = models.ManyToManyField(Admin, related_name='permissions')
+    actors_count = models.IntegerField(default=0)
+    
+    permissions_count = models.IntegerField(default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -54,6 +57,7 @@ class AdminPermission(models.Model):
         ('UPDATE', 'Update'),
         ('DELETE', 'Delete'),
         ('SUBMIT', 'Submit'),
+        ('GENERATE', 'Generate'),
         ('GRADE', 'Grade'),
         ('LINK', 'Link'),
         ('UNLINK', 'Unlink'),
@@ -63,6 +67,7 @@ class AdminPermission(models.Model):
         ('ACCOUNT', 'Account'),
         ('GRADE', 'Grade'),
         ('TERM', 'Term'),
+        ('REPORT_CARD', 'Report Card'),
         ('SUBJECT', 'Subject'),
         ('CLASSROOM', 'Classroom'),
         ('ATTENDANCE', 'Attendance'),
