@@ -1,5 +1,4 @@
 # python
-from datetime import timedelta, timezone
 
 # rest framework
 from rest_framework import status
@@ -9,7 +8,6 @@ from rest_framework.throttling import UserRateThrottle
 
 # django
 from django.db import transaction
-from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.contrib.auth import authenticate as authenticate_user, password_validation
 from django.core.cache import cache
@@ -22,8 +20,8 @@ from access_tokens.models import AccessToken
 # serializers
 
 # utility functions 
-from .utils import manage_user_sessions, generate_token, generate_otp, verify_user_otp, validate_names, send_otp_email
-
+from .utils import generate_token, generate_otp, verify_user_otp, validate_names, send_otp_email
+from access_tokens.utils import manage_user_sessions
 # custom decorators
 from .decorators import token_required
 
