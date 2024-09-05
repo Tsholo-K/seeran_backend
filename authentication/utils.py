@@ -8,7 +8,7 @@ import requests
 from decouple import config
 
 # restframework
-from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
+from rest_framework_simplejwt.tokens import AccessToken as validate, RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework.response import Response
 from rest_framework import status
@@ -16,6 +16,9 @@ from rest_framework import status
 # django
 from django.utils import timezone
 from django.db import transaction
+
+# models
+from access_tokens.models import AccessToken
 
 
 def manage_user_sessions(user, token, max_sessions=3):
@@ -96,7 +99,7 @@ def send_otp_email(user, otp, reason):
 # validate token
 def validate_access_token(access_token):
     try:
-        AccessToken(access_token).verify()
+        validate(access_token).verify()
         # Access token is valid
         return access_token
     except TokenError:
