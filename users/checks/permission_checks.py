@@ -237,11 +237,11 @@ def check_group_schedule_permissions(requesting_account, group_schedule):
         return {"error": "Unauthorized access. Invalid role provided."}
     
     # Students can only access schedules if they are in the group schedule's students
-    if requesting_account.role == 'STUDENT' and not group_schedule.students.filter(id=requesting_account.id).exists():
+    if requesting_account.role == 'STUDENT' and not group_schedule.subscribers.filter(id=requesting_account.id).exists():
         return {"error": "As a student, you can only view schedules for groups you are subscribed to. Please check your group assignments and try again."}
 
     # Parents can only access schedules if at least one of their children is in the group schedule's students
-    if requesting_account.role == 'PARENT' and not group_schedule.students.filter(id__in=requesting_account.children.values_list('id', flat=True)).exists():
+    if requesting_account.role == 'PARENT' and not group_schedule.subscribers.filter(id__in=requesting_account.children.values_list('id', flat=True)).exists():
         return {"error": "As a parent, you can only view schedules for groups that your children are subscribed to. Please check your child's group assignments and try again."}
 
     # Teachers, Admins, and Principals can only access schedules if they belong to the same school as the group schedule's grade

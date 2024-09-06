@@ -515,7 +515,7 @@ def search_group_schedule_schedules(user, role, details):
         requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
         
         # Retrieve the specified group schedule
-        group_schedule = StudentGroupTimetable.objects.select_related('students', 'grade__school').get(group_timetable_id=details.get('group_schedule'))
+        group_schedule = StudentGroupTimetable.objects.select_related('subscribers', 'grade__school').get(group_timetable_id=details.get('group_schedule'))
 
         # Check permissions
         permission_error = permission_checks.check_group_schedule_permissions(requesting_account, group_schedule)
