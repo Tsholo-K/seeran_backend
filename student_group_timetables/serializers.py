@@ -21,10 +21,7 @@ class StudentGroupScheduleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StudentGroupTimetable
-        fields = [ 'id', 'group_name', 'students_count', 'schedules_count' ]
-    
-    def get_id(self, obj):
-        return str(obj.group_schedule_id)
+        fields = [ 'group_name', 'students_count', 'schedules_count', 'group_timetable_id' ]
     
     def get_group_name(self, obj):
         return obj.group_name.title()
