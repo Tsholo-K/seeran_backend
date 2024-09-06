@@ -263,7 +263,7 @@ def update_class(user, role, details):
         # Retrieve the user and related school in a single query using select_related
         requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
 
-        classroom = Classroom.objects.get(class_id=details.get('class'), school=requesting_account.school)
+        classroom = Classroom.objects.get(classroom_id=details.get('class'), school=requesting_account.school)
 
         serializer = UpdateClassSerializer(instance=classroom, data=details.get('updates'))
         if serializer.is_valid():
@@ -310,7 +310,7 @@ def update_class_students(user, role, details):
         # Retrieve the user and related school in a single query using select_related
         requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
 
-        classroom = Classroom.objects.select_related('grade', 'subject').get(class_id=details.get('class'), school=requesting_account.school)
+        classroom = Classroom.objects.select_related('grade', 'subject').get(classroom_id=details.get('class'), school=requesting_account.school)
 
         with transaction.atomic():
             # Check for validation errors and perform student updates
