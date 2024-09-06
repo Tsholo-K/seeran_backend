@@ -19,7 +19,7 @@ from users.serializers.students.students_serializers import StudentSourceAccount
 
 class ClassCreationSerializer(serializers.ModelSerializer):
 
-    teacher = serializers.PrimaryKeyRelatedField(queryset=Teacher.objects.all(), required=False)
+    teacher = serializers.PrimaryKeyRelatedField(queryset=Teacher.objects.all(), required=False, allow_null=True)
     subject = serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all(), required=False, allow_null=True)
     register_class = serializers.BooleanField(required=False)
     grade = serializers.PrimaryKeyRelatedField(queryset=Grade.objects.all())
