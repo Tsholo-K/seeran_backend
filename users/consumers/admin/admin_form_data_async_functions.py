@@ -80,7 +80,7 @@ def form_data_for_updating_class(user, role, details):
         # Build the queryset for the requesting account with the necessary related fields.
         requesting_account = Model.objects.select_related('school').prefetch_related('school__teachers__taught_classes').get(account_id=user)
 
-        classroom = Classroom.objects.select_related('subject', 'teacher').get(class_id=details.get('class'), school=requesting_account.school)
+        classroom = Classroom.objects.select_related('subject', 'teacher').get(classroom_id=details.get('class'), school=requesting_account.school)
 
         # Determine the query based on the classroom type
         if classroom.subject:
@@ -128,7 +128,7 @@ def form_data_for_adding_students_to_class(user, role, details):
         requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
 
         # Retrieve the classroom with the provided class ID and related data using `select_related`
-        classroom = Classroom.objects.select_related('grade', 'subject').get(class_id=details.get('class'), school=requesting_account.school)
+        classroom = Classroom.objects.select_related('grade', 'subject').get(classroom_id=details.get('class'), school=requesting_account.school)
 
         # Determine the reason for fetching students and apply the appropriate filtering logic
         if details.get('reason') == 'subject class':
