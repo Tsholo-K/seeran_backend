@@ -26,7 +26,7 @@ class StudentGroupScheduleSerializer(serializers.ModelSerializer):
         return obj.group_name.title()
     
     def get_students_count(self, obj):
-        return obj.students.count()
+        return obj.subscribers.count()
     
     def get_schedules_count(self, obj):
         return obj.schedules.count()
