@@ -4,6 +4,7 @@
 
 # rest framework
 from rest_framework import serializers
+from rest_framework.validators import UniqueTogetherValidator
 
 # models
 from .models import Classroom
@@ -28,6 +29,11 @@ class ClassCreationSerializer(serializers.ModelSerializer):
         model = Classroom
         fields = ['classroom_number', 'group', 'subject', 'register_class', 'teacher', 'grade', 'school']
     
+    def __init__(self, *args, **kwargs):
+        super(ClassCreationSerializer, self).__init__(*args, **kwargs)
+        # Remove the unique together validator that's added by DRF
+        self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
+
     def validate(self, data):
         """
         Ensure that the subject field is only required when register_class is False.
@@ -45,6 +51,11 @@ class UpdateClassSerializer(serializers.ModelSerializer):
     class Meta:
         model = Classroom
         fields = [ 'classroom_number', 'group']
+    
+    def __init__(self, *args, **kwargs):
+        super(UpdateClassSerializer, self).__init__(*args, **kwargs)
+        # Remove the unique together validator that's added by DRF
+        self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
 
 
 class ClassSerializer(serializers.ModelSerializer):
