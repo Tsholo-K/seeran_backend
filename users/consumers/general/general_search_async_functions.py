@@ -523,7 +523,7 @@ def search_group_schedule_schedules(user, role, details):
             return permission_error
 
         # Serialize and return the schedules associated with the group schedule
-        serialized_schedules = DailyScheduleSerializer(group_schedule.schedules.all(), many=True).data
+        serialized_schedules = DailyScheduleSerializer(group_schedule.daily_schedules.all(), many=True).data
 
         return {"schedules": serialized_schedules}
                
