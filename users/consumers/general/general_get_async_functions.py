@@ -26,7 +26,7 @@ from chats.serializers import ChatSerializer
 
 # mappings
 from users.maps import role_specific_maps
-
+    
 
 @database_sync_to_async
 def fetch_security_information(user, role):

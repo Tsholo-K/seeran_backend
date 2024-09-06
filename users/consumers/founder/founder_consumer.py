@@ -10,7 +10,7 @@ from seeran_backend.middleware import  connection_manager
 # utility functions
 from authentication.utils import validate_access_token
 
-# async functions 
+# founder async functions 
 from . import founder_post_async_functions
 from . import founder_search_async_functions
 from . import founder_put_async_functions
@@ -39,7 +39,6 @@ class FounderConsumer(AsyncWebsocketConsumer):
         await connection_manager.connect(account_id, self)
 
         await self.accept()
-        return await self.send(text_data=json.dumps({'message': 'Welcome Back'}))
 
 
 
@@ -65,6 +64,9 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
         if not action or not description:
             return await self.send(text_data=json.dumps({'error': 'invalid request..'}))
+        
+        if action == 'AUTHENTICATE' and description == 'socket_authentication':
+            return await self.send(text_data=json.dumps({'authenticated': 'socket connection valid andauthenticated'}))
 
         response = await self.handle_request(action, description, details, user, role, access_token)
         

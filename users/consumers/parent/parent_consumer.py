@@ -36,7 +36,6 @@ class ParentConsumer(AsyncWebsocketConsumer):
         await connection_manager.connect(account_id, self)
 
         await self.accept()
-        return await self.send(text_data=json.dumps({'message': 'Welcome Back'}))
 
 
 
@@ -62,6 +61,9 @@ class ParentConsumer(AsyncWebsocketConsumer):
 
         if not action or not description:
             return await self.send(text_data=json.dumps({'error': 'invalid request..'}))
+        
+        if action == 'AUTHENTICATE' and description == 'socket_authentication':
+            return await self.send(text_data=json.dumps({'authenticated': 'socket connection valid andauthenticated'}))
 
         response = await self.handle_request(action, description, details, user, role, access_token)
         
