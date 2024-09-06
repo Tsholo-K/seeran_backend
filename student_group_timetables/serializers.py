@@ -14,7 +14,6 @@ class StudentGroupScheduleCreationSerializer(serializers.ModelSerializer):
 
 class StudentGroupScheduleSerializer(serializers.ModelSerializer):
     
-    id = serializers.SerializerMethodField()
     group_name = serializers.SerializerMethodField()
     students_count = serializers.SerializerMethodField()
     schedules_count = serializers.SerializerMethodField()
