@@ -63,7 +63,7 @@ INSTALLED_APPS = [
     'assessments',
     'topics',
     'transcripts',
-    'report_cards',
+    'progress_reports',
     'announcements',
     'activities',
     'bug_reports',

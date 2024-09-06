@@ -84,7 +84,7 @@ class ClassesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Classroom
-        fields = ['classroom_number', 'teacher', 'student_count', 'group', 'class_id']
+        fields = ['classroom_number', 'teacher', 'student_count', 'group', 'classroom_id']
 
     def get_teacher(self, obj):
         if obj.teacher:
@@ -100,7 +100,7 @@ class TeacherClassesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Classroom
-        fields = ['classroom_number', 'subject', 'grade', 'student_count', 'group', 'class_id']
+        fields = ['classroom_number', 'subject', 'grade', 'student_count', 'group', 'classroom_id']
 
     def get_subject(self, obj):
         if  obj.register_class:
@@ -117,4 +117,4 @@ class TeacherRegisterClassSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Classroom
-        fields = ['classroom_number', 'student_count', 'group', 'class_id']
+        fields = ['classroom_number', 'student_count', 'group', 'classroom_id']

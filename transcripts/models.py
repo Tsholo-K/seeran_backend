@@ -45,9 +45,6 @@ class Transcript(models.Model):
             raise ValidationError(f'the students moderated score must be within the range of 0 to {self.assessment.total}')
         
     def save(self, *args, **kwargs):
-        """
-        Override save method to validate incoming data
-        """
         self.clean()
 
         try:

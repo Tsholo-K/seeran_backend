@@ -22,10 +22,40 @@ from users.maps import role_specific_maps
 
     
 class Assessment(models.Model):
+    ASSESSMENT_TYPE_CHOICES = [
+        ('EXAMINATION', 'Examination'),
+        ('TEST', 'Test'),
+        ('PRACTICAL', 'Practical'),
+        ('ASSIGNMENT', 'Assignment'),
+        ('HOMEWORK', 'Homework'),
+        ('QUIZ', 'Quiz'),
+        ('PROJECT', 'Project'),
+        ('PRESENTATION', 'Presentation'),
+        ('LAB_WORK', 'Lab Work'),
+        ('FIELD_TRIP', 'Field Trip'),
+        ('GROUP_WORK', 'Group Work'),
+        ('SELF_ASSESSMENT', 'Self Assessment'),
+        ('PEER_ASSESSMENT', 'Peer Assessment'),
+        ('PORTFOLIO', 'Portfolio'),
+        ('RESEARCH_PAPER', 'Research Paper'),
+        ('CASE_STUDY', 'Case Study'),
+        ('DISCUSSION', 'Discussion'),
+        ('DEBATE', 'Debate'),
+        ('ROLE_PLAY', 'Role Play'),
+        ('SIMULATION', 'Simulation'),
+        ('ESSAY', 'Essay'),
+        ('MULTIPLE_CHOICE', 'Multiple Choice'),
+        ('OBSERVATION', 'Observation'),
+        ('INTERVIEW', 'Interview'),
+        ('DIAGNOSTIC', 'Diagnostic'),
+        ('FORMATIVE', 'Formative'),
+        ('SUMMATIVE', 'Summative'),
+    ]
+
     # The user who set the assessment
     assessor = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, related_name='assessed_assessments', null=True)
     # The date and time when the assessment was created
-    date_set = models.DateTimeField(auto_now_add=True)  # Allowed format: yyyy-mm-ddThh:mm
+    date_set = models.DateTimeField(auto_now_add=True, editable=False)  # Allowed format: yyyy-mm-ddThh:mm
 
     # The date and time when the assessment is due
     due_date = models.DateTimeField()  # Allowed format: yyyy-mm-ddThh:mm
@@ -39,7 +69,7 @@ class Assessment(models.Model):
     assessment_type = models.CharField(max_length=124, default='EXAMINATION')
 
     # Total score possible for the assessment
-    total = models.IntegerField()
+    total = models.DecimalField(max_digits=5, decimal_places=2)
 
     # Indicates if the assessment is formal
     formal = models.BooleanField(default=False)
@@ -56,14 +86,6 @@ class Assessment(models.Model):
     assessed = models.BooleanField(default=False)
     # Date and time when the assessment was collected
     date_assessed = models.DateTimeField(null=True, blank=True)
-
-    # the students who submitted the assessment before the due date elapsed
-    ontime_submission = models.ManyToManyField(Student, related_name='ontime_submissions', blank=True)
-    # the students who submitted the assessment after the due date elapsed
-    late_submission = models.ManyToManyField(Student, related_name='late_submissions', blank=True)
-
-    # the students who did not submit the assessment
-    not_submitted = models.ManyToManyField(Student, related_name='not_submitted', blank=True)
 
     # Indicates if the assessment results have been released
     grades_released = models.BooleanField(default=False)
@@ -102,7 +124,7 @@ class Assessment(models.Model):
             assessor = Model.objects.select_related('school').only('school', 'role').get(account_id=self.assessor.account_id)
 
             if assessor not in ['PRINCIPAL', 'ADMIN', 'TEACHER'] or assessor.school != self.school:
-                raise ValidationError('only principals, admins, and teachers can set assessments.')
+                raise ValidationError(_('only principals, admins, and teachers can set assessments.'))
         
         if self.moderator:
              # Get the appropriate model for the requesting user's role
@@ -112,7 +134,7 @@ class Assessment(models.Model):
             moderator = Model.objects.select_related('school').only('school', 'role').get(account_id=self.moderator.account_id)
 
             if moderator not in ['PRINCIPAL', 'ADMIN', 'TEACHER'] or moderator.school != self.school:
-                raise ValidationError('only principals, admins, and teachers can moderate assessments.')
+                raise ValidationError(_('only principals, admins, and teachers can moderate assessments.'))
 
         # Convert due_date to a timezone-aware datetime
         if self.due_date and timezone.is_naive(self.due_date):
@@ -120,7 +142,7 @@ class Assessment(models.Model):
         
         # Check if due_date is in the future
         if self.due_date and self.due_date < timezone.now():
-            raise ValidationError('the due date must be in the future.')
+            raise ValidationError(_('the due date must be in the future.'))
         
         # Convert date_assessed to a timezone-aware datetime
         if self.date_assessed and timezone.is_naive(self.date_assessed):
@@ -128,7 +150,7 @@ class Assessment(models.Model):
         
         # Ensure date_assessed is after due_date
         if self.date_assessed and self.date_assessed < self.due_date:
-            raise ValidationError('date assessed cannot be before the due date.')
+            raise ValidationError(_('date assessed cannot be before the due date.'))
 
         # Aggregate the total percentage of existing assessments for this term and subject
         total_percentage = self.term.assessments.filter(subject=self.subject).exclude(pk=self.pk).aggregate(total_percentage=models.Sum('percentage_towards_term_mark'))['total_percentage'] or Decimal('0.00')
@@ -141,30 +163,11 @@ class Assessment(models.Model):
         
         # Ensure the percentage is within the valid range
         if not (Decimal('0.00') <= self.percentage_towards_term_mark <= Decimal('100.00')):
-            raise ValidationError('percentage towards the term mark must be between 0 and 100.')
+            raise ValidationError(_('percentage towards the term mark must be between 0 and 100.'))
         
         # Ensure total percentage doesn't exceed 100%
         if (total_percentage + self.percentage_towards_term_mark) > Decimal('100.00'):
-            raise ValidationError('total percentage towards the term cannot exceed 100%.')
-        
-        # Validate that students do not appear in multiple submission status fields
-        all_assessed_students = set(self.students_assessed.all())
-        
-        ontime_students = set(self.ontime_submission.all())
-        late_students = set(self.late_submission.all())
-        not_submitted_students = set(self.not_submitted.all())
-        
-        # Check for overlap between ontime and late submissions
-        if ontime_students.intersection(late_students):
-            raise ValidationError('a student cannot be both an on-time and late submission.')
-
-        # Check for overlap between not submitted and any submissions
-        if not_submitted_students.intersection(ontime_students.union(late_students)):
-            raise ValidationError('a student marked as not submitted cannot be in on-time or late submissions.')
-
-        # Ensure all submission-related students are part of the assessed students
-        if not (ontime_students <= all_assessed_students and late_students <= all_assessed_students and not_submitted_students <= all_assessed_students):
-            raise ValidationError('some submission statuses are set for students not part of the assessed students.')
+            raise ValidationError(_('total percentage towards the term cannot exceed 100%.'))
         
     def save(self, *args, **kwargs):
         """
@@ -186,3 +189,50 @@ class Assessment(models.Model):
         except Exception as e:
             raise ValidationError(_(str(e).lower()))
 
+
+class Submission(models.Model):
+    SUBMISSION_STATUS_CHOICES = [
+        ('ONTIME', 'On Time'),
+        ('LATE', 'Late'),
+        ('NOT_SUBMITTED', 'Not Submitted'),
+    ]
+
+    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='submissions')
+
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='submissions')
+    submission_date = models.DateTimeField()
+
+    status = models.CharField(max_length=20, choices=SUBMISSION_STATUS_CHOICES, default='ONTIME')
+
+    # submissio id 
+    submission_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+
+    class Meta:
+        unique_together = ('assessment', 'status')
+        ordering = ['-submission_date']
+        indexes = [models.Index(fields=['assessment', 'status'])]
+
+    def clean(self):
+        # Ensure submission_date is within a valid range
+        if self.submission_date and (self.submission_date < self.assessment.date_set):
+            raise ValidationError(_('submission date must be after the assessment date set.'))
+        
+    def save(self, *args, **kwargs):
+        """
+        Override save method to validate incoming data
+        """
+        self.clean()
+
+        try:
+            super().save(*args, **kwargs)
+
+        except IntegrityError as e:
+            # Check if the error is related to unique constraints
+            if 'unique constraint' in str(e).lower():
+                raise ValidationError(_(f'there is no need to create a new {self.status} submission list for the provided assessment as it already exists. instead just add the students into the existing {self.status} submission list.'))
+            else:
+                # Re-raise the original exception if it's not related to unique constraints
+                raise
+
+        except Exception as e:
+            raise ValidationError(_(str(e).lower()))

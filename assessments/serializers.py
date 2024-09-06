@@ -17,6 +17,7 @@ from classes.models import Classroom
 class AssessmentCreationSerializer(serializers.ModelSerializer):
 
     classroom = serializers.PrimaryKeyRelatedField(queryset=Classroom.objects.all(), required=False, allow_null=True)
+    assessor = serializers.PrimaryKeyRelatedField(queryset=BaseUser.objects.all(), required=False, allow_null=True)
     moderator = serializers.PrimaryKeyRelatedField(queryset=BaseUser.objects.all(), required=False, allow_null=True)
 
     class Meta:
