@@ -320,7 +320,7 @@ def search_class(user, role, details):
             requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
 
             # Fetch the specific classroom based on class_id and school
-            classroom = Classroom.objects.select_related('school').get(class_id=details.get('class'), school=requesting_account.school)
+            classroom = Classroom.objects.select_related('school').get(classroom_id=details.get('class'), school=requesting_account.school)
         
             # Check permissions
             permission_error = permission_checks.check_class_permissions(requesting_account, classroom)
