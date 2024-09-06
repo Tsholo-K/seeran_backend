@@ -452,6 +452,8 @@ def create_class(user, role, details):
         # Retrieve the user and related school in a single query using select_related
         requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
 
+        classroom = None
+
         # Check if the user has permission to create a grade
         if role != 'PRINCIPAL' and not has_permission(requesting_account, 'CREATE', 'CLASSROOM'):
             response = f'could not proccess your request, you do not have the necessary permissions to create a classroom'
@@ -503,7 +505,8 @@ def create_class(user, role, details):
 
         # If a teacher is specified, update the teacher for the class
         if details.get('teacher'):
-            details['teacher'] = Teacher.objects.get(account_id=details['teacher'], school=requesting_account.school).pk
+             teacker = Teacher.objects.only('pk').get(account_id=details['teacher'], school=requesting_account.school)
+             details['teacher'] = teacker.pk
 
         # Serialize and validate the data
         serializer = ClassCreationSerializer(data=details)
