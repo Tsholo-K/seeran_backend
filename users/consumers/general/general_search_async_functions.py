@@ -387,7 +387,7 @@ def search_student_class_card(user, role, details):
 
         else:
             # Fetch the specific classroom based on class_id and school
-            classroom = Classroom.objects.get(class_id=details.get('class'), school=requesting_account.school)
+            classroom = Classroom.objects.get(classroom_id=details.get('class'), school=requesting_account.school)
 
         # retrieve the students activities 
         activities = requested_account.my_activities.filter(classroom=classroom)
