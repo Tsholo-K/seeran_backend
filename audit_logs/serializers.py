@@ -29,4 +29,4 @@ class AuditEntiresSerializer(serializers.ModelSerializer):
         return obj.outcome.lower()
         
     def get_object(self, obj):
-        return obj.object.lower()
+        return obj.target_model.lower()

@@ -63,7 +63,7 @@ def search_audit_entries(user, role, details):
 
             return {'error': response}
         
-        entries = requesting_account.school.audit_logs.only('actor', 'outcome', 'object', 'timestamp', 'audit_id').filter(action=details.get('action'))
+        entries = requesting_account.school.audit_logs.only('actor', 'outcome', 'target_model', 'timestamp', 'audit_id').filter(action=details.get('action'))
         serialized_entires = AuditEntiresSerializer(instance=entries, many=True).data
 
         return {"entries": serialized_entires}
