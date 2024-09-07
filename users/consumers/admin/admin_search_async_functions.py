@@ -135,7 +135,7 @@ def search_grades(user, role, details):
         
         if details.get('time_stamp'):
             # Convert the timestamp to a string in ISO format
-            time_stamp = datetime.fromtimestamp(details['time_stamp'] + 1 / 1000).isoformat()
+            time_stamp = datetime.fromtimestamp((details['time_stamp'] + 1) / 1000).isoformat()
             # Filter grades created after the given timestamp
             grades = requesting_account.school.grades.filter(created__gt=time_stamp)            
         
