@@ -219,7 +219,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             if description in ['update_email', 'update_password']:
                 response = await func(user, role, details, access_token)
 
-            elif description in ['update_multi_factor_authentication']:
+            elif description in ['update_multi_factor_authentication', 'mark_messages_as_read']:
                 response = await func(user, details)
 
             else:
