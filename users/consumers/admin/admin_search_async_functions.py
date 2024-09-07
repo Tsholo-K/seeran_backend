@@ -125,8 +125,11 @@ def search_audit_entry(user, role, details):
 
 @database_sync_to_async
 def search_grades(user, role, details):
-
     try:
+        # Ensure details is a dictionary
+        if details is None:
+            details = {}
+
         # Get the appropriate model for the requesting user's role from the mapping.
         Model = role_specific_maps.account_access_control_mapping[role]
 
