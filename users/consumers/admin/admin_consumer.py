@@ -123,7 +123,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'account': general_search_async_functions.search_account,
 
-            'grades': admin_get_async_functions.fetch_grades,
+            'grades': admin_search_async_functions.search_grades,
             "grade_details": admin_search_async_functions.search_grade_details,
 
             "terms": admin_search_async_functions.search_grade_terms,
