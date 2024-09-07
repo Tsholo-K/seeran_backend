@@ -1,5 +1,4 @@
 # python 
-import datetime
 
 # httpx
 
@@ -134,13 +133,7 @@ def search_grades(user, role, details):
         requesting_account = Model.objects.select_related('school').prefetch_related('school__grades').only('school').get(account_id=user)
         
         if details.get('time_stamp'):
-            # Convert Unix timestamp (milliseconds) to datetime
-            try:
-                parsed_time_stamp = datetime.datetime.fromtimestamp(details['time_stamp'] / 1000.0)
-                grades = requesting_account.school.grades.filter(created__gt=parsed_time_stamp)
-            except (ValueError, TypeError) as e:
-                return {'error': f'Invalid timestamp format provided: {e}'}
-            
+            grades = requesting_account.school.grades.filter(created__gt=details['time_stamp'].isoformat())
         else:
             grades = requesting_account.school.grades.all()
 
