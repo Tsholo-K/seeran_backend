@@ -27,10 +27,13 @@ class AuditEntriesSerializer(serializers.ModelSerializer):
         return f"{obj.actor.surname} {obj.actor.name}".title()
         
     def get_outcome(self, obj):
-        return obj.outcome.lower()
+        return obj.get_outcome_display().lower()
         
+    # For any choice field FOO, Django automatically generates a method get_FOO_display()
+    # that returns the human-readable value of the choice, so you can apply this method 
+    # to other choice fields like outcome or action as well, if needed.
     def get_object(self, obj):
-        return obj.target_model.lower()
+        return obj.get_target_model_display().lower()
 
 
 class AuditEntrySerializer(serializers.ModelSerializer):
@@ -46,8 +49,11 @@ class AuditEntrySerializer(serializers.ModelSerializer):
     def get_actor(self, obj):
         return BasicAccountDetailsEmailSerializer(obj.actor).data
         
+    # For any choice field FOO, Django automatically generates a method get_FOO_display()
+    # that returns the human-readable value of the choice, so you can apply this method 
+    # to other choice fields like outcome or action as well, if needed.
     def get_outcome(self, obj):
-        return obj.outcome.lower()
-        
+        return obj.get_outcome_display()
+    
     def get_object(self, obj):
-        return obj.target_model.lower()
+        return obj.get_target_model_display()
