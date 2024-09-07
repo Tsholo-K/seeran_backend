@@ -37,10 +37,11 @@ class BasicAccountDetailsEmailSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
     surname = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
+    identifier = serializers.SerializerMethodField()
 
     class Meta:
         model = BaseUser
-        fields = ['name', 'surname', 'image', 'account_id']
+        fields = ['name', 'surname', 'identifier', 'image']
     
     def get_name(self, obj):
         """Return the formatted name of the user."""
@@ -49,6 +50,10 @@ class BasicAccountDetailsEmailSerializer(serializers.ModelSerializer):
     def get_surname(self, obj):
         """Return the formatted surname of the user."""
         return obj.surname.title()
+            
+    def get_identifier(self, obj):
+        """Return the email of the user."""
+        return obj.email
             
     def get_image(self, obj):
         """Return the URL of the user's image or a default image."""
