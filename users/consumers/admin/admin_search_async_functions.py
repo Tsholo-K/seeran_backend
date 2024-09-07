@@ -1,5 +1,5 @@
 # python 
-import datetime
+from datetime import datetime
 
 # httpx
 
@@ -134,8 +134,10 @@ def search_grades(user, role, details):
         requesting_account = Model.objects.select_related('school').prefetch_related('school__grades').only('school').get(account_id=user)
         
         if details.get('time_stamp'):
+            # Convert the timestamp to a string in ISO format
+            time_stamp = datetime.fromtimestamp(details['time_stamp'] / 1000).isoformat()
             # Filter grades created after the given timestamp
-            grades = requesting_account.school.grades.exclude(created__gt=details['time_stamp'])            
+            grades = requesting_account.school.grades.exclude(created__gt=time_stamp)            
         
         else:
             grades = requesting_account.school.grades.all()
