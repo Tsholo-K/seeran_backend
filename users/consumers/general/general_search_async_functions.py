@@ -301,7 +301,9 @@ def search_class(user, role, details):
     try:
         if role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
             return {"error": 'could not proccess your request.. your account either has insufficient permissions or is invalid for the action you are trying to perform'}
-
+        
+        classroom = None
+        
         # Determine the classroom based on the request details
         if details.get('class') == 'requesting my own class' and role == 'TEACHER':
             # Build the queryset for the requesting account with the necessary related fields.
