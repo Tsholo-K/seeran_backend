@@ -328,6 +328,9 @@ def search_class(user, role, details):
             permission_error = permission_checks.check_class_permissions(requesting_account, classroom)
             if permission_error:
                 return permission_error
+        
+        else:
+            return {"error": 'invalid request'}
 
         # Serialize and return the classroom data
         serialized_class = ClassSerializer(classroom).data
