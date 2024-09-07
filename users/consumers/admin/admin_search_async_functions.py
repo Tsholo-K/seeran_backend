@@ -140,7 +140,7 @@ def search_grades(user, role, details):
             timestamp_datetime = datetime.datetime.fromtimestamp(timestamp_in_seconds)
             
             # Filter grades created after the given timestamp
-            grades = requesting_account.school.grades.exclude(created__gt=timestamp_datetime)            
+            grades = requesting_account.school.grades.exclude(created__lt=timestamp_datetime)            
         
         else:
             grades = requesting_account.school.grades.all()
