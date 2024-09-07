@@ -42,7 +42,9 @@ class Grade(models.Model):
     # set by school
     major_subjects = models.PositiveIntegerField() # how many major subjects a student in the grade needs to fail to fail a term
     none_major_subjects = models.PositiveIntegerField() # how many none major subjects a student in the grade needs to fail to fail a term
-    
+
+    created = models.DateTimeField(auto_now_add=True)
+
     # school linked to
     school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='grades')
 

@@ -98,8 +98,6 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'my_security_information': general_get_async_functions.fetch_security_information,
             'email_information': general_get_async_functions.fetch_my_email_information,
 
-            'grades': admin_get_async_functions.fetch_grades,
-
             'chats': general_get_async_functions.fetch_chats,
 
             'announcements': general_get_async_functions.fetch_announcements,
@@ -125,9 +123,10 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'account': general_search_async_functions.search_account,
 
+            'grades': admin_get_async_functions.fetch_grades,
             "grade_details": admin_search_async_functions.search_grade_details,
 
-            "grade_terms": admin_search_async_functions.search_grade_terms,
+            "terms": admin_search_async_functions.search_grade_terms,
             'term_details': admin_search_async_functions.search_term_details,
 
             "subject_details": admin_search_async_functions.search_subject_details,
