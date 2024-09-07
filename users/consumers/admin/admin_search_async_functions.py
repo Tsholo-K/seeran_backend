@@ -23,7 +23,7 @@ from users.serializers.principals.principals_serializers import PrincipalAccount
 from users.serializers.students.students_serializers import StudentSourceAccountSerializer
 from users.serializers.admins.admins_serializers import AdminAccountSerializer
 from users.serializers.teachers.teachers_serializers import TeacherAccountSerializer
-from audit_logs.serializers import AuditEntiresSerializer
+from audit_logs.serializers import AuditEntriesSerializer, AuditEntrySerializer
 from grades.serializers import GradeSerializer, GradeDetailsSerializer
 from terms.serializers import  TermsSerializer, TermSerializer, ClassesSerializer
 from subjects.serializers import SubjectSerializer, SubjectDetailsSerializer
@@ -38,7 +38,7 @@ from users.complex_queries import queries
 from permissions.utils import has_permission
 from audit_logs.utils import log_audit
 
-    
+
 @database_sync_to_async
 def search_audit_entries(user, role, details):
     try:
@@ -50,7 +50,7 @@ def search_audit_entries(user, role, details):
 
         # Check if the user has permission to create an assessment
         if role != 'PRINCIPAL' and not has_permission(requesting_account, 'VIEW', 'AUDIT_ENTRIES'):
-            response = f'could not proccess your request, you do not have the necessary permissions to view audit entries.'
+            response = f'could not proccess your request, you do not have the necessary permissions to view audit entries. please contact your administrator to adjust you permissions for viewing audit entries.'
 
             log_audit(
                 actor=requesting_account,
@@ -63,10 +63,10 @@ def search_audit_entries(user, role, details):
 
             return {'error': response}
         
-        entries = requesting_account.school.audit_logs.only('actor', 'outcome', 'target_model', 'timestamp', 'audit_id').filter(action=details.get('action'))
-        serialized_entires = AuditEntiresSerializer(instance=entries, many=True).data
+        entries = requesting_account.school.audit_logs.only('actor', 'actor__name', 'actor__surname', 'outcome', 'target_model', 'timestamp', 'audit_id').filter(action=details.get('action'))
+        serialized_entries = AuditEntriesSerializer(instance=entries, many=True).data
 
-        return {"entries": serialized_entires}
+        return {"entries": serialized_entries}
                    
     except Principal.DoesNotExist:
         # Handle the case where the provided account ID does not exist
@@ -80,6 +80,48 @@ def search_audit_entries(user, role, details):
         # Handle any unexpected errors with a general error message
         return {'error': str(e)}
 
+
+@database_sync_to_async
+def search_audit_entry(user, role, details):
+    try:
+        # Get the appropriate model for the requesting user's role from the mapping.
+        Model = role_specific_maps.account_access_control_mapping[role]
+
+        # Build the queryset for the requesting account with the necessary related fields.
+        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+
+        # Check if the user has permission to create an assessment
+        if role != 'PRINCIPAL' and not has_permission(requesting_account, 'VIEW', 'AUDIT_ENTRIES'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view audit entries. please contact your administrator to adjust you permissions for viewing audit entries.'
+
+            log_audit(
+                actor=requesting_account,
+                action='VIEW',
+                target_model='AUDIT_ENTRIES',
+                outcome='DENIED',
+                response=response,
+                school=requesting_account.school
+            )
+
+            return {'error': response}
+        
+        entries = requesting_account.school.audit_logs.only('actor', 'outcome', 'target_model', 'response', 'timestamp').get(audit_id=details.get('entry'))
+        serialized_entry = AuditEntrySerializer(instance=entries).data
+
+        return {"entry": serialized_entry}
+                   
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
+    
 
 @database_sync_to_async
 def search_grade(user, role, details):

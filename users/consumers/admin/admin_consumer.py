@@ -117,6 +117,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             "school_details": general_search_async_functions.search_school_details,
 
             "audit_entries": admin_search_async_functions.search_audit_entries,
+            "audit_entry": admin_search_async_functions.search_audit_entry,
 
             'accounts': admin_search_async_functions.search_accounts,
             'students': admin_search_async_functions.search_students,
