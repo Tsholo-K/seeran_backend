@@ -12,6 +12,7 @@ from schools.models import School
 class AuditLog(models.Model):
 
     ACTION_CHOICES = [
+        ('VIEW', 'View'),
         ('CREATE', 'Create'),
         ('UPDATE', 'Update'),
         ('DELETE', 'Delete'),
@@ -23,6 +24,7 @@ class AuditLog(models.Model):
 
     TARGET_MODEL_CHOICES = [
         ('ACCOUNT', 'Account'),
+        ('AUDIT_ENTRIES', 'Audit Entries'),
         ('GRADE', 'Grade'),
         ('TERM', 'Term'),
         ('SUBJECT', 'Subject'),

@@ -116,6 +116,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
         search_map = {
             "school_details": general_search_async_functions.search_school_details,
 
+            "audit_entries": admin_search_async_functions.search_audit_entries,
+
             'accounts': admin_search_async_functions.search_accounts,
             'students': admin_search_async_functions.search_students,
             'parents': general_search_async_functions.search_parents,
