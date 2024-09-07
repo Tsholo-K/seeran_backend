@@ -126,18 +126,14 @@ def search_audit_entry(user, role, details):
 @database_sync_to_async
 def search_grades(user, role, details):
     try:
-        # Ensure details is a dictionary
-        if details is None:
-            details = {}
-
         # Get the appropriate model for the requesting user's role from the mapping.
         Model = role_specific_maps.account_access_control_mapping[role]
 
         # Build the queryset for the requesting account with the necessary related fields.
         requesting_account = Model.objects.select_related('school').prefetch_related('school__grades').only('school').get(account_id=user)
         
-        if details.get('time_stamp') != None:
-            grades = requesting_account.school.grades.filter(created__gt=details['time_stamp'])
+        if details.get('time_stamp'):
+            grades = requesting_account.school.grades.filter(created__gt=details.get('time_stamp'))
         else:
             grades = requesting_account.school.grades.all()
 
