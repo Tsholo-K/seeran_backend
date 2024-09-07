@@ -135,7 +135,7 @@ def search_grades(user, role, details):
         
         if details.get('time_stamp'):
             # Filter grades created after the given timestamp
-            grades = requesting_account.school.grades.exclude(created__gt=str(details['time_stamp']).isoformat())            
+            grades = requesting_account.school.grades.exclude(created__gt=details['time_stamp'])            
         
         else:
             grades = requesting_account.school.grades.all()
