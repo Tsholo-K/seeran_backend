@@ -133,7 +133,7 @@ def search_grades(user, role, details):
         # Build the queryset for the requesting account with the necessary related fields.
         requesting_account = Model.objects.select_related('school').prefetch_related('school__grades').only('school').get(account_id=user)
         
-        if details.get('time_stamp'):
+        if details.get('time_stamp') != None:
             grades = requesting_account.school.grades.filter(created__gt=details['time_stamp'])
         else:
             grades = requesting_account.school.grades.all()
