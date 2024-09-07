@@ -314,7 +314,7 @@ def search_class(user, role, details):
             if classroom is None:
                 return {"class": None}
 
-        elif details.get('class') and role in ['PRINCIPAL', 'ADMIN']:
+        elif details.get('class'):
             # Get the appropriate model for the requesting user's role from the mapping.
             Model = role_specific_maps.account_access_control_mapping[role]
 
