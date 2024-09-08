@@ -193,6 +193,8 @@ class TeacherConsumer(AsyncWebsocketConsumer):
     async def handle_form_data(self, description, details, user, role, access_token):
         form_data_map = {
             'attendance_register': general_form_data_async_functions.form_data_for_attendance_register,
+
+            'set_assessment' : general_form_data_async_functions.form_data_for_assessment_setting,
         }
 
         func = form_data_map.get(description)

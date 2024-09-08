@@ -61,6 +61,18 @@ class TermsSerializer(serializers.ModelSerializer):
         return obj.term.title()
 
 
+class FormTermsSerializer(serializers.ModelSerializer):
+            
+    term = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Term
+        fields = ['term', 'start_date', 'end_date', 'term_id']
+
+    def get_term(self, obj):
+        return obj.term.title()
+
+
 class TermSerializer(serializers.ModelSerializer):
             
     term = serializers.SerializerMethodField()
