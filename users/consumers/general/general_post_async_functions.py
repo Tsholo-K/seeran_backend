@@ -160,7 +160,18 @@ def set_assessment(user, role, details):
             details['grade'] = grade.pk
         
         else:
-            return {'error': "could not proccess your request, invalid assessment creation details. please provide all required information and try again."}
+            response = "could not proccess your request, invalid assessment creation details. please provide all required information and try again."
+
+            log_audit(
+                actor=requesting_account,
+                action='CREATE',
+                target_model='ASSESSMENT',
+                outcome='ERROR',
+                response=response,
+                school=requesting_account.school
+            )
+
+            return {'error': response}
 
         # Set the school field in the details to the user's school ID
         details['assessor'] = requesting_account.pk
@@ -173,15 +184,9 @@ def set_assessment(user, role, details):
             with transaction.atomic():
                 assessment = Assessment.objects.create(**serializer.validated_data)
 
-                if role == 'TEACHER':
-                    assessment.students_assessed.add(*classroom.students)
-        
-                elif role in ['PRINCIPAL', 'ADMIN']:
-                    assessment.students_assessed.add(*grade.students)
-
                 if details.get('topics'):
                     topics = []
-                    for name in details.get('topics'):
+                    for name in details['topics']:
                         topic, _ = Topic.objects.get_or_create(name=name)
                         topics.append(topic)
 
@@ -225,10 +230,6 @@ def set_assessment(user, role, details):
     except Teacher.DoesNotExist:
         # Handle the case where the provided account ID does not exist
         return {'error': 'a teacher account with the provided credentials does not exist, please check your account details and try again'}
-        
-    except Grade.DoesNotExist:
-        # Handle the case where the provided grade ID does not exist
-        return {'error': 'a grade in your school with the provided credentials does not exist. please check the grade details and try again.'}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()

@@ -68,7 +68,7 @@ class Assessment(models.Model):
     # Unique identifier for the assessment
     unique_identifier = models.CharField(max_length=36)
     # Type of the assessment (e.g., practical, exam, test)
-    assessment_type = models.CharField(max_length=124, default='EXAMINATION')
+    assessment_type = models.CharField(max_length=124, choices=ASSESSMENT_TYPE_CHOICES, default='TEST')
 
     # Total score possible for the assessment
     total = models.DecimalField(max_digits=5, decimal_places=2)
@@ -113,11 +113,14 @@ class Assessment(models.Model):
         return self.unique_identifier
 
     def clean(self):
-        if self.grade:
+        if not self.grade:
             raise ValidationError(_('could not proccess your request, assessments need to be assigned to a grade.'))
         
-        if self.term:
+        if not self.term:
             raise ValidationError(_('could not proccess your request, assessments need to be assigned to a term.'))
+        
+        if not self.subject:
+            raise ValidationError(_('could not proccess your request, assessments need to be assigned to a subject.'))
 
         if self.assessor:
             # Get the appropriate model for the requesting user's role
@@ -172,6 +175,9 @@ class Assessment(models.Model):
         # Ensure total percentage doesn't exceed 100%
         if (total_percentage + self.percentage_towards_term_mark) > Decimal('100.00'):
             raise ValidationError(_('total percentage towards the term cannot exceed 100%.'))
+        
+        if self.percentage_towards_term_mark > Decimal('0.00'):
+            self.formal = True
         
     def save(self, *args, **kwargs):
         """

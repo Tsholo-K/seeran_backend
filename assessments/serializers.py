@@ -18,11 +18,10 @@ class AssessmentCreationSerializer(serializers.ModelSerializer):
 
     classroom = serializers.PrimaryKeyRelatedField(queryset=Classroom.objects.all(), required=False, allow_null=True)
     assessor = serializers.PrimaryKeyRelatedField(queryset=BaseUser.objects.all(), required=False, allow_null=True)
-    moderator = serializers.PrimaryKeyRelatedField(queryset=BaseUser.objects.all(), required=False, allow_null=True)
 
     class Meta:
         model = Assessment
-        fields = ['assessor', 'due_date', 'title', 'unique_identifier', 'assessment_type', 'total', 'percentage_towards_term_mark', 'term', 'classroom', 'moderator', 'subject', 'grade', 'school']
+        fields = ['assessor', 'due_date', 'title', 'unique_identifier', 'assessment_type', 'total', 'percentage_towards_term_mark', 'term', 'classroom', 'subject', 'grade', 'school']
 
     def __init__(self, *args, **kwargs):
         super(AssessmentUpdateSerializer, self).__init__(*args, **kwargs)
