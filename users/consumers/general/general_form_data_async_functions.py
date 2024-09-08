@@ -57,7 +57,7 @@ def form_data_for_assessment_setting(user, role, details):
             return {'error': response}
 
         if details.get('classroom'):
-            classroom = requesting_account.school.classes.select_related('grade', 'teacher').prefetch_related('grade__terms').filter(grade_id=details.get('classroom'))
+            classroom = requesting_account.school.classes.select_related('grade', 'teacher').prefetch_related('grade__terms').filter(classroom_id=details.get('classroom')).first()
             if not classroom:
                 response = f'could not proccess your request, you can not set assessments for classrooms that are not assigned to you.'
 
@@ -103,7 +103,7 @@ def form_data_for_assessment_setting(user, role, details):
 
                 return {'error': response}
             
-            grade = requesting_account.school.grades.prefetch_related('terms').filter(grade_id=details.get('grade'))
+            grade = requesting_account.school.grades.prefetch_related('terms').filter(grade_id=details.get('grade')).first()
             if not grade:
                 response = f'could not proccess your request, a grade for your school with the provided credentials does not exist. please check the grades information and try again.'
 
