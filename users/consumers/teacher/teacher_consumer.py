@@ -251,8 +251,8 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             'submit_attendance': general_post_async_functions.submit_attendance,
             
             'log_activity': general_post_async_functions.log_activity,
-
-            'set_assessment': general_post_async_functions.set_assessment,
+            
+            'create_assessment': general_post_async_functions.set_assessment,
 
             'log_out': general_post_async_functions.log_out,
         }

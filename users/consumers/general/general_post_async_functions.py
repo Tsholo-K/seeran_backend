@@ -120,11 +120,13 @@ def set_assessment(user, role, details):
 
             return {'error': response}
 
-        if role == 'TEACHER':
-            classroom = requesting_account.taught_classes.select_related('students', 'grade', 'subject').prefetch_related('grade__terms').filter(classroom_id=details.get('classroom')).first()
-            term = classroom.grade.terms.filter(term_id=details.get('term')).first()
-            subject = classroom.subject.pk
-
+        if details.get('classroom'):
+            if role == 'TEACHER':
+                classroom = requesting_account.taught_classes.select_related('grade', 'subject').prefetch_related('grade__terms').filter(classroom_id=details.get('classroom')).first()
+            
+            else:
+                classroom = requesting_account.school.classes.select_related('grade', 'subject').prefetch_related('grade__terms').filter(classroom_id=details.get('classroom')).first()
+            
             if not classroom:
                 response = "the provided classroom is either not assigned to you or does not exist. please check the classroom details and try again"
 
@@ -138,15 +140,29 @@ def set_assessment(user, role, details):
                 )
 
                 return {'error': response}
-            
+
+            term = classroom.grade.terms.filter(term_id=details.get('term')).first()
+            subject = classroom.subject.pk
 
             details['classroom'] = classroom.pk
             details['grade'] = classroom.grade.pk
  
-        elif role in ['PRINCIPAL', 'ADMIN']:
+        elif details.get('grade') and details.get('subject'):
+            if role not in ['PRINCIPAL', 'ADMIN']:
+                response = "could not proccess your request, you do not have the necessary permissions to create grade wide assessments."
+
+                log_audit(
+                    actor=requesting_account,
+                    action='CREATE',
+                    target_model='ASSESSMENT',
+                    outcome='DENIED',
+                    response=response,
+                    school=requesting_account.school
+                )
+
+                return {'error': response}
+            
             grade = requesting_account.school.grades.prefetch_related('terms', 'subjects').filter(grade_id=details.get('grade')).first()
-            term = grade.terms.filter(term_id=details.get('term')).first()
-            subject = grade.subjects.filter(subject_id=details.get('subject')).first()
 
             if not grade:
                 response = "the provided grade is either not from your school or does not exist. please check the grade details and try again"
@@ -161,6 +177,9 @@ def set_assessment(user, role, details):
                 )
 
                 return {'error': response}
+            
+            term = grade.terms.filter(term_id=details.get('term')).first()
+            subject = grade.subjects.filter(subject_id=details.get('subject')).first()
             
             details['grade'] = grade.pk
 

@@ -301,6 +301,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'create_class': admin_post_async_functions.create_class,
             'delete_class': admin_post_async_functions.delete_class,
+            
+            'create_assessment': general_post_async_functions.set_assessment,
 
             'create_schedule': admin_post_async_functions.create_daily_schedule,
             'delete_schedule': admin_post_async_functions.delete_daily_schedule,
