@@ -64,7 +64,7 @@ class GradeSerializer(serializers.ModelSerializer):
         fields = ['subjects']
 
     def get_subjects(self, obj):
-        return SubjectsSerializer(obj.grade_subjects.all(), many=True).data
+        return SubjectsSerializer(obj.subjects.all(), many=True).data
 
 
 class GradeDetailsSerializer(serializers.ModelSerializer):

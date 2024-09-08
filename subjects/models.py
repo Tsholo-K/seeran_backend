@@ -49,7 +49,7 @@ class Subject(models.Model):
     classes_count = models.IntegerField(default=0)
 
     # grade linked to
-    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='grade_subjects')
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='subjects')
 
     # subject id
     subject_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
