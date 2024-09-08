@@ -54,9 +54,11 @@ class Assessment(models.Model):
 
     # The user who set the assessment
     assessor = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, related_name='assessed_assessments', null=True)
+    # The user who moderated the assessment
+    moderator = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, related_name='assessments_moderated', null=True)
+
     # The date and time when the assessment was created
     date_set = models.DateTimeField(auto_now_add=True, editable=False)  # Allowed format: yyyy-mm-ddThh:mm
-
     # The date and time when the assessment is due
     due_date = models.DateTimeField()  # Allowed format: yyyy-mm-ddThh:mm
 
@@ -78,9 +80,6 @@ class Assessment(models.Model):
 
     # Term during which the assessment is given
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='assessments')
-    
-    # The students who are assessed
-    students_assessed = models.ManyToManyField(Student, related_name='assessments_taken')
 
     # Indicates if the assessment has been collected
     assessed = models.BooleanField(default=False)
@@ -91,11 +90,9 @@ class Assessment(models.Model):
     grades_released = models.BooleanField(default=False)
     # Date and time when results were released
     date_grades_released = models.DateTimeField(null=True, blank=True)
-
-    # The user who moderated the assessment
-    moderator = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, related_name='assessments_moderated', null=True)
+    
     # The classroom where the assessment was conducted
-    classroom = models.ForeignKey(Classroom, on_delete=models.SET_NULL, related_name='assessments', null=True, blank=True)
+    classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE, related_name='assessments', null=True, blank=True)
 
     # the subject the assessment is for
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='assessments')
@@ -116,6 +113,12 @@ class Assessment(models.Model):
         return self.unique_identifier
 
     def clean(self):
+        if self.grade:
+            raise ValidationError(_('could not proccess your request, assessments need to be assigned to a grade.'))
+        
+        if self.term:
+            raise ValidationError(_('could not proccess your request, assessments need to be assigned to a term.'))
+
         if self.assessor:
             # Get the appropriate model for the requesting user's role
             Model = role_specific_maps.account_access_control_mapping[self.assessor.role]
@@ -136,13 +139,14 @@ class Assessment(models.Model):
             if moderator not in ['PRINCIPAL', 'ADMIN', 'TEACHER'] or moderator.school != self.school:
                 raise ValidationError(_('only principals, admins, and teachers can moderate assessments.'))
 
+
         # Convert due_date to a timezone-aware datetime
         if self.due_date and timezone.is_naive(self.due_date):
             self.due_date = timezone.make_aware(self.due_date, timezone.get_current_timezone())
         
         # Check if due_date is in the future
-        if self.due_date and self.due_date < timezone.now():
-            raise ValidationError(_('the due date must be in the future.'))
+        # if self.due_date and self.due_date < timezone.now():
+        #     raise ValidationError(_('the due date must be in the future.'))
         
         # Convert date_assessed to a timezone-aware datetime
         if self.date_assessed and timezone.is_naive(self.date_assessed):
