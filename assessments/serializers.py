@@ -18,7 +18,8 @@ class AssessmentCreationSerializer(serializers.ModelSerializer):
 
     classroom = serializers.PrimaryKeyRelatedField(queryset=Classroom.objects.all(), required=False, allow_null=True)
     assessor = serializers.PrimaryKeyRelatedField(queryset=BaseUser.objects.all(), required=False, allow_null=True)
-
+    percentage_towards_term_mark = serializers.DecimalField(required=False, allow_null=True)
+    
     class Meta:
         model = Assessment
         fields = ['assessor', 'due_date', 'title', 'unique_identifier', 'assessment_type', 'total', 'percentage_towards_term_mark', 'start_time', 'dead_line', 'term', 'classroom', 'subject', 'grade', 'school']

@@ -151,12 +151,16 @@ class Assessment(models.Model):
             if moderator.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
                 raise ValidationError(_('could not proccess your request, only principals, admins, and teachers can moderate assessments.'))
 
-            if self.school and assessor.school != self.school:
+            if self.school and moderator.school != self.school:
                 raise ValidationError(_('could not proccess your request, accounts can only moderate assessments from their own school.'))
 
         # Convert date_collected to a timezone-aware datetime
         if self.date_collected and timezone.is_naive(self.date_collected):
             self.date_collected = timezone.make_aware(self.date_collected, timezone.get_current_timezone())
+
+        # Convert date_grades_released to a timezone-aware datetime
+        if self.date_grades_released and timezone.is_naive(self.date_grades_released):
+            self.date_grades_released = timezone.make_aware(self.date_grades_released, timezone.get_current_timezone())
 
         # Ensure date_collected is after the start_time if available
         if self.date_collected and self.start_time:
@@ -166,7 +170,7 @@ class Assessment(models.Model):
             # Check if the date_collected is before the start_datetime
             if self.date_collected < start_datetime:
                 raise ValidationError(_('you cannot collect an assessment before its start time. please update the assessment information or wait until the assessment has started.'))
-
+            
         # Aggregate the total percentage of existing assessments for this term and subject
         total_percentage = self.term.assessments.filter(subject=self.subject).exclude(pk=self.pk).aggregate(total_percentage=models.Sum('percentage_towards_term_mark'))['total_percentage'] or Decimal('0.00')
         
@@ -184,8 +188,8 @@ class Assessment(models.Model):
         if (total_percentage + self.percentage_towards_term_mark) > Decimal('100.00'):
             raise ValidationError(_('total percentage towards the term cannot exceed 100%.'))
         
-        if self.percentage_towards_term_mark > Decimal('0.00'):
-            self.formal = True
+        # Set assessment as formal if it contributes to the term mark
+        self.formal = self.percentage_towards_term_mark > Decimal('0.00')
         
     def save(self, *args, **kwargs):
         """
