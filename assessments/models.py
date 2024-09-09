@@ -1,4 +1,5 @@
-# python 
+# python
+from datetime import datetime
 import uuid
 from decimal import Decimal, ROUND_HALF_UP
 
@@ -87,9 +88,9 @@ class Assessment(models.Model):
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='assessments')
 
     # Indicates if the assessment has been collected
-    assessed = models.BooleanField(default=False)
+    collected = models.BooleanField(default=False)
     # Date and time when the assessment was collected
-    date_assessed = models.DateTimeField(null=True, blank=True)
+    date_collected = models.DateTimeField(null=True, blank=True)
 
     # Indicates if the assessment results have been released
     grades_released = models.BooleanField(default=False)
@@ -153,21 +154,18 @@ class Assessment(models.Model):
             if self.school and assessor.school != self.school:
                 raise ValidationError(_('could not proccess your request, accounts can only moderate assessments from their own school.'))
 
-        # Convert due_date to a timezone-aware datetime
-        if self.due_date and timezone.is_naive(self.due_date):
-            self.due_date = timezone.make_aware(self.due_date, timezone.get_current_timezone())
-        
-        # Check if due_date is in the future
-        # if self.due_date and self.due_date < timezone.now():
-        #     raise ValidationError(_('the due date must be in the future.'))
-        
-        # Convert date_assessed to a timezone-aware datetime
-        if self.date_assessed and timezone.is_naive(self.date_assessed):
-            self.date_assessed = timezone.make_aware(self.date_assessed, timezone.get_current_timezone())
-        
-        # Ensure date_assessed is after due_date
-        if self.date_assessed and self.date_assessed < self.due_date:
-            raise ValidationError(_('date assessed cannot be before the due date.'))
+        # Convert date_collected to a timezone-aware datetime
+        if self.date_collected and timezone.is_naive(self.date_collected):
+            self.date_collected = timezone.make_aware(self.date_collected, timezone.get_current_timezone())
+
+        # Ensure date_collected is after the start_time if available
+        if self.date_collected and self.start_time:
+            # Combine due_date and start_time into a single datetime
+            start_datetime = datetime.combine(self.due_date, self.start_time)
+            
+            # Check if the date_collected is before the start_datetime
+            if self.date_collected < start_datetime:
+                raise ValidationError(_('you cannot collect an assessment before its start time. please update the assessment information or wait until the assessment has started.'))
 
         # Aggregate the total percentage of existing assessments for this term and subject
         total_percentage = self.term.assessments.filter(subject=self.subject).exclude(pk=self.pk).aggregate(total_percentage=models.Sum('percentage_towards_term_mark'))['total_percentage'] or Decimal('0.00')
@@ -220,22 +218,22 @@ class Submission(models.Model):
     assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='submissions')
 
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='submissions')
-    submission_date = models.DateTimeField()
+    submission_date = models.DateTimeField(auto_now_add=True)
 
     status = models.CharField(max_length=20, choices=SUBMISSION_STATUS_CHOICES, default='ONTIME')
 
-    # submissio id 
+    # submission id 
     submission_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
-        unique_together = ('assessment', 'status')
+        unique_together = ('assessment', 'student')
         ordering = ['-submission_date']
-        indexes = [models.Index(fields=['assessment', 'status'])]
+        indexes = [models.Index(fields=['assessment', 'student'])]
 
     def clean(self):
         # Ensure submission_date is within a valid range
         if self.submission_date and (self.submission_date < self.assessment.date_set):
-            raise ValidationError(_('submission date must be after the assessment date set.'))
+            raise ValidationError(_('submission date must be after the date the assessment was set.'))
         
     def save(self, *args, **kwargs):
         """
