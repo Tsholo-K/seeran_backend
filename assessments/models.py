@@ -134,7 +134,7 @@ class Assessment(models.Model):
             # Retrieve the user and related school in a single query using select_related
             assessor = Model.objects.select_related('school').only('school', 'role').get(account_id=self.assessor.account_id)
 
-            if assessor not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
+            if assessor.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
                 raise ValidationError(_('could not proccess your request, only principals, admins, and teachers can set assessments.'))
 
             if self.school and assessor.school != self.school:
@@ -147,7 +147,7 @@ class Assessment(models.Model):
             # Retrieve the user and related school in a single query using select_related
             moderator = Model.objects.select_related('school').only('school', 'role').get(account_id=self.moderator.account_id)
 
-            if moderator not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
+            if moderator.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
                 raise ValidationError(_('could not proccess your request, only principals, admins, and teachers can moderate assessments.'))
 
             if self.school and assessor.school != self.school:
