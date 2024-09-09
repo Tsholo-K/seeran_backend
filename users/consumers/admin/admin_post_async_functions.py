@@ -1232,9 +1232,9 @@ def create_daily_schedule(user, role, details):
                 DailyScheduleSession(
                     session_type=session_info['class'],
                     classroom=session_info.get('classroom'),
-                    start_time=parse_time(f"{session_info['start_time']['hour']}:{session_info['start_time']['minute']}:{session_info['start_time']['second']}"),
-                    end_time=parse_time(f"{session_info['end_time']['hour']}:{session_info['end_time']['minute']}:{session_info['end_time']['second']}")
-                ) for session_info in details.get('sessions', [])
+                    start_time=parse_time(session_info['start_time']),
+                    end_time=parse_time(session_info['end_time'])) for session_info in details.get('sessions', []
+                )
             ]
 
             DailyScheduleSession.objects.bulk_create(sessions)

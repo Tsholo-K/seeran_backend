@@ -59,8 +59,13 @@ class Assessment(models.Model):
 
     # The date and time when the assessment was created
     date_set = models.DateTimeField(auto_now_add=True, editable=False)  # Allowed format: yyyy-mm-ddThh:mm
+    # The date the assessment is due
+    due_date = models.DateField()  # Allowed format: yyyy-mm-dd
+
+    # The time assessment is starts
+    start_time = models.TimeField(null=True, blank=True)  # Allowed format: Thh:mm
     # The date and time when the assessment is due
-    due_date = models.DateTimeField()  # Allowed format: yyyy-mm-ddThh:mm
+    dead_line = models.TimeField()  # Allowed format: hh:mm
 
     title = models.CharField(max_length=124)
     topics = models.ManyToManyField(Topic, related_name='assessments')
