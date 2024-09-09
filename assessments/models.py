@@ -153,6 +153,11 @@ class Assessment(models.Model):
 
             if self.school and moderator.school != self.school:
                 raise ValidationError(_('could not proccess your request, accounts can only moderate assessments from their own school.'))
+            
+        # Ensure start_time is before dead_line
+        if self.start_time and self.dead_line:
+            if self.start_time > self.dead_line:
+                raise ValidationError(_('the assessments start time cannot be after the deadline. please update the assessment information.'))
 
         # Convert date_collected to a timezone-aware datetime
         if self.date_collected and timezone.is_naive(self.date_collected):
