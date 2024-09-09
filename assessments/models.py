@@ -134,8 +134,11 @@ class Assessment(models.Model):
             # Retrieve the user and related school in a single query using select_related
             assessor = Model.objects.select_related('school').only('school', 'role').get(account_id=self.assessor.account_id)
 
-            if assessor not in ['PRINCIPAL', 'ADMIN', 'TEACHER'] or assessor.school != self.school:
-                raise ValidationError(_('only principals, admins, and teachers can set assessments.'))
+            if assessor not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
+                raise ValidationError(_('could not proccess your request, only principals, admins, and teachers can set assessments.'))
+
+            if self.school and assessor.school != self.school:
+                raise ValidationError(_('could not proccess your request, you can only create assessments for your own school'))
         
         if self.moderator:
              # Get the appropriate model for the requesting user's role
@@ -144,9 +147,11 @@ class Assessment(models.Model):
             # Retrieve the user and related school in a single query using select_related
             moderator = Model.objects.select_related('school').only('school', 'role').get(account_id=self.moderator.account_id)
 
-            if moderator not in ['PRINCIPAL', 'ADMIN', 'TEACHER'] or moderator.school != self.school:
-                raise ValidationError(_('only principals, admins, and teachers can moderate assessments.'))
+            if moderator not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
+                raise ValidationError(_('could not proccess your request, only principals, admins, and teachers can moderate assessments.'))
 
+            if self.school and assessor.school != self.school:
+                raise ValidationError(_('could not proccess your request, accounts can only moderate assessments from their own school.'))
 
         # Convert due_date to a timezone-aware datetime
         if self.due_date and timezone.is_naive(self.due_date):
