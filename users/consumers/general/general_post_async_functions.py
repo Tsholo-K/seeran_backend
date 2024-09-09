@@ -244,7 +244,7 @@ def set_assessment(user, role, details):
                         topic, _ = Topic.objects.get_or_create(name=name)
                         topics.append(topic)
 
-                    assessment.topics.set(*topics)
+                    assessment.topics.set(topics)
                     
                 response = f'assessment {assessment.unique_identifier} has been successfully created, and will become accessible to all the students being assessed and their parents'
 
