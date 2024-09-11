@@ -209,7 +209,7 @@ def search_grade_register_classes(user, role, details):
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
         grade  = Grade.objects.prefetch_related(Prefetch('classes', queryset=Classroom.objects.filter(register_class=True))).get(grade_id=details.get('grade_id'), school=requesting_account.school)
-        classes = grade.grade_classes.all()
+        classes = grade.classes.all()
 
         serialized_classes = ClassesSerializer(classes, many=True).data
 
