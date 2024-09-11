@@ -320,7 +320,7 @@ def unlink_parent(user, role, details):
                 parent.save()
 
             response = "the parent account has been successfully unlinked from the student. the account will no longer be associated with the student or have access to the student's data"
-            audits_utilities.log_audit(actor=requesting_account, action='UNLINK', target_model='ACCOUNT', target_object_id=str(student.account_id), target_object_id=str(student.account_id) if student else 'N/A', outcome='UNLINKED', response=response, school=requesting_account.school,)
+            audits_utilities.log_audit(actor=requesting_account, action='UNLINK', target_model='ACCOUNT', target_object_id=str(student.account_id) if student else 'N/A', outcome='UNLINKED', response=response, school=requesting_account.school,)
 
         return {"message": response}
                    
