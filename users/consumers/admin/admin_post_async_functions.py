@@ -142,7 +142,7 @@ def create_account(user, role, details):
             
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id) if created_account else 'N/A', outcome='ERROR', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id) if created_account else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
 
         return {"error": error_response}
         
