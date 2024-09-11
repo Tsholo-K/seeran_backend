@@ -52,7 +52,7 @@ class SubjectsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Subject
-        fields = [ 'subject', 'subject_id', 'classes_count', 'teacher_count', 'student_count' ]
+        fields = [ 'subject', 'subject_id', 'classroom_count', 'teacher_count', 'student_count' ]
 
     def get_subject(self, obj):
         return obj.subject.title()
@@ -74,4 +74,4 @@ class SubjectDetailsSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Subject
-        fields = ['classes_count', 'teacher_count', 'student_count', 'major_subject', 'pass_mark']
+        fields = ['classroom_count', 'teacher_count', 'student_count', 'major_subject', 'pass_mark']
