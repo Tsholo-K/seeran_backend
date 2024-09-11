@@ -154,6 +154,8 @@ class TeacherConsumer(AsyncWebsocketConsumer):
                 response = await func(details) 
             elif description in ['chat_room_messages']:
                 response = await func(user, details)
+            elif description in ['teacher_classes']:
+                response = await func(user)
             else:
                 response =  await func(user, role, details)
                         
