@@ -16,7 +16,6 @@ from schools.models import School
 from grades.models import Grade
 from terms.models import Term
 from subjects.models import Subject
-from transcripts.models import Transcript
 
 
 class SubjectScore(models.Model):
@@ -84,12 +83,12 @@ class SubjectScore(models.Model):
     
         else:
             for assessment in assessments:
-                try:
-                    transcript = self.student.transcripts.get(assessment=assessment)
-                    weight = assessment.percentage_towards_term_mark / 100
-                    score += transcript.moderated_score * weight if transcript.moderated_score else transcript.score * weight
-                except Transcript.DoesNotExist:
+                transcript = self.student.transcripts.filter(assessment=assessment)
+                if not transcript:
                     continue
+
+                weight = assessment.percentage_towards_term_mark / 100
+                score += transcript.moderated_score * weight if transcript.moderated_score else transcript.score * weight
 
         self.score = score
 
