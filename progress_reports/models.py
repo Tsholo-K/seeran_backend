@@ -38,7 +38,7 @@ class ProgressReport(models.Model):
     year_end_report = models.BooleanField(default=False)
 
     #The grade to which this score belongs
-    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='grade_subject_scores')
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='progress_reports')
 
     # The school where the report is generated
     school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='term_reports')
