@@ -120,15 +120,12 @@ class StudentConsumer(AsyncWebsocketConsumer):
             'group_schedules': general_search_async_functions.search_group_schedules,
             'schedule_sessions': general_search_async_functions.search_schedule_sessions,
 
-            'month_attendance_records': general_search_async_functions.search_month_attendance_records,
-
             'announcement': general_search_async_functions.search_announcement,
 
             'chat_room': general_search_async_functions.search_chat_room,
             'chat_room_messages': general_search_async_functions.search_chat_room_messages,
 
             'class': general_search_async_functions.search_class,
-            'student_class_card': general_search_async_functions.search_student_class_card,
 
             'activity': general_search_async_functions.search_activity,
 
