@@ -49,7 +49,7 @@ def search_assessments(user, details):
             return {"assessments": []}
 
         # Serialize and return the assessments data
-        serialized_assessments = CollectedAssessmentsSerializer(assessments).data if details.get('collected') else DueAssessmentsSerializer(assessments).data
+        serialized_assessments = CollectedAssessmentsSerializer(assessments, many=True).data if details.get('collected') else DueAssessmentsSerializer(assessments, many=True).data
 
         return {"assessments": serialized_assessments}
 
