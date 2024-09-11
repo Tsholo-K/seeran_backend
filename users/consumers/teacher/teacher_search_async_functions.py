@@ -13,6 +13,7 @@ from attendances.models import Attendance
 # serilializers
 from users.serializers.students.students_serializers import StudentSourceAccountSerializer, LeastAccountDetailsSerializer
 from classes.serializers import TeacherClassesSerializer
+from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer
 from activities.serializers import ActivitiesSerializer
 from daily_schedules.serializers import DailyScheduleSerializer
 
@@ -21,14 +22,51 @@ from users.checks import permission_checks
 
 # utility functions 
 from users import utils as users_utilities
+from permissions import utils as permissions_utilities
+from audit_logs import utils as audits_utilities
 from attendances import utils as attendances_utilities
+
+
+
+@database_sync_to_async
+def search_assessments(user, details):
+    try:
+        # Build the queryset for the requesting account with the necessary related fields.
+        requesting_account = Teacher.objects.select_related('school').get(account_id=user)
+        
+        # Check if the user has permission to create an assessment
+        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ASSESSMENTS'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view assessments. please contact your administrators to adjust you permissions for viewing assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENTS', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+        
+        # Fetch the specific classroom based on classroom_id and school
+        classroom = requesting_account.taught_classes.get(classroom_id=details['classroom'])
+        assessments = classroom.assessments.filter(collected=details.get('collected'), grades_released=False)
+        
+        if not assessments:
+            return {"assessments": []}
+
+        # Serialize and return the assessments data
+        serialized_assessments = CollectedAssessmentsSerializer(assessments).data if details.get('collected') else DueAssessmentsSerializer(assessments).data
+
+        return {"assessments": serialized_assessments}
+
+    except Classroom.DoesNotExist:
+        # Handle case where the classroom does not exist
+        return {'error': _('A classroom in your school with the provided details does not exist. Please check the classroom details and try again.')}
+    
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
 
 
 @database_sync_to_async
 def search_month_attendance_records(user, details):
     try:
         # Build the queryset for the requesting account with the necessary related fields.
-        requesting_account = Teacher.objects.select_related('school').prefetch_related('taught_classes').get(account_id=user)
+        requesting_account = Teacher.objects.select_related('school').get(account_id=user)
 
         classroom = requesting_account.taught_classes.filter(register_class=True).first()
         if not classroom:

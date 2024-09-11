@@ -30,6 +30,7 @@ from grades.serializers import GradeSerializer, GradesSerializer, GradeDetailsSe
 from terms.serializers import  TermsSerializer, TermSerializer, ClassesSerializer
 from subjects.serializers import SubjectSerializer, SubjectDetailsSerializer
 from classes.serializers import TeacherClassesSerializer
+from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer
 from activities.serializers import ActivitiesSerializer
 from daily_schedules.serializers import DailyScheduleSerializer
 
@@ -291,7 +292,61 @@ def search_subject_details(user, role, details):
     except Exception as e:
         # Handle any unexpected errors with a general error message
         return {'error': f'An unexpected error occurred: {str(e)}'}
+
+
+@database_sync_to_async
+def search_assessments(user, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        
+        # Check if the user has permission to create an assessment
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ASSESSMENTS'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view assessments. please contact your principal to adjust you permissions for viewing assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENTS', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+        
+        # Determine the classroom based on the request details
+        if details.get('grade') and  details.get('subject'):
+            grade = requesting_account.school.grades.get(grade_id=details['grade'])
+            subject = grade.subjects.get(subject_id=details['subject'])
+
+            assessments = subject.assessments.filter(collected=details.get('collected'), grades_released=False)
+
+        elif details.get('classroom'):
+            # Fetch the specific classroom based on classroom_id and school
+            classroom = requesting_account.school.classes.get(classroom_id=details['classroom'])
+        
+            assessments = classroom.assessments.filter(collected=details.get('collected'), grades_released=False)
+
+        else:
+            return {"error": 'invalid request'}
+        
+        if not assessments:
+            return {"assessments": []}
+
+        # Serialize and return the assessments data
+        serialized_assessments = CollectedAssessmentsSerializer(assessments).data if details.get('collected') else DueAssessmentsSerializer(assessments).data
+
+        return {"assessments": serialized_assessments}
+        
+    except Grade.DoesNotExist:
+        # Handle the case where the provided grade ID does not exist
+        return { 'error': 'a grade in your school with the provided credentials does not exist, please check the grade details and try again'}
     
+    except Subject.DoesNotExist:
+        # Handle case where the subject does not exist
+        return {'error': 'a subject in your school with the provided credentials does not exist, please check the subject details and try again'}
+
+    except Classroom.DoesNotExist:
+        # Handle case where the classroom does not exist
+        return {'error': _('A classroom in your school with the provided details does not exist. Please check the classroom details and try again.')}
+    
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
 
 @database_sync_to_async
 def search_accounts(user, role, details):

@@ -48,12 +48,12 @@ class DueAssessmentsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Assessment
-        fields = ['title', 'assessment_type', 'due_date', 'assessment_id', 'formal']
+        fields = ['title', 'assessment_type', 'due_date', 'formal', 'assessment_id']
 
 
 class CollectedAssessmentsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Assessment
-        fields = ['due_date', 'title', 'unique_identifier', 'assessment_type', 'total', 'assessment_id']
+        fields = ['title', 'assessment_type', 'date_collected', 'formal', 'assessment_id']
 

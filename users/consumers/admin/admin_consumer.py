@@ -150,7 +150,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'class': general_search_async_functions.search_class,
 
-            'due_assessments': general_search_async_functions.search_due_assessments,
+            'assessments': admin_search_async_functions.search_assessments,
 
             'student_class_card': admin_search_async_functions.search_student_class_card,
             'activity': general_search_async_functions.search_activity,

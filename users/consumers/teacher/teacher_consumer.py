@@ -128,7 +128,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             'teacher_classes': teacher_search_async_functions.search_teacher_classes,
             'class': general_search_async_functions.search_class,
 
-            'due_assessments': general_search_async_functions.search_due_assessments,
+            'assessments': teacher_search_async_functions.search_assessments,
 
             'student_class_card': teacher_search_async_functions.search_student_class_card,
             'activity': general_search_async_functions.search_activity,
@@ -152,7 +152,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
         if func:
             if description in ['schedule_sessions', 'email_ban']:
                 response = await func(details) 
-            elif description in ['chat_room_messages']:
+            elif description in ['chat_room_messages', 'assessments']:
                 response = await func(user, details)
             elif description in ['teacher_classes']:
                 response = await func(user)
