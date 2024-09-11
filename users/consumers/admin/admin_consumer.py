@@ -340,7 +340,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             if description in ['log_out']:
                 response = await func(access_token)
             else:
-                await func(user, role, details)
+                response = await func(user, role, details)
 
             if description in ['text'] and response.get('reciever'):
                 await connection_manager.send_message(response['reciever']['account_id'], json.dumps({'description': 'text_message', 'message': response['message'], 'sender': response['sender']}))
