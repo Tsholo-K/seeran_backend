@@ -43,3 +43,17 @@ class AssessmentUpdateSerializer(serializers.ModelSerializer):
         # Make all fields optional 
         for field in self.fields:
             self.fields[field].required = False
+
+class DueAssessmentsSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Assessment
+        fields = ['title', 'assessment_type', 'due_date', 'assessment_id', 'formal']
+
+
+class CollectedAssessmentsSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Assessment
+        fields = ['due_date', 'title', 'unique_identifier', 'assessment_type', 'total', 'assessment_id']
+

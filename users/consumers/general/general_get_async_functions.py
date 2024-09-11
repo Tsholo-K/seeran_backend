@@ -14,7 +14,6 @@ from django.utils.translation import gettext as _
 # models 
 from users.models import BaseUser, Principal, Admin, Teacher, Student, Parent
 from email_bans.models import EmailBan
-from announcements.models import Announcement
 from chats.models import ChatRoom
 
 # serializers
@@ -26,50 +25,21 @@ from chats.serializers import ChatSerializer
 
 # mappings
 from users.maps import role_specific_maps
-    
+
+# utility functions 
+from users import utils as users_utilities
+
 
 @database_sync_to_async
 def fetch_security_information(user, role):
-    try:
-        # Get the appropriate model and related fields (select_related and prefetch_related)
-        # for the requesting user's role from the mapping.
-        Model, Serializer = role_specific_maps.account_model_and_security_serializer_mapping[role]
-
-        # Retrieve the user's security settings from the database
-        account = Model.objects.get(account_id=user)
-
-        serialized_user = Serializer(account).data
-        
-        # Return the retrieved security information
-        return {'info': serialized_user}
-               
-    except Principal.DoesNotExist:
-        # Handle the case where the requested principal account does not exist.
-        return {'error': 'A principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the requested admin account does not exist.
-        return {'error': 'An admin account with the provided credentials does not exist, please check the account details and try again'}
-               
-    except Teacher.DoesNotExist:
-        # Handle the case where the requested teacher account does not exist.
-        return {'error': 'A teacher account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Student.DoesNotExist:
-        # Handle the case where the requested student account does not exist.
-        return {'error': 'A student account with the provided credentials does not exist, please check the account details and try again'}
-               
-    except Parent.DoesNotExist:
-        # Handle the case where the requested parent account does not exist.
-        return {'error': 'A parent account with the provided credentials does not exist, please check the account details and try again'}
+    serialized_user = users_utilities.get_account_and_security_details(user, role)
     
-    except Exception as e:
-        # Handle any other unexpected errors and return the error message.
-        return {'error': str(e)}
+    # Return the retrieved security information
+    return {'info': serialized_user}
 
 
 @database_sync_to_async
-def fetch_my_email_information(user):
+def fetch_email_information(user):
     try:
         # Retrieve the user's email address and email ban details
         account = BaseUser.objects.values('email', 'email_ban_amount', 'email_banned').get(account_id=user)

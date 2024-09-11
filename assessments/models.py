@@ -21,38 +21,38 @@ from topics.models import Topic
 # mappings
 from users.maps import role_specific_maps
 
-    
-class Assessment(models.Model):
-    ASSESSMENT_TYPE_CHOICES = [
-        ('EXAMINATION', 'Examination'),
-        ('TEST', 'Test'),
-        ('PRACTICAL', 'Practical'),
-        ('ASSIGNMENT', 'Assignment'),
-        ('HOMEWORK', 'Homework'),
-        ('QUIZ', 'Quiz'),
-        ('PROJECT', 'Project'),
-        ('PRESENTATION', 'Presentation'),
-        ('LAB_WORK', 'Lab Work'),
-        ('FIELD_TRIP', 'Field Trip'),
-        ('GROUP_WORK', 'Group Work'),
-        ('SELF_ASSESSMENT', 'Self Assessment'),
-        ('PEER_ASSESSMENT', 'Peer Assessment'),
-        ('PORTFOLIO', 'Portfolio'),
-        ('RESEARCH_PAPER', 'Research Paper'),
-        ('CASE_STUDY', 'Case Study'),
-        ('DISCUSSION', 'Discussion'),
-        ('DEBATE', 'Debate'),
-        ('ROLE_PLAY', 'Role Play'),
-        ('SIMULATION', 'Simulation'),
-        ('ESSAY', 'Essay'),
-        ('MULTIPLE_CHOICE', 'Multiple Choice'),
-        ('OBSERVATION', 'Observation'),
-        ('INTERVIEW', 'Interview'),
-        ('DIAGNOSTIC', 'Diagnostic'),
-        ('FORMATIVE', 'Formative'),
-        ('SUMMATIVE', 'Summative'),
-    ]
 
+ASSESSMENT_TYPE_CHOICES = [
+    ('EXAMINATION', 'Examination'),
+    ('TEST', 'Test'),
+    ('PRACTICAL', 'Practical'),
+    ('ASSIGNMENT', 'Assignment'),
+    ('HOMEWORK', 'Homework'),
+    ('QUIZ', 'Quiz'),
+    ('PROJECT', 'Project'),
+    ('PRESENTATION', 'Presentation'),
+    ('LAB_WORK', 'Lab Work'),
+    ('FIELD_TRIP', 'Field Trip'),
+    ('GROUP_WORK', 'Group Work'),
+    ('SELF_ASSESSMENT', 'Self Assessment'),
+    ('PEER_ASSESSMENT', 'Peer Assessment'),
+    ('PORTFOLIO', 'Portfolio'),
+    ('RESEARCH_PAPER', 'Research Paper'),
+    ('CASE_STUDY', 'Case Study'),
+    ('DISCUSSION', 'Discussion'),
+    ('DEBATE', 'Debate'),
+    ('ROLE_PLAY', 'Role Play'),
+    ('SIMULATION', 'Simulation'),
+    ('ESSAY', 'Essay'),
+    ('MULTIPLE_CHOICE', 'Multiple Choice'),
+    ('OBSERVATION', 'Observation'),
+    ('INTERVIEW', 'Interview'),
+    ('DIAGNOSTIC', 'Diagnostic'),
+    ('FORMATIVE', 'Formative'),
+    ('SUMMATIVE', 'Summative'),
+]
+
+class Assessment(models.Model):
     # The user who set the assessment
     assessor = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, related_name='assessed_assessments', null=True)
     # The user who moderated the assessment
@@ -63,6 +63,9 @@ class Assessment(models.Model):
     # The date the assessment is due
     due_date = models.DateField()  # Allowed format: yyyy-mm-dd
 
+    pass_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    average_score = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+
     # The time assessment is starts
     start_time = models.TimeField(null=True, blank=True)  # Allowed format: Thh:mm
     # The date and time when the assessment is due
@@ -71,7 +74,8 @@ class Assessment(models.Model):
     title = models.CharField(max_length=124)
     topics = models.ManyToManyField(Topic, related_name='assessments')
 
-    # Unique identifier for the assessment
+    # Unique identifier for the assessment, used to link assessments that should be regarded as the same across differnet classrooms. this is crucial for 
+    # grade wwide performance tracking, progress report generation and so on..
     unique_identifier = models.CharField(max_length=36)
     # Type of the assessment (e.g., practical, exam, test)
     assessment_type = models.CharField(max_length=124, choices=ASSESSMENT_TYPE_CHOICES, default='TEST')
@@ -215,6 +219,24 @@ class Assessment(models.Model):
 
         except Exception as e:
             raise ValidationError(_(str(e).lower()))
+
+    def update_pass_rate_and_average_score(self):
+        """ Updates the pass rate and average score based on student performance. """
+        if self.classroom:
+            total_students = self.classroom.students.count() if self.classroom.students.exists() else 0
+        else:
+            total_students = self.grade.students.filter(enrolled_classes__subject=self.subject).count() if self.grade.students.exists() else 0
+        pass_count = self.scores.filter(weighted_score__gte=self.subject.pass_mark).count()
+        
+        if total_students > 0:
+            self.pass_rate = (pass_count / total_students) * 100
+        else:
+            self.pass_rate = 0.0
+
+        average_score = self.scores.aggregate(avg=models.Avg('weighted_score'))['avg']
+        self.average_score = average_score or 0.0
+
+        self.save()
 
 
 class Submission(models.Model):

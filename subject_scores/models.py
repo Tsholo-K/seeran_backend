@@ -16,6 +16,7 @@ from schools.models import School
 from grades.models import Grade
 from terms.models import Term
 from subjects.models import Subject
+from transcripts.models import Transcript
 
 
 class SubjectScore(models.Model):
@@ -59,12 +60,8 @@ class SubjectScore(models.Model):
             raise ValidationError(_('a students subject weighted score for any given term must be between 0 and 100'))
         
     def save(self, *args, **kwargs):
-
-        if self.score is None or self.weighted_score is None:
-            self.calculate_term_score()
-            self.calculate_weighted_score()
-
-            self.passed = self.score >= self.subject.pass_mark
+        if not self.pk:
+            self.calculate_scores()
 
         self.clean()
         try:
@@ -75,30 +72,35 @@ class SubjectScore(models.Model):
             else:
                 raise
 
-    # def calculate_term_score(self):
-    #     """
-    #     Calculate the score the student acheived for this subject in the given term, using the moderated_score if provided.
-    #     """
-    #     total_score = 0
-    #     assessments = Assessment.objects.filter(subject=self.subject, term=self.term, formal=True)
+    def calculate_scores(self):
+        """
+        Calculate the score and weighted score the student acheived for this subject in the given term, using the moderated_score if provided.
+        """
+        score = 0
+        assessments = self.student.assessements.filter(subject=self.subject, term=self.term, formal=True, grades_released=True)
         
-    #     if not assessments.exists():
-    #         self.score = 0
-    #         return
+        if not assessments.exists():
+            score = 0
     
-    #     for assessment in assessments:
-    #         try:
-    #             transcript = Transcript.objects.get(student=self.student, assessment=assessment)
-    #             weight = assessment.percentage_towards_term_mark / 100
-    #             total_score += transcript.moderated_score * weight if transcript.moderated_score else transcript.score * weight
-    #         except Transcript.DoesNotExist:
-    #             continue
+        else:
+            for assessment in assessments:
+                try:
+                    transcript = self.student.transcripts.get(assessment=assessment)
+                    weight = assessment.percentage_towards_term_mark / 100
+                    score += transcript.moderated_score * weight if transcript.moderated_score else transcript.score * weight
+                except Transcript.DoesNotExist:
+                    continue
 
-    #     self.score = total_score
+        self.score = score
 
-    # def calculate_weighted_score(self):
-    #     """
-    #     Calculate the weighted score the student acheived for this subject in the specified term.
-    #     """
-    #     term_weight = float(self.term.weight) / 100
-    #     self.weighted_score = float(self.score) * term_weight
+        if self.score and self.score > 0:
+            term_weight = float(self.term.weight) / 100
+            self.weighted_score = float(self.score) * term_weight
+
+    def determine_pass_status(self):
+        if self.score:
+            if self.score > self.subject.pass_mark:
+                self.passed = True
+            else:
+                self.passed = False
+

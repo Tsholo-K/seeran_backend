@@ -29,7 +29,7 @@ account_update_serializer_mapping = {
     'STUDENT': StudentAccountUpdateSerializer,
 }
 
-account_model_and_security_serializer_mapping = {
+account_model_and_security_details_serializer_mapping = {
     'FOUNDER': (Founder, FounderSecurityInformationSerializer),
     'PRINCIPAL': (Principal, PrincipalSecurityInformationSerializer),    
     'PARENT': (Parent, ParentSecurityInformationSerializer),

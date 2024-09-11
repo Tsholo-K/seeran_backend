@@ -37,7 +37,7 @@ SCHOOL_SUBJECTS_CHOICES = [
 ]
 
 class Subject(models.Model):
-    subject = models.CharField(_('grade subject'), max_length=64, choices=SCHOOL_SUBJECTS_CHOICES, default="ENGLISH")
+    subject = models.CharField(_('Subject'), max_length=64, choices=SCHOOL_SUBJECTS_CHOICES, default="ENGLISH")
 
     # field to indicate if it's a major subject
     major_subject = models.BooleanField(default=False)
@@ -46,7 +46,10 @@ class Subject(models.Model):
 
     student_count = models.IntegerField(default=0)
     teacher_count = models.IntegerField(default=0)
-    classes_count = models.IntegerField(default=0)
+    classroom_count = models.IntegerField(default=0)
+
+    pass_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    average_score = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
 
     # grade linked to
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='subjects')
@@ -89,11 +92,8 @@ class Subject(models.Model):
 
             # Handle unique constraint errors
             if 'unique constraint' in error_message:
-
-                if 'subject_id' in error_message:
-                    raise ValidationError(_('The subject ID must be unique.'))
                 
-                elif 'grade_subject' in error_message:
+                if 'grade_subject' in error_message:
                     raise ValidationError(_('The provided subject already exists for this grade. Duplicate subjects are not permitted.'))
                 
                 else:
@@ -102,3 +102,9 @@ class Subject(models.Model):
             # Re-raise the original exception if it's not handled
             raise
 
+    def update_pass_rate_and_average_score(self):
+        """ Calculate subject-wide pass rate and average score. """
+        self.pass_rate = self.assessments.filter(grades_released=True).aggregate(avg=models.Avg('pass_rate'))['avg'] or 0.0
+        self.average_score = self.assessments.filter(grades_released=True).aggregate(avg=models.Avg('average_score'))['avg'] or 0.0
+
+        self.save()

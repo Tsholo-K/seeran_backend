@@ -5,14 +5,49 @@ from channels.db import database_sync_to_async
 
 # django
 from django.db import transaction
+from django.core.exceptions import ValidationError
 
 # models 
 from users.models import Principal
+from schools.models import School
 from bug_reports.models import BugReport
 
 # serializers
 from users.serializers.principals.principals_serializers import UpdatePrincipalAccountSerializer, PrincipalAccountDetailsSerializer
+from schools.serializers import UpdateSchoolAccountSerializer, SchoolDetailsSerializer
 from bug_reports.serializers import UpdateBugReportStatusSerializer
+
+
+
+@database_sync_to_async
+def update_school_account(details):
+    try:
+        school = School.objects.get(school_id=details.get('school'))
+
+        # Initialize the serializer with the existing school instance and incoming data
+        serializer = UpdateSchoolAccountSerializer(instance=school, data=details)
+
+        # Validate the incoming data
+        if serializer.is_valid():
+            # Use an atomic transaction to ensure the database is updated safely
+            with transaction.atomic():
+                serializer.save()
+                        
+            # Serialize the grade
+            serialized_school = SchoolDetailsSerializer(school).data
+
+            return {'school': serialized_school, "message": "school account details have been successfully updated" }
+        
+        # Return serializer errors if the data is not valid, format it as a string
+        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
+
+    except ValidationError as e:
+        # Handle validation errors separately with meaningful messages
+        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
 
 
 @database_sync_to_async

@@ -13,7 +13,7 @@ from bug_reports.models import BugReport
 
 # serializers
 from users.serializers.principals.principals_serializers import PrincipalAccountSerializer, PrincipalAccountDetailsSerializer
-from schools.serializers import SchoolSerializer
+from schools.serializers import SchoolSerializer, SchoolDetailsSerializer
 from invoices.serializers import InvoiceSerializer, InvoicesSerializer
 from bug_reports.serializers import BugReportsSerializer, BugReportSerializer
 
@@ -33,6 +33,25 @@ def search_school(details):
     except Exception as e:
         return {"error": str(e)}
     
+    
+@database_sync_to_async
+def search_school_details(details):
+    try:
+        school = School.objects.get(school_id=details.get('school'))
+
+        # Serialize the school object into a dictionary
+        serialized_school = SchoolDetailsSerializer(instance=school).data
+
+        return {"school": serialized_school}
+
+    except School.DoesNotExist:
+        # Handle the case where the provided school ID does not exist
+        return {"error": "a school with the provided credentials does not exist"}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
+
 
 @database_sync_to_async
 def search_principal_profile(details):

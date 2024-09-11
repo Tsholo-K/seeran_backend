@@ -109,7 +109,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
     async def handle_search(self, description, details, user, role, access_token):
         search_map = {
             'school': founder_search_async_functions.search_school,
-            'school_details': general_search_async_functions.search_school_details,
+            'school_details': founder_search_async_functions.search_school_details,
 
             'principal_profile': founder_search_async_functions.search_principal_profile,
             'principal_details': founder_search_async_functions.search_principal_details,
@@ -123,7 +123,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
         func = search_map.get(description)
         if func:
-            return await func(user, role, details) if description in ['school_details'] else await func(details)
+            return await func(details)
         
         return {'error': 'Invalid search description'}
 
@@ -167,7 +167,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
             return await founder_put_async_functions.update_principal_account(details)
                 
         elif description == 'update_school_details':
-            return await general_put_async_functions.update_school_details(user, role, details)
+            return await founder_put_async_functions.update_school_account(details)
         
         else:
             return {'error': 'Invalid put description'}
@@ -180,7 +180,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
             return await founder_post_async_functions.create_school_account(details)
         
         elif description == 'delete_school_account':
-            return await general_post_async_functions.delete_school_account(user, role, details)
+            return await founder_post_async_functions.delete_school_account(details)
         
         elif description == 'create_principal_account':
             response = await founder_post_async_functions.create_principal_account(details)

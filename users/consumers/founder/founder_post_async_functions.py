@@ -8,9 +8,11 @@ from django.db import transaction
 from django.core.exceptions import ValidationError
 
 # models 
-from users.models import Principal
+from users.models import Principal, Admin, Teacher, Student
 from schools.models import School
 from balances.models import Balance
+from grades.models import Grade
+from classes.models import Classroom
 
 # serializers
 from users.serializers.principals.principals_serializers import PrincipalAccountCreationSerializer
@@ -57,6 +59,39 @@ def create_school_account(details):
 
     except Exception as e:
         # Handle any unexpected errors and return a general error message
+        return {'error': str(e).lower()}
+
+
+@database_sync_to_async
+def delete_school_account(details):
+    try:
+        school = School.objects.get(school_id=details.get('school'))
+
+        with transaction.atomic():
+            # Perform bulk delete operations without triggering signals
+            Principal.objects.filter(school=school).delete()
+            Admin.objects.filter(school=school).delete()
+            Teacher.objects.filter(school=school).delete()
+            Student.objects.filter(school=school).delete()
+            Classroom.objects.filter(school=school).delete()
+            Grade.objects.filter(school=school).delete()
+
+            # Delete the School instance
+            school.delete()
+
+        # Return a success message
+        return {"message": "school account deleted successfully"}
+                   
+    except Principal.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
+
+    except School.DoesNotExist:
+        # Handle the case where the School does not exist
+        return {"error": "a school with the provided credentials does not exist"}
+    
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
         return {'error': str(e).lower()}
 
 

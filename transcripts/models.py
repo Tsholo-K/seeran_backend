@@ -17,6 +17,8 @@ class Transcript(models.Model):
 
     # The score the student received in the assessment
     score = models.DecimalField(max_digits=5, decimal_places=2)
+    # The normalized percentage score (weighted)
+    weighted_score = models.DecimalField(max_digits=5, decimal_places=2)
 
     # The score recieved by the student after moderation
     moderated_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
@@ -41,9 +43,16 @@ class Transcript(models.Model):
         if self.score < 0 or self.score > self.assessment.total:
             raise ValidationError(f'the students score must be within the range of 0 to {self.assessment.total}')
         
-        if self.moderated_score and (self.moderated_score < 0 or self.moderated_score > self.assessment.total):
-            raise ValidationError(f'the students moderated score must be within the range of 0 to {self.assessment.total}')
+        # Calculate the weighted score (normalized to a percentage)
+        if self.assessment.total > 0 and not self.moderated_score:
+            self.weighted_score = (self.score / self.assessment.total) * 100
         
+        if self.moderated_score:
+            if (self.moderated_score < 0 or self.moderated_score > self.assessment.total):
+                raise ValidationError(f'the students moderated score must be within the range of 0 to {self.assessment.total}')
+            # If a moderated score exists, calculate its weighted value too
+            self.weighted_score = (self.moderated_score / self.assessment.total) * 100
+
     def save(self, *args, **kwargs):
         self.clean()
 

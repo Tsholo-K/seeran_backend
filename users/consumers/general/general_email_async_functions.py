@@ -5,22 +5,12 @@ import base64
 # httpx
 import httpx
 
-# channels
-
 # django
 from django.core.cache import cache
 from django.utils.translation import gettext as _
 
-# simple jwt
-
-# models 
-
-# serializers
-
 # utility functions 
 from authentication.utils import generate_otp
-
-# checks
 
 
 async def send_account_confirmation_email(user):

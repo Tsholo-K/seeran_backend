@@ -1,29 +1,29 @@
 # python 
 
-# httpx
-
 # channels
 from channels.db import database_sync_to_async
 
 # django
 from django.db import transaction
 from django.core.exceptions import ValidationError
-
-# simple jwt
+from django.utils import timezone
 
 # models 
-from users.models import Principal, Admin, Teacher, Student, Parent
-from student_group_timetables.models import StudentGroupTimetable
-from classes.models import Classroom
 from grades.models import Grade
 from terms.models import Term
 from subjects.models import Subject
+from classes.models import Classroom
+from assessments.models import Assessment
+from transcripts.models import Transcript
+from assessments.models import Topic
 
 # serilializers
 from grades.serializers import UpdateGradeSerializer, GradeDetailsSerializer
+from schools.serializers import UpdateSchoolAccountSerializer, SchoolDetailsSerializer
 from terms.serializers import UpdateTermSerializer, TermSerializer
 from subjects.serializers import UpdateSubjectSerializer, SubjectDetailsSerializer
 from classes.serializers import UpdateClassSerializer
+from assessments.serializers import AssessmentUpdateSerializer
 
 # checks
 from users.checks import permission_checks
@@ -31,18 +31,76 @@ from users.checks import permission_checks
 # mappings
 from users.maps import role_specific_maps
 
-# queries
-from users.complex_queries import queries
+# utility functions 
+from users import utils as users_utilities
+from permissions import utils as permissions_utilities
+from audit_logs import utils as audits_utilities
+
+
+@database_sync_to_async
+def update_school_account(user, role, details):
+    try:
+        school = None  # Initialize requested_account as None to prevent issues in error handling
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        
+        school = requesting_account.school
+
+        # Check if the user has permission to update classrooms
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'ACCOUNT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to update account details.'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', outcome='DENIED', response=response, school=school)
+
+            return {'error': response}
+
+        # Initialize the serializer with the existing school instance and incoming data
+        serializer = UpdateSchoolAccountSerializer(instance=school, data=details)
+        # Validate the incoming data
+        if serializer.is_valid():
+            # Use an atomic transaction to ensure the database is updated safely
+            with transaction.atomic():
+                serializer.save()
+                    
+                response = f"school account details have been successfully updated"
+                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(school.school_id) if school else 'N/A', outcome='UPDATED', response=response, school=requesting_account.school,)
+
+            # Serialize the grade
+            serialized_school = SchoolDetailsSerializer(school).data
+
+            return {'school': serialized_school, "message": response}
+            
+        # Return serializer errors if the data is not valid, format it as a string
+        error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(school.school_id) if school else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=school)
+
+        return {"error": error_response}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(school.school_id) if school else 'N/A', outcome='ERROR', response=error_message, school=school)
+
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(school.school_id) if school else 'N/A', outcome='ERROR', response=error_message, school=school)
+
+        return {'error': error_message}
 
 
 @database_sync_to_async
 def update_grade_details(user, role, details):
     try:
-        # Get the appropriate model for the requesting user's role
-        Model = role_specific_maps.account_access_control_mapping[role]
+        grade = None  # Initialize grade as None to prevent issues in error handling
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
-        # Retrieve the user and related school in a single query using select_related
-        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+        # Check if the user has permission to update grades
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'GRADE'):
+            response = f'could not proccess your request, you do not have the necessary permissions to update grade details.'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GRADE', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
 
         grade = Grade.objects.get(grade_id=details.get('grade'), school=requesting_account.school)
 
@@ -51,45 +109,52 @@ def update_grade_details(user, role, details):
         if serializer.is_valid():
             with transaction.atomic():
                 serializer.save()
-            
+                    
+                response = f"grade details have been successfully updated"
+                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='UPDATED', response=response, school=requesting_account.school,)
+
             # Serialize the grade
             serialized_grade = GradeDetailsSerializer(grade).data
             
             # Return the serialized grade in a dictionary
-            return {'grade': serialized_grade, "message": "grade details have been successfully updated"}
-        
+            return {'grade': serialized_grade, "message": response}
+            
         # Return serializer errors if the data is not valid, format it as a string
-        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
-               
-    except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+        error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='ERROR', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
+
+        return {"error": error_response}
                        
     except Grade.DoesNotExist:
         # Handle the case where the provided account ID does not exist
         return {'error': 'an grade for your school with the provided credentials does not exist, please check the grade details and try again'}
 
     except ValidationError as e:
-        # Handle validation errors separately with meaningful messages
-        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {"error": error_message}
 
     except Exception as e:
-        # Handle any unexpected errors with a general error message
-        return {'error': str(e)}
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {'error': error_message}
     
 
 @database_sync_to_async
 def update_term_details(user, role, details):
     try:
-        # Get the appropriate model for the requesting user's role
-        Model = role_specific_maps.account_access_control_mapping[role]
+        term = None  # Initialize term as None to prevent issues in error handling
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
-        # Retrieve the user and related school in a single query using select_related
-        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+        # Check if the user has permission to update terms
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'TERM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to update term details.'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
 
         term = Term.objects.get(term_id=details.get('term'), school=requesting_account.school)
 
@@ -101,43 +166,50 @@ def update_term_details(user, role, details):
             with transaction.atomic():
                 serializer.save()
                     
+                response = f"school term details have been successfully updated"
+                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='UPDATED', response=response, school=requesting_account.school,)
+
             # Serialize the school terms
             serialized_term = TermSerializer(term).data
 
-            return {'term': serialized_term, "message": "school term details have been successfully updated" }
-        
+            return {'term': serialized_term, "message": response}
+            
         # Return serializer errors if the data is not valid, format it as a string
-        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
-               
-    except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+        error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
+
+        return {"error": error_response}
                        
     except Term.DoesNotExist:
         # Handle the case where the provided account ID does not exist
         return {'error': 'a term for your school with the provided credentials does not exist, please check the term details and try again'}
 
     except ValidationError as e:
-        # Handle validation errors separately with meaningful messages
-        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {"error": error_message}
 
     except Exception as e:
-        # Handle any unexpected errors with a general error message
-        return {'error': str(e)}
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {'error': error_message}
 
 
 @database_sync_to_async
 def update_subject_details(user, role, details):
     try:
-        # Get the appropriate model for the requesting user's role
-        Model = role_specific_maps.account_access_control_mapping[role]
+        subject = None  # Initialize subject as None to prevent issues in error handling
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
-        # Retrieve the user and related school in a single query using select_related
-        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+        # Check if the user has permission to update classrooms
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'SUBJECT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to update subject details.'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='SUBJECT', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
 
         subject = Subject.objects.get(subject_id=details.get('subject'), grade__school=requesting_account.school)
 
@@ -148,35 +220,37 @@ def update_subject_details(user, role, details):
             # Use an atomic transaction to ensure the database is updated safely
             with transaction.atomic():
                 serializer.save()
+                    
+                response = f"subject details have been successfully updated"
+                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='UPDATED', response=response, school=requesting_account.school,)
             
             # Serialize the subject
             serialized_subject = SubjectDetailsSerializer(subject).data
-            
+
             # Return the serialized grade in a dictionary
-            return {'subject': serialized_subject, "message": "subject details have been successfully updated"}
-        
+            return {'subject': serialized_subject, "message": response}
+            
         # Return serializer errors if the data is not valid, format it as a string
-        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
-               
-    except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+        error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
+
+        return {"error": error_response}
         
     except Subject.DoesNotExist:
         # Handle case where the subject does not exist
         return {'error': 'a subject in your school with the provided credentials does not exist.'}
 
     except ValidationError as e:
-        # Handle validation errors separately with meaningful messages
-        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {"error": error_message}
 
     except Exception as e:
-        # Handle any unexpected errors with a general error message
-        return {'error': str(e)}
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {'error': error_message}
     
 
 @database_sync_to_async
@@ -185,20 +259,27 @@ def update_account(user, role, details):
         if details.get('role') not in ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT']:
             return {"error": 'could not proccess your request, the provided account role is invalid'}
 
+        requested_account = None  # Initialize requested_account as None to prevent issues in error handling
+
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to update classrooms
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'ACCOUNT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to update classroom details.'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
         if details['role'] == 'ADMIN' and role == 'ADMIN':
-            return {"error": 'could not proccess your request, your accounts role does not have enough permissions to perform this action'}
+            response = f'could not proccess your request, your accounts role does not have enough permissions to perform this action.'
 
-        # Get the model, select_related, and prefetch_related fields based on the requesting user's role.
-        Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[role]
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', outcome='DENIED', response=response, school=requesting_account.school)
 
-        # Retrieve the user and related school in a single query using select_related
-        requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
+            return {'error': response}
 
-        # Get the model, select_related, and prefetch_related fields based on the requested user's role.
-        Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[details['role']]
-
-        # Retrieve the requested user's account from the database.
-        requested_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=details.get('account'))
+        # Retrieve the requested user's account and related attr for permission check
+        requested_account = users_utilities.get_account_and_attr(details['account'], details['role'])
         
         # Check if the requesting user has permission to view the requested user's profile.
         permission_error = permission_checks.check_update_details_permissions(requesting_account, requested_account)
@@ -213,6 +294,9 @@ def update_account(user, role, details):
         if serializer.is_valid():
             with transaction.atomic():
                 serializer.save()
+                        
+                response = f'account details successfully updated'
+                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(requested_account.account_id) if requested_account else 'N/A', outcome='UPDATED', response=response, school=requesting_account.school,)
             
             # Get the appropriate serializer
             Serializer = role_specific_maps.account_details_serializer_mapping[details['role']]
@@ -221,47 +305,39 @@ def update_account(user, role, details):
             serialized_user = Serializer(instance=requested_account).data
 
             return {"user" : serialized_user}
-            
+
         # Return serializer errors if the data is not valid, format it as a string
-        return {"error": '; '.join([f"{key}: {', '.join(value)}, okay it must be the serializer" for key, value in serializer.errors.items()])}
-               
-    except Principal.DoesNotExist:
-        # Handle the case where the requested principal account does not exist.
-        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the requested admin account does not exist.
-        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
-               
-    except Teacher.DoesNotExist:
-        # Handle the case where the requested teacher account does not exist.
-        return {'error': 'a teacher account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Student.DoesNotExist:
-        # Handle the case where the requested student account does not exist.
-        return {'error': 'a student account with the provided credentials does not exist, please check the account details and try again'}
-               
-    except Parent.DoesNotExist:
-        # Handle the case where the requested parent account does not exist.
-        return {'error': 'a parent account with the provided credentials does not exist, please check the account details and try again'}
+        error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(requested_account.account_id) if requested_account else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
+
+        return {"error": error_response}
 
     except ValidationError as e:
-        # Handle validation errors separately with meaningful messages
-        return {"error": e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()}
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(requested_account.account_id) if requested_account else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {"error": error_message}
 
     except Exception as e:
-        # Handle any unexpected errors with a general error message
-        return {'error': str(e)}
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(requested_account.account_id) if requested_account else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {'error': error_message}
 
 
 @database_sync_to_async
 def update_class(user, role, details):
     try:
-        # Get the appropriate model for the requesting user's role
-        Model = role_specific_maps.account_access_control_mapping[role]
+        classroom = None  # Initialize classroom as None to prevent issues in error handling
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
-        # Retrieve the user and related school in a single query using select_related
-        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+        # Check if the user has permission to update classrooms
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'CLASSROOM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to update classroom details.'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
 
         classroom = Classroom.objects.get(classroom_id=details.get('class'), school=requesting_account.school)
 
@@ -275,26 +351,33 @@ def update_class(user, role, details):
                         classroom.update_teacher(teacher=None)
                     else:
                         classroom.update_teacher(teacher=details['updates']['teacher'])
+                    
+                response = f'classroom details have been successfully updated'
+                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='UPDATED', response=response, school=requesting_account.school,)
 
-            return {"message" : 'classroom details have been successfully updated'}
+            return {"message": response}
             
         # Return serializer errors if the data is not valid, format it as a string
-        return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}
-               
-    except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+        error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
+
+        return {"error": error_response}
     
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
         return {'error': 'a classroom in your school with the provided credentials does not exist. please check the classroom details and try again.'}
 
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {"error": error_message}
+
     except Exception as e:
-        return { 'error': str(e) }
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {'error': error_message}
 
 
 @database_sync_to_async
@@ -304,11 +387,17 @@ def update_class_students(user, role, details):
         if not students_list or students_list == ['']:
             return {'error': 'your request could not be proccessed.. no students were provided'}
         
-        # Get the appropriate model for the requesting user's role
-        Model = role_specific_maps.account_access_control_mapping[role]
+        classroom = None  # Initialize assessment as None to prevent issues in error handling
 
-        # Retrieve the user and related school in a single query using select_related
-        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to update classrooms
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'CLASSROOM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to update classroom details.'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
 
         classroom = Classroom.objects.select_related('grade', 'subject').get(classroom_id=details.get('class'), school=requesting_account.school)
 
@@ -317,127 +406,319 @@ def update_class_students(user, role, details):
             error_message = classroom.update_students(students_list=students_list, remove=details.get('remove'))
             
         if error_message:
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school,)
             return {'error': error_message}
+        
+        response = f'Students successfully {"removed from" if details.get("remove") else "added to"} the grade {classroom.grade.grade}, group {classroom.group} {"register" if classroom.register_class else classroom.subject.subject} class'.lower()
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='UPDATED', response=response, school=requesting_account.school,)
 
-        return {'message': f'Students successfully {"removed from" if details.get("remove") else "added to"} the grade {classroom.grade.grade}, group {classroom.group} {"register" if classroom.register_class else classroom.subject.subject} class'.lower()}
-               
-    except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+        return {"message": response}
     
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
         return {'error': 'a classroom in your school with the provided credentials does not exist. please check the classroom details and try again.'}
 
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {"error": error_message}
+
     except Exception as e:
-        return {'error': str(e)}
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {'error': error_message}
 
 
 @database_sync_to_async
-def add_students_to_group_schedule(user, role, details):
+def update_assessment(user, role, details):
     try:
-        # Get the list of student IDs from the details
-        students_list = details.get('students', '').split(', ')
-        if not students_list or students_list == ['']:
-            return {'error': 'your request could not be proccessed.. no students were provided'}
+        assessment = None  # Initialize assessment as None to prevent issues in error handling
 
-        # Get the appropriate model for the requesting user's role
-        Model = role_specific_maps.account_access_control_mapping[role]
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
-        # Retrieve the user and related school in a single query using select_related
-        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+        # Check if the user has permission to update an assessment
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'ASSESSMENT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to update assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
 
-        # Retrieve the group schedule object with related grade and school for permission check
-        group_schedule = StudentGroupTimetable.objects.prefetch_related('students').select_related('grade').get(group_schedule_id=details.get('group_schedule_id'), grade__school=requesting_account.school)
-        
-        # Retrieve the existing students in the group schedule
-        existing_students = group_schedule.students.filter(account_id__in=students_list).values_list('account_id', flat=True)
-        
-        if existing_students:
-            existing_students_str = ', '.join(existing_students)
-            return {'error': f'Invalid request. The following students are already in this class: {existing_students_str}. Please review the list of students and try again.'}
-        
-        students_to_add = Student.objects.filter(account_id__in=students_list, school=requesting_account.school, grade=group_schedule.grade)        
-        
-        # Add students to the group schedule within a transaction
-        with transaction.atomic():
-            group_schedule.students.add(*students_to_add)
-        
-        return {'message': 'students successfully added to group schedule.'}
-               
-    except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
-            
-    except StudentGroupTimetable.DoesNotExist:
-        # Handle the case where the provided group schedule ID does not exist
-        return {'error': 'A group schedule in your school with the provided credentials does not exist. Please check the group schedule details and try again.'}
+            return {'error': response}
+
+        assessment = Assessment.objects.get(assessment_id=details.get('assessment'), school=requesting_account.school)
+
+        # Serialize the details for assessment creation
+        serializer = AssessmentUpdateSerializer(instance=assessment, data=details)
+        if serializer.is_valid():
+            # Create the assessment within a transaction to ensure atomicity
+            with transaction.atomic():
+                serializer.save()
+
+                if details.get('topics'):
+                    topics = []
+                    for name in details.get('topics'):
+                        topic, _ = Topic.objects.get_or_create(name=name)
+                        topics.append(topic)
+
+                    assessment.topics.set(topics)
+                    
+                response = f'assessment {assessment.unique_identifier} has been successfully updated, the new updates will reflect imemdiately to all the students being assessed and their parents'
+                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='UPDATED', response=response, school=requesting_account.school,)
+
+            return {"message": response}
+                
+        # Return serializer errors if the data is not valid, format it as a string
+        error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
+
+        return {"error": error_response}
+
+    except Assessment.DoesNotExist:
+        # Handle the case where the provided assessment ID does not exist
+        return {'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {"error": error_message}
 
     except Exception as e:
-        return {'error': str(e)}
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {'error': error_message}
 
 
 @database_sync_to_async
-def remove_students_from_group_schedule(user, role, details):
-    """
-    Removes students from a specified group schedule.
-
-    Args:
-        user (str): The unique identifier (account_id) of the user making the request.
-        details (dict): A dictionary containing the group schedule and students' details.
-            - 'group_schedule_id' (str): The ID of the group schedule.
-            - 'students' (str): A comma-separated string of student account IDs to be removed.
-
-    Returns:
-        dict: A dictionary containing:
-            - 'students': A serialized list of remaining students in the group schedule.
-            - 'message': A success message if the removal is successful.
-            - 'error': An error message if an exception occurs.
-    """
+def collect_assessment(user, role, details):
     try:
-        # Get the list of student IDs from the details
+        assessment = None  # Initialize assessment as None to prevent issues in error handling
+
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to create an assessment
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'COLLECT', 'ASSESSMENT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to collect assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        assessment = Assessment.objects.select_related('students_assessed').get(assessment_id=details.get('assessment'), school=requesting_account.school)
+        students = assessment.students_assessed.filter(account_id__in=details.get('students'))
+
+        with transaction.atomic():
+            assessment.ontime_submission.add(*students)
+
+            response = f"assessment successfully collected from {len(students)} assessed students."
+            audits_utilities.log_audit(actor=user, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='COLLECTED', response=response, school=assessment.school)
+
+        return {"message": response}
+
+    except Assessment.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {'error': error_message}
+
+
+@database_sync_to_async
+def collect_late_submitions(user, role, details):
+    try:
+        assessment = None  # Initialize assessment as None to prevent issues in error handling
+
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to create an assessment
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'COLLECT', 'ASSESSMENT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to collect assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        assessment = Assessment.objects.select_related('not_submitted').get(assessment_id=details.get('assessment'), school=requesting_account.school)        
+        students = assessment.not_submitted.filter(account_id__in=details.get('students'))
+
+        with transaction.atomic():
+            assessment.not_submitted.remove(*students)
+            assessment.late_submission.add(*students)
+
+            response = f"assessment late submitions successfully collected from {len(students)} students."
+            audits_utilities.log_audit(actor=user, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='COLLECTED', response=response, school=assessment.school)
+
+        return {"message": response}
+
+    except Assessment.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {'error': error_message}
+
+
+@database_sync_to_async
+def update_assessment_as_collected(user, role, details):
+    try:
+        assessment = None  # Initialize assessment as None to prevent issues in error handling
+
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to create an assessment
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'ASSESSMENT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to update assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        assessment = Assessment.objects.select_related('students_assessed', 'ontime_submission').get(assessment_id=details.get('assessment'), school=requesting_account.school)
+
+        with transaction.atomic():
+            assessment.assessed = True
+            assessment.date_assessed = timezone.now()
+
+            not_submitted_students = assessment.students_assessed.exclude(pk__in=assessment.ontime_submission.all())
+            assessment.not_submitted.add(*not_submitted_students)
+
+            assessment.save()
+
+            response = f"assessment {assessment.unique_identifier} has been flagged as assessed, and all students that have not submitted their assessments have been flagged as not submitted for the assessment."
+            audits_utilities.log_audit(actor=user, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='COLLECTED', response=response, school=assessment.school)
+
+        return {"message": response}
+
+    except Assessment.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {'error': error_message}
+
+
+@database_sync_to_async
+def release_assessment_grades(user, role, details):
+    try:
+        assessment = None  # Initialize assessment as None to prevent issues in error handling
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to create an assessment
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'ASSESSMENT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to update assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        assessment = Assessment.objects.select_related('not_submitted').get(assessment_id=details.get('assessment'), school=requesting_account.school)        
+        not_submitted_students = assessment.not_submitted.all()
+
+        # Create a transcript with a score of 0 for students who didn't submit
+        with transaction.atomic():
+            assessment.grades_released = True
+            assessment.date_grades_released = timezone.now()
+            
+            for student in not_submitted_students:
+                Transcript.objects.create(student=student, score=0, assessment=assessment)
+
+            assessment.save()
+            
+            response = f'Grades released for assessment {assessment.unique_identifier}.'
+            audits_utilities.log_audit(actor=user,action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='UPDATED', response=response, school=assessment.school)
+
+        return {"message": response}
+
+    except Assessment.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {'error': error_message}
+
+
+@database_sync_to_async
+def update_group_schedule_students(user, role, details):
+    try:
         students_list = details.get('students', '').split(', ')
         if not students_list or students_list == ['']:
             return {'error': 'your request could not be proccessed.. no students were provided'}
-
-        # Retrieve the user and related school in a single query using select_related
-        if role == 'PRINCIPAL':
-            admin = Principal.objects.select_related('school').only('school').get(account_id=user)
-        else:
-            admin = Admin.objects.select_related('school').only('school').get(account_id=user)
-
-        # Retrieve the group schedule object with related grade and school for permission check
-        group_schedule = StudentGroupTimetable.objects.select_related('grade').get(group_schedule_id=details.get('group_schedule_id'), grade__school=admin.school)
-
-        # Retrieve the students that need to be removed in a single query for efficiency
-        students_to_remove = Student.objects.filter(account_id__in=students_list, school=admin.school, grade=group_schedule.grade)
-
-        # Remove students from the group schedule within a transaction
-        with transaction.atomic():
-            group_schedule.students.remove(*students_to_remove)
         
-        return {'message': 'students successfully removed from group schedule.'}
-               
-    except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
+        group_schedule = None  # Initialize assessment as None to prevent issues in error handling
+
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to update classrooms
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'CLASSROOM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to update classroom details.'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        group_schedule = Classroom.objects.select_related('grade', 'subject').get(classroom_id=details.get('class'), school=requesting_account.school)
+
+        with transaction.atomic():
+            # Check for validation errors and perform student updates
+            error_message = group_schedule.update_students(students_list=students_list, remove=details.get('remove'))
             
-    except StudentGroupTimetable.DoesNotExist:
-        # Handle the case where the provided group schedule ID does not exist
-        return {'error': 'A group schedule in your school with the provided credentials does not exist. Please check the group schedule details and try again.'}
+        if error_message:
+            return {'error': error_message}
+
+        return {'message': f''}
+    
+    except Classroom.DoesNotExist:
+        # Handle case where the classroom does not exist
+        return {'error': 'a classroom in your school with the provided credentials does not exist. please check the classroom details and try again.'}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(group_schedule.group_schedule_id) if group_schedule else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {"error": error_message}
 
     except Exception as e:
-        return {'error': str(e)}
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(group_schedule.group_schedule_id) if group_schedule else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {'error': error_message}
+
 
