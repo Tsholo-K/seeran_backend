@@ -32,7 +32,7 @@ class AssessmentUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Assessment
-        fields = ['due_date', 'title', 'assessment_type', 'total', 'percentage_towards_term_mark', 'moderator']
+        fields = ['start_time', 'dead_line', 'due_date', 'title', 'total', 'topics', 'percentage_towards_term_mark', 'moderator']
 
     def __init__(self, *args, **kwargs):
         super(AssessmentUpdateSerializer, self).__init__(*args, **kwargs)

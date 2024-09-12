@@ -10,14 +10,17 @@ from channels.db import database_sync_to_async
 # simple jwt
 
 # models 
-from users.models import Principal, Admin
-from student_group_timetables.models import StudentGroupTimetable
+from grades.models import Grade
 from subjects.models import Subject
 from classes.models import Classroom
+from student_group_timetables.models import StudentGroupTimetable
 
 # serilializers
+from users.serializers.principals.principals_serializers import PrincipalAccountSerializer
+from users.serializers.admins.admins_serializers import AdminAccountSerializer
 from users.serializers.teachers.teachers_serializers import TeacherAccountSerializer
 from users.serializers.students.students_serializers import StudentSourceAccountSerializer
+from terms.serializers import FormTermsSerializer
 
 # mappings
 from users.maps import role_specific_maps
@@ -25,15 +28,24 @@ from users.maps import role_specific_maps
 # queries
 from users.complex_queries import queries
 
+# utility functions 
+from users import utils as users_utilities
+from permissions import utils as permissions_utilities
+from audit_logs import utils as audits_utilities
+
 
 @database_sync_to_async
 def form_data_for_creating_class(user, role, details):
     try:
-        # Get the appropriate model for the requesting user's role from the mapping.
-        Model = role_specific_maps.account_access_control_mapping[role]
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
-        # Build the queryset for the requesting account with the necessary related fields.
-        requesting_account = Model.objects.select_related('school').prefetch_related('school__teachers__taught_classes').get(account_id=user)
+        # Check if the user has permission to create classrooms
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'CLASSROOM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to create assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='CLASSROOM', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
 
         # Determine the query based on the reason for retrieving teachers
         if details.get('reason') == 'subject class':
@@ -48,20 +60,15 @@ def form_data_for_creating_class(user, role, details):
             teachers = requesting_account.school.teachers.all().exclude(taught_classes__register_class=True)
 
         else:
-            return {"error": "invalid reason provided. expected 'subject class' or 'register class'."}
+            response = "could not proccesses your request, invalid reason provided. expected 'subject class' or 'register class'."
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='CLASSROOM', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
 
         # Serialize the list of teachers
         serialized_teachers = TeacherAccountSerializer(teachers, many=True).data
 
         return {"teachers": serialized_teachers}
-               
-    except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
         
     except Subject.DoesNotExist:
         return {'error': 'a subject in your school with the provided credentials does not exist, please check the subject details and try again'}
@@ -74,13 +81,18 @@ def form_data_for_creating_class(user, role, details):
 @database_sync_to_async
 def form_data_for_updating_class(user, role, details):
     try:
-        # Get the appropriate model for the requesting user's role from the mapping.
-        Model = role_specific_maps.account_access_control_mapping[role]
+        classroom = None  # Initialize classroom as None to prevent issues in error handling
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
-        # Build the queryset for the requesting account with the necessary related fields.
-        requesting_account = Model.objects.select_related('school').prefetch_related('school__teachers__taught_classes').get(account_id=user)
+        # Check if the user has permission to update classrooms
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'CLASSROOM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to create assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', outcome='DENIED', response=response, school=requesting_account.school)
 
-        classroom = Classroom.objects.select_related('subject', 'teacher').get(classroom_id=details.get('class'), school=requesting_account.school)
+            return {'error': response}
+
+        classroom = requesting_account.school.classrooms.select_related('subject', 'teacher').get(classroom_id=details.get('classroom'))
 
         # Determine the query based on the classroom type
         if classroom.subject:
@@ -90,8 +102,11 @@ def form_data_for_updating_class(user, role, details):
             teachers = requesting_account.school.teachers.all().exclude(taught_classes__register_class=True)
 
         else:
-            return {"error": "invalid classroom provided. the classroom in neither a register class or linked to a subject"}
-        
+            response = "could not proccesses your request, invalid classroom provided. the classroom in neither a register class or linked to a subject"
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
         if classroom.teacher:
             teachers = teachers.exclude(account_id=classroom.teacher.account_id)
         
@@ -100,14 +115,6 @@ def form_data_for_updating_class(user, role, details):
         class_teacher = TeacherAccountSerializer(classroom.teacher).data if classroom.teacher else None
 
         return {'teacher': class_teacher, "teachers": serialized_teachers, 'group': classroom.group, 'classroom_identifier': classroom.classroom_number}
-               
-    except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
     
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
@@ -121,14 +128,19 @@ def form_data_for_updating_class(user, role, details):
 @database_sync_to_async
 def form_data_for_adding_students_to_class(user, role, details):
     try:
-        # Get the appropriate model for the requesting user's role from the mapping.
-        Model = role_specific_maps.account_access_control_mapping[role]
+        classroom = None  # Initialize classroom as None to prevent issues in error handling
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
-        # Build the queryset for the requesting account with the necessary related fields.
-        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+        # Check if the user has permission to update classrooms
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'CLASSROOM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to create assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
 
         # Retrieve the classroom with the provided class ID and related data using `select_related`
-        classroom = Classroom.objects.select_related('grade', 'subject').get(classroom_id=details.get('class'), school=requesting_account.school)
+        classroom = requesting_account.school.classrooms.select_related('grade', 'subject').get(classroom_id=details.get('classroom'))
 
         # Determine the reason for fetching students and apply the appropriate filtering logic
         if details.get('reason') == 'subject class':
@@ -149,20 +161,15 @@ def form_data_for_adding_students_to_class(user, role, details):
 
         else:
             # Return an error if the reason provided is not valid
-            return {"error": "Invalid reason provided."}
+            response = "could not proccesses your request, invalid reason provided."
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
 
         # Serialize the list of students to return them in the response
         serialized_students = StudentSourceAccountSerializer(students, many=True).data
 
         return {"students": serialized_students}
-               
-    except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
     
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
@@ -174,32 +181,62 @@ def form_data_for_adding_students_to_class(user, role, details):
 
 
 @database_sync_to_async
+def form_data_for_assessment_setting(user, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to create an assessment
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'ASSESSMENT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to create assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        grade = requesting_account.school.grades.prefetch_related('terms').get(grade_id=details.get('grade'))
+
+        terms = grade.terms.all()        
+        serialized_terms = FormTermsSerializer(terms, many=True).data
+        
+        # Fetch all admin accounts in the school
+        admins = requesting_account.school.admins.all().only('name', 'surname', 'identifier', 'image', 'account_id').exclude(account_id=user)
+        serialized_moderators = AdminAccountSerializer(admins, many=True).data
+        
+        # Fetch all teacher accounts in the school
+        teachers = requesting_account.school.teachers.only('name', 'surname', 'identifier', 'image', 'account_id').all()
+        serialized_moderators.extend(TeacherAccountSerializer(teachers, many=True).data)
+
+        # If the user is not a principal
+        if role != 'PRINCIPAL' and requesting_account.school.principal:
+            principal = requesting_account.school.principal
+            serialized_principal = PrincipalAccountSerializer(principal).data
+            serialized_moderators.extend(serialized_principal)
+
+        return {"terms": serialized_terms, "moderators": serialized_moderators}
+    
+    except Grade.DoesNotExist:
+        # Handle the case where the provided grade ID does not exist
+        return { 'error': 'a grade in your school with the provided credentials does not exist, please check the grade details and try again'}
+
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
+
+@database_sync_to_async
 def form_data_for_adding_students_to_group_schedule(user, role, details):
     try:
-        # Get the appropriate model for the requesting user's role from the mapping.
-        Model = role_specific_maps.account_access_control_mapping[role]
-
-        # Build the queryset for the requesting account with the necessary related fields.
-        requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
         
         # Retrieve the group schedule with the provided ID and related data
         group_schedule = StudentGroupTimetable.objects.select_related('grade').get(group_schedule_id=details.get('group_schedule_id'), grade__school=requesting_account.school)
 
         # Fetch all students in the same grade who are not already subscribed to the group schedule
         students = requesting_account.school.students.all().filter(grade=group_schedule.grade).exclude(my_group_schedule=group_schedule)
-
-        # Serialize the list of students to return them in the response
         serialized_students = StudentSourceAccountSerializer(students, many=True).data
 
         return {"students": serialized_students}
-               
-    except Principal.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'an admin account with the provided credentials does not exist, please check the account details and try again'}
     
     except StudentGroupTimetable.DoesNotExist:
         # Handle case where the group schedule does not exist

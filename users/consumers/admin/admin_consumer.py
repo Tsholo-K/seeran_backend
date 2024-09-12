@@ -235,7 +235,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'attendance_register': general_form_data_async_functions.form_data_for_attendance_register,
 
-            'set_assessment' : general_form_data_async_functions.form_data_for_assessment_setting,
+            'set_assessment' : admin_form_data_async_functions.form_data_for_assessment_setting,
 
             'add_students_to_group_schedule': admin_form_data_async_functions.form_data_for_adding_students_to_group_schedule,
         }
