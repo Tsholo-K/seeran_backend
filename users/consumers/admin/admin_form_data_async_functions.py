@@ -275,7 +275,7 @@ def form_data_for_collecting_assessment_submittions(user, role, details):
         serialized_students = StudentSourceAccountSerializer(students, many=True).data
 
         # Determine the next cursor (based on the primary key)
-        next_cursor = students[-1].id if students and len(students) > 1 else None
+        next_cursor = students[len(students) - 1].id if students and len(students) > 1 else None
 
         return {'students': serialized_students, 'cursor': next_cursor}
 
