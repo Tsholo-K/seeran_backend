@@ -268,7 +268,10 @@ def form_data_for_collecting_assessment_submittions(user, role, details):
 
         else:
             return {'error': 'No valid classroom or grade found for the assessment.'}
-
+        
+        if not students:
+            return {'students': [], 'cursor': None}
+        
         serialized_students = StudentSourceAccountSerializer(students, many=True).data
 
         # Determine the next cursor (based on the primary key)
