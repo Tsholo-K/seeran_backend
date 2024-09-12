@@ -261,10 +261,10 @@ def form_data_for_collecting_assessment_submittions(user, role, details):
 
         if assessment.classroom:
             # Fetch students in the classroom who haven't submitted
-            students = assessment.classroom.students.filter(search_filters).only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').exclude(account_id__in=submitted_student_ids)[:2]
+            students = assessment.classroom.students.filter(search_filters).only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').exclude(account_id__in=submitted_student_ids).order_by('id')[:2]
         elif assessment.grade:
             # Fetch students in the grade who haven't submitted
-            students = assessment.grade.students.filter(search_filters).only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').exclude(account_id__in=submitted_student_ids)[:2]
+            students = assessment.grade.students.filter(search_filters).only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').exclude(account_id__in=submitted_student_ids).order_by('id')[:2]
 
         else:
             return {'error': 'No valid classroom or grade found for the assessment.'}
