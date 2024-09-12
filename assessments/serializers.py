@@ -66,17 +66,25 @@ class AssessmentUpdateFormDataSerializer(serializers.ModelSerializer):
 
 class DueAssessmentsSerializer(serializers.ModelSerializer):
 
+    title = serializers.SerializerMethodField()
+
     class Meta:
         model = Assessment
         fields = ['title', 'assessment_type', 'due_date', 'formal', 'assessment_id']
 
+    def get_title(self, obj):
+        return obj.title.title()
 
 class CollectedAssessmentsSerializer(serializers.ModelSerializer):
+
+    title = serializers.SerializerMethodField()
 
     class Meta:
         model = Assessment
         fields = ['title', 'assessment_type', 'date_collected', 'formal', 'assessment_id']
 
+    def get_title(self, obj):
+        return obj.title.title()
 
 class DueAssessmentSerializer(serializers.ModelSerializer):
 
