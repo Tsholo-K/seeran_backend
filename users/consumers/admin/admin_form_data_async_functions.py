@@ -261,10 +261,10 @@ def form_data_for_collecting_assessment_submittions(user, role, details):
 
         if assessment.classroom:
             # Fetch students in the classroom who haven't submitted
-            students = assessment.classroom.students.filter(search_filters).only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').exclude(account_id__in=submitted_student_ids).order_by('id')[:2]
+            students = assessment.classroom.students.filter(search_filters).only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').exclude(account_id__in=submitted_student_ids).order_by('id')[:4]
         elif assessment.grade:
             # Fetch students in the grade who haven't submitted
-            students = assessment.grade.students.filter(search_filters).only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').exclude(account_id__in=submitted_student_ids).order_by('id')[:2]
+            students = assessment.grade.students.filter(search_filters).only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').exclude(account_id__in=submitted_student_ids).order_by('id')[:4]
 
         else:
             return {'error': 'No valid classroom or grade found for the assessment.'}
@@ -275,7 +275,7 @@ def form_data_for_collecting_assessment_submittions(user, role, details):
         serialized_students = StudentSourceAccountSerializer(students, many=True).data
 
         # Determine the next cursor (based on the primary key)
-        next_cursor = students[len(students) - 1].id if students and len(students) > 1 else None
+        next_cursor = students[len(students) - 1].id if students and len(students) > 3 else None
 
         return {'students': serialized_students, 'cursor': next_cursor}
 
