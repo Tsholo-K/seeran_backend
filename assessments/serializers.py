@@ -57,7 +57,7 @@ class AssessmentUpdateFormDataSerializer(serializers.ModelSerializer):
         return obj.title.title()
 
     def get_term(self, obj):
-        return obj.term.term_id
+        return str(obj.term.term_id)
 
 
 class DueAssessmentsSerializer(serializers.ModelSerializer):
