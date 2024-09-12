@@ -30,12 +30,12 @@ class Classroom(models.Model):
 
     students_failing_the_class = models.ManyToManyField(Student, related_name='failing_classes', help_text='Students who are failing the classroom.')
 
-    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='classes', help_text='Grade level associated with the classroom.')
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='classrooms', help_text='Grade level associated with the classroom.')
 
     register_class = models.BooleanField(_('is the class a register class'), editable=False, default=False, help_text='Ensure only one register class per teacher.')
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, editable=False, related_name='classes', null=True, blank=True, help_text='Subject taught in the classroom.')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, editable=False, related_name='classrooms', null=True, blank=True, help_text='Subject taught in the classroom.')
 
-    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='classes', help_text='School to which the classroom belongs.')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='classrooms', help_text='School to which the classroom belongs.')
 
     classroom_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 

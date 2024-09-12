@@ -44,6 +44,7 @@ class AssessmentUpdateSerializer(serializers.ModelSerializer):
         for field in self.fields:
             self.fields[field].required = False
 
+
 class DueAssessmentsSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -57,3 +58,16 @@ class CollectedAssessmentsSerializer(serializers.ModelSerializer):
         model = Assessment
         fields = ['title', 'assessment_type', 'date_collected', 'formal', 'assessment_id']
 
+
+class DueAssessmentSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Assessment
+        fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'due_date', 'topics', 'assessment_id']
+
+
+class CollectedAssessmentSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Assessment
+        fields = ['title', 'assessment_type', 'date_collected', 'formal', 'assessment_id']

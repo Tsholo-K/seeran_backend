@@ -21,7 +21,7 @@ class Attendance(models.Model):
 
     submitted_by = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, null=True, related_name='submitted_attendances')
 
-    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='absences', help_text='School to which the attendace belong.')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='attendances', help_text='School to which the attendace belong.')
 
     class Meta:
         unique_together = ('date', 'classroom') # this will prevent the creation of duplicate instances
