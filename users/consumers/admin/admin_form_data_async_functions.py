@@ -12,7 +12,7 @@ from student_group_timetables.models import StudentGroupTimetable
 from users.serializers.teachers.teachers_serializers import TeacherAccountSerializer
 from users.serializers.students.students_serializers import StudentSourceAccountSerializer
 from terms.serializers import FormTermsSerializer
-from assessments.serializers import AssessmentUpdateSerializer
+from assessments.serializers import AssessmentUpdateSerializer, AssessmentUpdateFormDataSerializer
 
 # utility functions 
 from users import utils as users_utilities
@@ -213,7 +213,7 @@ def form_data_for_updating_assessment(user, role, details):
         terms = assessment.grade.terms.all()        
         serialized_terms = FormTermsSerializer(terms, many=True).data
 
-        serialized_assessment = AssessmentUpdateSerializer(assessment).data
+        serialized_assessment = AssessmentUpdateFormDataSerializer(assessment).data
 
         return {"terms": serialized_terms, "assessment": serialized_assessment}
     
