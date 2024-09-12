@@ -21,6 +21,9 @@ from topics.models import Topic
 # mappings
 from users.maps import role_specific_maps
 
+# utility functions 
+from users import utils as users_utilities
+
 
 ASSESSMENT_TYPE_CHOICES = [
     ('EXAMINATION', 'Examination'),
@@ -131,31 +134,28 @@ class Assessment(models.Model):
         
         if not self.subject:
             raise ValidationError(_('could not proccess your request, assessments need to be assigned to a subject.'))
+        
+        if not self.school:
+            raise ValidationError(_('could not proccess your request, assessments need to be assigned to a school.'))
 
         if self.assessor:
-            # Get the appropriate model for the requesting user's role
-            Model = role_specific_maps.account_access_control_mapping[self.assessor.role]
-
-            # Retrieve the user and related school in a single query using select_related
-            assessor = Model.objects.select_related('school').only('school', 'role').get(account_id=self.assessor.account_id)
+            # Retrieve the assessors account and related school in a single query using select_related
+            assessor = users_utilities.get_account_and_linked_school(self.assessor.account_id, self.assessor.role)
 
             if assessor.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
                 raise ValidationError(_('could not proccess your request, only principals, admins, and teachers can set assessments.'))
 
-            if self.school and assessor.school != self.school:
+            if assessor.school != self.school:
                 raise ValidationError(_('could not proccess your request, you can only create assessments for your own school'))
         
         if self.moderator:
-             # Get the appropriate model for the requesting user's role
-            Model = role_specific_maps.account_access_control_mapping[self.moderator.role]
-
-            # Retrieve the user and related school in a single query using select_related
-            moderator = Model.objects.select_related('school').only('school', 'role').get(account_id=self.moderator.account_id)
+            # Retrieve the moderators account and related school in a single query using select_related
+            moderator = users_utilities.get_account_and_linked_school(self.moderator.account_id, self.moderator.role)
 
             if moderator.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
                 raise ValidationError(_('could not proccess your request, only principals, admins, and teachers can moderate assessments.'))
 
-            if self.school and moderator.school != self.school:
+            if moderator.school != self.school:
                 raise ValidationError(_('could not proccess your request, accounts can only moderate assessments from their own school.'))
             
         # Ensure start_time is before dead_line

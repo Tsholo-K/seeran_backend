@@ -9,6 +9,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 # models 
+from users.models import BaseUser
 from grades.models import Grade
 from terms.models import Term
 from subjects.models import Subject
@@ -435,7 +436,6 @@ def update_class_students(user, role, details):
 def update_assessment(user, role, details):
     try:
         assessment = None  # Initialize assessment as None to prevent issues in error handling
-
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
@@ -446,7 +446,11 @@ def update_assessment(user, role, details):
 
             return {'error': response}
 
-        assessment = Assessment.objects.get(assessment_id=details.get('assessment'), school=requesting_account.school)
+        assessment = requesting_account.school.assessments.get(assessment_id=details.get('assessment'))
+
+        if details.get('moderator'):
+            moderator = BaseUser.objects.only('pk').get(account_id=details['moderator'])
+            details['moderator'] = moderator.pk
 
         # Serialize the details for assessment creation
         serializer = AssessmentUpdateSerializer(instance=assessment, data=details)

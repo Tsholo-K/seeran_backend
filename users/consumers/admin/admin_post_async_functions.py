@@ -684,31 +684,19 @@ def set_assessment(user, role, details):
             return {'error': response}
 
         if details.get('classroom'):
-            classroom = requesting_account.school.classes.select_related('grade', 'subject').prefetch_related('grade__terms').filter(classroom_id=details.get('classroom')).first()
-            
-            if not classroom:
-                response = "the provided classroom is either not assigned to you or does not exist. please check the classroom details and try again"
-                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', outcome='ERROR', response=response, school=requesting_account.school)
+            classroom = requesting_account.school.classes.select_related('grade', 'subject').prefetch_related('grade__terms').get(classroom_id=details.get('classroom'))
 
-                return {'error': response}
-
-            term = classroom.grade.terms.filter(term_id=details.get('term')).first()
+            term = classroom.grade.terms.get(term_id=details.get('term'))
             subject = classroom.subject.pk
 
             details['classroom'] = classroom.pk
             details['grade'] = classroom.grade.pk
  
         elif details.get('grade') and details.get('subject'):
-            grade = requesting_account.school.grades.prefetch_related('terms', 'subjects').filter(grade_id=details.get('grade')).first()
-
-            if not grade:
-                response = "the provided grade is either not from your school or does not exist. please check the grade details and try again"
-                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
-
-                return {'error': response}
+            grade = requesting_account.school.grades.prefetch_related('terms', 'subjects').get(grade_id=details.get('grade'))
             
-            term = grade.terms.filter(term_id=details.get('term')).first()
-            subject = grade.subjects.filter(subject_id=details.get('subject')).first()
+            term = grade.terms.get(term_id=details.get('term'))
+            subject = grade.subjects.get(subject_id=details.get('subject'))
             
             details['grade'] = grade.pk
 
@@ -717,20 +705,11 @@ def set_assessment(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', outcome='ERROR', response=response, school=requesting_account.school)
 
             return {'error': response}
-        
-        if not term:
-            response = "a term for your school with the provided credentials does not exist. please check the term details and try again"
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', outcome='ERROR', response=response, school=requesting_account.school)
 
-            return {'error': response}
-        
-        if not subject:
-            response = "a subject for your school with the provided credentials does not exist. please check the subject details and try again"
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', outcome='ERROR', response=response, school=requesting_account.school)
+        if details.get('moderator'):
+            moderator = BaseUser.objects.only('pk').get(account_id=details['moderator'])
+            details['moderator'] = moderator.pk
 
-            return {'error': response}
-
-        # Set the school field in the details to the user's school ID
         details['assessor'] = requesting_account.pk
         details['school'] = requesting_account.school.pk
         details['term'] = term.pk
@@ -760,6 +739,22 @@ def set_assessment(user, role, details):
         audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
 
         return {"error": error_response}
+    
+    except Classroom.DoesNotExist:
+        # Handle case where the classroom does not exist
+        return {'error': 'a classroom in your school with the provided credentials does not exist. please check the classroom details and try again.'}
+                       
+    except Grade.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an grade for your school with the provided credentials does not exist, please check the grade details and try again'}
+                       
+    except Term.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a term for your school with the provided credentials does not exist, please check the term details and try again'}
+        
+    except Subject.DoesNotExist:
+        # Handle case where the subject does not exist
+        return {'error': 'a subject in your school with the provided credentials does not exist, please check the subject details and try again.'}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()

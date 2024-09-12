@@ -16,11 +16,12 @@ class AssessmentCreationSerializer(serializers.ModelSerializer):
 
     classroom = serializers.PrimaryKeyRelatedField(queryset=Classroom.objects.all(), required=False, allow_null=True)
     assessor = serializers.PrimaryKeyRelatedField(queryset=BaseUser.objects.all(), required=False, allow_null=True),
+    moderator = serializers.PrimaryKeyRelatedField(queryset=BaseUser.objects.all(), required=False, allow_null=True),
     percentage_towards_term_mark = serializers.DecimalField(required=False, max_digits=5, decimal_places=2)
 
     class Meta:
         model = Assessment
-        fields = ['assessor', 'due_date', 'title', 'unique_identifier', 'assessment_type', 'total', 'percentage_towards_term_mark', 'start_time', 'dead_line', 'term', 'classroom', 'subject', 'grade', 'school']
+        fields = ['assessor', 'due_date', 'title', 'unique_identifier', 'assessment_type', 'total', 'percentage_towards_term_mark', 'start_time', 'dead_line', 'term', 'classroom', 'subject', 'grade', 'school', 'moderator']
 
     def __init__(self, *args, **kwargs):
         super(AssessmentCreationSerializer, self).__init__(*args, **kwargs)
@@ -32,7 +33,7 @@ class AssessmentUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Assessment
-        fields = ['start_time', 'dead_line', 'due_date', 'title', 'total', 'topics', 'percentage_towards_term_mark', 'term', 'moderator']
+        fields = ['start_time', 'dead_line', 'due_date', 'title', 'total', 'percentage_towards_term_mark', 'term', 'moderator']
 
     def __init__(self, *args, **kwargs):
         super(AssessmentUpdateSerializer, self).__init__(*args, **kwargs)
