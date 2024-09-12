@@ -1,32 +1,18 @@
-# python 
-
-# httpx
-
 # channels
 from channels.db import database_sync_to_async
 
-# django
-
-# simple jwt
-
-# models 
+# models
 from grades.models import Grade
 from subjects.models import Subject
 from classes.models import Classroom
+from assessments.models import Assessment
 from student_group_timetables.models import StudentGroupTimetable
 
 # serilializers
-from users.serializers.principals.principals_serializers import PrincipalAccountSerializer
-from users.serializers.admins.admins_serializers import AdminAccountSerializer
 from users.serializers.teachers.teachers_serializers import TeacherAccountSerializer
 from users.serializers.students.students_serializers import StudentSourceAccountSerializer
 from terms.serializers import FormTermsSerializer
-
-# mappings
-from users.maps import role_specific_maps
-
-# queries
-from users.complex_queries import queries
+from assessments.serializers import AssessmentUpdateSerializer
 
 # utility functions 
 from users import utils as users_utilities
@@ -197,26 +183,43 @@ def form_data_for_assessment_setting(user, role, details):
 
         terms = grade.terms.all()        
         serialized_terms = FormTermsSerializer(terms, many=True).data
-        
-        # Fetch all admin accounts in the school
-        admins = requesting_account.school.admins.all().only('name', 'surname', 'identifier', 'image', 'account_id').exclude(account_id=user)
-        serialized_moderators = AdminAccountSerializer(admins, many=True).data
-        
-        # Fetch all teacher accounts in the school
-        teachers = requesting_account.school.teachers.only('name', 'surname', 'identifier', 'image', 'account_id').all()
-        serialized_moderators.extend(TeacherAccountSerializer(teachers, many=True).data)
 
-        # If the user is not a principal
-        if role != 'PRINCIPAL' and requesting_account.school.principal:
-            principal = requesting_account.school.principal
-            serialized_principal = PrincipalAccountSerializer(principal).data
-            serialized_moderators.extend(serialized_principal)
-
-        return {"terms": serialized_terms, "moderators": serialized_moderators}
+        return {"terms": serialized_terms}
     
     except Grade.DoesNotExist:
         # Handle the case where the provided grade ID does not exist
         return { 'error': 'a grade in your school with the provided credentials does not exist, please check the grade details and try again'}
+
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def form_data_for_updating_assessment(user, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to create an assessment
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'ASSESSMENT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to update assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        assessment = requesting_account.school.assessments.select_related('grade', 'assessor', 'moderator').prefetch_related('grade__terms').get(assessment_id=details.get('assessment'))
+
+        terms = assessment.grade.terms.all()        
+        serialized_terms = FormTermsSerializer(terms, many=True).data
+
+        serialized_assessment = AssessmentUpdateSerializer(assessment).data
+
+        return {{"terms": serialized_terms, "assessment": serialized_assessment}}
+    
+    except Assessment.DoesNotExist:
+        # Handle the case where the provided grade ID does not exist
+        return { 'error': 'an assessment in your school with the provided credentials does not exist, please check the grade details and try again'}
 
     except Exception as e:
         # Handle any other unexpected errors

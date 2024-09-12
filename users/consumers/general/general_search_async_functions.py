@@ -583,11 +583,9 @@ def search_chat_room_messages(user, details):
         if not chat_room:
             return {"not_found": 'No such chat room exists'}
         
-        # Retrieve the cursor from the request
-        cursor = details.get('cursor')
-        if cursor:
+        if details.get('cursor'):
             # Fetch messages before the cursor with a limit of 20
-            messages = chat_room.messages.filter(timestamp__lt=cursor).order_by('-timestamp')[:20]
+            messages = chat_room.messages.filter(timestamp__lt=details['cursor']).order_by('-timestamp')[:20]
         else:
             # Fetch the latest 20 messages
             messages = chat_room.messages.order_by('-timestamp')[:20]
@@ -621,9 +619,6 @@ def search_chat_room_messages(user, details):
     except BaseUser.DoesNotExist:
         # Handle case where the user does not exist
         return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
-    
-    except ChatRoom.DoesNotExist:
-        return {'error': 'Chat room not found.'}
     
     except Exception as e:
         return {'error': str(e)}

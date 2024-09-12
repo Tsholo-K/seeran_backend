@@ -1,3 +1,6 @@
+# channels
+from channels.db import database_sync_to_async
+
 # models
 from users.models import Principal, Admin, Teacher, Student, Parent
 
@@ -8,7 +11,7 @@ from users.complex_queries import queries
 from users.maps import role_specific_maps
 
 
-
+@database_sync_to_async
 def get_account_and_security_details(user, role):
     try:
         Model, Serializer = role_specific_maps.account_model_and_security_details_serializer_mapping[role]
@@ -38,7 +41,7 @@ def get_account_and_security_details(user, role):
         # Handle any unexpected errors with a general error message
         return {'error': str(e)}
 
-
+@database_sync_to_async
 def get_account_and_linked_school(user, role):
     try:
         Model = role_specific_maps.account_access_control_mapping.get(role)
@@ -64,6 +67,7 @@ def get_account_and_linked_school(user, role):
         # Handle any unexpected errors with a general error message
         return {'error': str(e)}
 
+@database_sync_to_async
 def get_account_and_attr(user, role):
     try:
         # Get the model, select_related, and prefetch_related fields based on the requested user's role.
