@@ -245,7 +245,7 @@ class Student(BaseUser):
     event_emails = models.BooleanField(_('email subscription'), default=False)
 
     class Meta:
-        ...
+        ordering = ['surname', 'name', 'account_id']
 
     def clean(self):
         if not self.role == 'STUDENT':

@@ -1,3 +1,6 @@
+# django
+from django.db.models import Q
+
 # channels
 from channels.db import database_sync_to_async
 
@@ -223,6 +226,60 @@ def form_data_for_updating_assessment(user, role, details):
 
     except Exception as e:
         # Handle any other unexpected errors
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def form_data_for_collecting_assessment_submittions(user, role, details):
+    try:
+        # Retrieve the requesting user's account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to collect assessment submissions
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'COLLECT', 'ASSESSMENT'):
+            response = 'You do not have the necessary permissions to collect assessment submissions.'
+            audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
+            return {'error': response}
+
+        # Fetch the assessment from the requesting user's school
+        assessment = requesting_account.school.assessments.select_related('classroom', 'grade').get(assessment_id=details.get('assessment'))
+
+        # Get the list of students who have already submitted the assessment
+        submitted_student_ids = assessment.submissions.values_list('student__account_id', flat=True)
+
+        search_filters = Q()
+
+        # Apply search filters if provided
+        if 'search_query' in details:
+            search_query = details.get('search_query')
+            search_filters &= (Q(name__icontains=search_query) | Q(surname__icontains=search_query) | Q(account_id__icontains=search_query))
+
+        # Apply cursor for pagination using the primary key (id)
+        if 'cursor' in details:
+            cursor = details.get('cursor')
+            search_filters &= Q(id__lt=cursor)  # Filter by primary key (id)
+
+        if assessment.classroom:
+            # Fetch students in the classroom who haven't submitted
+            students = assessment.classroom.students.filter(search_filters).exclude(account_id__in=submitted_student_ids).order_by('id')[:20]
+        elif assessment.grade:
+            # Fetch students in the grade who haven't submitted
+            students = assessment.grade.students.filter(search_filters).exclude(account_id__in=submitted_student_ids).order_by('id')[:20]
+
+        else:
+            return {'error': 'No valid classroom or grade found for the assessment.'}
+
+        serialized_students = AssessmentUpdateFormDataSerializer(students, many=True).data
+
+        # Determine the next cursor (based on the primary key)
+        next_cursor = students[-1].id if len(students) == 20 else None
+
+        return {'students': serialized_students, 'next_cursor': next_cursor}
+
+    except Assessment.DoesNotExist:
+        return {'error': 'No assessment found with the provided details in your school.'}
+
+    except Exception as e:
         return {'error': str(e)}
 
 

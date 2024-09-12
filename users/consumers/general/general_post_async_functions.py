@@ -46,7 +46,7 @@ def text(user, role, details):
         requested_user = BaseUser.objects.get(account_id=details.get('account'))
 
         # Retrieve the requested users account and related school in a single query using select_related
-        requested_account = users_utilities.get_account_and_attr(details.get('account'), role)
+        requested_account = users_utilities.get_account_and_attr(details.get('account'), requested_user.role)
 
         # Check permissions
         permission_error = permission_checks.check_message_permissions(requesting_account, requested_account)
