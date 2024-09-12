@@ -186,7 +186,7 @@ def mark_messages_as_read(user, details):
 
     except BaseUser.DoesNotExist:
         # Handle case where the user does not exist
-        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
+        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
         
     except ChatRoom.DoesNotExist:
         return {'error': 'Chat room not found.'}
