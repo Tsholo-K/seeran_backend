@@ -257,7 +257,7 @@ def form_data_for_collecting_assessment_submittions(user, role, details):
         # Apply cursor for pagination using the primary key (id)
         if 'cursor' in details:
             cursor = details.get('cursor')
-            search_filters &= Q(id__gt=cursor + 1)
+            search_filters &= Q(id__gt=cursor)
 
         if assessment.classroom:
             # Fetch students in the classroom who haven't submitted
