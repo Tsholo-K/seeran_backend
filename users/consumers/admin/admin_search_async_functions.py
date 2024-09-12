@@ -189,7 +189,7 @@ def search_grade(user, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
-        grade  = requesting_account.grades.get(grade_id=details.get('grade'))
+        grade  = requesting_account.school.grades.get(grade_id=details.get('grade'))
         serialized_grade = GradeSerializer(instance=grade).data
 
         return {'grade' : serialized_grade}

@@ -61,17 +61,26 @@ class CollectedAssessmentsSerializer(serializers.ModelSerializer):
 
 class DueAssessmentSerializer(serializers.ModelSerializer):
 
+    title = serializers.SerializerMethodField()
+    assessment_type = serializers.CharField(source='get_assessment_type_display')
     topics = TopicSerializer(many=True)
 
     class Meta:
         model = Assessment
         fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'due_date', 'topics', 'assessment_id']
 
+    def get_title(self, obj):
+        return obj.title.title()
 
 class CollectedAssessmentSerializer(serializers.ModelSerializer):
 
+    title = serializers.SerializerMethodField()
+    assessment_type = serializers.CharField(source='get_assessment_type_display')
     topics = TopicSerializer(many=True)
 
     class Meta:
         model = Assessment
         fields = ['title', 'assessment_type', 'date_collected', 'formal', 'topics', 'assessment_id']
+
+    def get_title(self, obj):
+        return obj.title.title()
