@@ -1,7 +1,3 @@
-# python 
-
-# django
-
 # rest framework
 from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
@@ -13,6 +9,8 @@ from classes.models import Classroom
 
 # serializers
 from topics.serializers import TopicSerializer
+from users.serializers.general_serializers import BareAccountDetailsSerializer
+
 
 class AssessmentCreationSerializer(serializers.ModelSerializer):
 
@@ -34,7 +32,7 @@ class AssessmentUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Assessment
-        fields = ['due_date', 'title', 'unique_identifier', 'assessment_type', 'total', 'percentage_towards_term_mark']
+        fields = ['due_date', 'title', 'assessment_type', 'total', 'percentage_towards_term_mark', 'moderator']
 
     def __init__(self, *args, **kwargs):
         super(AssessmentUpdateSerializer, self).__init__(*args, **kwargs)
@@ -62,25 +60,38 @@ class CollectedAssessmentsSerializer(serializers.ModelSerializer):
 class DueAssessmentSerializer(serializers.ModelSerializer):
 
     title = serializers.SerializerMethodField()
+    term = serializers.SerializerMethodField()
     assessment_type = serializers.CharField(source='get_assessment_type_display')
     topics = TopicSerializer(many=True)
 
     class Meta:
         model = Assessment
-        fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'due_date', 'start_time', 'dead_line', 'topics', 'assessment_id']
+        fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'due_date', 'start_time', 'dead_line', 'term', 'topics', 'unique_identifier']
 
     def get_title(self, obj):
         return obj.title.title()
+
+    def get_term(self, obj):
+        return obj.term.term.title()
+
 
 class CollectedAssessmentSerializer(serializers.ModelSerializer):
 
     title = serializers.SerializerMethodField()
+    term = serializers.SerializerMethodField()
     assessment_type = serializers.CharField(source='get_assessment_type_display')
     topics = TopicSerializer(many=True)
+    moderator = serializers.SerializerMethodField()
 
     class Meta:
         model = Assessment
-        fields = ['title', 'assessment_type', 'date_collected', 'formal', 'topics', 'assessment_id']
+        fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'date_collected', 'term', 'topics', 'unique_identifier', 'moderator']
 
     def get_title(self, obj):
         return obj.title.title()
+
+    def get_term(self, obj):
+        return obj.term.term.title()
+
+    def get_moderator(self, obj):
+        return BareAccountDetailsSerializer(obj.moderator).data if obj.moderator else None
