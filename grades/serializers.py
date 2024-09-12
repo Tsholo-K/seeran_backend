@@ -52,7 +52,7 @@ class GradesSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Grade
-        fields = ['grade', 'grade_id', 'student_count', 'created']
+        fields = ['grade', 'grade_id', 'student_count', 'last_updated']
 
 
 class GradeSerializer(serializers.ModelSerializer):
