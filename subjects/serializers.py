@@ -60,14 +60,14 @@ class SubjectsSerializer(serializers.ModelSerializer):
 
 class SubjectSerializer(serializers.ModelSerializer):
 
-    classes = serializers.SerializerMethodField()
+    classrooms = serializers.SerializerMethodField()
 
     class Meta:
         model = Subject
-        fields = ['classes']
+        fields = ['classrooms']
     
-    def get_classes(self, obj):
-        return ClassesSerializer(obj.classes.all(), many=True).data
+    def get_classrooms(self, obj):
+        return ClassesSerializer(obj.classrooms.all(), many=True).data
 
 
 class SubjectDetailsSerializer(serializers.ModelSerializer):

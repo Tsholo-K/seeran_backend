@@ -67,7 +67,7 @@ class DueAssessmentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Assessment
-        fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'due_date', 'topics', 'assessment_id']
+        fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'due_date', 'start_time', 'dead_line', 'topics', 'assessment_id']
 
     def get_title(self, obj):
         return obj.title.title()
