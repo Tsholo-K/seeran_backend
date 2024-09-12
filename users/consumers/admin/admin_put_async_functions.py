@@ -449,8 +449,11 @@ def update_assessment(user, role, details):
         assessment = requesting_account.school.assessments.get(assessment_id=details.get('assessment'))
 
         if details.get('moderator'):
-            moderator = BaseUser.objects.only('pk').get(account_id=details['moderator'])
-            details['moderator'] = moderator.pk
+            if details['moderator'] == 'remove current moderator':
+                details['moderator'] = None
+            else:
+                moderator = BaseUser.objects.only('pk').get(account_id=details['moderator'])
+                details['moderator'] = moderator.pk
 
         # Serialize the details for assessment creation
         serializer = AssessmentUpdateSerializer(instance=assessment, data=details)
