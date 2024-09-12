@@ -215,7 +215,7 @@ def form_data_for_updating_assessment(user, role, details):
 
         serialized_assessment = AssessmentUpdateSerializer(assessment).data
 
-        return {{"terms": serialized_terms, "assessment": serialized_assessment}}
+        return {"terms": serialized_terms, "assessment": serialized_assessment}
     
     except Assessment.DoesNotExist:
         # Handle the case where the provided grade ID does not exist
