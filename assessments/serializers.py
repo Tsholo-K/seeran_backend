@@ -32,7 +32,7 @@ class AssessmentUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Assessment
-        fields = ['start_time', 'dead_line', 'due_date', 'title', 'total', 'topics', 'percentage_towards_term_mark', 'moderator']
+        fields = ['start_time', 'dead_line', 'due_date', 'title', 'total', 'topics', 'percentage_towards_term_mark', 'term', 'moderator']
 
     def __init__(self, *args, **kwargs):
         super(AssessmentUpdateSerializer, self).__init__(*args, **kwargs)
@@ -41,6 +41,21 @@ class AssessmentUpdateSerializer(serializers.ModelSerializer):
         # Make all fields optional 
         for field in self.fields:
             self.fields[field].required = False
+
+
+class AssessmentUpdateFormDataSerializer(serializers.ModelSerializer):
+
+    topics = TopicSerializer(many=True)
+
+    class Meta:
+        model = Assessment
+        fields = ['start_time', 'dead_line', 'due_date', 'title', 'total', 'topics', 'percentage_towards_term_mark', 'term', 'moderator']
+
+    def get_title(self, obj):
+        return obj.title.title()
+
+    def get_term(self, obj):
+        return obj.term.term_id
 
 
 class DueAssessmentsSerializer(serializers.ModelSerializer):
