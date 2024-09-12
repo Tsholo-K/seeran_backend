@@ -484,7 +484,7 @@ def update_assessment(user, role, details):
 
     except BaseUser.DoesNotExist:
         # Handle the case where the provided assessment ID does not exist
-        return {'error': 'an account with the provided credentials does not exist. please check the moderators account Id and try again.'}
+        return {'error': 'an account with the provided credentials does not exist. please check the moderators account ID and try again.'}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
