@@ -46,6 +46,7 @@ class AssessmentUpdateSerializer(serializers.ModelSerializer):
 
 class AssessmentUpdateFormDataSerializer(serializers.ModelSerializer):
 
+    term = serializers.SerializerMethodField()
     topics = TopicSerializer(many=True)
 
     class Meta:
