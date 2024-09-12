@@ -9,7 +9,7 @@ from classes.models import Classroom
 
 # serializers
 from topics.serializers import TopicSerializer
-from users.serializers.general_serializers import BareAccountDetailsSerializer
+from users.serializers.general_serializers import SourceAccountSerializer
 
 
 class AssessmentCreationSerializer(serializers.ModelSerializer):
@@ -61,7 +61,7 @@ class AssessmentUpdateFormDataSerializer(serializers.ModelSerializer):
         return str(obj.term.term_id)
 
     def get_moderator(self, obj):
-        return BareAccountDetailsSerializer(obj.moderator).data if obj.moderator else None
+        return SourceAccountSerializer(obj.moderator).data if obj.moderator else None
 
 
 class DueAssessmentsSerializer(serializers.ModelSerializer):
@@ -97,7 +97,7 @@ class DueAssessmentSerializer(serializers.ModelSerializer):
         return obj.term.term.title()
 
     def get_moderator(self, obj):
-        return BareAccountDetailsSerializer(obj.moderator).data if obj.moderator else None
+        return SourceAccountSerializer(obj.moderator).data if obj.moderator else None
 
 
 class CollectedAssessmentSerializer(serializers.ModelSerializer):
@@ -119,4 +119,4 @@ class CollectedAssessmentSerializer(serializers.ModelSerializer):
         return obj.term.term.title()
 
     def get_moderator(self, obj):
-        return BareAccountDetailsSerializer(obj.moderator).data if obj.moderator else None
+        return SourceAccountSerializer(obj.moderator).data if obj.moderator else None
