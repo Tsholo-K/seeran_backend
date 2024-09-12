@@ -12,7 +12,7 @@ from users.models import BaseUser
 from classes.models import Classroom
 
 # serializers
-
+from topics.serializers import TopicSerializer
 
 class AssessmentCreationSerializer(serializers.ModelSerializer):
 
@@ -61,6 +61,8 @@ class CollectedAssessmentsSerializer(serializers.ModelSerializer):
 
 class DueAssessmentSerializer(serializers.ModelSerializer):
 
+    topics = TopicSerializer(many=True)
+
     class Meta:
         model = Assessment
         fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'due_date', 'topics', 'assessment_id']
@@ -68,6 +70,8 @@ class DueAssessmentSerializer(serializers.ModelSerializer):
 
 class CollectedAssessmentSerializer(serializers.ModelSerializer):
 
+    topics = TopicSerializer(many=True)
+
     class Meta:
         model = Assessment
-        fields = ['title', 'assessment_type', 'date_collected', 'formal', 'assessment_id']
+        fields = ['title', 'assessment_type', 'date_collected', 'formal', 'topics', 'assessment_id']

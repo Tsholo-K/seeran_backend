@@ -61,7 +61,7 @@ class UpdateClassSerializer(serializers.ModelSerializer):
 class ClassSerializer(serializers.ModelSerializer):
 
     teacher = serializers.SerializerMethodField()
-    students = serializers.SerializerMethodField()
+    students = StudentSourceAccountSerializer(many=True)
     subject = serializers.SerializerMethodField()
     grade = serializers.SerializerMethodField()
 
@@ -73,9 +73,6 @@ class ClassSerializer(serializers.ModelSerializer):
         if obj.teacher:
             return f'{obj.teacher.surname} {obj.teacher.name}'.title()
         return None
-
-    def get_students(self, obj):
-        return StudentSourceAccountSerializer(obj.students, many=True).data
             
     def get_subject(self, obj):
         if  obj.register_class:
