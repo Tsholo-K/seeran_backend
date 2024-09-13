@@ -255,7 +255,7 @@ def form_data_for_collecting_assessment_submittions(user, role, details):
             search_filters &= (Q(name__icontains=search_query) | Q(surname__icontains=search_query) | Q(account_id__icontains=search_query))
 
         # Apply cursor for pagination using the primary key (id)
-        if 'cursor' in details:
+        if 'cursor' in details and details['cursor'] is not None:
             cursor = details.get('cursor')
             search_filters &= Q(id__gt=cursor)
 
