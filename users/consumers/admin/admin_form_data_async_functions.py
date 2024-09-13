@@ -280,6 +280,9 @@ def form_data_for_collecting_assessment_submissions(user, role, details):
         # Compress the serialized data
         compressed_students = users_utilities.compress_data(json.dumps(serialized_students))
 
+        if isinstance(compressed_students, bytes):
+            compressed_students = compressed_students.decode('utf-8')
+
         # Determine the next cursor (based on the primary key)
         next_cursor = students[len(students) - 1].id if students and len(students) > 3 else None
 
