@@ -1,4 +1,6 @@
 # python
+import base64
+import zlib
 import json
 
 # django
@@ -278,15 +280,15 @@ def form_data_for_collecting_assessment_submissions(user, role, details):
         serialized_students = StudentSourceAccountSerializer(students, many=True).data
 
         # Compress the serialized data
-        compressed_students = users_utilities.compress_data(json.dumps(serialized_students))
+        compressed_students = zlib.compress(json.dumps(serialized_students).encode('utf-8'))
 
-        if isinstance(compressed_students, bytes):
-            compressed_students = compressed_students.decode('utf-8')
+        # Encode compressed data as base64 for safe transport
+        encoded_students = base64.b64encode(compressed_students).decode('utf-8')
 
         # Determine the next cursor (based on the primary key)
         next_cursor = students[len(students) - 1].id if students and len(students) > 3 else None
 
-        return {'students': compressed_students, 'cursor': next_cursor}
+        return {'students': encoded_students, 'cursor': next_cursor}
 
     except Assessment.DoesNotExist:
         return {'error': 'No assessment found with the provided details in your school.'}
