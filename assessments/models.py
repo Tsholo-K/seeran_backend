@@ -165,7 +165,7 @@ class Assessment(models.Model):
         # Ensure date_collected is after the start_time if available
         if self.date_collected and self.start_time:
             # Combine due_date and start_time into a single datetime
-            start_datetime = datetime.combine(self.due_date, self.start_time)
+            start_datetime = timezone.make_aware(datetime.combine(self.due_date, self.start_time))
             
             # Check if the date_collected is before the start_datetime
             if self.date_collected < start_datetime:
