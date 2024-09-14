@@ -900,8 +900,6 @@ def delete_assessment(user, role, details):
 def submit_submissions(user, role, details):
     try:
         assessment = None  # Initialize assessment as None to prevent issues in error handling
-        student_ids = details.get('students')
-            
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
@@ -911,6 +909,8 @@ def submit_submissions(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
 
             return {'error': response}
+        
+        student_ids = details['students'].split(', ')
 
         # Validate that all student IDs exist and are valid
         if not requesting_account.school.students.filter(account_id__in=student_ids).count() == len(student_ids):
@@ -930,7 +930,7 @@ def submit_submissions(user, role, details):
             Submission.objects.bulk_create(submissions)
 
             response = f"assessment submission successfully collected from."
-            audits_utilities.log_audit(actor=user, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='COLLECTED', response=response, school=assessment.school)
+            audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='COLLECTED', response=response, school=assessment.school)
 
         return {"message": response}
 
