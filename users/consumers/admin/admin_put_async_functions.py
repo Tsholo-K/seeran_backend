@@ -515,14 +515,13 @@ def update_assessment_as_collected(user, role, details):
             return {'error': response}
 
         # Fetch the assessment from the requesting user's school
-        assessment = requesting_account.school.assessments.select_related('classroom', 'grade').get(assessment_id=details.get('assessment'))
+        assessment = requesting_account.school.assessments.get(assessment_id=details.get('assessment'))
         
         with transaction.atomic():
             assessment.mark_as_collected()
-            assessment.save()
 
             response = f"assessment {assessment.unique_identifier} has been flagged as collected, any submissions going further will be marked as late submissions on the system."
-            audits_utilities.log_audit(actor=user, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='COLLECTED', response=response, school=assessment.school)
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='COLLECTED', response=response, school=assessment.school)
 
         return {"message": response}
 
@@ -577,7 +576,7 @@ def release_assessment_grades(user, role, details):
             assessment.save()
 
             response = f"grades for assessment with assessment ID {assessment.unique_identifier} have been released, all the students who have not submitted the assessment have been graded a zero for the assessment."
-            audits_utilities.log_audit(actor=user, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='UPDATED', response=response, school=assessment.school)
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='UPDATED', response=response, school=assessment.school)
 
         return {"message": response}
 

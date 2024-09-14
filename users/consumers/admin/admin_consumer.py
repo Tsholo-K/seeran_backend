@@ -269,6 +269,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'update_term_details' : admin_put_async_functions.update_term_details,
 
             'update_assessment' : admin_put_async_functions.update_assessment,
+            'flag_assessment_as_collected' : admin_put_async_functions.update_assessment_as_collected,
 
             'mark_messages_as_read': general_put_async_functions.mark_messages_as_read,
 
@@ -325,6 +326,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'delete_class': admin_post_async_functions.delete_class,
             
             'create_assessment': admin_post_async_functions.set_assessment,
+            'delete_assessment': admin_post_async_functions.delete_assessment,
 
             'submit_submissions' : admin_post_async_functions.submit_submissions,
 
