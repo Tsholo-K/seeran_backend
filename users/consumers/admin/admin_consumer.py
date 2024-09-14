@@ -235,7 +235,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'attendance_register': general_form_data_async_functions.form_data_for_attendance_register,
 
-            'set_assessment' : admin_form_data_async_functions.form_data_for_assessment_setting,
+            'set_assessment' : admin_form_data_async_functions.form_data_for_setting_assessment,
             'update_assessment' : admin_form_data_async_functions.form_data_for_updating_assessment,
 
             'assessment_submission_collection' : admin_form_data_async_functions.form_data_for_collecting_assessment_submissions,
@@ -325,6 +325,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'delete_class': admin_post_async_functions.delete_class,
             
             'create_assessment': admin_post_async_functions.set_assessment,
+
+            'submit_submissions' : admin_post_async_functions.submit_submissions,
 
             'create_schedule': admin_post_async_functions.create_daily_schedule,
             'delete_schedule': admin_post_async_functions.delete_daily_schedule,

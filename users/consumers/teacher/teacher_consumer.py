@@ -206,7 +206,8 @@ class TeacherConsumer(AsyncWebsocketConsumer):
         form_data_map = {
             'attendance_register': teacher_form_data_async_functions.form_data_for_attendance_register,
 
-            'set_assessment' : teacher_form_data_async_functions.form_data_for_assessment_setting,
+            'set_assessment' : teacher_form_data_async_functions.form_data_for_setting_assessment,
+            'update_assessment' : teacher_form_data_async_functions.form_data_for_updating_assessment,
         }
 
         func = form_data_map.get(description)

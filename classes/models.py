@@ -36,6 +36,8 @@ class Classroom(models.Model):
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, editable=False, related_name='classrooms', null=True, blank=True, help_text='Subject taught in the classroom.')
 
     school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='classrooms', help_text='School to which the classroom belongs.')
+    
+    last_updated = models.DateTimeField(auto_now=True)
 
     classroom_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 

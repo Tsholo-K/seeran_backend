@@ -36,6 +36,8 @@ class Term(models.Model):
 
     # The school the term is linked to
     school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='terms')
+    
+    last_updated = models.DateTimeField(auto_now=True)
 
     # term id 
     term_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)

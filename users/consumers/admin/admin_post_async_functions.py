@@ -1,3 +1,6 @@
+# python 
+from datetime import datetime
+
 # channels
 from channels.db import database_sync_to_async
 
@@ -7,8 +10,6 @@ from django.utils import timezone
 from django.utils.dateparse import parse_time
 from django.core.exceptions import ValidationError
 
-# simple jwt
-
 # models 
 from users.models import BaseUser, Principal, Admin, Teacher, Student, Parent
 from grades.models import Grade
@@ -17,7 +18,7 @@ from terms.models import Term
 from subjects.models import Subject
 from classes.models import Classroom
 from attendances.models import Attendance
-from assessments.models import Assessment
+from assessments.models import Assessment, Submission
 from transcripts.models import Transcript
 from assessments.models import Topic
 from activities.models import Activity
@@ -403,7 +404,7 @@ def delete_grade(user, role, details):
 
             return {'error': response}
 
-        grade = Grade.objects.get(grade_id=details.get('grade'), school=requesting_account.school)
+        grade = requesting_account.school.grades.get(grade_id=details.get('grade'), school=requesting_account.school)
 
         # Create the grade within a transaction to ensure atomicity
         with transaction.atomic():
@@ -486,7 +487,49 @@ def create_term(user, role, details):
         audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
 
         return {'error': error_message}
+
+
+@database_sync_to_async
+def delete_term(user, role, details):
+    try:
+        term = None  # Initialize term as None to prevent issues in error handling
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to create a grade
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'DELETE', 'TERM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to delete a grade'
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TERM', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        term = requesting_account.school.terms.get(term_id=details.get('term'))
+
+        # Create the grade within a transaction to ensure atomicity
+        with transaction.atomic():
+            response = f"a term in your school with the term ID {term.term_id} has been successfully deleted. the term and all it's associated data will no longer be assessible on the system"
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='DELETED', response=response, school=requesting_account.school,)
+            
+            term.delete()
+
+        return {'message' : response}
     
+    except Term.DoesNotExist:
+        # Handle the case where the provided grade ID does not exist
+        return {'error': 'a term in your school with the provided credentials does not exist. please check the term details and try again.'}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {'error': error_message}
+
 
 @database_sync_to_async
 def create_subject(user, role, details):
@@ -502,7 +545,7 @@ def create_subject(user, role, details):
 
             return {'error': response}
 
-        grade = Grade.objects.get(grade_id=details.get('grade'), school=requesting_account.school)
+        grade = requesting_account.school.grades.get(grade_id=details.get('grade'))
 
         details['grade'] = grade.pk
 
@@ -541,6 +584,48 @@ def create_subject(user, role, details):
 
         return {'error': error_message}
 
+
+@database_sync_to_async
+def delete_subject(user, role, details):
+    try:
+        subject = None  # Initialize subject as None to prevent issues in error handling
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to create a grade
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'DELETE', 'SUBJECT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to delete a subject'
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='SUBJECT', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        subject = Subject.objects.get(subject_id=details.get('subject'), school=requesting_account.school)
+
+        # Create the grade within a transaction to ensure atomicity
+        with transaction.atomic():
+            response = f"a subject in your school with the subject ID {subject.subject_id} has been successfully deleted. the term and all it's associated data will no longer be assessible on the system"
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='DELETED', response=response, school=requesting_account.school,)
+            
+            subject.delete()
+
+        return {'message' : response}
+    
+    except Subject.DoesNotExist:
+        # Handle the case where the provided grade ID does not exist
+        return {'error': 'a subject in your school with the provided credentials does not exist. please check the subject details and try again.'}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {'error': error_message}
+    
     
 @database_sync_to_async
 def create_class(user, role, details):
@@ -782,8 +867,9 @@ def delete_assessment(user, role, details):
             audits_utilities.log_audit( actor=requesting_account, action='DELETE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
 
             return {'error': response}
-
-        assessment = Assessment.objects.select_related('assessor').get(assessment_id=details.get('assessment'), school=requesting_account.school)
+        
+        # Fetch the assessment from the requesting user's school
+        assessment = requesting_account.school.assessments.get(assessment_id=details.get('assessment'))
 
         with transaction.atomic():
             response = f"assessment with assessment ID {assessment.assessment_id} has been successfully deleted, along with it's associated data"
@@ -792,6 +878,10 @@ def delete_assessment(user, role, details):
             assessment.delete()
 
         return {"message": response}
+
+    except Assessment.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
@@ -802,6 +892,61 @@ def delete_assessment(user, role, details):
     except Exception as e:
         error_message = str(e)
         audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {'error': error_message}
+
+
+@database_sync_to_async
+def submit_submissions(user, role, details):
+    try:
+        assessment = None  # Initialize assessment as None to prevent issues in error handling
+        student_ids = details.get('students')
+            
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to create an assessment
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'COLLECT', 'ASSESSMENT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to collect assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        # Validate that all student IDs exist and are valid
+        if not requesting_account.school.students.filter(account_id__in=student_ids).count() == len(student_ids):
+            return {'error': 'one or more student account IDs are invalid. please check the provided students information and try again'}
+        
+        # Fetch the assessment from the requesting user's school
+        assessment = requesting_account.school.assessments.get(assessment_id=details.get('assessment'))
+
+        # Prepare the list of Submission objects, dynamically setting status based on the deadline
+        submissions = []
+        for student_id in student_ids:
+            student = requesting_account.school.students.get(account_id=student_id)
+            submissions.append(Submission(assessment=assessment, student=student))
+
+        with transaction.atomic():
+            # Bulk create Submission objects
+            Submission.objects.bulk_create(submissions)
+
+            response = f"assessment submission successfully collected from."
+            audits_utilities.log_audit(actor=user, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='COLLECTED', response=response, school=assessment.school)
+
+        return {"message": response}
+
+    except Assessment.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
 
         return {'error': error_message}
 
@@ -819,20 +964,21 @@ def grade_student(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
 
             return {'error': response}
-
-        assessment = Assessment.objects.select_related('assessor').get(assessment_id=details.get('assessment'), school=requesting_account.school)
-
-        # Ensure only authorized users can delete
-        if role == 'TEACHER' and assessment.assessor != requesting_account:
-            response = f'could not proccess your request, you do not have the necessary permissions to grade assessments that are not assessed by you.'
+        
+        # Fetch the assessment from the requesting user's school
+        assessment = requesting_account.school.assessments.select_related('assessor','moderator').get(assessment_id=details.get('assessment'))
+        
+        # Check if the user has permission to moderate the assessment
+        if requesting_account != (assessment.assessor or assessment.moderator):
+            response = f'could not proccess your request, you do not have the necessary permissions to grade this assessment. only the assessments assessor or moderator can assign scores to the assessment.'
             audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
 
             return {'error': response}
-        
-        student = Student.objects.get(student_id=details.get('student'), school=requesting_account.school)
-        
+
+        student = requesting_account.school.students.get(student_id=details.get('student'))
+
         with transaction.atomic():
-            transcript = Transcript.objects.create(student=student, score=details.get('student'), assessment=assessment)
+            transcript = Transcript.objects.create(student=student, score=details.get('score'), assessment=assessment)
 
             response = f"student graded for assessment {assessment.unique_identifier}."
             audits_utilities.log_audit(actor=user,action='GRADE', target_model='ASSESSMENT', target_object_id=str(transcript.transcript_id), outcome='GRADED', response=response, school=assessment.school)

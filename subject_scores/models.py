@@ -39,6 +39,8 @@ class SubjectScore(models.Model):
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='grade_subject_scores')
     # The school where the assessment was conducted
     school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='school_subject_scores')
+    
+    last_updated = models.DateTimeField(auto_now=True)
 
     # subject score id
     score_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)

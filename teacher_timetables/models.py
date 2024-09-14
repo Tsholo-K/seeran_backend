@@ -12,6 +12,8 @@ from users.models import Teacher
 
 class TeacherTimetable(models.Model):
     teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE, related_name='teacher_schedule')
+    
+    last_updated = models.DateTimeField(auto_now=True)
 
     timetable_id  = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 

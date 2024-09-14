@@ -20,7 +20,7 @@ from student_group_timetables.models import StudentGroupTimetable
 from users.serializers.teachers.teachers_serializers import TeacherAccountSerializer
 from users.serializers.students.students_serializers import StudentSourceAccountSerializer
 from terms.serializers import FormTermsSerializer
-from assessments.serializers import AssessmentUpdateSerializer, AssessmentUpdateFormDataSerializer
+from assessments.serializers import AssessmentUpdateFormDataSerializer
 
 # utility functions 
 from users import utils as users_utilities
@@ -175,7 +175,7 @@ def form_data_for_adding_students_to_class(user, role, details):
 
 
 @database_sync_to_async
-def form_data_for_assessment_setting(user, role, details):
+def form_data_for_setting_assessment(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
@@ -227,7 +227,7 @@ def form_data_for_updating_assessment(user, role, details):
     
     except Assessment.DoesNotExist:
         # Handle the case where the provided grade ID does not exist
-        return { 'error': 'an assessment in your school with the provided credentials does not exist, please check the grade details and try again'}
+        return { 'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
 
     except Exception as e:
         # Handle any other unexpected errors
@@ -289,9 +289,10 @@ def form_data_for_collecting_assessment_submissions(user, role, details):
         next_cursor = students[len(students) - 1].id if students and len(students) > 9 else None
 
         return {'students': encoded_students, 'cursor': next_cursor}
-
+    
     except Assessment.DoesNotExist:
-        return {'error': 'No assessment found with the provided details in your school.'}
+        # Handle the case where the provided grade ID does not exist
+        return { 'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
 
     except Exception as e:
         return {'error': str(e)}

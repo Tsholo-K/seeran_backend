@@ -54,6 +54,10 @@ class Subject(models.Model):
     # grade linked to
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='subjects')
 
+    last_updated = models.DateTimeField(auto_now=True)
+    
+    last_updated = models.DateTimeField(auto_now=True)
+
     # subject id
     subject_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 

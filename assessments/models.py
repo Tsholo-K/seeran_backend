@@ -4,7 +4,7 @@ import uuid
 from decimal import Decimal, ROUND_HALF_UP
 
 # django 
-from django.db import models, IntegrityError
+from django.db import  transaction, models, IntegrityError
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -17,9 +17,6 @@ from terms.models import Term
 from subjects.models import Subject
 from classes.models import Classroom
 from topics.models import Topic
-
-# mappings
-from users.maps import role_specific_maps
 
 # utility functions 
 from users import utils as users_utilities
@@ -114,6 +111,8 @@ class Assessment(models.Model):
     # The school where the assessment was conducted
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='assessments')
 
+    last_updated = models.DateTimeField(auto_now=True)
+
     # assessment id 
     assessment_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
@@ -156,20 +155,12 @@ class Assessment(models.Model):
                 raise ValidationError(_('could not proccess your request, only principals, admins, and teachers can moderate assessments.'))
 
             if moderator.school != self.school:
-                raise ValidationError(_('could not proccess your request, accounts can only moderate assessments from their own school.'))
+                raise ValidationError(_('could not proccess your request, moderators can only oversee assessments from their own school.'))
             
         # Ensure start_time is before dead_line
         if self.start_time and self.dead_line:
             if self.start_time > self.dead_line:
                 raise ValidationError(_('the assessments start time cannot be after the deadline. please update the assessment information.'))
-
-        # Convert date_collected to a timezone-aware datetime
-        if self.date_collected and timezone.is_naive(self.date_collected):
-            self.date_collected = timezone.make_aware(self.date_collected, timezone.get_current_timezone())
-
-        # Convert date_grades_released to a timezone-aware datetime
-        if self.date_grades_released and timezone.is_naive(self.date_grades_released):
-            self.date_grades_released = timezone.make_aware(self.date_grades_released, timezone.get_current_timezone())
 
         # Ensure date_collected is after the start_time if available
         if self.date_collected and self.start_time:
@@ -219,22 +210,71 @@ class Assessment(models.Model):
 
         except Exception as e:
             raise ValidationError(_(str(e).lower()))
+        
+    def mark_as_collected(self):
+        """ Flags the assessment as collected. """
+        if self.collected:
+            raise ValidationError(_('could not proccess your request, the provided assessment has already been flagged as collected.'))
+
+        dead_line = datetime.combine(self.due_date, self.dead_line)
+
+        if datetime.now() > dead_line:
+            self.collected = True
+            self.date_collected = timezone.now()
+
+        else:
+            submitted_student_count = self.submissions.count()
+            accessed_student_count = (self.classroom.students.count() if self.classroom else self.grade.students.count())
+
+            if submitted_student_count == accessed_student_count:
+                self.collected = True
+                self.date_collected = timezone.now()
+            else:
+                raise ValidationError(_('could not proccess your request, can not flag assessment as collected unless its past the deadline or all students have submitted the assessment.'))
+        
+        self.save()
+
+    def release_grades(self):
+        """ release assessment grades and grade zeros for students who not submitted the assessment. """
+        if not self.collected:
+            raise ValidationError(_('could not proccess your request, the provided assessment has not been collected. can not release grades for an assessment that has not been collected'))
+
+        submitted_student_count = self.submissions.count()
+        graded_student_count = self.scores.count()
+
+        if submitted_student_count != graded_student_count:
+            raise ValidationError(_('could not proccess your request, some submissions have not been graded. please make sure to grade all submissions and try again'))
+
+        # Get the list of students who have already submitted the assessment
+        submitted_student_ids = self.submissions.values_list('student__account_id', flat=True)
+
+        no_submission_students = (self.classroom.students.exclude(account_id__in=submitted_student_ids) if self.classroom else self.grade.students.exclude(account_id__in=submitted_student_ids))
+
+        submissions = []
+        for student in no_submission_students:
+            submissions.append(Submission(assessment=self, student=student, status='NOT_SUBMITTED'))
+
+        Submission.objects.bulk_create(submissions)
+
+        self.grades_released = True
+        self.date_grades_released = timezone.now()
+
+        self.save()
 
     def update_pass_rate_and_average_score(self):
         """ Updates the pass rate and average score based on student performance. """
-        if self.classroom:
-            total_students = self.classroom.students.count() if self.classroom.students.exists() else 0
-        else:
-            total_students = self.grade.students.filter(enrolled_classes__subject=self.subject).count() if self.grade.students.exists() else 0
+        if not self.grades_released:
+            raise ValidationError(_('could not proccess your request, the provided assessment does not have its grades released. can not calculate pass rate and average score for an assessment that does not have its grades released'))
+
+        accessed_student_count = (self.classroom.students.count() if self.classroom else self.grade.students.count())
         pass_count = self.scores.filter(weighted_score__gte=self.subject.pass_mark).count()
         
-        if total_students > 0:
-            self.pass_rate = (pass_count / total_students) * 100
+        if accessed_student_count > 0:
+            self.pass_rate = (pass_count / accessed_student_count) * 100
         else:
             self.pass_rate = 0.0
 
-        average_score = self.scores.aggregate(avg=models.Avg('weighted_score'))['avg']
-        self.average_score = average_score or 0.0
+        self.average_score = self.scores.aggregate(avg=models.Avg('weighted_score'))['avg'] or 0.0
 
         self.save()
 
@@ -253,6 +293,8 @@ class Submission(models.Model):
 
     status = models.CharField(max_length=20, choices=SUBMISSION_STATUS_CHOICES, default='ONTIME')
 
+    last_updated = models.DateTimeField(auto_now=True)
+
     # submission id 
     submission_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
@@ -262,6 +304,14 @@ class Submission(models.Model):
         indexes = [models.Index(fields=['assessment', 'student'])]
 
     def clean(self):
+        if not self.pk:
+            if not self.status:
+                dead_line = datetime.combine(self.assessment.due_date, self.assessment.dead_line)
+                if datetime.now() <= dead_line and not self.assessment.collected:
+                    self.status = 'ONTIME' 
+                else:
+                    self.status ='LATE'
+                    
         # Ensure submission_date is within a valid range
         if self.submission_date and (self.submission_date < self.assessment.date_set):
             raise ValidationError(_('submission date must be after the date the assessment was set.'))

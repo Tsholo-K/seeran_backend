@@ -1,5 +1,3 @@
-# python 
-
 # channels
 from channels.db import database_sync_to_async
 
@@ -503,97 +501,9 @@ def update_assessment(user, role, details):
 
 
 @database_sync_to_async
-def collect_assessment(user, role, details):
-    try:
-        assessment = None  # Initialize assessment as None to prevent issues in error handling
-
-        # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
-
-        # Check if the user has permission to create an assessment
-        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'COLLECT', 'ASSESSMENT'):
-            response = f'could not proccess your request, you do not have the necessary permissions to collect assessments.'
-            audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
-
-            return {'error': response}
-
-        assessment = Assessment.objects.select_related('students_assessed').get(assessment_id=details.get('assessment'), school=requesting_account.school)
-        students = assessment.students_assessed.filter(account_id__in=details.get('students'))
-
-        with transaction.atomic():
-            assessment.ontime_submission.add(*students)
-
-            response = f"assessment successfully collected from {len(students)} assessed students."
-            audits_utilities.log_audit(actor=user, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='COLLECTED', response=response, school=assessment.school)
-
-        return {"message": response}
-
-    except Assessment.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
-
-    except ValidationError as e:
-        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
-        return {"error": error_message}
-
-    except Exception as e:
-        error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
-        return {'error': error_message}
-
-
-@database_sync_to_async
-def collect_late_submitions(user, role, details):
-    try:
-        assessment = None  # Initialize assessment as None to prevent issues in error handling
-
-        # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
-
-        # Check if the user has permission to create an assessment
-        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'COLLECT', 'ASSESSMENT'):
-            response = f'could not proccess your request, you do not have the necessary permissions to collect assessments.'
-            audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
-
-            return {'error': response}
-
-        assessment = Assessment.objects.select_related('not_submitted').get(assessment_id=details.get('assessment'), school=requesting_account.school)        
-        students = assessment.not_submitted.filter(account_id__in=details.get('students'))
-
-        with transaction.atomic():
-            assessment.not_submitted.remove(*students)
-            assessment.late_submission.add(*students)
-
-            response = f"assessment late submitions successfully collected from {len(students)} students."
-            audits_utilities.log_audit(actor=user, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='COLLECTED', response=response, school=assessment.school)
-
-        return {"message": response}
-
-    except Assessment.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
-
-    except ValidationError as e:
-        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
-        return {"error": error_message}
-
-    except Exception as e:
-        error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
-        return {'error': error_message}
-
-
-@database_sync_to_async
 def update_assessment_as_collected(user, role, details):
     try:
         assessment = None  # Initialize assessment as None to prevent issues in error handling
-
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
@@ -604,18 +514,14 @@ def update_assessment_as_collected(user, role, details):
 
             return {'error': response}
 
-        assessment = Assessment.objects.select_related('students_assessed', 'ontime_submission').get(assessment_id=details.get('assessment'), school=requesting_account.school)
-
+        # Fetch the assessment from the requesting user's school
+        assessment = requesting_account.school.assessments.select_related('classroom', 'grade').get(assessment_id=details.get('assessment'))
+        
         with transaction.atomic():
-            assessment.assessed = True
-            assessment.date_assessed = timezone.now()
-
-            not_submitted_students = assessment.students_assessed.exclude(pk__in=assessment.ontime_submission.all())
-            assessment.not_submitted.add(*not_submitted_students)
-
+            assessment.mark_as_collected()
             assessment.save()
 
-            response = f"assessment {assessment.unique_identifier} has been flagged as assessed, and all students that have not submitted their assessments have been flagged as not submitted for the assessment."
+            response = f"assessment {assessment.unique_identifier} has been flagged as collected, any submissions going further will be marked as late submissions on the system."
             audits_utilities.log_audit(actor=user, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='COLLECTED', response=response, school=assessment.school)
 
         return {"message": response}
@@ -651,21 +557,27 @@ def release_assessment_grades(user, role, details):
 
             return {'error': response}
 
-        assessment = Assessment.objects.select_related('not_submitted').get(assessment_id=details.get('assessment'), school=requesting_account.school)        
-        not_submitted_students = assessment.not_submitted.all()
-
-        # Create a transcript with a score of 0 for students who didn't submit
+        # Fetch the assessment from the requesting user's school
+        assessment = requesting_account.school.assessments.select_related('classroom', 'grade', 'subject').get(assessment_id=details.get('assessment'))
+        
         with transaction.atomic():
-            assessment.grades_released = True
-            assessment.date_grades_released = timezone.now()
-            
-            for student in not_submitted_students:
-                Transcript.objects.create(student=student, score=0, assessment=assessment)
+            assessment.release_grades()
+
+            not_submitted_student_ids = assessment.submissions.filter(status='NOT_SUBMITTED').only('student')
+
+            not_submitted = []
+            for submission in not_submitted_student_ids:
+                not_submitted.append(Transcript(assessment=assessment, student=submission.student, score=0))
+
+            Transcript.objects.bulk_create(not_submitted)
+
+            assessment.update_pass_rate_and_average_score()
+            assessment.subject.update_pass_rate_and_average_score()
 
             assessment.save()
-            
-            response = f'Grades released for assessment {assessment.unique_identifier}.'
-            audits_utilities.log_audit(actor=user,action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='UPDATED', response=response, school=assessment.school)
+
+            response = f"grades for assessment with assessment ID {assessment.unique_identifier} have been released, all the students who have not submitted the assessment have been graded a zero for the assessment."
+            audits_utilities.log_audit(actor=user, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='UPDATED', response=response, school=assessment.school)
 
         return {"message": response}
 

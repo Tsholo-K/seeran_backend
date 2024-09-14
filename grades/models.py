@@ -47,6 +47,8 @@ class Grade(models.Model):
 
     # school linked to
     school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='grades')
+    
+    last_updated = models.DateTimeField(auto_now=True)
 
     # grade  id 
     grade_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)

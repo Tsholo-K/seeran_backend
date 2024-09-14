@@ -15,6 +15,8 @@ class StudentGroupTimetable(models.Model):
 
     group_name = models.CharField(max_length=32)
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='group_timetables')
+    
+    last_updated = models.DateTimeField(auto_now=True)
 
     group_timetable_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 

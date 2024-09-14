@@ -42,6 +42,8 @@ class ProgressReport(models.Model):
 
     # The school where the report is generated
     school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='term_reports')
+    
+    last_updated = models.DateTimeField(auto_now=True)
 
     # report card id
     report_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)

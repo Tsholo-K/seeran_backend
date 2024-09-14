@@ -28,6 +28,8 @@ class Transcript(models.Model):
     # The assessment for which the score is recorded
     assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='scores')
 
+    last_updated = models.DateTimeField(auto_now=True)
+
     # transcript id
     transcript_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
@@ -40,18 +42,27 @@ class Transcript(models.Model):
         return f"{self.assessment.unique_identifier} - {self.student.name}"
 
     def clean(self):
+        if not self.assessment.collected:
+            raise ValidationError(f'could not proccess your request, the provided assessment has not been collected. please make sure to flag the assessment as collected before grading any students.')
+
+        if not self.assessment.submissions.filter(student=self.student).exists():
+            raise ValidationError(f'could not proccess your request, the provided student did not submit the assessment. can not grade an unsubmitted assessment, please make sure to collect the students assessment before grading.')
+
         if self.score < 0 or self.score > self.assessment.total:
-            raise ValidationError(f'the students score must be within the range of 0 to {self.assessment.total}')
+            raise ValidationError(f'could not proccess your request, the students score must be within the range of 0 to {self.assessment.total}')
         
         # Calculate the weighted score (normalized to a percentage)
-        if self.assessment.total > 0 and not self.moderated_score:
+        if self.score > 0 and not self.moderated_score:
             self.weighted_score = (self.score / self.assessment.total) * 100
         
-        if self.moderated_score:
-            if (self.moderated_score < 0 or self.moderated_score > self.assessment.total):
+        elif self.moderated_score:
+            if self.moderated_score < 0 or self.moderated_score > self.assessment.total:
                 raise ValidationError(f'the students moderated score must be within the range of 0 to {self.assessment.total}')
-            # If a moderated score exists, calculate its weighted value too
+            # If a moderated score exists, calculate the weighted score using it
             self.weighted_score = (self.moderated_score / self.assessment.total) * 100
+
+        else:
+            self.weighted_score = 0
 
     def save(self, *args, **kwargs):
         self.clean()
@@ -62,7 +73,7 @@ class Transcript(models.Model):
         except IntegrityError as e:
             # Check if the error is related to unique constraints
             if 'unique constraint' in str(e).lower():
-                raise ValidationError(_('the provided student already has a transcript for this assessment. duplicate assessment transcripts for the same student and assessment is not permitted.'))
+                raise ValidationError(_('the provided student already has a transcript for this assessment, try updating the students score instead. duplicate assessment transcripts for the same student in the same assessment is not permitted.'))
             else:
                 # Re-raise the original exception if it's not related to unique constraints
                 raise

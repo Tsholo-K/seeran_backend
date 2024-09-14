@@ -88,7 +88,9 @@ class BaseUser(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(_('active'), default=True)
     is_staff = models.BooleanField(_('staff status'), default=False)
     is_superuser = models.BooleanField(_('superuser status'), default=False)
-    
+        
+    last_updated = models.DateTimeField(auto_now=True)
+
     account_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     USERNAME_FIELD = 'email'

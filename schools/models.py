@@ -79,6 +79,8 @@ class School(models.Model):
     # others
     website = models.CharField(max_length=256, blank=True, null=True)
     logo = models.ImageField(upload_to='school_logos/', blank=True, null=True)
+    
+    last_updated = models.DateTimeField(auto_now=True)
 
     # school account id 
     school_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)

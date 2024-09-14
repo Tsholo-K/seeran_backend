@@ -17,6 +17,8 @@ class EmailBan(models.Model):
     status = models.CharField(_('status'), max_length=10, choices=[('BANNED', 'Banned'), ('PENDING', 'Pending'), ('APPEALED', 'Appealed')], default='BANNED')
     
     banned_at = models.DateTimeField(_('the date the email was banned'), auto_now_add=True)
+    
+    last_updated = models.DateTimeField(auto_now=True)
 
     ban_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     
