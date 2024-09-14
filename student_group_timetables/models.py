@@ -7,6 +7,7 @@ from django.utils.translation import gettext_lazy as _
 
 # models
 from users.models import Student
+from schools.models import School
 from grades.models import Grade
 
 
@@ -15,6 +16,8 @@ class StudentGroupTimetable(models.Model):
 
     group_name = models.CharField(max_length=32)
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='group_timetables')
+    
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='group_timetables')
     
     last_updated = models.DateTimeField(auto_now=True)
 

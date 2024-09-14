@@ -11,6 +11,7 @@ from django.db.models import Q
 
 # models 
 from users.models import Teacher
+from audit_logs.models import AuditLog
 from grades.models import Grade
 from terms.models import Term
 from subjects.models import Subject
@@ -66,13 +67,19 @@ def search_audit_entries(user, role, details):
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
         # Check if the user has permission to create an assessment
-        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'AUDIT_ENTRIES'):
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'AUDIT_ENTRY'):
             response = f'could not proccess your request, you do not have the necessary permissions to view audit entries. please contact your administrator to adjust you permissions for viewing audit entries.'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='AUDIT_ENTRIES', outcome='DENIED', response=response, school=requesting_account.school)
 
             return {'error': response}
         
-        entries = requesting_account.school.audit_logs.only('actor', 'actor__name', 'actor__surname', 'outcome', 'target_model', 'timestamp', 'audit_id').filter(action=details.get('action'))
+        if 'action' not in details or details['action'] not in AuditLog.ACTION_CHOICES:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure the audit entries action query is correct and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='AUDIT_ENTRY', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        entries = requesting_account.school.audit_logs.only('actor', 'actor__name', 'actor__surname', 'outcome', 'target_model', 'timestamp', 'audit_id').filter(action=details['action'])
         serialized_entries = AuditEntriesSerializer(instance=entries, many=True).data
 
         return {"entries": serialized_entries}
@@ -89,13 +96,19 @@ def search_audit_entry(user, role, details):
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
         # Check if the user has permission to create an assessment
-        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'AUDIT_ENTRIES'):
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'AUDIT_ENTRY'):
             response = f'could not proccess your request, you do not have the necessary permissions to view audit entries. please contact your administrator to adjust you permissions for viewing audit entries.'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='AUDIT_ENTRIES', outcome='DENIED', response=response, school=requesting_account.school)
 
             return {'error': response}
         
-        entries = requesting_account.school.audit_logs.only('actor', 'outcome', 'target_model', 'response', 'timestamp').get(audit_id=details.get('entry'))
+        if 'entry' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid audit entry ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='AUDIT_ENTRY', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+     
+        entries = requesting_account.school.audit_logs.only('actor', 'outcome', 'target_model', 'response', 'timestamp').get(audit_id=details['entry'])
         serialized_entry = AuditEntrySerializer(instance=entries).data
 
         return {"entry": serialized_entry}
@@ -111,7 +124,19 @@ def search_accounts(user, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
-        if details.get('role') == 'admins':
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ACCOUNT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view accounts. please contact your administrator to adjust you permissions for viewing accounts.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ACCOUNT', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        if 'role' not in details or details['role'] not in ['admins', 'teachers']:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid accounts role and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ACCOUNT', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+ 
+        if details['role'] == 'admins':
             # Fetch all admin accounts in the school
             admins = requesting_account.school.admins.all().exclude(account_id=user)
             serialized_accounts = AdminAccountSerializer(admins, many=True).data
@@ -123,13 +148,10 @@ def search_accounts(user, role, details):
                     serialized_principal = PrincipalAccountSerializer(principal).data
                     serialized_accounts.append(serialized_principal)
 
-        elif details.get('role') == 'teachers':
+        elif details['role'] == 'teachers':
             # Fetch all teacher accounts in the school, excluding the current user
             teachers = requesting_account.school.teachers.all()
             serialized_accounts = TeacherAccountSerializer(teachers, many=True).data
-
-        else:
-            return {"error": "could not proccess your request, the role specified is invalid"}
 
         return {"users": serialized_accounts}
 
@@ -144,7 +166,19 @@ def search_students(user, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
-        grade = requesting_account.school.grades.prefetch_related('students').get(grade_id=details.get('grade'))
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ACCOUNT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view accounts. please contact your administrator to adjust you permissions for viewing accounts.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ACCOUNT', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        if 'grade' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid grade ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ACCOUNT', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        grade = requesting_account.school.grades.prefetch_related('students').get(grade_id=details['grade'])
         serialized_students = StudentSourceAccountSerializer(grade.students.all(), many=True).data
 
         return {"students": serialized_students}
@@ -164,9 +198,15 @@ def search_grades(user, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
         
-        if details.get('time_stamp'):
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'GRADE'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view school grades. please contact your administrator to adjust you permissions for viewing school grades.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='GRADE', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        if details.get('last_updated'):
             # Convert the timestamp to a string in ISO format
-            time_stamp = datetime.fromtimestamp((details['time_stamp'] + 1) / 1000).isoformat()
+            time_stamp = datetime.fromtimestamp((details['last_updated'] + 1) / 1000).isoformat()
             # Filter grades created after the given timestamp
             grades = requesting_account.school.grades.filter(last_updated__gt=time_stamp)            
         
@@ -189,7 +229,19 @@ def search_grade(user, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
-        grade  = requesting_account.school.grades.get(grade_id=details.get('grade'))
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'GRADE'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view grades. please contact your administrator to adjust you permissions for viewing grades.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='GRADE', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        if 'grade' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid grade ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='GRADE', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        grade  = requesting_account.school.grades.get(grade_id=details['grade'])
         serialized_grade = GradeSerializer(instance=grade).data
 
         return {'grade' : serialized_grade}
@@ -209,7 +261,19 @@ def search_grade_details(user, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
-        grade = requesting_account.grades.get(grade_id=details.get('grade'))
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'GRADE'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view grades. please contact your administrator to adjust you permissions for viewing grades.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='GRADE', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        if 'grade' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid grade ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='GRADE', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        grade = requesting_account.grades.get(grade_id=details['grade'])
         serialized_grade = GradeDetailsSerializer(grade).data
         
         # Return the serialized grade in a dictionary
@@ -230,8 +294,20 @@ def search_grade_terms(user, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'TERM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view terms. please contact your administrator to adjust you permissions for viewing terms.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TERM', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        if 'grade' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid grade ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TERM', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
         # Prefetch related school terms to minimize database hits
-        grade_terms = requesting_account.school.terms.filter(grade__grade_id=details.get('grade'))
+        grade_terms = requesting_account.school.terms.filter(grade__grade_id=details['grade'])
         serialized_terms = TermsSerializer(grade_terms, many=True).data
         
         # Return the serialized terms in a dictionary
@@ -248,7 +324,19 @@ def search_grade_register_classes(user, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
-        grade  = requesting_account.school.grades.prefetch_related(Prefetch('classrooms', queryset=Classroom.objects.filter(register_class=True))).get(grade_id=details.get('grade'))
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'CLASSROOM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view classrooms. please contact your administrator to adjust you permissions for viewing classrooms.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        if 'grade' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid grade ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        grade  = requesting_account.school.grades.prefetch_related(Prefetch('classrooms', queryset=Classroom.objects.filter(register_class=True))).get(grade_id=details['grade'])
         serialized_classes = ClassesSerializer(grade.classes.all(), many=True).data
 
         return {"classes": serialized_classes}
@@ -268,7 +356,19 @@ def search_term_details(user, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
-        term = requesting_account.school.terms.get(term_id=details.get('term'))
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'TERM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view terms. please contact your administrator to adjust you permissions for viewing terms.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TERM', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        if 'term' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid term ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TERM', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        term = requesting_account.school.terms.get(term_id=details['term'])
         serialized_term = TermSerializer(term).data
         
         # Return the serialized terms in a dictionary
@@ -289,8 +389,20 @@ def search_subject(user, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'SUBJECT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view subjects. please contact your administrator to adjust you permissions for viewing subjects.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        if 'subject' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid subject ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='SUBJECT', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
         # Retrieve the subject
-        subject = Subject.objects.get(subject_id=details.get('subject'), grade__school=requesting_account.school)
+        subject = Subject.objects.get(subject_id=details['subject'], grade__school=requesting_account.school)
         serialized_subject = SubjectSerializer(subject).data
 
         return {"subject": serialized_subject}
@@ -310,7 +422,19 @@ def search_subject_details(user, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
-        subject = Subject.objects.get(subject_id=details.get('subject'), grade__school=requesting_account.school)
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'SUBJECT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view subjects. please contact your administrator to adjust you permissions for viewing subjects.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        if 'subject' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid subject ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='SUBJECT', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        subject = Subject.objects.get(subject_id=details['subject'], grade__school=requesting_account.school)
         serialized_subject = SubjectDetailsSerializer(subject).data
         
         return {'subject': serialized_subject}
@@ -331,7 +455,7 @@ def search_assessments(user, role, details):
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
         
         # Check if the user has permission to create an assessment
-        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ASSESSMENTS'):
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ASSESSMENT'):
             response = f'could not proccess your request, you do not have the necessary permissions to view assessments. please contact your principal to adjust you permissions for viewing assessments.'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENTS', outcome='DENIED', response=response, school=requesting_account.school)
 
@@ -351,7 +475,10 @@ def search_assessments(user, role, details):
             assessments = classroom.assessments.filter(collected=details.get('collected'), grades_released=False)
 
         else:
-            return {"error": 'could not process your request, provided information is invalid'}
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid grade and subject IDs or a valid classroom ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
 
         if assessments:
             serialized_assessments = CollectedAssessmentsSerializer(assessments, many=True).data if details.get('collected') else DueAssessmentsSerializer(assessments, many=True).data
@@ -384,13 +511,19 @@ def search_assessment(user, role, details):
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
         
         # Check if the user has permission to create an assessment
-        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ASSESSMENTS'):
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ASSESSMENT'):
             response = f'could not proccess your request, you do not have the necessary permissions to view assessments. please contact your principal to adjust you permissions for viewing assessments.'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENTS', outcome='DENIED', response=response, school=requesting_account.school)
 
             return {'error': response}
         
-        assessment = requesting_account.school.assessments.get(assessment_id=details.get('assessment'), collected=details.get('collected'), grades_released=False)
+        if 'assessment' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid assessment ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'], collected=details.get('collected'), grades_released=False)
         serialized_assessment = CollectedAssessmentSerializer(assessment).data if details.get('collected') else DueAssessmentSerializer(assessment).data
 
         return {"assessment": serialized_assessment}
@@ -410,8 +543,20 @@ def search_student_class_card(user, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_attr(user, role)
 
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ACCOUNT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view classrooms. please contact your administrator to adjust you permissions for viewing classrooms.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ACCOUNT', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        if not {'account', 'classroom'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid account and classroom IDs and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ACCOUNT', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
         # Retrieve the requested users account and related school in a single query using select_related
-        requested_account = users_utilities.get_account_and_attr(details.get('account'), 'STUDENT')
+        requested_account = users_utilities.get_account_and_attr(details['account'], 'STUDENT')
 
         # Check permissions
         permission_error = permission_checks.check_profile_or_details_view_permissions(requesting_account, requested_account)
@@ -419,7 +564,7 @@ def search_student_class_card(user, role, details):
             return permission_error
 
         # retrieve the students activities 
-        activities = requested_account.my_activities.filter(classroom__classroom_id=details.get('classroom'))
+        activities = requested_account.my_activities.filter(classroom__classroom_id=details['classroom'])
         
         serialized_student = StudentSourceAccountSerializer(instance=requested_account).data
         serialized_activities = ActivitiesSerializer(activities, many=True).data
@@ -441,8 +586,20 @@ def search_subscribed_students(user, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'GROUP_TIMETABLE'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view group schedules. please contact your administrator to adjust you permissions for viewing group schedules.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='GROUP_TIMETABLE', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        if 'group_timetable' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid group schedule ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='GROUP_TIMETABLE', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
         # Retrieve the group schedule
-        group_schedule = StudentGroupTimetable.objects.prefetch_related('students').get(group_timetable_id=details.get('group_timetable_id'), grade__school=requesting_account.school)
+        group_schedule = requesting_account.school.group_timetables.prefetch_related('students').get(group_timetable_id=details['group_timetable'])
         serialized_students = StudentSourceAccountSerializer(group_schedule.students.all(), many=True).data
 
         return {"students": serialized_students}
@@ -461,9 +618,21 @@ def search_month_attendance_records(user, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
  
-        classroom = requesting_account.school.classrooms.get(classroom_id=details.get('classroom'), register_class=True)
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ATTENDANCE'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view classrooms. please contact your administrator to adjust you permissions for viewing classrooms.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ATTENDANCE', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        if not {'month_name', 'classroom'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid month name and classroom ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ATTENDANCE', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        classroom = requesting_account.school.classrooms.get(classroom_id=details['classroom'], register_class=True)
         
-        start_date, end_date = attendances_utilities.get_month_dates(details.get('month_name'))
+        start_date, end_date = attendances_utilities.get_month_dates(details['month_name'])
 
         # Query for the Absent instances where absentes is True
         attendances = requesting_account.school.attendances.prefetch_related('absent_students').filter(Q(date__gte=start_date) & Q(date__lt=end_date) & Q(classroom=classroom) & Q(absentes=True))
@@ -493,8 +662,20 @@ def search_teacher_classes(user, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
-        teacher = requesting_account.school.teachers.prefetch_related('taught_classes').get(account_id=details.get('teacher'))
-        serializer = TeacherClassesSerializer(teacher.taught_classes.all(), many=True)
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'CLASSROOM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view classrooms. please contact your administrator to adjust you permissions for viewing classrooms.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        if 'teacher' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid account ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        teacher = requesting_account.school.teachers.prefetch_related('taught_classes').get(account_id=details['teacher'])
+        serializer = TeacherClassesSerializer(teacher.taught_classes, many=True)
 
         return {"classes": serializer.data}
                
@@ -512,7 +693,19 @@ def search_teacher_schedule_schedules(user, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
-        teacher = requesting_account.school.teachers.prefetch_related('teacher_schedule__schedules').get(account_id=details.get('teacher'), school=requesting_account.school)
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'TEACHER_TIMETABLE'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view teacher timetables. please contact your administrator to adjust you permissions for viewing teacher timetables.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TEACHER_TIMETABLE', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        if 'teacher' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid account ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TEACHER_TIMETABLE', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        teacher = requesting_account.school.teachers.prefetch_related('teacher_schedule__schedules').get(account_id=details['teacher'])
 
         # Check if the teacher has a schedule
         if hasattr(teacher, 'teacher_schedule'):
