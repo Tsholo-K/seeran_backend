@@ -216,7 +216,7 @@ class Assessment(models.Model):
         if self.collected:
             raise ValidationError(_('could not proccess your request, the provided assessment has already been flagged as collected.'))
 
-        dead_line = datetime.combine(self.due_date, self.dead_line)
+        dead_line = timezone.make_aware(datetime.combine(self.due_date, self.dead_line))
 
         if timezone.now() > dead_line:
             self.collected = True
