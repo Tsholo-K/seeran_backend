@@ -73,7 +73,7 @@ def search_audit_entries(user, role, details):
 
             return {'error': response}
         
-        if 'action' not in details or details['action'] not in AuditLog.ACTION_CHOICES:
+        if 'action' not in details or details['action'] not in [choice[0] for choice in AuditLog.ACTION_CHOICES]:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure the audit entries action query is correct and try again'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='AUDIT_ENTRY', outcome='ERROR', response=response, school=requesting_account.school)
 
