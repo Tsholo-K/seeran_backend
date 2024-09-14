@@ -929,7 +929,7 @@ def submit_submissions(user, role, details):
             # Bulk create Submission objects
             Submission.objects.bulk_create(submissions)
 
-            response = f"assessment submission successfully collected from."
+            response = f"assessment submission successfully collected from {len(student_ids)} students."
             audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='COLLECTED', response=response, school=assessment.school)
 
         return {"message": response}
