@@ -218,7 +218,7 @@ class Assessment(models.Model):
 
         dead_line = datetime.combine(self.due_date, self.dead_line)
 
-        if datetime.now() > dead_line:
+        if timezone.now() > dead_line:
             self.collected = True
             self.date_collected = timezone.now()
 
