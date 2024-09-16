@@ -1018,12 +1018,13 @@ def grade_student(user, role, details):
         # Check if the user has permission to grade the assessment
         if (assessment.assessor and user != assessment.assessor.account_id) and (assessment.moderator and user != assessment.moderator.account_id):
             response = f'could not proccess your request, you do not have the necessary permissions to grade this assessment. only the assessments assessor or moderator can assign scores to the assessment.'
-            audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='DENIED', response=response, school=requesting_account.school)
 
             return {'error': response}
 
         student = requesting_account.school.students.get(account_id=details['student'])
         details['student'] = student.pk
+        details['assessment'] = assessment.pk
 
         # Initialize the serializer with the prepared data
         serializer = TranscriptCreationSerializer(data=details)
@@ -1032,7 +1033,7 @@ def grade_student(user, role, details):
                 transcript = Transcript.objects.create(**serializer.validated_data)
 
                 response = f"student graded for assessment {assessment.unique_identifier}."
-                audits_utilities.log_audit(actor=user,action='GRADE', target_model='ASSESSMENT', target_object_id=str(transcript.transcript_id), outcome='GRADED', response=response, school=assessment.school)
+                audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='GRADED', response=response, school=assessment.school)
 
             return {"message": response}
 

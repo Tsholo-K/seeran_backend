@@ -13,7 +13,7 @@ class TranscriptCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Transcript
-        fields = ['student', 'score', 'comment']
+        fields = ['student', 'score', 'comment', 'assessment']
 
     def __init__(self, *args, **kwargs):
         super(TranscriptCreationSerializer, self).__init__(*args, **kwargs)
