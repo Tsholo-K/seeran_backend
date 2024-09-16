@@ -1016,7 +1016,7 @@ def grade_student(user, role, details):
         assessment = requesting_account.school.assessments.select_related('assessor','moderator').get(assessment_id=details['assessment'])
         
         # Check if the user has permission to moderate the assessment
-        if requesting_account != assessment.assessor or requesting_account != assessment.moderator:
+        if user != (assessment.assessor.account_id or assessment.moderator.account_id):
             response = f'could not proccess your request, you do not have the necessary permissions to grade this assessment. only the assessments assessor or moderator can assign scores to the assessment.'
             audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
 
