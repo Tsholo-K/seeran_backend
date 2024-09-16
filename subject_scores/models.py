@@ -113,15 +113,13 @@ class TermSubjectScore(models.Model):
     pass_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     average_score = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
 
-    students_failing_the_class = models.ManyToManyField(Student, related_name='failing_classes', help_text='Students who are failing the classroom.')
+    students_failing_the_class = models.ManyToManyField(Student, related_name='failing_terms', help_text='Students who are failing the term.')
 
     # The subject for which the score is recorded
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, editable=False, related_name='student_scores')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, editable=False, related_name='term_performance')
 
-    #The grade to which this score belongs
-    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='grade_subject_scores')
     # The school where the assessment was conducted
-    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='school_subject_scores')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='school_termly_subject_performance')
     
     last_updated = models.DateTimeField(auto_now=True)
 
