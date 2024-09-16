@@ -20,7 +20,8 @@ from student_group_timetables.models import StudentGroupTimetable
 from users.serializers.teachers.teachers_serializers import TeacherAccountSerializer
 from users.serializers.students.students_serializers import StudentSourceAccountSerializer
 from terms.serializers import FormTermsSerializer
-from assessments.serializers import AssessmentUpdateFormDataSerializer, SubmissionDetailsSerializer
+from assessments.serializers import AssessmentUpdateFormDataSerializer
+from transcripts.serializers import TranscriptFormSerializer
 
 # utility functions 
 from users import utils as users_utilities
@@ -383,9 +384,12 @@ def form_data_for_submission_details(user, role, details):
         # Fetch the assessment from the requesting user's school
         assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'])
 
-        # Get the submission
-        submission = assessment.submissions.select_related('student').get(student__account_id=details['student'])
-        serialized_submission = SubmissionDetailsSerializer(submission).data
+        transcript = assessment.scores.select_related('student').filter(student__account_id=details['student']).first()
+        if transcript:
+            serialized_submission = TranscriptFormSerializer(transcript).data
+        else:
+            submission = assessment.submissions.select_related('student').get(student__account_id=details['student'])
+            serialized_submission = StudentSourceAccountSerializer(submission.student).data
 
         return {'submission': serialized_submission}
     
