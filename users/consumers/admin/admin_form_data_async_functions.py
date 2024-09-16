@@ -385,7 +385,7 @@ def form_data_for_submission_details(user, role, details):
 
         # Get the submission
         submission = assessment.submissions.select_related('student').get(student__account_id=details['student'])
-        serialized_submission = SubmissionDetailsSerializer(submission.student).data
+        serialized_submission = SubmissionDetailsSerializer(submission).data
 
         return {'submission': serialized_submission}
     
