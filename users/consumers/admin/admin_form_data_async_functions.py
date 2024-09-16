@@ -20,7 +20,7 @@ from student_group_timetables.models import StudentGroupTimetable
 from users.serializers.teachers.teachers_serializers import TeacherAccountSerializer
 from users.serializers.students.students_serializers import StudentSourceAccountSerializer
 from terms.serializers import FormTermsSerializer
-from assessments.serializers import AssessmentUpdateFormDataSerializer
+from assessments.serializers import AssessmentUpdateFormDataSerializer, SubmissionDetailsSerializer
 
 # utility functions 
 from users import utils as users_utilities
@@ -374,7 +374,7 @@ def form_data_for_submission_details(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
             return {'error': response}
         
-        if not {'account', 'assessment'}.issubset(details):
+        if not {'student', 'assessment'}.issubset(details):
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid account and assessnt IDs and try again'
             audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ACCOUNT', outcome='ERROR', response=response, school=requesting_account.school)
 
@@ -383,11 +383,11 @@ def form_data_for_submission_details(user, role, details):
         # Fetch the assessment from the requesting user's school
         assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'])
 
-        # Get the student
-        submission = assessment.submissions.select_related('student').get(student__account_id=details['account'])
-        serialized_student = StudentSourceAccountSerializer(submission.student).data
+        # Get the submission
+        submission = assessment.submissions.select_related('student').get(student__account_id=details['student'])
+        serialized_submission = SubmissionDetailsSerializer(submission.student).data
 
-        return {'student': serialized_student}
+        return {'submission': serialized_submission}
     
     except Assessment.DoesNotExist:
         # Handle the case where the provided grade ID does not exist

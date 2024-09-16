@@ -34,6 +34,7 @@ from terms.serializers import  TermCreationSerializer
 from subjects.serializers import  SubjectCreationSerializer
 from classes.serializers import ClassCreationSerializer
 from assessments.serializers import AssessmentCreationSerializer
+from transcripts.serializers import TranscriptCreationSerializer
 from activities.serializers import ActivityCreationSerializer
 from student_group_timetables.serializers import StudentGroupScheduleCreationSerializer
 from announcements.serializers import AnnouncementCreationSerializer
@@ -1004,9 +1005,15 @@ def grade_student(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
 
             return {'error': response}
-        
+                
+        if not {'student', 'assessment'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid account and assessnt IDs and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ACCOUNT', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
         # Fetch the assessment from the requesting user's school
-        assessment = requesting_account.school.assessments.select_related('assessor','moderator').get(assessment_id=details.get('assessment'))
+        assessment = requesting_account.school.assessments.select_related('assessor','moderator').get(assessment_id=details['assessment'])
         
         # Check if the user has permission to moderate the assessment
         if requesting_account != (assessment.assessor or assessment.moderator):
@@ -1015,23 +1022,32 @@ def grade_student(user, role, details):
 
             return {'error': response}
 
-        student = requesting_account.school.students.get(student_id=details.get('student'))
+        student = requesting_account.school.students.get(account_id=details['student'])
+        details['student'] = student.pk
 
-        with transaction.atomic():
-            transcript = Transcript.objects.create(student=student, score=details.get('score'), assessment=assessment)
+        # Initialize the serializer with the prepared data
+        serializer = TranscriptCreationSerializer(data=details)
+        if serializer.is_valid():
+            with transaction.atomic():
+                transcript = Transcript.objects.create(**serializer.validated_data)
 
-            response = f"student graded for assessment {assessment.unique_identifier}."
-            audits_utilities.log_audit(actor=user,action='GRADE', target_model='ASSESSMENT', target_object_id=str(transcript.transcript_id), outcome='GRADED', response=response, school=assessment.school)
+                response = f"student graded for assessment {assessment.unique_identifier}."
+                audits_utilities.log_audit(actor=user,action='GRADE', target_model='ASSESSMENT', target_object_id=str(transcript.transcript_id), outcome='GRADED', response=response, school=assessment.school)
 
-        return {"message": response}
+            return {"message": response}
 
-    except Student.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a student account with the provided credentials does not exist, please check the accounts details and try again'}
+        error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
+        audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
+
+        return {"error": error_response}
 
     except Assessment.DoesNotExist:
         # Handle the case where the provided assessment ID does not exist
         return {'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
+
+    except Student.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a student account with the provided credentials does not exist, please check the accounts details and try again'}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()

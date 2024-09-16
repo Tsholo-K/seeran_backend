@@ -332,6 +332,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'submit_submissions' : admin_post_async_functions.submit_submissions,
 
+            'grade_student' : admin_post_async_functions.grade_student,
+            
             'create_schedule': admin_post_async_functions.create_daily_schedule,
             'delete_schedule': admin_post_async_functions.delete_daily_schedule,
 

@@ -3,13 +3,14 @@ from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
 
 # models
-from .models import Assessment
+from .models import Assessment, Submission
 from users.models import BaseUser
 from classes.models import Classroom
 
 # serializers
 from topics.serializers import TopicSerializer
 from users.serializers.general_serializers import SourceAccountSerializer
+from users.serializers.students.students_serializers import StudentSourceAccountSerializer
 
 
 class AssessmentCreationSerializer(serializers.ModelSerializer):
@@ -128,3 +129,24 @@ class CollectedAssessmentSerializer(serializers.ModelSerializer):
 
     def get_moderator(self, obj):
         return SourceAccountSerializer(obj.moderator).data if obj.moderator else None
+
+
+class SubmissionDetailsSerializer(serializers.ModelSerializer):
+
+    student = serializers.SerializerMethodField()
+    score = serializers.SerializerMethodField()
+    comment = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Submission
+        fields = ['student', 'score', 'comment']
+
+    def get_student(self, obj):
+        return StudentSourceAccountSerializer(obj.student).data if obj.student else None
+
+    def get_score(self, obj):
+        return obj.score if obj.score else None
+
+    def get_comment(self, obj):
+        return obj.comment if obj.comment else None
+

@@ -17,6 +17,8 @@ class Transcript(models.Model):
 
     # The score the student received in the assessment
     score = models.DecimalField(max_digits=5, decimal_places=2)
+    comment = models.TextField(max_length=1024, null=True, blank=True)
+
     # The normalized percentage score (weighted)
     weighted_score = models.DecimalField(max_digits=5, decimal_places=2)
 
