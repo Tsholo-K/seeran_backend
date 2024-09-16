@@ -4,10 +4,9 @@ from channels.db import database_sync_to_async
 # django
 from django.db import transaction
 from django.core.exceptions import ValidationError
-from django.utils import timezone
 
 # models 
-from users.models import BaseUser
+from users.models import BaseUser, Student
 from grades.models import Grade
 from terms.models import Term
 from subjects.models import Subject
@@ -23,6 +22,7 @@ from terms.serializers import UpdateTermSerializer, TermSerializer
 from subjects.serializers import UpdateSubjectSerializer, SubjectDetailsSerializer
 from classes.serializers import UpdateClassSerializer
 from assessments.serializers import AssessmentUpdateSerializer
+from transcripts.serializers import TranscriptUpdateSerializer
 
 # checks
 from users.checks import permission_checks
@@ -496,6 +496,74 @@ def update_assessment(user, role, details):
     except Exception as e:
         error_message = str(e)
         audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {'error': error_message}
+
+
+@database_sync_to_async
+def update_student_grade(user, role, details):
+    try:
+        assessment = None  # Initialize assessment as None to prevent issues in error handling
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to create an assessment
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'TRANSCRPIT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to update transcrpits.'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TRANSCRPIT', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+                
+        if not {'student', 'assessment'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid account and assessnt IDs and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        # Fetch the assessment from the requesting user's school
+        assessment = requesting_account.school.assessments.select_related('assessor','moderator').get(assessment_id=details['assessment'])
+        
+        # Check if the user has permission to grade the assessment
+        if (assessment.assessor and user != assessment.assessor.account_id) and (assessment.moderator and user != assessment.moderator.account_id):
+            response = f'could not proccess your request, you do not have the necessary permissions to update this transcrpit. only the assessments assessor or moderator can update scores of this transcrpit.'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TRANSCRPIT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        transcript = assessment.scores.get(student__account_id=details['student'])
+
+        serializer = TranscriptUpdateSerializer(instance=transcript, data=details)
+        if serializer.is_valid():
+            with transaction.atomic():
+                serializer.save()
+
+                response = f"student graded for assessment {assessment.unique_identifier} has been successfully updated."
+                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TRANSCRPIT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='GRADED', response=response, school=assessment.school)
+
+            return {"message": response}
+
+        error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TRANSCRPIT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
+
+        return {"error": error_response}
+
+    except Assessment.DoesNotExist:
+        # Handle the case where the provided assessment ID does not exist
+        return {'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
+
+    except Student.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a student account with the provided credentials does not exist, please check the accounts details and try again'}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TRANSCRPIT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TRANSCRPIT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
 
         return {'error': error_message}
 

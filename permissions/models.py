@@ -75,6 +75,7 @@ class AdminPermission(models.Model):
         ('ATTENDANCE', 'Attendance'),
         ('ANNOUNCEMENT', 'Announcement'),
         ('ASSESSMENT', 'Assessment'),
+        ('TRANSCRPIT', 'Transcript'),
         ('DAILY_SCHEDULE', 'Daily Schedule'),
         ('GROUP_TIMETABLE', 'Group Timetable'),
         ('TEACHER_TIMETABLE', 'Teacher Timetable'),
@@ -143,6 +144,7 @@ class TeacherPermission(models.Model):
 
     TARGET_MODEL_CHOICES = [
         ('ASSESSMENT', 'Assessment'),
+        ('TRANSCRPIT', 'Transcript'),
         ('ATTENDANCE', 'Attendance'),
     ]
 

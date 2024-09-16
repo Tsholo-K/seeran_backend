@@ -273,6 +273,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'update_assessment' : admin_put_async_functions.update_assessment,
             'flag_assessment_as_collected' : admin_put_async_functions.update_assessment_as_collected,
 
+            'update_student_grade' : admin_put_async_functions.update_student_grade,
+
             'mark_messages_as_read': general_put_async_functions.mark_messages_as_read,
 
             'update_account': admin_put_async_functions.update_account,

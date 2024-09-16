@@ -1023,6 +1023,7 @@ def grade_student(user, role, details):
             return {'error': response}
 
         student = requesting_account.school.students.get(account_id=details['student'])
+        
         details['student'] = student.pk
         details['assessment'] = assessment.pk
 
@@ -1030,7 +1031,7 @@ def grade_student(user, role, details):
         serializer = TranscriptCreationSerializer(data=details)
         if serializer.is_valid():
             with transaction.atomic():
-                transcript = Transcript.objects.create(**serializer.validated_data)
+                Transcript.objects.create(**serializer.validated_data)
 
                 response = f"student graded for assessment {assessment.unique_identifier}."
                 audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='GRADED', response=response, school=assessment.school)
