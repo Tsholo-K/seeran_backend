@@ -13,7 +13,7 @@ from schools.models import School
 from grades.models import Grade
 from terms.models import Term
 from subjects.models import Subject
-from subject_scores.models import SubjectScore
+from subject_scores.models import StudentSubjectScore
 
 
 class Classroom(models.Model):
@@ -111,7 +111,7 @@ class Classroom(models.Model):
                 continue
 
             # Get or create the student's subject score for the current term and subject
-            subject_score, created = SubjectScore.objects.get_or_create(student=student, subject=self.subject, term=current_term, defaults={'grade': self.grade, 'school': self.school})
+            subject_score, created = StudentSubjectScore.objects.get_or_create(student=student, subject=self.subject, term=current_term, defaults={'grade': self.grade, 'school': self.school})
 
             # Check if the student's score is below the pass mark
             if subject_score.score < self.subject.pass_mark:

@@ -250,7 +250,6 @@ class Assessment(models.Model):
 
         # Get the list of students who have already submitted the assessment
         submitted_student_ids = self.submissions.values_list('student__account_id', flat=True)
-
         no_submission_students = (self.classroom.students.exclude(account_id__in=submitted_student_ids) if self.classroom else self.grade.students.exclude(account_id__in=submitted_student_ids))
 
         submissions = []

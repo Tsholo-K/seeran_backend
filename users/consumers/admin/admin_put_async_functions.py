@@ -515,7 +515,7 @@ def update_student_grade(user, role, details):
             return {'error': response}
                 
         if not {'student', 'assessment'}.issubset(details):
-            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid account and assessnt IDs and try again'
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid account and assessment IDs and try again'
             audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', outcome='ERROR', response=response, school=requesting_account.school)
 
             return {'error': response}
@@ -623,25 +623,29 @@ def release_assessment_grades(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
 
             return {'error': response}
+                
+        if 'assessment' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid assessment ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
 
         # Fetch the assessment from the requesting user's school
-        assessment = requesting_account.school.assessments.select_related('classroom', 'grade', 'subject').get(assessment_id=details.get('assessment'))
+        assessment = requesting_account.school.assessments.get(assessment_id=details.get('assessment'))
         
         with transaction.atomic():
             assessment.release_grades()
 
-            not_submitted_student_ids = assessment.submissions.filter(status='NOT_SUBMITTED').only('student')
+            not_submitted_students = assessment.submissions.filter(status='NOT_SUBMITTED').only('student')
 
             not_submitted = []
-            for submission in not_submitted_student_ids:
+            for submission in not_submitted_students:
                 not_submitted.append(Transcript(assessment=assessment, student=submission.student, score=0))
 
             Transcript.objects.bulk_create(not_submitted)
 
             assessment.update_pass_rate_and_average_score()
             assessment.subject.update_pass_rate_and_average_score()
-
-            assessment.save()
 
             response = f"grades for assessment with assessment ID {assessment.unique_identifier} have been released, all the students who have not submitted the assessment have been graded a zero for the assessment."
             audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='UPDATED', response=response, school=assessment.school)

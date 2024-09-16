@@ -11,7 +11,7 @@ from users.models import Student
 from schools.models import School
 from grades.models import Grade
 from terms.models import Term
-from subject_scores.models import SubjectScore
+from subject_scores.models import StudentSubjectScore
 
 
 class ProgressReport(models.Model):
@@ -19,7 +19,7 @@ class ProgressReport(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='reports')
 
     # The subject scores associated with this report
-    subject_scores = models.ManyToManyField(SubjectScore, related_name='report')
+    subject_scores = models.ManyToManyField(StudentSubjectScore, related_name='report')
     # The academic term for which the report is for
     term = models.ForeignKey(Term, editable=False, on_delete=models.SET_NULL, related_name='reports', null=True)
     
@@ -90,7 +90,7 @@ class ProgressReport(models.Model):
         subject_scores = []
         for subject in subjects:            
             # Get or create a SubjectScore instance
-            subject_score, created = SubjectScore.objects.get_or_create(student=self.student, term=self.term, subject=subject, defaults={'grade': self.grade, 'school': self.school})
+            subject_score, created = StudentSubjectScore.objects.get_or_create(student=self.student, term=self.term, subject=subject, defaults={'grade': self.grade, 'school': self.school})
             subject_score.determine_pass_status()
 
             # Collect the created or existing SubjectScore instance
@@ -120,10 +120,10 @@ class ProgressReport(models.Model):
                 for term in terms:
                     try:
                         # Get or create the student's subject score for the current term and subject
-                        subject_score, created = SubjectScore.objects.get_or_create(student=self.student, subject=subject, term=term, defaults={'grade': self.grade, 'school': self.school})
+                        subject_score, created = StudentSubjectScore.objects.get_or_create(student=self.student, subject=subject, term=term, defaults={'grade': self.grade, 'school': self.school})
                         total_subjects_weighted_score += subject_score.weighted_score
                         total_terms_weight += term.weight
-                    except SubjectScore.DoesNotExist:
+                    except StudentSubjectScore.DoesNotExist:
                         continue
 
                 # Determine if the subject has been failed based on the aggregated weighted score
