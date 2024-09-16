@@ -76,7 +76,7 @@ class Assessment(models.Model):
 
     # Unique identifier for the assessment, used to link assessments that should be regarded as the same across differnet classrooms. this is crucial for 
     # grade wwide performance tracking, progress report generation and so on..
-    unique_identifier = models.CharField(max_length=36)
+    unique_identifier = models.CharField(max_length=36, null=True, blank=True)
     # Type of the assessment (e.g., practical, exam, test)
     assessment_type = models.CharField(max_length=124, choices=ASSESSMENT_TYPE_CHOICES, default='TEST')
 
@@ -187,6 +187,9 @@ class Assessment(models.Model):
         # Ensure total percentage doesn't exceed 100%
         if (total_percentage + self.percentage_towards_term_mark) > Decimal('100.00'):
             raise ValidationError(_('total percentage towards the term cannot exceed 100%.'))
+        
+        if not self.classroom:
+            self.unique_identifier = None
         
         # Set assessment as formal if it contributes to the term mark
         self.formal = self.percentage_towards_term_mark > Decimal('0.00')

@@ -768,8 +768,48 @@ def set_assessment(user, role, details):
 
             return {'error': response}
 
-        if details.get('classroom'):
+
+        elif details.get('classroom'):
             classroom = requesting_account.school.classes.select_related('grade', 'subject').prefetch_related('grade__terms').get(classroom_id=details.get('classroom'))
+
+            # Check for existing assessment with the same unique identifier in the same school
+            existing_assessment = requesting_account.school.assessments.filter(
+                unique_identifier=details.get('unique_identifier'),
+                classroom=classroom
+            ).first()
+
+            if existing_assessment:
+                with transaction.atomic():
+
+                    # Duplicate the assessment for the other classroom
+                    duplicate_assessment = Assessment.objects.create(
+                        unique_identifier=existing_assessment.unique_identifier,
+                        assessor=requesting_account,
+                        moderator=existing_assessment.moderator,
+                        date_set=timezone.now(),
+                        due_date=existing_assessment.due_date,
+                        pass_rate=existing_assessment.pass_rate,
+                        average_score=existing_assessment.average_score,
+                        start_time=existing_assessment.start_time, 
+                        dead_line=existing_assessment.dead_line,
+                        title=existing_assessment.title,
+                        total=existing_assessment.total,
+                        formal=existing_assessment.formal,
+                        percentage_towards_term_mark=existing_assessment.percentage_towards_term_mark,
+                        term=existing_assessment.term,
+                        subject=existing_assessment.subject,
+                        classroom=classroom,
+                        grade=existing_assessment.grade,
+                        school=requesting_account.school
+                    )
+
+                    # Copy topics from the original assessment
+                    duplicate_assessment.topics.set(existing_assessment.topics.all())
+
+                    response = f'assessment with unique identifier {duplicate_assessment.unique_identifier} created for classroom {classroom.classroom_id}.'
+                    audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', target_object_id=str(duplicate_assessment.assessment_id), outcome='CREATED', response=response, school=requesting_account.school)
+
+                return {"message": response}
 
             term = classroom.grade.terms.get(term_id=details.get('term'))
             subject = classroom.subject.pk

@@ -239,6 +239,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'update_assessment' : admin_form_data_async_functions.form_data_for_updating_assessment,
 
             'assessment_submission_collection' : admin_form_data_async_functions.form_data_for_collecting_assessment_submissions,
+            'assessment_submissions' : admin_form_data_async_functions.form_data_for_assessment_submissions,
+            'submission_details' : admin_form_data_async_functions.form_data_for_submission_details,
 
             'add_students_to_group_schedule': admin_form_data_async_functions.form_data_for_adding_students_to_group_schedule,
         }

@@ -13,7 +13,7 @@ from channels.db import database_sync_to_async
 from grades.models import Grade
 from subjects.models import Subject
 from classes.models import Classroom
-from assessments.models import Assessment
+from assessments.models import Assessment, Submission
 from student_group_timetables.models import StudentGroupTimetable
 
 # serilializers
@@ -293,6 +293,109 @@ def form_data_for_collecting_assessment_submissions(user, role, details):
     except Assessment.DoesNotExist:
         # Handle the case where the provided grade ID does not exist
         return { 'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
+
+    except Exception as e:
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def form_data_for_assessment_submissions(user, role, details):
+    try:
+        # Retrieve the requesting user's account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to collect assessment submissions
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'COLLECT', 'ASSESSMENT'):
+            response = 'You do not have the necessary permissions to collect assessment submissions.'
+            audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
+            return {'error': response}
+
+        # Fetch the assessment from the requesting user's school
+        assessment = requesting_account.school.assessments.select_related('classroom', 'grade').get(assessment_id=details.get('assessment'))
+
+        # Get the list of students who have already submitted the assessment
+        submitted_student_ids = assessment.submissions.values_list('student__account_id', flat=True)
+
+        search_filters = Q()
+
+        # Apply search filters if provided
+        if 'search_query' in details:
+            search_query = details.get('search_query')
+            search_filters &= (Q(name__icontains=search_query) | Q(surname__icontains=search_query) | Q(account_id__icontains=search_query))
+
+        # Apply cursor for pagination using the primary key (id)
+        if 'cursor' in details and details['cursor'] is not None:
+            cursor = details.get('cursor')
+            search_filters &= Q(id__gt=cursor)
+
+        if assessment.classroom:
+            # Fetch students in the classroom who haven't submitted
+            students = assessment.classroom.students.filter(search_filters).only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').filter(account_id__in=submitted_student_ids).order_by('id')[:10]
+        elif assessment.grade:
+            # Fetch students in the grade who haven't submitted
+            students = assessment.grade.students.filter(search_filters).only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').filter(account_id__in=submitted_student_ids).order_by('id')[:10]
+        else:
+            return {'error': 'No valid classroom or grade found for the assessment.'}
+        
+        if not students:
+            return {'students': [], 'cursor': None}
+        
+        # Serialize the student data
+        serialized_students = StudentSourceAccountSerializer(students, many=True).data
+
+        # Compress the serialized data
+        compressed_students = zlib.compress(json.dumps(serialized_students).encode('utf-8'))
+
+        # Encode compressed data as base64 for safe transport
+        encoded_students = base64.b64encode(compressed_students).decode('utf-8')
+
+        # Determine the next cursor (based on the primary key)
+        next_cursor = students[len(students) - 1].id if students and len(students) > 9 else None
+
+        return {'students': encoded_students, 'cursor': next_cursor}
+    
+    except Assessment.DoesNotExist:
+        # Handle the case where the provided grade ID does not exist
+        return { 'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
+
+    except Exception as e:
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def form_data_for_submission_details(user, role, details):
+    try:
+        # Retrieve the requesting user's account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to collect assessment submissions
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'GRADE', 'ASSESSMENT'):
+            response = 'You do not have the necessary permissions to grade assessment submissions.'
+            audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
+            return {'error': response}
+        
+        if not {'account', 'assessment'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid account and assessnt IDs and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ACCOUNT', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+        
+        # Fetch the assessment from the requesting user's school
+        assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'])
+
+        # Get the student
+        submission = assessment.submissions.select_related('student').get(student__account_id=details['account'])
+        serialized_student = StudentSourceAccountSerializer(submission.student).data
+
+        return {'student': serialized_student}
+    
+    except Assessment.DoesNotExist:
+        # Handle the case where the provided grade ID does not exist
+        return { 'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
+    
+    except Submission.DoesNotExist:
+        # Handle the case where the provided submission ID does not exist
+        return { 'error': 'a submission for the specified assessment in your school with the provided credentials does not exist, please make sure the student has submitted the assessment and try again'}
 
     except Exception as e:
         return {'error': str(e)}
