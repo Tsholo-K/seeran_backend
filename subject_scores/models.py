@@ -108,7 +108,7 @@ class StudentSubjectScore(models.Model):
 
 class TermSubjectScore(models.Model):
     # The academic term for which this score applies
-    term = models.ForeignKey(Term, editable=False, on_delete=models.CASCADE, related_name='scores')
+    term = models.ForeignKey(Term, editable=False, on_delete=models.CASCADE, related_name='performances')
 
     pass_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     average_score = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
@@ -116,10 +116,10 @@ class TermSubjectScore(models.Model):
     students_failing_the_class = models.ManyToManyField(Student, related_name='failing_terms', help_text='Students who are failing the term.')
 
     # The subject for which the score is recorded
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, editable=False, related_name='term_performance')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, editable=False, related_name='subject_termly_performances')
 
     # The school where the assessment was conducted
-    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='school_termly_subject_performance')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='school_termly_subject_performances')
     
     last_updated = models.DateTimeField(auto_now=True)
 
@@ -127,10 +127,10 @@ class TermSubjectScore(models.Model):
     term_score_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
 
     class Meta:
-        unique_together = ('student', 'subject', 'term', 'school')
+        unique_together = ('subject', 'term', 'school')
 
     def __str__(self):
-        return f"{self.subject} - {self.student} - Term {self.term}"
+        return f"{self.subject} - Term {self.term}"
     
     def clean(self):
         """
