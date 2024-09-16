@@ -640,7 +640,7 @@ def release_assessment_grades(user, role, details):
 
             not_submitted = []
             for submission in not_submitted_students:
-                not_submitted.append(Transcript(assessment=assessment, student=submission.student, score=0))
+                not_submitted.append(Transcript(assessment=assessment, student=submission.student, score=0, weighted_score=0))
 
             Transcript.objects.bulk_create(not_submitted)
 
