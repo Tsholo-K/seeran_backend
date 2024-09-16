@@ -389,7 +389,7 @@ def form_data_for_submission_details(user, role, details):
             serialized_submission = TranscriptFormSerializer(transcript).data
         else:
             submission = assessment.submissions.select_related('student').get(student__account_id=details['student'])
-            serialized_submission = StudentSourceAccountSerializer(submission.student).data
+            serialized_submission = {'student': StudentSourceAccountSerializer(submission.student).data}
 
         return {'submission': serialized_submission}
     
