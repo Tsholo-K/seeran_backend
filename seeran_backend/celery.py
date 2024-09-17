@@ -3,7 +3,7 @@ from __future__ import absolute_import, unicode_literals
 import os
 
 # celery initialization
-from .celery_initialization import app
+from seeran_backend.celery_initialization import app
 
 
 # Set the default Django settings module for the 'celery' program.
