@@ -7,12 +7,12 @@ from django.db.models import Q
 
 # models 
 from users.models import Teacher
-from classes.models import Classroom
+from classrooms.models import Classroom
 from attendances.models import Attendance
 
 # serilializers
 from users.serializers.students.students_serializers import StudentSourceAccountSerializer, LeastAccountDetailsSerializer
-from classes.serializers import TeacherClassesSerializer
+from classrooms.serializers import TeacherClassesSerializer
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer
 from activities.serializers import ActivitiesSerializer
 from daily_schedules.serializers import DailyScheduleSerializer

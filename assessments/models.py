@@ -15,7 +15,7 @@ from schools.models import School
 from grades.models import Grade
 from terms.models import Term
 from subjects.models import Subject
-from classes.models import Classroom
+from classrooms.models import Classroom
 from topics.models import Topic
 
 # utility functions 
@@ -62,10 +62,7 @@ class Assessment(models.Model):
     date_set = models.DateTimeField(auto_now_add=True, editable=False)  # Allowed format: yyyy-mm-ddThh:mm
     # The date the assessment is due
     due_date = models.DateField()  # Allowed format: yyyy-mm-dd
-
-    pass_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    average_score = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
-
+    
     # The time assessment is starts
     start_time = models.TimeField(null=True, blank=True)  # Allowed format: Thh:mm
     # The date and time when the assessment is due
@@ -100,7 +97,17 @@ class Assessment(models.Model):
     grades_released = models.BooleanField(default=False)
     # Date and time when results were released
     date_grades_released = models.DateTimeField(null=True, blank=True)
-    
+
+    pass_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+    highest_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    lowest_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    average_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    median_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+    # A JSONField to store performance distribution data
+    performance_distribution = models.JSONField(null=True, blank=True)
+
     # The classroom where the assessment was conducted
     classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE, related_name='assessments', null=True, blank=True)
 
@@ -195,9 +202,6 @@ class Assessment(models.Model):
         self.formal = self.percentage_towards_term_mark > Decimal('0.00')
         
     def save(self, *args, **kwargs):
-        """
-        Override save method to validate incoming data
-        """
         self.clean()
 
         try:
@@ -215,7 +219,6 @@ class Assessment(models.Model):
             raise ValidationError(_(str(e).lower()))
         
     def mark_as_collected(self):
-        """ Flags the assessment as collected. """
         if self.collected:
             raise ValidationError(_('could not proccess your request, the provided assessment has already been flagged as collected.'))
 
@@ -238,7 +241,6 @@ class Assessment(models.Model):
         self.save()
 
     def release_grades(self):
-        """ release assessment grades and grade zeros for students who not submitted the assessment. """
         if not self.collected:
             raise ValidationError(_('could not proccess your request, the provided assessment has not been collected. can not release grades for an assessment that has not been collected'))
 
@@ -263,20 +265,58 @@ class Assessment(models.Model):
 
         self.save()
 
-    def update_pass_rate_and_average_score(self):
-        """ Updates the pass rate and average score based on student performance. """
+    def update_performance_metrics(self):
         if not self.grades_released:
-            raise ValidationError(_('could not proccess your request, the provided assessment does not have its grades released. can not calculate pass rate and average score for an assessment that does not have its grades released'))
+            raise ValidationError(_('could not process your request, the assessment does not have its grades released. cannot calculate performance metrics for an assessment that does not have its grades released.'))
 
         accessed_student_count = (self.classroom.students.count() if self.classroom else self.grade.students.count())
         pass_count = self.scores.filter(weighted_score__gte=self.subject.pass_mark).count()
-        
+
+        # Calculate pass rate
         if accessed_student_count > 0:
             self.pass_rate = (pass_count / accessed_student_count) * 100
         else:
             self.pass_rate = 0.0
 
+        # Calculate average score
         self.average_score = self.scores.aggregate(avg=models.Avg('weighted_score'))['avg'] or 0.0
+
+        # Calculate highest and lowest score
+        self.highest_score = self.scores.aggregate(high=models.Max('weighted_score'))['high'] or 0.0
+        self.lowest_score = self.scores.aggregate(low=models.Min('weighted_score'))['low'] or 0.0
+
+        # Calculate performance distribution (e.g., how many students fall into each grade bracket)
+        score_ranges = {
+            '90-100': 0,
+            '80-89': 0,
+            '70-79': 0,
+            '60-69': 0,
+            '50-59': 0,
+            '40-49': 0,
+            'below_40': 0,
+        }
+
+        # Get weighted scores for all students
+        scores = self.scores.values_list('weighted_score', flat=True)
+
+        # Iterate over scores and categorize them
+        for score in scores:
+            if score >= 90:
+                score_ranges['90-100'] += 1
+            elif score >= 80:
+                score_ranges['80-89'] += 1
+            elif score >= 70:
+                score_ranges['70-79'] += 1
+            elif score >= 60:
+                score_ranges['60-69'] += 1
+            elif score >= 50:
+                score_ranges['50-59'] += 1
+            elif score >= 40:
+                score_ranges['40-49'] += 1
+            else:
+                score_ranges['below_40'] += 1
+
+        self.performance_distribution = score_ranges
 
         self.save()
 
@@ -319,9 +359,6 @@ class Submission(models.Model):
             raise ValidationError(_('submission date must be after the date the assessment was set.'))
         
     def save(self, *args, **kwargs):
-        """
-        Override save method to validate incoming data
-        """
         self.clean()
 
         try:

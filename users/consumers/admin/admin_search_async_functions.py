@@ -15,7 +15,7 @@ from audit_logs.models import AuditLog
 from grades.models import Grade
 from terms.models import Term
 from subjects.models import Subject
-from classes.models import Classroom
+from classrooms.models import Classroom
 from assessments.models import Assessment
 from student_group_timetables.models import StudentGroupTimetable
 
@@ -29,7 +29,7 @@ from audit_logs.serializers import AuditEntriesSerializer, AuditEntrySerializer
 from grades.serializers import GradeSerializer, GradesSerializer, GradeDetailsSerializer
 from terms.serializers import  TermsSerializer, TermSerializer, ClassesSerializer
 from subjects.serializers import SubjectSerializer, SubjectDetailsSerializer
-from classes.serializers import TeacherClassesSerializer
+from classrooms.serializers import TeacherClassesSerializer
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer
 from activities.serializers import ActivitiesSerializer
 from daily_schedules.serializers import DailyScheduleSerializer

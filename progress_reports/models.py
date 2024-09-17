@@ -11,7 +11,7 @@ from users.models import Student
 from schools.models import School
 from grades.models import Grade
 from terms.models import Term
-from subject_scores.models import StudentSubjectScore
+from subject_performances.models import StudentSubjectScore
 
 
 class ProgressReport(models.Model):

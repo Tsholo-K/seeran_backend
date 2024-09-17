@@ -13,7 +13,7 @@ from django.utils.translation import gettext as _
 
 # models 
 from users.models import BaseUser, Principal, Admin, Teacher
-from classes.models import Classroom
+from classrooms.models import Classroom
 from attendances.models import Attendance
 
 # serializers

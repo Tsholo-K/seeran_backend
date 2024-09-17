@@ -3,9 +3,9 @@ from rest_framework import serializers
 from rest_framework.validators import UniqueTogetherValidator
 
 # models
-from .models import Assessment, Submission
+from .models import Assessment
 from users.models import BaseUser
-from classes.models import Classroom
+from classrooms.models import Classroom
 
 # serializers
 from topics.serializers import TopicSerializer

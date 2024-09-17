@@ -5,7 +5,7 @@ from django.dispatch import receiver
 
 # models
 from users.models import BaseUser, Student
-from classes.models import Classroom
+from classrooms.models import Classroom
 
 # mappings
 from users.maps import role_specific_maps

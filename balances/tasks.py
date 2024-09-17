@@ -10,19 +10,20 @@ from celery import shared_task
 from celery.exceptions import MaxRetriesExceededError
 
 # models
-from .models import Bill, Balance
-from users.models import CustomUser
+from .models import Balance
+from users.models import BaseUser
+from invoices.models import Invoice
 
 
-@shared_task(bind=True, max_retries=5)
+@shared_task(bind=True, max_retries=3)
 def bill_single_user(self, user_id):
 
     try:
         # Get the user associated with the task
-        user = CustomUser.objects.get(pk=user_id)
+        user = BaseUser.objects.get(pk=user_id)
 
         # Check if a bill already exists for this user for this month
-        existing_bill = Bill.objects.filter(user=user, date_billed__year=today.year, date_billed__month=today.month).first()
+        existing_bill = Invoice.objects.filter(user=user, date_billed__year=today.year, date_billed__month=today.month).first()
         
         if existing_bill is not None:
             # If a bill already exists, skip the billing proccess
@@ -41,7 +42,7 @@ def bill_single_user(self, user_id):
             with transaction.atomic():
 
                 # If the API call was successful, create a new Bill instance
-                Bill.objects.create(
+                Invoice.objects.create(
                     user=user,
                     student=api_result.student,
                     reason=api_result.reason,
@@ -64,7 +65,7 @@ def bill_single_user(self, user_id):
             with transaction.atomic():
 
                 # If the API call was successful, create a new Bill instance
-                Bill.objects.create(
+                Invoice.objects.create(
                     user=user,
                     student=api_result.student,
                     reason=api_result.reason,
@@ -80,7 +81,7 @@ def bill_single_user(self, user_id):
                 balance.billing_date = today.replace(day=1) + relativedelta(months=1)
                 balance.save()
 
-    except CustomUser.DoesNotExist:
+    except BaseUser.DoesNotExist:
         return None # log the error log_error(f"User with id {user_id} does not exist.")
 
     except Exception as e:
@@ -108,7 +109,7 @@ def bill_users():
         user = balance.user
         
         # Check if a bill already exists for this user for this month
-        existing_bill = Bill.objects.filter(user=user, date_billed__year=today.year, date_billed__month=today.month).first()
+        existing_bill = Invoice.objects.filter(user=user, date_billed__year=today.year, date_billed__month=today.month).first()
         
         if existing_bill is not None:
             # If a bill already exists, skip this user
@@ -124,7 +125,7 @@ def bill_users():
             with transaction.atomic():
 
                 # If the API call was successful, create a new Bill instance
-                Bill.objects.create(
+                Invoice.objects.create(
                     user=user,
                     student=api_result.student,
                     reason=api_result.reason,

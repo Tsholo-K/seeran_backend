@@ -240,11 +240,11 @@ class Student(BaseUser):
     id_number = models.CharField(_('ID number'), max_length=13, unique=True, blank=True, null=True)
     passport_number = models.CharField(_('passport number'), max_length=9, unique=True, blank=True, null=True)
 
+    event_emails = models.BooleanField(_('email subscription'), default=False)
+
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='students')
 
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='students')
-
-    event_emails = models.BooleanField(_('email subscription'), default=False)
 
     class Meta:
         ordering = ['surname', 'name', 'account_id']

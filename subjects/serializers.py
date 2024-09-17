@@ -12,7 +12,7 @@ from grades.models import Grade
 from .models import Subject
 
 # serializers
-from classes.serializers import ClassesSerializer
+from classrooms.serializers import ClassesSerializer
 
 
 class SubjectCreationSerializer(serializers.ModelSerializer):

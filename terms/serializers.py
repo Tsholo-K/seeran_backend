@@ -13,7 +13,7 @@ from grades.models import Grade
 from schools.models import School
 
 # serializers
-from classes.serializers import ClassesSerializer
+from classrooms.serializers import ClassesSerializer
 
 
 class TermCreationSerializer(serializers.ModelSerializer):

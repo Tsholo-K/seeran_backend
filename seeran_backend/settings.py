@@ -16,11 +16,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 
 
-# Google
-# DEFAULT_FILE_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
-# GS_BUCKET_NAME = 'your-bucket-name'
-
-
 # uplaod image max-size 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 26214400  # 25 MB
 
@@ -56,8 +51,8 @@ INSTALLED_APPS = [
     'grades',
     'terms',
     'subjects',
-    'subject_scores',
-    'classes',
+    'subject_performances',
+    'classrooms',
     'attendances',
     'emergencies',
     'assessments',
@@ -184,13 +179,6 @@ SIMPLE_JWT = {
 }
 
 
-# celery beat scheduler
-CELERY_BEAT_SCHEDULE = {
-    'bill_users': {
-        'task': 'balances.tasks.bill_users',  # Replace with the actual path to your task
-        'schedule': crontab(hour='0,8,16'), # to run task at midnight, 8 AM, and 4 PM
-    },
-}
 
 
 """
@@ -252,6 +240,24 @@ DATABASES = {
 #         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
 #     }
 # }
+
+
+# Celery settings
+CELERY_BROKER_URL = 'rediss://' + config('CACHE_LOCATION') + ':6378'
+CELERY_RESULT_BACKEND = 'rediss://' + config('CACHE_LOCATION') + ':6378'
+
+CELERY_IMPORTS = (
+    'assessments.tasks',
+    'subject_performances.tasks',
+    'classrooms.tasks',
+    # Add other app tasks here
+)
+
+
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'
 
 
 # ssl config

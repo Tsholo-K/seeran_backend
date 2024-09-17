@@ -1,9 +1,12 @@
 # python 
 import uuid
+import statistics
+
 # import logging
 
 # django 
 from django.db import models, IntegrityError
+from django.db.models import Count, F, Sum, FloatField, ExpressionWrapper
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 
@@ -11,7 +14,11 @@ from django.core.exceptions import ValidationError
 # logger = logging.getLogger(__name__)
 
 # models
+from users.models import Student
 from grades.models import Grade
+
+# utility functions
+from terms import utils as term_utilities
 
 
 # subject choices
@@ -49,13 +56,15 @@ class Subject(models.Model):
     classroom_count = models.IntegerField(default=0)
 
     pass_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    average_score = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+
+    average_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    median_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+    students_failing_the_subject = models.ManyToManyField(Student, related_name='failing_subjects', help_text='Students who are failing the subject.')
 
     # grade linked to
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='subjects')
 
-    last_updated = models.DateTimeField(auto_now=True)
-    
     last_updated = models.DateTimeField(auto_now=True)
 
     # subject id
@@ -106,9 +115,54 @@ class Subject(models.Model):
             # Re-raise the original exception if it's not handled
             raise
 
-    def update_pass_rate_and_average_score(self):
-        """ Calculate subject-wide pass rate and average score. """
-        self.pass_rate = self.assessments.filter(grades_released=True).aggregate(avg=models.Avg('pass_rate'))['avg'] or 0.0
-        self.average_score = self.assessments.filter(grades_released=True).aggregate(avg=models.Avg('average_score'))['avg'] or 0.0
+    def update_performance_metrics(self):
+        # Query TermSubjectPerformance for the current subject
+        term_performances = self.termly_performances
 
+        total_scores = []
+        all_pass_rates = []
+        all_medians = []
+
+        for performance in term_performances:
+            if performance.average_score is not None:
+                total_scores.append(performance.average_score)
+            if performance.pass_rate is not None:
+                all_pass_rates.append(performance.pass_rate)
+            if performance.median_score is not None:
+                all_medians.append(performance.median_score)
+
+        # Aggregate pass rate
+        self.pass_rate = sum(all_pass_rates) / len(all_pass_rates) if all_pass_rates else None
+
+        # Aggregate average score
+        self.average_score = sum(total_scores) / len(total_scores) if total_scores else None
+
+        # Aggregate median score
+        self.median_score = statistics.median(all_medians) if all_medians else None
+
+        self.save()
+
+    def update_students_failing_the_subject(self):
+        # Step 1: Retrieve all student performances for the subject across all terms
+        performances = self.student_performances
+
+        # Step 2: Aggregate the total weighted score and the total possible weighted score
+        student_scores = performances.values('student').annotate(
+            total_weighted_score=Sum('weighted_score'),  # Total weighted score achieved by the student
+            total_max_weighted_score=Sum(F('term__weight'))  # Sum of weights for all terms (if term weight is stored)
+        ).annotate(
+            normalized_score=ExpressionWrapper(
+                F('total_weighted_score') / F('total_max_weighted_score') * 100,  # Normalize to percentage
+                output_field=FloatField()
+            )
+        )
+
+        # Step 5: Determine failing students based on the normalized score compared to the pass mark
+        failing_students_ids = [student_score['student'] for student_score in student_scores if student_score['normalized_score'] < self.pass_mark]
+
+        # Fetch Student instances from the list of IDs
+        failing_students_instances = Student.objects.filter(id__in=failing_students_ids)
+
+        # Update the students_failing_the_subject field
+        self.students_failing_the_subject.set(failing_students_instances)
         self.save()

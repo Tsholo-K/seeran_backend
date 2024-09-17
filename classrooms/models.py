@@ -1,19 +1,21 @@
 # python 
 import uuid
-from datetime import date
+import statistics
 
 # django
 from django.core.exceptions import ValidationError
 from django.db import models, IntegrityError
 from django.utils.translation import gettext_lazy as _
+from django.db.models import Avg
 
 # models
 from users.models import Teacher, Student
 from schools.models import School
 from grades.models import Grade
-from terms.models import Term
 from subjects.models import Subject
-from subject_scores.models import StudentSubjectScore
+
+# utility functions
+from terms import utils as term_utilities
 
 
 class Classroom(models.Model):
@@ -21,12 +23,14 @@ class Classroom(models.Model):
     group = models.CharField(_('class group'), max_length=16, default='A')
 
     teacher = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, blank=True, related_name='taught_classes', help_text='The teacher assigned to the classroom.')
-    students = models.ManyToManyField(Student, related_name='enrolled_classes', help_text='Students enrolled in the classroom.')
+    students = models.ManyToManyField(Student, related_name='enrolled_classrooms', help_text='Students enrolled in the classroom.')
 
     student_count = models.IntegerField(default=0)
 
     pass_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    average_score = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+
+    average_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    median_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
     students_failing_the_class = models.ManyToManyField(Student, related_name='failing_classes', help_text='Students who are failing the classroom.')
 
@@ -59,9 +63,6 @@ class Classroom(models.Model):
                 return {"error": "could not proccess request. the subject provided to be associated with the classroom is assigned to a different grade than the one assigned to the classroom. a classrooms subject should be associated with the same grade as the classroom. please the check the provided information and try again"}
                 
     def save(self, *args, **kwargs):
-        """
-        Override save method to validate incoming data.
-        """
         self.clean()
 
         try:
@@ -75,66 +76,63 @@ class Classroom(models.Model):
                 # Re-raise the original exception if it's not related to unique constraints
                 raise
 
-    def update_pass_rate_and_average_score(self):
-        """ Updates the pass rate and average score based on student performance. """
+    def update_performance_metrics(self):
         total_students = self.students.count() if self.students.exists() else 0
-        pass_count = self.students.filter(transcripts__weighted_score__gte=self.subject.pass_mark).count()
         
-        if total_students > 0:
-            self.pass_rate = (pass_count / total_students) * 100
-        else:
-            self.pass_rate = 0.0
+        current_term = term_utilities.get_current_term(self.school, self.grade)
+        if not current_term:
+            raise ValidationError(_('could not update performance metrics. no term found for the current period.'))
 
-        total_scores = self.assessments.aggregate(avg=models.Avg('scores__weighted_score'))['avg']
+        # Calculate pass rate
+        if self.subject:
+            if total_students > 0:
+                # Find students who passed the subject in the current term
+                passing_scores = self.student_performances.filter(student__in=self.students.all(), term=current_term, score__lte=self.subject.pass_mark).count()
+                self.pass_rate = (passing_scores / total_students) * 100
+            else:
+                self.pass_rate = None
+
+            # Calculate average score
+            total_scores = self.student_performances.filter(student__in=self.students.all(), term=current_term).aggregate(avg=models.Avg('score'))['avg']
+            self.average_score = total_scores or 0.0
+
+        # Retrieve all scores for the subject in the current term
+        scores = list(self.student_performances.filter(student__in=self.students.all(), term=current_term).values_list('score', flat=True))
+
+        # Calculate average score
+        total_scores = self.student_performances.filter(student__in=self.students.all(), term=current_term).aggregate(avg=Avg('score'))['avg']
         self.average_score = total_scores or 0.0
+
+        # Calculate median score
+        if scores:
+            self.median_score = statistics.median(scores)
+        else:
+            self.median_score = 0.0
 
         self.save()
 
-    def get_current_term(school, grade):
-        """ Get the current term based on today's date. """
-        today = date.today()
-        current_term = Term.objects.filter(school=school, grade=grade, start_date__lte=today, end_date__gte=today).first()
-        return current_term
-
     def update_students_failing_the_class(self):
-        """ Update the list of students failing the class based on their termly performance. """
-        current_term = self.get_current_term(self.school, self.grade)
+        current_term = term_utilities.get_current_term(self.school, self.grade)
         if not current_term:
-            raise ValidationError(_('could not update students failing the classroom, no term was found for your school and grade for the current period.'))
+            raise ValidationError(_('could not update performance metrics. no term found for the current period.'))
 
-        failing_students = []
+        # Query to get students who are failing the subject in the current term
+        failing_students_account_ids = self.student_performances.filter(student__in=self.students.all(), term=current_term, score__lte=self.subject.pass_mark).values_list('student__account_id', flat=True)
 
-        for student in self.students.all():
-            # Check if there are assessments for the subject in the current term
-            assessments = student.assessments.filter(subject=self.subject, term=current_term, formal=True, grades_released=True)
-            if not assessments.exists():
-                continue
-
-            # Get or create the student's subject score for the current term and subject
-            subject_score, created = StudentSubjectScore.objects.get_or_create(student=student, subject=self.subject, term=current_term, defaults={'grade': self.grade, 'school': self.school})
-
-            # Check if the student's score is below the pass mark
-            if subject_score.score < self.subject.pass_mark:
-                failing_students.append(student)
+        # Fetch student instances
+        failing_students = Student.objects.filter(account_id__in=failing_students_account_ids)
 
         # Update the students_failing_the_class field
         self.students_failing_the_class.set(failing_students)
         self.save()
 
     def update_students(self, students_list=None, remove=False):
-        """
-        Add or remove the provided list of students (by account_id) to/from the class and update the students count.
-
-        Args:
-            students_list (list): List of student account IDs.
-            remove (bool): Indicates if students should be removed.
-        """
         if students_list:
             # Retrieve CustomUser instances corresponding to the account_ids
-            students = self.school.students.prefetch_related('enrolled_classes__subject').filter(account_id__in=students_list)
+            students = self.grade.students.prefetch_related('enrolled_classes__subject').filter(account_id__in=students_list)
 
             if not students.exists():
-                return "no valid students found with the provided account IDs."
+                return "no valid students were found in the grade with the provided account IDs."
             
             if remove:
                 # Check if students to be removed are actually in the class
@@ -145,20 +143,23 @@ class Classroom(models.Model):
             else:
                 # Check if students are already in a class of the same subject
                 if self.subject:
-                    students_in_subject = self.grade.students.filter(account_id__in=students_list, enrolled_classes__subject=self.subject).values_list('account_id', flat=True)
-                    if students_in_subject:
-                        return f'the following students are already assigned to a class in the provided subject and grade: {", ".join(students_in_subject)}'
+                    students_in_subject_classrooms = self.grade.students.filter(account_id__in=students_list, enrolled_classes__subject=self.subject).values_list('surname', 'name')
+                    if students_in_subject_classrooms:
+                        student_names = [f"{surname} {name}" for surname, name in students_in_subject_classrooms]
+                        return f'the following students are already assigned to a classroom in the provided subject and grade: {", ".join(student_names)}'
 
                 # Check if students are already in any register class
-                if self.register_class:
-                    students_in_register_classes = self.grade.students.filter(account_id__in=students_list, enrolled_classes__register_class=True).values_list('account_id', flat=True)
-                    if students_in_register_classes:
-                        return f'the following students are already assigned to a register class: {", ".join(students_in_register_classes)}'
+                elif self.register_class:
+                    students_in_register_classrooms = self.grade.students.filter(account_id__in=students_list, enrolled_classes__register_class=True).values_list('surname', 'name')
+                    if students_in_register_classrooms:
+                        student_names = [f"{surname} {name}" for surname, name in students_in_register_classrooms]
+                        return f'the following students are already assigned to a register classroom: {", ".join(student_names)}'
 
                 # Check if students are already in this specific class
-                existing_students = self.students.filter(account_id__in=students_list).values_list('account_id', flat=True)
-                if existing_students:
-                    return f'the following students are already in this class: {", ".join(existing_students)}'
+                students_in_provided_classroom = self.students.filter(account_id__in=students_list).values_list('surname', 'name')
+                if students_in_provided_classroom:
+                    student_names = [f"{surname} {name}" for surname, name in students_in_provided_classroom]
+                    return f'the following students are already in this class: {", ".join(student_names)}'
 
             # Proceed with adding or removing students
             if remove:
@@ -179,25 +180,21 @@ class Classroom(models.Model):
                 self.subject.save()
             
         else:
-            return "Validation error: No students were provided."
+            raise ValueError("could not proccess your request, no students were provided to be added or removed from the classroom. please provide a valid list of students and try again")
 
     def update_teacher(self, teacher):
-        """
-        Update the class's teacher and update the subject's teacher count if applicable.
-        This method ensures that a teacher can only be assigned to one register class per school.
-        """
         try:
             if teacher:
                 # Retrieve the CustomUser instance corresponding to the account_id
-                teacher = Teacher.objects.prefetch_related('taught_classes__subject').get(account_id=teacher, school=self.school)
+                teacher = Teacher.objects.get(account_id=teacher, school=self.school)
             
                 # Check if the teacher is already assigned to another register class in the school
                 if self.register_class and teacher.taught_classes.filter(register_class=True).exclude(pk=self.pk).exists():
-                    raise ValueError("the provided teacher is already assigned to a register class. teachers can only be assigned to one register class in a school")
+                    raise ValueError("could not proccess your request, the provided teacher is already assigned to a register classroom. teachers can only be assigned to one register classroom in a school")
                 
                 # Check if the teacher is already assigned to another class in the subject
                 elif self.subject and teacher.taught_classes.filter(subject=self.subject).exclude(pk=self.pk).exists():
-                    raise ValueError("the provided teacher is already assigned to a class in the provided subject and grade. teachers can not teach more than one class in the same grade and subject")
+                    raise ValueError("could not proccess your request, the provided teacher is already assigned to a classroom in the provided subject and grade. teachers can not teach more than one classroom in the same grade and subject")
                 
                 # Assign the teacher to the classroom
                 self.teacher = teacher

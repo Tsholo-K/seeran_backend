@@ -2,6 +2,8 @@
 import uuid
 from datetime import timedelta
 from decimal import Decimal
+
+# logging
 # import logging
 
 # django 
@@ -33,6 +35,11 @@ class Term(models.Model):
 
     # grade linked to
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='terms')
+
+    # Performance metrics
+    pass_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    average_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    median_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
     # The school the term is linked to
     school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='terms')

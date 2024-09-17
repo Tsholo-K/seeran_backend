@@ -12,7 +12,7 @@ from channels.db import database_sync_to_async
 # models
 from grades.models import Grade
 from subjects.models import Subject
-from classes.models import Classroom
+from classrooms.models import Classroom
 from assessments.models import Assessment, Submission
 from student_group_timetables.models import StudentGroupTimetable
 

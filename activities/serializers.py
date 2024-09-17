@@ -7,7 +7,7 @@ from rest_framework import serializers
 
 # models
 from .models import Activity
-from classes.models import Classroom
+from classrooms.models import Classroom
 
 # serializers
 from users.serializers.general_serializers import SourceAccountSerializer

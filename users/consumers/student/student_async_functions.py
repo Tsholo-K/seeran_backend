@@ -15,10 +15,10 @@ from django.utils.dateparse import parse_time
 # models 
 from users.models import BaseUser
 from grades.models import Grade
-from classes.models import Classroom
+from classrooms.models import Classroom
 
 # serilializers
-from classes.serializers import ClassSerializer, TeacherClassesSerializer, TeacherRegisterClassSerializer
+from classrooms.serializers import ClassSerializer, TeacherClassesSerializer, TeacherRegisterClassSerializer
 
 # utility functions 
 

@@ -11,7 +11,7 @@ from django.utils.translation import gettext as _
 
 # models 
 from users.models import BaseUser, Teacher, Student
-from classes.models import Classroom
+from classrooms.models import Classroom
 from attendances.models import Attendance
 from assessments.models import Assessment
 from transcripts.models import Transcript

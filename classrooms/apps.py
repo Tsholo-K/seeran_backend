@@ -3,7 +3,7 @@ from django.apps import AppConfig
 
 class ClassesConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "classes"
+    name = "classrooms"
 
     """
         classes.signals is imported in the ready method of MyAppConfig. 
@@ -11,4 +11,4 @@ class ClassesConfig(AppConfig):
         so it`s a good place to import your signal receivers
     """
     def ready(self):
-        import classes.signals
+        import classrooms.signals

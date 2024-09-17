@@ -10,7 +10,7 @@ from users.models import BaseUser, Student
 from grades.models import Grade
 from terms.models import Term
 from subjects.models import Subject
-from classes.models import Classroom
+from classrooms.models import Classroom
 from assessments.models import Assessment
 from transcripts.models import Transcript
 from assessments.models import Topic
@@ -20,7 +20,7 @@ from grades.serializers import UpdateGradeSerializer, GradeDetailsSerializer
 from schools.serializers import UpdateSchoolAccountSerializer, SchoolDetailsSerializer
 from terms.serializers import UpdateTermSerializer, TermSerializer
 from subjects.serializers import UpdateSubjectSerializer, SubjectDetailsSerializer
-from classes.serializers import UpdateClassSerializer
+from classrooms.serializers import UpdateClassSerializer
 from assessments.serializers import AssessmentUpdateSerializer
 from transcripts.serializers import TranscriptUpdateSerializer
 

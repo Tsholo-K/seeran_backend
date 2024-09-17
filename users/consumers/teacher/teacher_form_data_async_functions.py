@@ -7,7 +7,7 @@ from django.utils.translation import gettext as _
 
 # models 
 from users.models import Teacher
-from classes.models import Classroom
+from classrooms.models import Classroom
 from assessments.models import Assessment
 from attendances.models import Attendance
 

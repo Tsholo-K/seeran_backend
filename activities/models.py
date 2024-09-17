@@ -8,7 +8,7 @@ from django.utils.translation import gettext_lazy as _
 # models
 from users.models import BaseUser, Student
 from schools.models import School
-from classes.models import Classroom
+from classrooms.models import Classroom
 
 
 class Activity(models.Model):

@@ -16,7 +16,7 @@ from grades.models import Grade
 from announcements.models import Announcement
 from terms.models import Term
 from subjects.models import Subject
-from classes.models import Classroom
+from classrooms.models import Classroom
 from attendances.models import Attendance
 from assessments.models import Assessment, Submission
 from transcripts.models import Transcript
@@ -32,7 +32,7 @@ from users.serializers.parents.parents_serializers import ParentAccountCreationS
 from grades.serializers import GradeCreationSerializer
 from terms.serializers import  TermCreationSerializer
 from subjects.serializers import  SubjectCreationSerializer
-from classes.serializers import ClassCreationSerializer
+from classrooms.serializers import ClassCreationSerializer
 from assessments.serializers import AssessmentCreationSerializer
 from transcripts.serializers import TranscriptCreationSerializer
 from activities.serializers import ActivityCreationSerializer

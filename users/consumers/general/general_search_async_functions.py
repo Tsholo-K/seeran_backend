@@ -9,7 +9,7 @@ from django.utils.translation import gettext as _
 # models 
 from users.models import BaseUser, Principal, Admin, Teacher, Student, Parent
 from grades.models import Grade
-from classes.models import Classroom
+from classrooms.models import Classroom
 from email_bans.models import EmailBan
 from student_group_timetables.models import StudentGroupTimetable
 from daily_schedules.models import DailySchedule
@@ -21,7 +21,7 @@ from activities.models import Activity
 from users.serializers.general_serializers import DisplayAccountDetailsSerializer, SourceAccountSerializer
 from users.serializers.students.students_serializers import  StudentSourceAccountSerializer
 from users.serializers.parents.parents_serializers import ParentAccountSerializer
-from classes.serializers import ClassSerializer
+from classrooms.serializers import ClassSerializer
 from email_bans.serializers import EmailBanSerializer
 from student_group_timetables.serializers import StudentGroupScheduleSerializer
 from daily_schedules.serializers import DailyScheduleSerializer

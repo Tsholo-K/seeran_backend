@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 # models
 from users.models import BaseUser, Student
 from schools.models import School
-from classes.models import Classroom
+from classrooms.models import Classroom
 
 
 class Attendance(models.Model):

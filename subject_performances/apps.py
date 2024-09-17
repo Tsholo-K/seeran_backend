@@ -3,4 +3,4 @@ from django.apps import AppConfig
 
 class SubjectScoresConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'subject_scores'
+    name = 'subject_performances'

@@ -12,7 +12,7 @@ from users.models import Principal, Admin, Teacher, Student
 from schools.models import School
 from balances.models import Balance
 from grades.models import Grade
-from classes.models import Classroom
+from classrooms.models import Classroom
 
 # serializers
 from users.serializers.principals.principals_serializers import PrincipalAccountCreationSerializer
