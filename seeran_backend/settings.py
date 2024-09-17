@@ -252,9 +252,13 @@ CELERY_IMPORTS = (
 CELERY_BROKER_URL = 'rediss://' + config('CACHE_LOCATION') + ':6378'
 CELERY_RESULT_BACKEND = None  # Do not store task results
 CELERY_BROKER_TRANSPORT_OPTIONS = {
-    'ssl_cert_reqs': ssl.CERT_REQUIRED,  # Ensure SSL certificate is required
-    'ssl_ca_certs': config('SERVER_CA_CERT'),  # Path to CA certificates
+    'ssl': {
+        'ssl_cert_reqs': ssl.CERT_REQUIRED,  # Ensure SSL certificate verification is required
+        'ssl_ca_certs': config('SERVER_CA_CERT'),  # Path to your CA certificate
+    }
 }
+
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
