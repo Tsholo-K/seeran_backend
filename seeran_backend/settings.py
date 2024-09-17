@@ -71,6 +71,7 @@ INSTALLED_APPS = [
     # third party apps
     'corsheaders', # handle cors 
     'django_redis', # redis caching
+    'django_celery_results', # celery db comun
     'channels', # django channels 
     # 'storages', # allows communication with google storage bucket
     # 'django_celery_beat',
@@ -250,7 +251,9 @@ CELERY_IMPORTS = (
 
 # Celery settings
 CELERY_BROKER_URL = 'rediss://' + config('CACHE_LOCATION') + ':6378'
-CELERY_RESULT_BACKEND = None  # Do not store task results
+CELERY_RESULT_BACKEND = 'django-db'  # Store task results in Django's database
+CELERY_TASK_RESULT_EXPIRES = 3600  # Time in seconds after which task results will expire
+
 CELERY_BROKER_TRANSPORT_OPTIONS = {
     'ssl': {
         'ssl_cert_reqs': ssl.CERT_REQUIRED,  # Ensure SSL certificate verification is required
