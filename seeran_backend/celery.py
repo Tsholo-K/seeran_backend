@@ -1,6 +1,8 @@
 # python
 from __future__ import absolute_import, unicode_literals
 import os
+from decouple import config
+import ssl
 
 # celery
 from celery import Celery
@@ -17,3 +19,10 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 
 # Load task modules from all registered Django app configs.
 app.autodiscover_tasks()
+app.conf.update(
+    broker_url='rediss://' + config('CACHE_LOCATION') + ':6378',
+    result_backend=None,
+    broker_transport_options={
+        'ssl_cert_reqs': ssl.CERT_REQUIRED
+    },
+)

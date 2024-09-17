@@ -242,11 +242,6 @@ DATABASES = {
 # }
 
 
-# Celery settings
-CELERY_BROKER_URL = 'rediss://' + config('CACHE_LOCATION') + ':6378'
-CELERY_RESULT_BACKEND = 'rediss://' + config('CACHE_LOCATION') + ':6378'
-CELERY_REDIS_SSL_CERT_REQS='CERT_REQUIRED'
-
 CELERY_IMPORTS = (
     'assessments.tasks',
     'subject_performances.tasks',
