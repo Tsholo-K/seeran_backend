@@ -1,9 +1,8 @@
 # python
+import ssl
 from pathlib import Path
 from datetime import timedelta
 from decouple import config
-import os
-
 
 # celery
 from celery.schedules import crontab
@@ -249,6 +248,13 @@ CELERY_IMPORTS = (
     # Add other app tasks here
 )
 
+# Celery settings
+CELERY_BROKER_URL = 'rediss://' + config('CACHE_LOCATION') + ':6378'
+CELERY_RESULT_BACKEND = None  # Do not store task results
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    'ssl_cert_reqs': ssl.CERT_REQUIRED,  # Ensure SSL certificate is required
+    'ssl_ca_certs': config('SERVER_CA_CERT'),  # Path to CA certificates
+}
 
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
