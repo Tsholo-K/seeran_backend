@@ -63,7 +63,7 @@ class StudentConsumer(AsyncWebsocketConsumer):
             return await self.send(text_data=json.dumps({'error': 'invalid request..'}))
         
         if action == 'AUTHENTICATE' and description == 'socket_authentication':
-            return await self.send(text_data=json.dumps({'authenticated': 'socket connection valid andauthenticated'}))
+            return await self.send(text_data=json.dumps({'authenticated': 'socket connection valid and authenticated'}))
 
         response = await self.handle_request(action, description, details, user, access_token)
         
