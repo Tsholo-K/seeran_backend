@@ -26,14 +26,6 @@ app.conf.update(
     result_backend=None,  # Do not store task results
     broker_transport_options={
         'ssl_cert_reqs': ssl.CERT_REQUIRED,  # Ensure SSL certificate is required
-    },
-)
-
-app.conf.update(
-    broker_url='rediss://' + config('CACHE_LOCATION') + ':6378',
-    result_backend=None,  # Do not store task results
-    broker_transport_options={
-        'ssl_cert_reqs': ssl.CERT_REQUIRED,  # Ensure SSL certificate is required
         'ssl_ca_certs': config('SERVER_CA_CERT'),  # Path to CA certificates
     },
 )
