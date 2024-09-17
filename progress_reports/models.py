@@ -11,7 +11,7 @@ from users.models import Student
 from schools.models import School
 from grades.models import Grade
 from terms.models import Term
-from subject_performances.models import StudentSubjectScore
+from subject_performances.models import StudentSubjectPerformance
 
 
 class ProgressReport(models.Model):
@@ -19,7 +19,7 @@ class ProgressReport(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='reports')
 
     # The subject scores associated with this report
-    subject_scores = models.ManyToManyField(StudentSubjectScore, related_name='report')
+    subject_scores = models.ManyToManyField(StudentSubjectPerformance, related_name='report')
     # The academic term for which the report is for
     term = models.ForeignKey(Term, editable=False, on_delete=models.SET_NULL, related_name='reports', null=True)
     
