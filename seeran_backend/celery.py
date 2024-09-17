@@ -1,15 +1,15 @@
 # python
-from __future__ import absolute_import, unicode_literals
+# from __future__ import absolute_import, unicode_literals
 import os
 
 # celery
-from celery import Celery as tasks
+from celery import Celery
 
 
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'seeran_backend.settings')
 
-app = tasks('seeran_backend')
+app = Celery('seeran_backend')
 
 # Using a string here means the worker doesn't have to serialize
 # the configuration object to child processes.
