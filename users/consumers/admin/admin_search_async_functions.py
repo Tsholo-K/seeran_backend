@@ -348,7 +348,7 @@ def search_grade_register_classes(user, role, details):
     except Exception as e:
         # Handle any unexpected errors with a general error message
         return {'error': str(e)}
-    
+
 
 @database_sync_to_async
 def search_term_details(user, role, details):
@@ -462,7 +462,7 @@ def search_assessments(user, role, details):
             return {'error': response}
         
         # Determine the classroom based on the request details
-        if details.get('grade') and  details.get('subject'):
+        if details.get('grade') and details.get('subject'):
             grade = requesting_account.school.grades.get(grade_id=details['grade'])
             subject = grade.subjects.get(subject_id=details['subject'])
 

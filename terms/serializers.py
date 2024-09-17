@@ -52,6 +52,8 @@ class UpdateTermSerializer(serializers.ModelSerializer):
 class TermsSerializer(serializers.ModelSerializer):
             
     term = serializers.SerializerMethodField()
+    start_date = serializers.DateField(format='%d-%m-%Y')
+    end_date = serializers.DateField(format='%d-%m-%Y')
 
     class Meta:
         model = Term
@@ -76,7 +78,9 @@ class FormTermsSerializer(serializers.ModelSerializer):
 class TermSerializer(serializers.ModelSerializer):
             
     term = serializers.SerializerMethodField()
-
+    start_date = serializers.DateField(format='%d-%m-%Y')
+    end_date = serializers.DateField(format='%d-%m-%Y')
+    
     class Meta:
         model = Term
         fields = ['term', 'weight', 'start_date', 'end_date', 'school_days']
