@@ -38,7 +38,6 @@ INSTALLED_APPS = [
     # 'django.contrib.staticfiles',  Can be removed if not using static files
 
     # project apps
-    'seeran_backend',
     'authentication',
     'permissions',
     'audit_logs',
