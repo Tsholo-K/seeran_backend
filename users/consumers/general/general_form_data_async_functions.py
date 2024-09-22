@@ -1,7 +1,3 @@
-# python 
-
-# httpx
-
 # channels
 from channels.db import database_sync_to_async
 
@@ -9,23 +5,16 @@ from channels.db import database_sync_to_async
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
-# simple jwt
-
 # models 
-from users.models import BaseUser, Principal, Admin, Teacher
+from users.models import BaseUser
 from classrooms.models import Classroom
 from attendances.models import Attendance
 
 # serializers
 from users.serializers.students.students_serializers import StudentSourceAccountSerializer
-from terms.serializers import FormTermsSerializer
 
 # mappings
 from users.maps import role_specific_maps
-
-# utlity functions
-from permissions.utils import has_permission
-from audit_logs.utils import log_audit
     
 
 @database_sync_to_async

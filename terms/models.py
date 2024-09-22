@@ -31,15 +31,10 @@ class Term(models.Model):
     end_date = models.DateField()
 
     # number of school days in the term
-    school_days = models.IntegerField(default=0)
+    school_days = models.PositiveIntegerField(default=0)
 
     # grade linked to
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='terms')
-
-    # Performance metrics
-    pass_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    average_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    median_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
     # The school the term is linked to
     school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='terms')
@@ -50,32 +45,14 @@ class Term(models.Model):
     term_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
-        ordering = ['term']
-        unique_together = ('term', 'grade', 'school')
-        indexes = [models.Index(fields=['term', 'school'])]
+        constraints = [
+            models.UniqueConstraint(fields=['term', 'grade', 'school'], name='unique_grade_term')
+        ]
+        ordering = ['-start_date']
+        indexes = [models.Index(fields=['grade', 'school'])]
 
     def __str__(self):
         return f"Term {self.term}"
-    
-    def clean(self):
-        """
-        Ensure that the term dates do not overlap with other terms in the same school and validate term dates.
-        """
-        if self.start_date >= self.end_date:
-            raise ValidationError(_('a terms start date must be before it\'s end date'))
-
-        overlapping_terms = Term.objects.filter(school=self.school, grade=self.grade, start_date__lt=self.end_date, end_date__gt=self.start_date).exclude(pk=self.pk)
-        if overlapping_terms.exists():
-            raise ValidationError(_('the provided start and end dates for the term overlap with one or more existing terms'))
-        
-        total_weight = Term.objects.filter(school=self.school, grade=self.grade).exclude(pk=self.pk).aggregate(total_weight=models.Sum('weight'))['total_weight'] or '0.00'
-
-        # Ensure the total weight does not exceed 100%
-        if Decimal(total_weight) + Decimal(self.weight) > Decimal('100.00') or Decimal(total_weight) + Decimal(self.weight) < Decimal('0.00'):
-            raise ValidationError(_('The total weight of all terms in the grade should be between 0% and 100% for any given school calendar year.'))
-        
-        if not self.school_days:
-            self.school_days = self.calculate_total_school_days()
         
     def save(self, *args, **kwargs):
         """
@@ -94,19 +71,36 @@ class Term(models.Model):
             super().save(*args, **kwargs)
         except IntegrityError as e:
             # Check if the error is related to unique constraints
-            if 'unique constraint' in str(e).lower():
-                raise ValidationError(_('a term with the provided term identifier in the specified grade is already there for your school. duplicate terms within the same grade and school is not permitted.'))
+            if 'unique_grade_term' in str(e).lower():
+                raise ValidationError(_('a term with the provided term identifier in the specified grade already exists for your school. duplicate terms within the same grade and school is not permitted.'))
             else:
                 # Re-raise the original exception if it's not related to unique constraints
                 raise
 
         except Exception as e:
             raise ValidationError(_(str(e).lower()))
+    
+    def clean(self):
+        """
+        Ensure that the term dates do not overlap with other terms in the same school and validate term dates.
+        """
+        if self.start_date >= self.end_date:
+            raise ValidationError(_('a terms start date must be before it\'s end date'))
+
+        overlapping_terms = Term.objects.filter(school=self.school, grade=self.grade, start_date__lt=self.end_date, end_date__gt=self.start_date).exclude(pk=self.pk)
+        if overlapping_terms.exists():
+            raise ValidationError(_('the provided start and end dates for the term overlap with one or more existing terms'))
+        
+        total_weight = Term.objects.filter(school=self.school, grade=self.grade).exclude(pk=self.pk).aggregate(total_weight=models.Sum('weight'))['total_weight'] or Decimal('0.00')
+
+        # Ensure the total weight does not exceed 100%
+        if total_weight + self.weight > Decimal('100.00') or total_weight + self.weight < Decimal('0.00'):
+            raise ValidationError(_('The total weight of all terms in the grade should be between 0% and 100% for any given school calendar year.'))
+        
+        if not self.school_days:
+            self.school_days = self.calculate_total_school_days()
 
     def calculate_total_school_days(self):
-        """
-        Calculate the total number of school days (weekdays) between start_date and end_date, excluding weekends.
-        """
         start_date = self.start_date
         end_date = self.end_date
 
@@ -119,3 +113,4 @@ class Term(models.Model):
             current_date += timedelta(days=1)
 
         return total_days
+

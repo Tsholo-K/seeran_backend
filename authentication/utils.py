@@ -10,8 +10,6 @@ from decouple import config
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 
-# django
-
 
 def send_otp_email(user, otp, reason):
     """

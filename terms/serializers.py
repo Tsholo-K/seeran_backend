@@ -1,5 +1,3 @@
-# python 
-
 # django
 from django.utils.translation import gettext_lazy as _
 
@@ -11,9 +9,6 @@ from rest_framework.validators import UniqueTogetherValidator
 from .models import Term
 from grades.models import Grade
 from schools.models import School
-
-# serializers
-from classrooms.serializers import ClassesSerializer
 
 
 class TermCreationSerializer(serializers.ModelSerializer):

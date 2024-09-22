@@ -12,7 +12,6 @@ from terms.models import Term
 from subjects.models import Subject
 from classrooms.models import Classroom
 from assessments.models import Assessment
-from transcripts.models import Transcript
 from assessments.models import Topic
 
 # serilializers
@@ -35,6 +34,9 @@ from users import utils as users_utilities
 from permissions import utils as permissions_utilities
 from audit_logs import utils as audits_utilities
 
+
+# tasks
+from assessments.tasks import release_grades_task
 
 @database_sync_to_async
 def update_school_account(user, role, details):
@@ -632,23 +634,10 @@ def release_assessment_grades(user, role, details):
 
         # Fetch the assessment from the requesting user's school
         assessment = requesting_account.school.assessments.get(assessment_id=details.get('assessment'))
-        
-        with transaction.atomic():
-            assessment.release_grades()
+        release_grades_task.delay(assessment.id)
 
-            not_submitted_students = assessment.submissions.filter(status='NOT_SUBMITTED').only('student')
-
-            not_submitted = []
-            for submission in not_submitted_students:
-                not_submitted.append(Transcript(assessment=assessment, student=submission.student, score=0, weighted_score=0))
-
-            Transcript.objects.bulk_create(not_submitted)
-
-            assessment.update_pass_rate_and_average_score()
-            assessment.subject.update_pass_rate_and_average_score()
-
-            response = f"grades for assessment with assessment ID {assessment.unique_identifier} have been released, all the students who have not submitted the assessment have been graded a zero for the assessment."
-            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='UPDATED', response=response, school=assessment.school)
+        response = f"the grades release process for assessment with assessment ID {assessment.unique_identifier} has been triggered, results will be made available once performance metrics have been calculated and updated."
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='UPDATED', response=response, school=assessment.school)
 
         return {"message": response}
 

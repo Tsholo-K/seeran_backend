@@ -1,15 +1,9 @@
-# python 
-
-# httpx
-
 # channels
 from channels.db import database_sync_to_async
 
 # django
 from django.db.models import Q
 from django.utils.translation import gettext as _
-
-# simple jwt
 
 # models 
 from users.models import BaseUser, Principal, Admin, Teacher, Student, Parent
@@ -20,8 +14,6 @@ from chats.models import ChatRoom
 from email_bans.serializers import EmailBansSerializer
 from announcements.serializers import AnnouncementsSerializer
 from chats.serializers import ChatSerializer
-
-# utility functions 
 
 # mappings
 from users.maps import role_specific_maps

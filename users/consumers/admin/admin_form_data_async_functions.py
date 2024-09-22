@@ -13,7 +13,8 @@ from channels.db import database_sync_to_async
 from grades.models import Grade
 from subjects.models import Subject
 from classrooms.models import Classroom
-from assessments.models import Assessment, Submission
+from assessments.models import Assessment
+from submissions.models import Submission
 from student_group_timetables.models import StudentGroupTimetable
 
 # serilializers

@@ -5,7 +5,6 @@ import uuid
 # django
 from django.db import models
 from django.utils import timezone
-from django.db import IntegrityError
 
 # models 
 from users.models import BaseUser

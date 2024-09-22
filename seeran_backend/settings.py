@@ -4,8 +4,6 @@ from pathlib import Path
 from datetime import timedelta
 from decouple import config
 
-# celery
-from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -49,12 +47,14 @@ INSTALLED_APPS = [
     'chats',
     'grades',
     'terms',
+    'term_subject_performances',
     'subjects',
-    'subject_performances',
+    'student_subject_performances',
     'classrooms',
     'attendances',
     'emergencies',
     'assessments',
+    'submissions',
     'topics',
     'transcripts',
     'progress_reports',

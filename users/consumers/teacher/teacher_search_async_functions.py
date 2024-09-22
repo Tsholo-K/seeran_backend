@@ -27,7 +27,6 @@ from audit_logs import utils as audits_utilities
 from attendances import utils as attendances_utilities
 
 
-
 @database_sync_to_async
 def search_assessments(user, details):
     try:

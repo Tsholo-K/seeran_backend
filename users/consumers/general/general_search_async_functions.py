@@ -41,8 +41,6 @@ from users.complex_queries import queries
 
 # utility functions 
 from users import utils as users_utilities
-from permissions import utils as permissions_utilities
-from audit_logs import utils as audits_utilities
 
 
 @database_sync_to_async

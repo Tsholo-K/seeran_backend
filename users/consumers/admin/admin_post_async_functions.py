@@ -12,13 +12,14 @@ from django.core.exceptions import ValidationError
 
 # models 
 from users.models import BaseUser, Principal, Admin, Teacher, Student, Parent
-from grades.models import Grade
 from announcements.models import Announcement
+from grades.models import Grade
 from terms.models import Term
 from subjects.models import Subject
 from classrooms.models import Classroom
 from attendances.models import Attendance
-from assessments.models import Assessment, Submission
+from assessments.models import Assessment
+from submissions.models import Submission
 from transcripts.models import Transcript
 from assessments.models import Topic
 from activities.models import Activity

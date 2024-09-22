@@ -1,6 +1,3 @@
-# python
-import json
-
 # simlpe jwt
 from rest_framework_simplejwt.tokens import AccessToken
 

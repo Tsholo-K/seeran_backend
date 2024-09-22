@@ -1,6 +1,5 @@
 # python 
 import uuid
-# import logging
 
 # django 
 from django.db import models, IntegrityError
@@ -10,7 +9,6 @@ from django.core.exceptions import ValidationError
 # models
 from schools.models import School
 
-# logger = logging.getLogger(__name__)
 
 # grade choices
 SCHOOL_GRADES_CHOICES = [

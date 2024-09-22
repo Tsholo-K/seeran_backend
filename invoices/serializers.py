@@ -8,7 +8,6 @@ from .models import Invoice
 from users.serializers.general_serializers import SourceAccountSerializer
 
 
-
 class InvoicesSerializer(serializers.ModelSerializer):
     
     class Meta:

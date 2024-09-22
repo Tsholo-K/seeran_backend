@@ -10,9 +10,6 @@ from django.core.exceptions import ValidationError
 from users.models import Admin, Teacher
 from schools.models import School
 
-# utility functions
-
-
 
 class AdminPermissionGroup(models.Model):
     name = models.CharField(max_length=64)

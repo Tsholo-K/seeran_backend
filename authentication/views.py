@@ -1,5 +1,3 @@
-# python
-
 # rest framework
 from rest_framework import status
 from rest_framework.response import Response
@@ -17,11 +15,10 @@ from django.core.validators import validate_email
 from users.models import BaseUser
 from access_tokens.models import AccessToken
 
-# serializers
-
 # utility functions 
 from .utils import generate_token, generate_otp, verify_user_otp, validate_names, send_otp_email
 from access_tokens.utils import manage_user_sessions
+
 # custom decorators
 from .decorators import token_required
 

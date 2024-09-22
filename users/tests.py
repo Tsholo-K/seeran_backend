@@ -1,13 +1,13 @@
 # python
 
-# django
-from django.test import TestCase
-from django.core.exceptions import ValidationError
+# # django
+# from django.test import TestCase
+# from django.core.exceptions import ValidationError
 
-# models
-from .models import BaseUser, Principal, Admin, Teacher, Parent, Student
-from schools.models import School
-from grades.models import Grade
+# # models
+# from .models import BaseUser, Principal, Admin, Teacher, Parent, Student
+# from schools.models import School
+# from grades.models import Grade
 
 
 # class CustomUserManagerTest(TestCase):

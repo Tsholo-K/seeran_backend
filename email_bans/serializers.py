@@ -1,5 +1,3 @@
-# python 
-
 # rest framework
 from rest_framework import serializers
 

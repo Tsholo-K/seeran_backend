@@ -5,13 +5,14 @@ import uuid
 from django.db import models, IntegrityError
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
+from django.apps import apps
 
 # models
 from users.models import Student
 from schools.models import School
 from grades.models import Grade
 from terms.models import Term
-from subject_performances.models import StudentSubjectPerformance
+from student_subject_performances.models import StudentSubjectPerformance
 
 
 class ProgressReport(models.Model):
@@ -41,7 +42,7 @@ class ProgressReport(models.Model):
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='progress_reports')
 
     # The school where the report is generated
-    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='term_reports')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='progress_reports')
     
     last_updated = models.DateTimeField(auto_now=True)
 
@@ -49,9 +50,11 @@ class ProgressReport(models.Model):
     report_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
 
     class Meta:
-        unique_together = ('student', 'term', 'school')
+        constraints = [
+            models.UniqueConstraint(fields=['student', 'term', 'grade', 'school'], name='unique_student_term_grade_progress_report')
+        ]
         ordering = ['-term__start_date']
-        indexes = [models.Index(fields=['student', 'term', 'school'])]  # Index for performance
+        indexes = [models.Index(fields=['student', 'term', 'school'])]
 
     def __str__(self):
         return f"Report - {self.student} - Term {self.term}"
@@ -73,99 +76,51 @@ class ProgressReport(models.Model):
         try:
             super().save(*args, **kwargs)
         except IntegrityError as e:
-            if 'unique constraint' in str(e):
+            if 'unique_student_term_grade_progress_report' in str(e):
                 raise IntegrityError(_('a student cannot have duplicate report cards for the same term. Consider regenerating a new report card for the term, which will discard the current one.'))
             else:
                 raise
 
-    def generate_subject_scores(self):
-        """
-        Get or create subject scores for each subject the student is enrolled in for the current term,
-        and add these scores to the report's subject_scores field.
-        """
-        # Get the list of subjects the student is enrolled in
-        subjects = self.student.enrolled_classes.values_list('subject', flat=True).distinct()
-        
-        # Create and collect SubjectScore instances for each subject
-        subject_scores = []
-        for subject in subjects:            
-            # Get or create a SubjectScore instance
-            subject_score, created = StudentSubjectScore.objects.get_or_create(student=self.student, term=self.term, subject=subject, defaults={'grade': self.grade, 'school': self.school})
-            subject_score.determine_pass_status()
-
-            # Collect the created or existing SubjectScore instance
-            subject_scores.append(subject_score)
-        
-        # Add the generated SubjectScore instances to the report's subject_scores field
-        self.subject_scores.set(subject_scores)
-
-    def determine_pass_status(self):
-        """
-        Determine if the student has passed the term based on their subject scores and pass mark.
-        If it's a year-end report, consider all terms in the current academic year.
-        """
+    def generate_progress_report(self):
         failed_subjects = 0
         failed_major_subjects = 0
 
         if self.year_end_report:
+            # Get the Subject model dynamically
+            Subject = apps.get_model('subjects', 'Subject')
             # Get all subjects the student is enrolled in
-            subjects = self.student.enrolled_classes.values_list('subject', flat=True).distinct()
+            students_subjects = Subject.objects.filter(id__in=self.student.subject_performances.values('subject_id', flat=True))
 
-            for subject in subjects:
-                total_subjects_weighted_score = 0
-                total_terms_weight = 0
-
-                # Calculate total weighted score for each subject across all terms
-                terms = Term.objects.filter(start_date__year=self.term.start_date.year, school=self.school)
-                for term in terms:
-                    try:
-                        # Get or create the student's subject score for the current term and subject
-                        subject_score, created = StudentSubjectScore.objects.get_or_create(student=self.student, subject=subject, term=term, defaults={'grade': self.grade, 'school': self.school})
-                        total_subjects_weighted_score += subject_score.weighted_score
-                        total_terms_weight += term.weight
-                    except StudentSubjectScore.DoesNotExist:
-                        continue
+            for subject in students_subjects:
+                performance = self.student.subject_performances.filter(subject=subject, term__start_date__year=self.term.start_date.year).aggregate(total_score=models.Sum('weighted_score'))['total_score']
 
                 # Determine if the subject has been failed based on the aggregated weighted score
-                if total_terms_weight > 0 and total_subjects_weighted_score / total_terms_weight < subject.pass_mark:
+                if performance and performance > 0 and performance < subject.pass_mark:
                     failed_subjects += 1
                     if subject.major_subject:
                         failed_major_subjects += 1
+
         else:
-            for subject_score in self.subject_scores.all():
-                if not subject_score.passed:
+            for performance in self.student.subject_performances.filter(term=self.term):
+                if not performance.passed:
                     failed_subjects += 1
-                    if subject_score.subject.major_subject:
+                    if performance.subject.major_subject:
                         failed_major_subjects += 1
 
-        if failed_major_subjects > self.grade.major_subjects or failed_subjects >= self.grade.none_major_subjects:
-            self.passed = False
-        else:
-            self.passed = True
+        self.passed = False if failed_major_subjects >= self.grade.major_subjects or failed_subjects >= self.grade.none_major_subjects else True
 
-    def calculate_days_absent(self):
-        """
-        Calculate the total number of days a student was absent during the term.
-        """
-        absences = self.student.attendance.filter(date__date__range=(self.term.start_date.date(), self.term.end_date.date())).values('date').distinct()
-        self.days_absent = absences.count()
+        attendance_data = self.student.aggregate(
+            absences=models.Count('absences'),
+            late_arrivals=models.Count('late_arrival'),
+        )
 
-    def calculate_days_late(self):
-        """
-        Calculate the total number of days a student was late during the term.
-        """
-        # Assuming term has start_date and end_date fields
-        late_arrivals = self.student.attendance.filter(late_students=self.student, date__date__range=(self.term.start_date.date(), self.term.end_date.date())).values('date').distinct()
-        self.days_late = late_arrivals.count()
-
-    def calculate_attendance_percentage(self):
-        """
-        Calculate the attendance percentage for this report based on days absent and total school days.
-        """
         total_school_days = self.term.school_days
         if not total_school_days:
             self.term.calculate_total_school_days()
             self.term.save()
             total_school_days = self.term.school_days
-        self.attendance_percentage = (1 - (self.days_absent / total_school_days)) * 100
+
+        self.attendance_percentage = (1 - (attendance_data['absences'] / total_school_days)) * 100
+
+        self.save()
 

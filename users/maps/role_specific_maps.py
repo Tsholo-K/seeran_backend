@@ -2,17 +2,12 @@
 from users.models import Founder, Principal, Admin, Teacher, Student, Parent
 
 # serializers
-from users.serializers.general_serializers import DisplayAccountDetailsSerializer, SourceAccountSerializer
 from users.serializers.founders.founders_serializers import FounderSecurityInformationSerializer
 from users.serializers.principals.principals_serializers import PrincipalAccountDetailsSerializer, PrincipalSecurityInformationSerializer
 from users.serializers.admins.admins_serializers import AdminAccountCreationSerializer, AdminAccountUpdateSerializer, AdminAccountDetailsSerializer, AdminSecurityInformationSerializer
 from users.serializers.teachers.teachers_serializers import TeacherAccountCreationSerializer, TeacherAccountUpdateSerializer, TeacherAccountDetailsSerializer, TeacherSecurityInformationSerializer
 from users.serializers.students.students_serializers import StudentAccountCreationSerializer, StudentAccountUpdateSerializer, StudentAccountDetailsSerializer, StudentSecurityInformationSerializer
 from users.serializers.parents.parents_serializers import ParentAccountCreationSerializer, ParentAccountUpdateSerializer, ParentAccountDetailsSerializer, ParentSecurityInformationSerializer
-
-# utility functions 
-
-# checks
 
 
 account_creation_model_and_serializer_mapping = {

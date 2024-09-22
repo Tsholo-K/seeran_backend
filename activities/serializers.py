@@ -1,7 +1,3 @@
-# python 
-
-# django
-
 # rest framework
 from rest_framework import serializers
 
@@ -11,7 +7,6 @@ from classrooms.models import Classroom
 
 # serializers
 from users.serializers.general_serializers import SourceAccountSerializer
-
 
 
 class ActivityCreationSerializer(serializers.ModelSerializer):

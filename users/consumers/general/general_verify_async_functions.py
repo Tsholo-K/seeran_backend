@@ -1,7 +1,3 @@
-# python
-
-# httpx
-
 # channels
 from channels.db import database_sync_to_async
 
@@ -12,18 +8,12 @@ from django.contrib.auth.hashers import check_password
 from django.utils.translation import gettext as _
 from django.core.validators import validate_email
 
-# simple jwt
-
 # models 
 from users.models import BaseUser
 from email_bans.models import EmailBan
 
-# serializers
-
 # utility functions 
 from authentication.utils import generate_otp, verify_user_otp
-
-# checks
 
 
 @database_sync_to_async

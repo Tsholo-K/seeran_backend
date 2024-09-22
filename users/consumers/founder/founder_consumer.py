@@ -19,7 +19,6 @@ from . import founder_get_async_functions
 # general async functions 
 from users.consumers.general import general_post_async_functions
 from users.consumers.general import general_put_async_functions
-from users.consumers.general import general_search_async_functions
 from users.consumers.general import general_get_async_functions
 from users.consumers.general import general_verify_async_functions
 from users.consumers.general import general_email_async_functions

@@ -1,9 +1,5 @@
-# python
-
 # channels
 from channels.db import database_sync_to_async
-
-# django
 
 # models 
 from users.models import Principal
@@ -23,7 +19,7 @@ def search_school(details):
     try:
         school = School.objects.get(school_id=details.get('school'))
 
-        serialized_school = SchoolSerializer(instance=school).data
+        serialized_school = SchoolSerializer(school).data
 
         return {"school": serialized_school}
     
@@ -40,7 +36,7 @@ def search_school_details(details):
         school = School.objects.get(school_id=details.get('school'))
 
         # Serialize the school object into a dictionary
-        serialized_school = SchoolDetailsSerializer(instance=school).data
+        serialized_school = SchoolDetailsSerializer(school).data
 
         return {"school": serialized_school}
 
@@ -58,7 +54,7 @@ def search_principal_profile(details):
     try:
         principal = Principal.objects.get(account_id=details.get('principal'))
 
-        serializer = PrincipalAccountSerializer(instance=principal)
+        serializer = PrincipalAccountSerializer(principal)
 
         return {"principal": serializer.data}
     
@@ -75,7 +71,7 @@ def search_principal_details(details):
         account = Principal.objects.get(account_id=details.get('account'))
 
         # Return the user's profile
-        serialized_principal = PrincipalAccountDetailsSerializer(instance=account).data
+        serialized_principal = PrincipalAccountDetailsSerializer(account).data
 
         return {"principal": serialized_principal}
         
@@ -111,7 +107,7 @@ def search_principal_invoice(details):
     try:
         bill = Invoice.objects.get(Invoice_id=details.get('invoice'))
 
-        serialized_invoice = InvoiceSerializer(instance=bill).data
+        serialized_invoice = InvoiceSerializer(bill).data
 
         return {"invoice": serialized_invoice}
     
@@ -142,7 +138,7 @@ def search_bug_report(details):
     try:
         report = BugReport.objects.get(bugreport_id=details.get('bug_report'))
         
-        serializer = BugReportSerializer(instance=report)
+        serializer = BugReportSerializer(report)
         
         return {"report": serializer.data}
     

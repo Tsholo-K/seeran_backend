@@ -12,7 +12,7 @@ from django.db.models import Q
 from authentication.decorators import token_required
 
 # models
-from users.models import Founder,Principal, Admin, Teacher, Student, Parent
+from users.models import Founder
 from chats.models import ChatRoomMessage
 from announcements.models import Announcement
 
@@ -41,25 +41,25 @@ def my_account_details(request):
         elif request.user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT', 'PARENT']:
             # Fetch the corresponding child model and serializer based on the user's role
             Model, Serializer, select_related, prefetch_related = role_specific_maps.account_model_details_and_attr_serializer_mapping[request.user.role]
-            account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=request.user.account_id)
+            requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=request.user.account_id)
 
             # Determine unread announcements based on user role
             if request.user.role == 'PARENT':
                 # Fetch announcements for the schools the parent's children are enrolled in
-                children_schools = account.children.values_list('school', flat=True)
+                children_schools = requesting_account.children.values_list('school_id', flat=True)
                 unread_announcements = Announcement.objects.filter(school__in=children_schools).exclude(reached=request.user).count()
 
             else:
-                if account.school.none_compliant:
+                if requesting_account.school.none_compliant:
                     return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
                 # Fetch announcements relevant to the user's school
-                unread_announcements = account.school.announcements.exclude(reached=request.user).count()
+                unread_announcements = requesting_account.school.announcements.exclude(reached=request.user).count()
 
             # Fetch unread messages for the user
             unread_messages = ChatRoomMessage.objects.filter(Q(chat_room__user_one=request.user) | Q(chat_room__user_two=request.user), read_receipt=False).exclude(sender=request.user).count()
 
             # Serialize the user
-            serialized_account = Serializer(instance=account).data
+            serialized_account = Serializer(instance=requesting_account).data
 
             # Return the serialized account details along with unread counts
             return Response({'user': serialized_account, 'messages': unread_messages, 'announcements': unread_announcements}, status=status.HTTP_200_OK)

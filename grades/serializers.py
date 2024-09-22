@@ -1,5 +1,3 @@
-# python 
-
 # django
 from django.utils.translation import gettext_lazy as _
 
@@ -13,7 +11,6 @@ from schools.models import School
 
 # serializers
 from subjects.serializers import SubjectsSerializer
-
 
 
 class GradeCreationSerializer(serializers.ModelSerializer):
