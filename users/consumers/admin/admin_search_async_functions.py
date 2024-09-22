@@ -27,9 +27,9 @@ from users.serializers.teachers.teachers_serializers import TeacherAccountSerial
 from schools.serializers import SchoolDetailsSerializer
 from audit_logs.serializers import AuditEntriesSerializer, AuditEntrySerializer
 from grades.serializers import GradeSerializer, GradesSerializer, GradeDetailsSerializer
-from terms.serializers import  TermsSerializer, TermSerializer, ClassesSerializer
+from terms.serializers import  TermsSerializer, TermSerializer
 from subjects.serializers import SubjectSerializer, SubjectDetailsSerializer
-from classrooms.serializers import TeacherClassesSerializer
+from classrooms.serializers import TeacherClassesSerializer, ClassesSerializer
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer
 from activities.serializers import ActivitiesSerializer
 from daily_schedules.serializers import DailyScheduleSerializer
