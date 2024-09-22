@@ -21,7 +21,7 @@ class AssessmentCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Assessment
-        fields = ['assessor', 'due_date', 'title', 'unique_identifier', 'assessment_type', 'total', 'percentage_towards_term_mark', 'start_time', 'dead_line', 'term', 'classroom', 'subject', 'grade', 'school', 'moderator']
+        fields = ['assessor', 'title', 'assessment_type', 'total', 'percentage_towards_term_mark', 'start_time', 'dead_line', 'term', 'classroom', 'subject', 'grade', 'school', 'moderator']
 
     def __init__(self, *args, **kwargs):
         super(AssessmentCreationSerializer, self).__init__(*args, **kwargs)
@@ -33,7 +33,7 @@ class AssessmentUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Assessment
-        fields = ['start_time', 'dead_line', 'due_date', 'title', 'total', 'percentage_towards_term_mark', 'term', 'moderator']
+        fields = ['start_time', 'dead_line', 'title', 'total', 'percentage_towards_term_mark', 'term', 'moderator']
 
     def __init__(self, *args, **kwargs):
         super(AssessmentUpdateSerializer, self).__init__(*args, **kwargs)
@@ -52,7 +52,7 @@ class AssessmentUpdateFormDataSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Assessment
-        fields = ['start_time', 'dead_line', 'due_date', 'title', 'total', 'topics', 'percentage_towards_term_mark', 'term', 'moderator']
+        fields = ['start_time', 'dead_line', 'title', 'total', 'topics', 'percentage_towards_term_mark', 'term', 'moderator']
 
     def get_title(self, obj):
         return obj.title.title()
@@ -71,7 +71,7 @@ class DueAssessmentsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Assessment
-        fields = ['title', 'assessment_type', 'due_date', 'formal', 'assessment_id']
+        fields = ['title', 'assessment_type', 'dead_line', 'formal', 'assessment_id']
 
     def get_title(self, obj):
         return obj.title.title()
@@ -98,7 +98,7 @@ class DueAssessmentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Assessment
-        fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'due_date', 'start_time', 'dead_line', 'term', 'topics', 'unique_identifier', 'moderator']
+        fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'start_time', 'dead_line', 'term', 'topics', 'moderator']
 
     def get_title(self, obj):
         return obj.title.title()
@@ -120,7 +120,7 @@ class CollectedAssessmentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Assessment
-        fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'date_collected', 'term', 'topics', 'unique_identifier', 'moderator']
+        fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'date_collected', 'term', 'topics', 'moderator']
 
     def get_title(self, obj):
         return obj.title.title()
