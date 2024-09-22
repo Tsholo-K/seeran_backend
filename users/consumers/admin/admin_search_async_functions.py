@@ -273,7 +273,7 @@ def search_grade_details(user, role, details):
 
             return {'error': response}
 
-        grade = requesting_account.grades.get(grade_id=details['grade'])
+        grade = requesting_account.school.grades.get(grade_id=details['grade'])
         serialized_grade = GradeDetailsSerializer(grade).data
         
         # Return the serialized grade in a dictionary
