@@ -67,7 +67,6 @@ class AssessmentUpdateFormDataSerializer(serializers.ModelSerializer):
 class DueAssessmentsSerializer(serializers.ModelSerializer):
 
     title = serializers.SerializerMethodField()
-    due_date = serializers.DateField(format='%d-%m-%Y')
 
     class Meta:
         model = Assessment
@@ -94,7 +93,6 @@ class DueAssessmentSerializer(serializers.ModelSerializer):
     assessment_type = serializers.CharField(source='get_assessment_type_display')
     topics = TopicSerializer(many=True)
     moderator = serializers.SerializerMethodField()
-    due_date = serializers.DateField(format='%d-%m-%Y')
 
     class Meta:
         model = Assessment
