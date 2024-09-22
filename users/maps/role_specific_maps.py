@@ -58,9 +58,9 @@ account_details_serializer_mapping = {
 }
 
 account_model_and_attr_mapping = {
-    'PARENT': (Parent, None, 'children__school, children__enrolled_classes'),
+    'PARENT': (Parent, None, 'children__school, children__enrolled_classrooms'),
     'PRINCIPAL': (Principal, 'school', None),
     'ADMIN': (Admin, 'school', None),
-    'TEACHER': (Teacher, 'school', 'taught_classes__students'),
-    'STUDENT': (Student, 'school', 'enrolled_classes'),
+    'TEACHER': (Teacher, 'school', 'taught_classrooms__students'),
+    'STUDENT': (Student, 'school', 'enrolled_classrooms'),
 }

@@ -21,7 +21,7 @@ class Classroom(models.Model):
     classroom_number = models.CharField(_('classroom identifier'), max_length=16, default='1')
     group = models.CharField(_('class group'), max_length=16, default='A')
 
-    teacher = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, blank=True, related_name='taught_classes', help_text='The teacher assigned to the classroom.')
+    teacher = models.ForeignKey(Teacher, on_delete=models.SET_NULL, null=True, blank=True, related_name='taught_classrooms', help_text='The teacher assigned to the classroom.')
     students = models.ManyToManyField(Student, related_name='enrolled_classrooms', help_text='Students enrolled in the classroom.')
 
     student_count = models.PositiveIntegerField(default=0)
