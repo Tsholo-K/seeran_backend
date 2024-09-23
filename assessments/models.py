@@ -81,7 +81,7 @@ class Assessment(models.Model):
     # Title or name of the assessment (e.g., "Midterm Exam").
     title = models.CharField(max_length=124)
 
-    # Topics covered in the assessment, allowing many-to-many relationships to the `Topic` model.
+    # Topics covered in the assessment, allowing many-to-many relationships to the Topic model.
     topics = models.ManyToManyField(Topic, related_name='assessments')
 
     # Type of assessment (e.g., test, exam, or practical). A predefined list of choices must be used.
@@ -250,7 +250,7 @@ class Assessment(models.Model):
         
     def save(self, *args, **kwargs):
         """
-        Overrides the save method to run custom validation logic via the `clean` method.
+        Overrides the save method to run custom validation logic via the clean method.
         Also handles potential integrity errors related to unique constraints.
         """
         self.clean()
@@ -460,9 +460,6 @@ class Assessment(models.Model):
             self.students_who_failed_the_assessment.set(students_who_failed_the_assessment)
 
         self.save()
-
-
-
 
 
 """

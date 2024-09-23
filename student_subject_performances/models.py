@@ -184,3 +184,4 @@ class StudentSubjectPerformance(models.Model):
 
         # Save the updated performance metrics.
         self.save()
+

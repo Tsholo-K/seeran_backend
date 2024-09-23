@@ -88,7 +88,7 @@ class Transcript(models.Model):
 
     def save(self, *args, **kwargs):
         """
-        Override the save method to ensure that the `clean()` method is called before
+        Override the save method to ensure that the clean() method is called before
         saving the transcript. This ensures that all custom validation is enforced.
         
         Also handles unique constraint errors gracefully, providing user-friendly
@@ -155,3 +155,4 @@ class Transcript(models.Model):
             if self.score < 0 or self.score > self.assessment.total:
                 raise ValidationError(f'The student\'s score must be within the range of 0 to {self.assessment.total}.')
             self.weighted_score = (self.score / self.assessment.total) * 100 if self.score > 0 else 0
+
