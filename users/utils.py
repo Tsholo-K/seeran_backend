@@ -41,7 +41,6 @@ def get_account_and_security_details(user, role):
         # Handle any unexpected errors with a general error message
         return {'error': str(e)}
 
-
 def get_account_and_linked_school(user, role):
     try:
         Model = role_specific_maps.account_access_control_mapping.get(role)
@@ -66,7 +65,6 @@ def get_account_and_linked_school(user, role):
     except Exception as e:
         # Handle any unexpected errors with a general error message
         return {'error': str(e)}
-
 
 def get_account_and_attr(user, role):
     try:
@@ -99,7 +97,6 @@ def get_account_and_attr(user, role):
     except Exception as e:
         # Handle any unexpected errors with a general error message
         return {'error': str(e)}
-
 
 def compress_data(data):
     buf = BytesIO()

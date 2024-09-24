@@ -1,5 +1,6 @@
 # python 
 import uuid
+import re
 
 # django imports
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
@@ -15,6 +16,7 @@ from grades.models import Grade
 
 # utility functions
 from authentication.utils import get_upload_path
+from users import validators as users_validators
 
 class BaseUserManager(BaseUserManager):
     """
@@ -26,7 +28,7 @@ class BaseUserManager(BaseUserManager):
     """
     
     @transaction.atomic
-    def create(self, email=None, name=None, surname=None, role=None, **extra_fields):
+    def create(self, email_address=None, name=None, surname=None, role=None, **extra_fields):
         """
         Create and return a new user with the given email, name, surname, and role.
         
@@ -42,38 +44,21 @@ class BaseUserManager(BaseUserManager):
             ValidationError: If the specified role is invalid or if an account with the provided email already exists.
         """
 
-        # Validate required fields
-        if not name:
-            raise ValidationError(_('a name is required for all accounts on the system'))
-        
-        if not surname:
-            raise ValidationError(_('a surname is required for all accounts on the system'))
-        
-        if role not in dict(BaseUser.ROLE_CHOICES).keys():
-            raise ValidationError(_('the specified account role is invalid'))
-
         # Normalize email
-        email = self.normalize_email(email) if email else None
+        email_address = self.normalize_email(email_address) if email_address else None
 
         # Create user instance
-        user = self.model(email=email, name=name, surname=surname, role=role, **extra_fields)
+        user = self.model(email_address=email_address, name=name, surname=surname, role=role, **extra_fields)
         user.set_unusable_password()  # User is initially inactive
 
         user.clean()
-        
         # Save the user and handle potential integrity errors
-        try:
-            user.save(using=self._db)
-        except IntegrityError as e:
-            if 'unique constraint' in str(e).lower():
-                raise ValidationError(_('an account with the provided email address already exists. please use a different email address'))
-            else:
-                raise
+        user.save(using=self._db)
         
         return user
 
     @transaction.atomic
-    def activate(self, email, password):
+    def activate(self, email_address, password):
         """
         Activate a user account by setting a password and marking it as activated.
         
@@ -86,7 +71,7 @@ class BaseUserManager(BaseUserManager):
         """
 
         try:
-            user = self.get(email=email)
+            user = self.get(email_address=email_address)
             validate_password(password)  # Ensure the password meets the validation criteria
 
             user.set_password(password)  # Set the password
@@ -96,10 +81,10 @@ class BaseUserManager(BaseUserManager):
             return user
         
         except BaseUser.DoesNotExist:
-            raise ValueError("Account with the provided credentials does not exist")
-        
+            raise ValueError(_('The account with the provided email does not exist. Please check the email and try again.'))
+
         except ValidationError as e:
-            raise ValueError(str(e).lower())
+            raise ValueError(_(str(e)))
 
 class BaseUser(AbstractBaseUser, PermissionsMixin):
     """
@@ -139,12 +124,12 @@ class BaseUser(AbstractBaseUser, PermissionsMixin):
     name = models.CharField(_('name'), max_length=64)
     surname = models.CharField(_('surname'), max_length=64)
 
-    email = models.EmailField(_('email address'), blank=True, null=True)
+    email_address = models.EmailField(_('email address'), blank=True, null=True)
 
     role = models.CharField(choices=ROLE_CHOICES, max_length=16)
 
-    activated = models.BooleanField(_('account active or not'), default=False)
     profile_picture = models.ImageField(upload_to=get_upload_path, blank=True, null=True)
+    activated = models.BooleanField(_('account active or not'), default=False)
 
     multifactor_authentication = models.BooleanField(_('multifactor authentication'), default=False)
 
@@ -159,47 +144,62 @@ class BaseUser(AbstractBaseUser, PermissionsMixin):
 
     account_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
-    USERNAME_FIELD = 'email'  # Specifies the field to be used for authentication
+    USERNAME_FIELD = 'email_address'  # Specifies the field to be used for authentication
     objects = BaseUserManager()  # Use the custom user manager
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['email'], name='unique_account_email_address'),
+            models.UniqueConstraint(fields=['email_address'], name='unique_account_email_address'),
         ]
         ordering = ['surname', 'name', 'account_id']
 
     def __str__(self):
         return f'{self.name} {self.surname}'
 
-    def clean(self):
-        if self.email:
-            try:
-                validate_email(self.email)
-
-            except ValidationError:
-                raise ValidationError(_('the provided email address is not in a valid format. please correct the email address and try again'))
-            
-            if len(self.email) > 254:
-                raise ValidationError(_("email address cannot exceed 254 characters. please correct the email address and try again"))
-            
-        if len(self.name) > 64:
-            raise ValidationError(_("name cannot exceed 64 characters. please correct the name and try again"))
-        
-        if len(self.surname) > 64:
-            raise ValidationError(_("surname cannot exceed 64 characters. please correct the surname and try again"))
-                
     def save(self, *args, **kwargs):
         self.clean()
-        
         try:
             super().save(*args, **kwargs)
-
         except IntegrityError as e:
-            # Handle unique constraint violation on the email field
-            if 'unique constraint' in str(e).lower() and 'email' in str(e).lower():
-                raise ValidationError(_('an account with the provided email address already exists. please use a different email address.'))
-            else:
-                raise e  # Re-raise the exception if it's a different IntegrityError
+            error_message = str(e).lower()
+            # Handle unique constraint errors gracefully and provide useful feedback.
+            if 'unique constraint' in error_message:
+                if 'email_address' in error_message:
+                    raise ValidationError(_('Could not process your request, an account with the provided email address already exists. Please use a different email address or contact support if you believe this is an error.'))
+                elif 'contact_number' in error_message:
+                    raise ValidationError(_('The contact number provided is already in use by another account in the system. Please use a unique contact number or verify if the correct number has been entered.'))
+                elif 'id_number' in error_message:
+                    raise ValidationError(_('Could not process your request, an account with the provided ID number already exists, please use a different ID number.'))
+                elif 'passport_number' in error_message:
+                    raise ValidationError(_('Could not process your request, an account with the provided passport number already exists, please use a different passport number.'))                
+            # If it's not handled, re-raise the original exception
+            raise ValidationError(_(error_message))
+        except Exception as e:
+            raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
+
+    def clean(self):
+        if self.role not in dict(BaseUser.ROLE_CHOICES).keys():
+            raise ValidationError(_('Could not process your request, the specified account role is invalid. Please choose a valid role from the options: %s.' % [dict(BaseUser.ROLE_CHOICES).keys()]))
+
+        # validate account email_address
+        if self.email_address:
+            try:
+                validate_email(self.email_address)
+            except ValidationError:
+                raise ValidationError(_('Could not process your request, the provided email address is not in a valid format. Please correct the email address and try again.'))
+
+            if len(self.email_address) > 254:
+                raise ValidationError(_("Could not process your request, email address cannot exceed 254 characters. Please correct the email address and try again."))
+
+        # validate account name and surname
+        if not self.name:
+            raise ValidationError(_('Could not process your request, a name is required for all accounts on the system. Please provide a valid name.'))
+        if not self.surname:
+            raise ValidationError(_('Could not process your request, a surname is required for all accounts on the system. Please provide a valid surname.'))
+        if len(self.name) > 64:
+            raise ValidationError(_("Could not process your request, name cannot exceed 64 characters. Please correct the name and try again."))
+        if len(self.surname) > 64:
+            raise ValidationError(_("Could not process your request, surname cannot exceed 64 characters. Please correct the surname and try again."))
 
 
 class Founder(BaseUser):
@@ -215,25 +215,22 @@ class Founder(BaseUser):
         # Additional metadata options can be defined here
         pass
 
-    def clean(self):
-        """Validate founder-specific fields."""
-        if not self.role == 'FOUNDER':
-            raise ValidationError(_('could not process your request, founder accounts can only have a role of \'Founder\'. please correct the provided information and try again'))
-
-        if not self.email:
-            raise ValidationError(_('all founder accounts in the system are required to have an email address linked to their account. please correct the provided information and try again'))
-
     def save(self, *args, **kwargs):
         """Override save method to include validation for founder accounts."""
         self.clean()
-        
         try:
             super().save(*args, **kwargs)
-        except IntegrityError as e:
-            if 'unique constraint' in str(e).lower():
-                raise ValidationError(_('an account with the provided email address already exists. please use a different email address'))
-            else:
-                raise
+        except Exception as e:
+            raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
+
+    def clean(self):
+        """Validate founder-specific fields."""
+        super().clean()
+        if not self.role == 'FOUNDER':
+            raise ValidationError(_('Could not process your request, founder accounts can only have a role of "Founder". Please correct the provided information and try again.'))
+
+        if not self.email_address:
+            raise ValidationError(_('Could not process your request, all founder accounts in the system are required to have an email address linked to their account. Please provide a valid email address.'))
 
 
 class Principal(BaseUser):
@@ -249,51 +246,44 @@ class Principal(BaseUser):
         save: Saves the principal instance with validation.
     """
     
-    contact_number = models.CharField(_('phone number'), max_length=15, unique=True)
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='principal')
+    contact_number = models.CharField(_('phone number'), max_length=15)
+    school = models.OneToOneField(School, on_delete=models.CASCADE, related_name='principal')
 
     class Meta:
-        # Additional metadata options can be defined here
-        pass
-
-    def clean(self):
-        """Validate principal-specific fields."""
-        if not self.role == 'PRINCIPAL':
-            raise ValidationError(_('could not process your request, principal accounts can only have a role of \'Principal\'. please correct the provided information and try again'))
-
-        if not self.email:
-            raise ValidationError(_('all principal accounts in the system are required to have an email address linked to their account. please correct the provided information and try again'))
-
-        try:
-            if not self.contact_number.isdigit():
-                raise ValidationError(_('contact number should only contain digits. please correct the contact number and try again'))
-        except Exception as e:
-            raise ValidationError(_(str(e).lower()))
-  
-        if not (10 <= len(self.contact_number) <= 15):
-            raise ValidationError(_('contact number should be between 10 and 15 digits. please correct the contact number and try again'))
-        
-        if not self.school:
-            raise ValidationError(_('principal accounts must be associated with a school. please correct the provided information and try again'))
+        # A unique constraint that prevents accounts from having duplicate contact numbers and schools.
+        constraints = [
+            models.UniqueConstraint(fields=['contact_number'], name='unique_account_contact_number')
+        ]
 
     def save(self, *args, **kwargs):
         """Override save method to include validation for principal accounts."""
         self.clean()
         try:
             super().save(*args, **kwargs)
-        except IntegrityError as e:
-            error_message = str(e).lower()
-            if 'unique constraint' in error_message:
-                if 'contact_number' in error_message:
-                    raise ValidationError(_('an account with the provided contact number already exists. Please use a different contact number.'))
-                
-                elif 'email' in error_message:
-                    raise ValidationError(_('an account with the provided email address already exists. Please use a different email address.'))
-                
-                else:
-                    raise ValidationError(_('A unique constraint was violated. Please check the data and try again.'))
-            else:
-                raise
+        except Exception as e:
+            raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
+
+    def clean(self):
+        """Validate principal-specific fields."""
+        super().clean()
+        if not self.role == 'PRINCIPAL':
+            raise ValidationError(_('Could not process your request, principal accounts can only have a role of "Principal". Please correct the provided information and try again.'))
+        if not self.email_address:
+            raise ValidationError(_('Could not process your request, all principal accounts in the system are required to have an email address linked to their account. Please provide a valid email address.'))
+        
+        # Validate contact number
+        if not self.contact_number:
+            raise ValidationError(_('Could not process your request, all principal accounts in the system are required to have an contact number linked to their account. Please provide a valid contact number.'))
+        try:
+            if not self.contact_number.isdigit():
+                raise ValidationError(_('The contact number provided contains non-numeric characters. Please enter a numeric only contact number (e.g., 0123456789).'))
+        except Exception as e:
+            raise ValidationError(_(str(e)))
+        if len(self.contact_number) < 10 or len(self.contact_number) > 15:
+            raise ValidationError(_('The contact number must be between 10 and 15 digits long. Please provide a valid contact number within this range.'))
+        
+        if not self.school_id:
+            raise ValidationError(_('Principal accounts must be associated with a school. Please provide a school for this account.'))
 
 
 class Admin(BaseUser):
@@ -308,34 +298,65 @@ class Admin(BaseUser):
         save: Saves the admin instance with validation.
     """
     
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='admins')
+    school = models.OneToOneField(School, on_delete=models.CASCADE, related_name='admins')
 
     class Meta:
         # Additional metadata options can be defined here
         pass
-
-    def clean(self):
-        """Validate admin-specific fields."""
-        if not self.role == 'ADMIN':
-            raise ValidationError(_('could not process your request, admin accounts can only have a role of \'Admin\'. please correct the provided information and try again'))
-
-        if not self.email:
-            raise ValidationError(_('all admin accounts in the system are required to have an email address linked to their account. please correct the provided information and try again'))
-
-        if not self.school:
-            raise ValidationError(_('admin accounts must be associated with a school. please correct the provided information and try again'))
 
     def save(self, *args, **kwargs):
         """Override save method to include validation for admin accounts."""
         self.clean()
         try:
             super().save(*args, **kwargs)
-        except IntegrityError as e:
-            if 'unique constraint' in str(e).lower():
-                raise ValidationError(_('an account with the provided email address already exists. please use a different email address'))
-            else:
-                raise
+        except Exception as e:
+            raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
 
+    def clean(self):
+        """Validate admin-specific fields."""
+        super().clean()
+        if not self.role == 'ADMIN':
+            raise ValidationError(_('Could not process your request, admin accounts can only have a role of "ADMIN". Please correct the provided information and try again.'))
+        if not self.email_address:
+            raise ValidationError(_('Could not process your request, all admin accounts in the system are required to have an email address linked to their account. Please provide a valid email address.'))
+        if not self.school_id:
+            raise ValidationError(_('Could not process your request, admin accounts must be associated with a school. Please provide a school for this account.'))
+
+class Teacher(BaseUser):
+    """
+    User model representing a Teacher in the system.
+
+    Attributes:
+        school (ForeignKey): The school associated with the teacher.
+    
+    Methods:
+        clean: Validates teacher-specific fields before saving.
+        save: Saves the teacher instance with validation.
+    """
+    
+    school = models.OneToOneField(School, on_delete=models.CASCADE, related_name='teachers')
+
+    class Meta:
+        # Additional metadata options can be defined here
+        pass
+
+    def save(self, *args, **kwargs):
+        """Override save method to include validation for teacher accounts."""
+        self.clean()
+        try:
+            super().save(*args, **kwargs)
+        except Exception as e:
+            raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
+
+    def clean(self):
+        """Validate teacher-specific fields."""
+        super().clean()
+        if not self.role == 'TEACHER':
+            raise ValidationError(_('Could not process your request, teacher accounts can only have a role of "TEACHER". Please correct the provided information and try again.'))
+        if not self.email_address:
+            raise ValidationError(_('Could not process your request, all teacher accounts in the system are required to have an email address linked to their account. Please provide a valid email address.'))
+        if not self.school_id:
+            raise ValidationError(_('Could not process your request, teacher accounts must be associated with a school. Please provide a school for this account.'))
 
 class Student(BaseUser):
     """
@@ -353,59 +374,63 @@ class Student(BaseUser):
         save: Saves the student instance with validation.
     """
     
-    id_number = models.CharField(_('ID number'), max_length=13, unique=True, blank=True, null=True)
-    passport_number = models.CharField(_('passport number'), max_length=9, unique=True, blank=True, null=True)
+    id_number = models.CharField(_('ID number'), max_length=13, blank=True, null=True)
+    passport_number = models.CharField(_('passport number'), max_length=9, blank=True, null=True)
+
     event_emails = models.BooleanField(_('email subscription'), default=False)
-    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='students')
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='students')
+    
+    grade = models.OneToOneField(Grade, on_delete=models.CASCADE, related_name='students')
+    school = models.OneToOneField(School, on_delete=models.CASCADE, related_name='students')
 
     class Meta:
+        # A unique constraint that prevents accounts from having duplicate contact numbers and schools.
+        constraints = [
+            models.UniqueConstraint(fields=['id_number'], name='unique_account_id_number'),
+            models.UniqueConstraint(fields=['passport_number'], name='unique_account_passport_number')
+        ]
         ordering = ['surname', 'name', 'account_id']
-
-    def clean(self):
-        """Validate student-specific fields."""
-        if not self.role == 'STUDENT':
-            raise ValidationError(_('could not process your request, student accounts can only have a role of \'Student\'. please correct the provided information and try again'))
-
-        if not self.id_number and not self.passport_number:
-            raise ValidationError(_('either ID or Passport number is required for every student account on the system'))
-        
-        if not self.school:
-            raise ValidationError(_('student accounts must be associated with a school. please correct the provided information and try again'))
-        
-        if not self.grade:
-            raise ValidationError(_('student accounts must be assigned to a grade. please correct the provided information and try again'))
-
-        if self.school and self.grade.school != self.school:
-            raise ValidationError(_('the grade the student is getting assigned to must be associated with the school the student is linked to'))
-        
-        if self.school.type == 'PRIMARY' and int(self.grade.grade) > 7:
-            raise ValidationError(_('primary school students cannot be assigned to grades higher than 7, please correct the provided information and try again'))
-        
-        if self.school.type == 'SECONDARY' and int(self.grade.grade) <= 7:
-            raise ValidationError(_('secondary school students must be assigned to grades higher than 7, please correct the provided information and try again'))
 
     def save(self, *args, **kwargs):
         """Override save method to include validation for student accounts."""
         self.clean()
         try:
             super().save(*args, **kwargs)
-        except IntegrityError as e:
-            error_message = str(e).lower()
-            if 'unique constraint' in error_message:
-                if 'id_number' in error_message:
-                    raise ValidationError(_('An account with the provided ID number already exists, please use a different ID number.'))
-                
-                elif 'passport_number' in error_message:
-                    raise ValidationError(_('An account with the provided passport number already exists, please use a different passport number.'))
-                
-                elif 'email' in error_message:
-                    raise ValidationError(_('an account with the provided email address already exists, please use a different email address.'))
-                
-                else:
-                    raise ValidationError(_('A unique constraint was violated, please check the provided information and try again.'))
-            else:
-                raise
+        except Exception as e:
+            raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
+
+    def clean(self):
+        """Validate student-specific fields."""
+        super().clean()
+        if not self.role == 'STUDENT':
+            raise ValidationError(_('Could not process your request, student accounts can only have a role of "STUDENT". Please correct the provided information and try again.'))
+        if not self.school_id:
+            raise ValidationError(_('Could not process your request, student accounts must be associated with a school. Please provide a school for this account.'))
+        if not self.id_number and not self.passport_number:
+            raise ValidationError(_('Could not process your request, either ID or Passport number is required for every student account on the system.'))
+        
+        if self.id_number and not users_validators.is_valid_south_african_id(self.id_number):
+            raise ValidationError(_('The provided ID number is invalid. Please ensure it contains 13 digits, follows the correct date format (YYMMDD), and is a valid South African ID number. If unsure, verify the number and try again.'))
+        
+        if self.passport_number and not re.match(r'^[A-Za-z0-9]{6,9}$', self.passport_number):
+            raise ValidationError(_('The provided passport number is invalid. Please ensure it contains between 6 and 9 alphanumeric characters without spaces or special characters.'))
+
+        # validate grade
+        if not self.grade_id:
+            raise ValidationError(_('Could not process your request, student accounts must be assigned to a grade. please correct the provided information and try again.'))
+        elif self.grade.school != self.school:
+            raise ValidationError(_('Could not process your request, the grade the student is getting assigned to must be associated with the school the student is linked to, please correct the provided information and try again'))
+        else:
+            # Only apply integer checks for numeric grade levels
+            try:
+                grade_num = int(self.grade.grade)
+                if self.school.type == 'PRIMARY' and grade_num > 7:
+                    raise ValidationError(_('Could not process your request, primary school students cannot be assigned to grades higher than 7, please correct the provided information and try again'))
+                if self.school.type == 'SECONDARY' and grade_num <= 7:
+                    raise ValidationError(_('Could not process your request, secondary school students must be assigned to grades higher than 7, please correct the provided information and try again'))
+            except ValueError:
+                # Handle non-numeric grades like 'R', '00', '000'
+                if self.school.type in ['SECONDARY', 'TERTIARY'] and self.grade.grade in ['R', '00', '000']:
+                    raise ValidationError(_('Could not process your request, secondary school students must be assigned to grades higher than 7, please correct the provided information and try again'))
 
 
 class Parent(BaseUser):
@@ -422,354 +447,34 @@ class Parent(BaseUser):
     """
     
     children = models.ManyToManyField(Student, blank=True, related_name='parents')
+
     event_emails = models.BooleanField(_('email subscription'), default=False)
 
     class Meta:
         # Additional metadata options can be defined here
         pass
 
-    def clean(self):
-        """Validate parent-specific fields."""
-        if not self.role == 'PARENT':
-            raise ValidationError(_('could not process your request, parent accounts can only have a role of \'Parent\'. please correct the provided information and try again'))
-
-        if not self.email:
-            raise ValidationError(_('all parent accounts in the system are required to have an email address linked to their account. please correct the provided information and try again'))
-
-        if self.pk and self.children.exists():
-            if any(child.role != 'STUDENT' for child in self.children.all()):
-                raise ValidationError(_('only student accounts can be assigned as children'))
-            
-            if self in self.children.all():
-                raise ValidationError(_('an account cannot be its own parent'))
-
     def save(self, *args, **kwargs):
         """Override save method to include validation for parent accounts."""
         self.clean()
         try:
             super().save(*args, **kwargs)
-        except IntegrityError as e:
-            if 'unique constraint' in str(e).lower():
-                raise ValidationError(_('an account with the provided email address and a role that\'s not a parent already exists. please use a different email address'))
-            else:
-                raise
-
-
-class Teacher(BaseUser):
-    """
-    User model representing a Teacher in the system.
-
-    Attributes:
-        school (ForeignKey): The school associated with the teacher.
-    
-    Methods:
-        clean: Validates teacher-specific fields before saving.
-        save: Saves the teacher instance with validation.
-    """
-    
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='teachers')
-
-    class Meta:
-        # Additional metadata options can be defined here
-        pass
+        except Exception as e:
+            raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
 
     def clean(self):
-        """Validate teacher-specific fields."""
-        if not self.role == 'TEACHER':
-            raise ValidationError(_('could not process your request, teacher accounts can only have a role of \'Teacher\'. please correct the provided information and try again'))
+        """Validate parent-specific fields."""
+        super().clean()
+        if not self.role == 'PARENT':
+            raise ValidationError(_('Could not process your request, parent accounts can only have a role of "PARENT". Please correct the provided information and try again.'))
+        if not self.email_address:
+            raise ValidationError(_('Could not process your request, all parent accounts in the system are required to have an email address linked to their account. Please provide a valid email address.'))
 
-        if not self.email:
-            raise ValidationError(_('all teacher accounts in the system are required to have an email address linked to their account. please correct the provided information and try again'))
-        
-        if self.school == None:
-            raise ValidationError(_('teacher accounts must be associated with a school. please correct the provided information and try again'))
+    def add_child(self, child):
+        """Custom method to add a child with validation."""
+        if child.role != 'STUDENT':
+            raise ValidationError(_('Could not process your request, only student accounts can be assigned as children to a parent account.'))
 
-    def save(self, *args, **kwargs):
-        """Override save method to include validation for teacher accounts."""
-        self.clean()
-        try:
-            super().save(*args, **kwargs)
-        except IntegrityError as e:
-            if 'unique constraint' in str(e).lower():
-                raise ValidationError(_('an account with the provided email address already exists. please use a different email address'))
-            else:
-                raise
+        # If validation passes, add the child
+        self.children.add(child)
 
-
-
-
-
-
-# class CustomUserManager(BaseUserManager):
-#     """
-#     Custom manager for the CustomUser model.
-#     Provides methods for creating users and activating accounts.
-#     """
-
-#     @transaction.atomic
-#     def create_user(self, email=None, id_number=None, passport_number=None, name=None, surname=None, contact_number=None, role=None, school=None, grade=None, **extra_fields):
-#         """
-#         Creates and saves a user with the given parameters.
-
-#         Args:
-#             email (str): Email address of the user.
-#             id_number (str): ID number of the user.
-#             passport_number (str): Passport number of the user.
-#             name (str): First name of the user.
-#             surname (str): Last name of the user.
-#             phone_number (str): Phone number of the user.
-#             role (str): Role of the user ('STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL', 'FOUNDER', 'PARENT').
-#             school (School): School associated with the user (required for 'STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL').
-#             grade (Grade): Grade associated with the user (required for 'STUDENT').
-#             **extra_fields: Additional fields to save.
-
-#         Returns:
-#             CustomUser: Created user instance.
-
-#         Raises:
-#             ValueError: If required fields are not provided or if validation fails.
-#         """
-
-#         # Ensure at least one identifier (email, ID number, passport number) is provided
-#         if not email and not id_number and not passport_number:
-#             raise ValueError(_('either email, ID number or Passport number must be provided for the creation of an account depandant on role'))
-        
-#         # Ensure name and surname are provided
-#         if not name:
-#             raise ValueError(_('invalid information provided, account missing name. all accounts are required to have a name associated with them no matter the role'))
-#         if not surname:
-#             raise ValueError(_('invalid information provided, account missing surname. all accounts are required to have a surname associated with them no matter the role'))
-
-#         # # Ensure country is provided will be implemeneted later on
-#         # if not country:
-#         #     raise ValueError(_('invalid information provided, account missing country. all accounts are required to have a country associated with them no matter the role'))
-
-#         # Check if the email already exists
-#         if email:
-#             try:
-#                 validate_email(email)
-#             except ValidationError:
-#                 raise ValidationError(_('the provided email address is invalid'))
-
-            
-#             if self.model.objects.filter(email=email).exists():
-#                 raise ValueError(_('an account with the provided email address already exists'))
-            
-#             email = self.normalize_email(email)
-
-#         # Check if the ID number already exists
-#         if id_number and self.model.objects.filter(id_number=id_number).exists():
-#             raise ValueError(_('an account with the provided ID number already exists'))
-        
-#         # Check if the passport number already exists
-#         if passport_number and self.model.objects.filter(passport_number=passport_number).exists():
-#             raise ValueError(_('an account with the provided Passport number already exists'))
-
-#         # Validate role
-#         if role not in ['FOUNDER', 'PARENT', 'STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL']:
-#             raise ValueError(_('the role specified for the account is invalid'))
-
-#         # Validate role-specific requirements
-#         if role in ['STUDENT', 'TEACHER', 'ADMIN', 'PRINCIPAL']:
-#             if school is None:
-#                 raise ValueError(_('the role specified for the account requires that the account be associated with a school'))
-#         else:
-#             school = None  # Parents/founders should not be associated with a school
-
-#         # Validate requirements for specific roles
-#         if role == 'PRINCIPAL':
-#             if contact_number is None:
-#                 raise ValueError(_('account must have a contact number'))
-#             if not contact_number.isdigit():
-#                 raise ValidationError(_('contact number should contain only digits'))
-#             if len(contact_number) < 10 or len(contact_number) > 15:
-#                 raise ValidationError(_('contact number should be between 10 and 15 digits'))
-#         else:
-#             contact_number = None
-
-#         if role == 'STUDENT':
-#             if not id_number and not passport_number:
-#                 raise ValueError(_('Either ID or Passport number is required for a student account'))
-            
-#             if id_number:
-#                 passport_number = None
-#             else:
-#                 id_number = None
-            
-#             if not grade:
-#                 raise ValueError(_('Student needs to be allocated to a grade'))
-            
-#             if email == '':
-#                 email = None
-#         else:
-#             grade = None
-#             passport_number = None
-#             id_number = None
-
-#         # Create and save user instance
-#         user = self.model(email=email, id_number=id_number, passport_number=passport_number, name=name, surname=surname, grade=grade, contact_number=contact_number, role=role, school=school, **extra_fields)
-#         user.set_unusable_password()  # Set unusable password until activated
-#         user.save(using=self._db)
-
-#         return user
-
-#     @transaction.atomic
-#     def activate_user(self, email, password):
-#         """
-#         Activates a user account with the provided email and sets a password.
-
-#         Args:
-#             email (str): Email address of the user.
-#             password (str): Password to set for the user.
-
-#         Returns:
-#             CustomUser: Activated user instance.
-
-#         Raises:
-#             ValueError: If the user account does not exist or if password validation fails.
-#         """
-
-#         try:
-#             user = self.get(email=email)
-
-#             # Validate the password
-#             validate_password(password)
-
-#             # Hash and salt the password
-#             user.set_password(password)
-#             user.activated = True
-
-#             # Save the updated user to the database
-#             user.save(using=self._db)
-#             return user
-
-#         except self.model.DoesNotExist:
-#             raise ValueError("Account with the provided credentials does not exist")
-
-#         except ValidationError as e:
-#             raise ValueError(str(e).lower())
-
-
-# class CustomUser(AbstractBaseUser, PermissionsMixin):
-#     """
-#     Custom user model representing users of the application.
-#     """
-
-#     email = models.EmailField(_('email address'), unique=True, blank=True, null=True)
-#     id_number = models.CharField(_('ID number'), max_length=13, unique=True, blank=True, null=True)
-#     passport_number = models.CharField(_('passport number'), max_length=9, unique=True, blank=True, null=True)
-
-#     name = models.CharField(_('name'), max_length=64)
-#     surname = models.CharField(_('surname'), max_length=64)
-    
-#     contact_number = models.CharField(_('phone number'), max_length=15, unique=True, blank=True, null=True)
-
-#     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='students', blank=True, null=True)
-#     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='users', blank=True, null=True)
-    
-#     activated = models.BooleanField(_('account active or not'), default=False)
-#     profile_picture = models.ImageField(upload_to=get_upload_path, blank=True, null=True)
-
-#     children = models.ManyToManyField('self', blank=True)
-#     event_emails = models.BooleanField(_('email subscription'), default=False)
-#     multifactor_authentication = models.BooleanField(_('multifactor authentication'), default=False)
-#     email_banned = models.BooleanField(_('email banned'), default=False)
-#     email_ban_amount = models.SmallIntegerField(_('amount of times email has been banned'), default=0)
-
-#     is_active = models.BooleanField(_('active'), default=True)
-#     is_staff = models.BooleanField(_('staff status'), default=False)
-#     is_superuser = models.BooleanField(_('superuser status'), default=False)
-
-#     role = models.CharField(choices=ROLE_CHOICES)
-
-#     account_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-
-#     USERNAME_FIELD = 'email'
-#     REQUIRED_FIELDS = ['name', 'surname', 'role']
-
-#     objects = CustomUserManager()
-
-#     class Meta:
-#         ordering = ['surname', 'name', 'account_id']
-#         unique_together = ('name', 'surname', 'id_number')
-#         indexes = [
-#             models.Index(fields=['role']),
-#             models.Index(fields=['grade', 'school']),
-#         ]
-
-#     def __str__(self):
-#         return self.name + ' ' + self.surname
-        
-#     def clean(self):
-#         # Role validation
-#         if self.role not in dict(ROLE_CHOICES).keys():
-#             raise ValidationError(_('the role specified for the account is invalid'))
-
-#         # Email validation
-#         if self.email:
-#             try:
-#                 validate_email(self.email)
-#             except ValidationError:
-#                 raise ValidationError(_('the provided email address is not in a valid format. please correct the email address and try again'))
-#             if len(self.email) > 254:
-#                 raise ValidationError(_("email address cannot exceed 254 characters"))
-
-#         # ID number and passport number validation
-#         if self.id_number and len(self.id_number) > 13:
-#             raise ValidationError(_("ID number cannot exceed 13 characters"))
-#         if self.passport_number and len(self.passport_number) > 9:
-#             raise ValidationError(_("passport number cannot exceed 9 characters"))
-
-#         # Name and surname validation
-#         if len(self.name) > 64:
-#             raise ValidationError(_("name cannot exceed 64 characters"))
-#         if len(self.surname) > 64:
-#             raise ValidationError(_("surname cannot exceed 64 characters"))
-
-#         # Contact number validation
-#         if self.contact_number:
-#             if self.role != 'PRINCIPAL':
-#                 raise ValidationError(_('only principal accounts can contain contact numbers'))
-#             if not self.contact_number.isdigit():
-#                 raise ValidationError(_('contact number should contain only digits'))
-#             if not (10 <= len(self.contact_number) <= 15):
-#                 raise ValidationError(_('contact number should be between 10 and 15 digits'))
-
-#         # Grade validation
-#         if self.role == 'STUDENT':
-#             if not self.grade:
-#                 raise ValidationError(_('student accounts need to be allocated to a grade'))
-#             if self.school and self.grade.school != self.school:
-#                 raise ValidationError(_('the grade must be associated with the school the student account is linked to'))
-#             if self.school.type == 'PRIMARY' and int(self.grade.grade) > 7:
-#                 raise ValidationError(_('primary school students cannot be assigned to grades higher than 7'))
-#             if self.school.type == 'SECONDARY' and int(self.grade.grade) <= 7:
-#                 raise ValidationError(_('secondary school students must be assigned to grades higher than 7'))
-#         elif self.role in ['PARENT', 'FOUNDER', 'PRINCIPAL', 'TEACHER', 'ADMIN']:
-#             if self.grade is not None:
-#                 raise ValidationError(_('only student accounts can be associated with a grade'))
-
-#         # Children validation
-#         if self.pk:
-#             if self.role != 'PARENT':
-#                 if self.children.exists():
-#                     raise ValidationError(_('only parent accounts can be assigned children'))
-#             elif self.role == 'PARENT':
-#                 if self.children.exists():
-#                     if any(child.role != 'STUDENT' for child in self.children.all()):
-#                         raise ValidationError(_('only student accounts can be assigned as children'))
-#                     if self in self.children.all():
-#                         raise ValidationError(_('an account cannot be their own parent'))
-                
-#     def save(self, *args, **kwargs):
-#         """
-#         indicates whether the model instance is being created (i.e., it is a new instance that has not yet been saved to the database)
-#         or updated (i.e., it already exists in the database and is being modified)
-#         """
-#         self.clean()
-
-#         try:
-#             super().save(*args, **kwargs)
-#         except Exception as e:
-#             raise ValidationError(_(str(e).lower()))
-            

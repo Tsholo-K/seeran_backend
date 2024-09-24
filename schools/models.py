@@ -2,7 +2,7 @@
 import uuid
 
 # django 
-from django.db import models
+from django.db import models, IntegrityError
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
@@ -92,10 +92,10 @@ class School(models.Model):
     name = models.CharField(_('school name'), max_length=64)
 
     # Contact email address for the school
-    email = models.EmailField(_('school email address'), max_length=254, unique=True)
+    email_address = models.EmailField(_('school email address'), max_length=254)
 
     # Contact phone number of the school, must be unique and validated later
-    contact_number = models.CharField(_('school contact number'), max_length=15, unique=True)
+    contact_number = models.CharField(_('school contact number'), max_length=15)
 
     # Counts of different types of staff members
     student_count = models.IntegerField(default=0)  # Number of students enrolled
@@ -116,7 +116,7 @@ class School(models.Model):
     district = models.CharField(_('school district'), max_length=100, choices=SCHOOL_DISTRICT_CHOICES, default="GAUTENG NORTH")
 
     # Additional school-related information
-    grading_system = models.TextField(blank=True, null=True)         # Details about the school's grading system
+    grading_system = models.JSONField(blank=True, null=True)         # Details about the school's grading system
     library_details = models.TextField(blank=True, null=True)        # Information about the school's library
     laboratory_details = models.TextField(blank=True, null=True)     # Information about the school's laboratories
     sports_facilities = models.TextField(blank=True, null=True)      # Information about the school's sports facilities
@@ -136,51 +136,17 @@ class School(models.Model):
     school_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
+        # A unique constraint that prevents schools from having the same contact number.
+        constraints = [
+            models.UniqueConstraint(fields=['email_address'], name='unique_school_email_address'),
+            models.UniqueConstraint(fields=['contact_number'], name='unique_school_contact_number')
+        ]
         # Default ordering of schools by name
         ordering = ['name']
 
     def __str__(self):
         # String representation of the model, used in admin and other places
         return self.name
-
-    def clean(self):
-        """
-        Custom validation method to ensure data integrity for contact number, email, and logo.
-        Raises ValidationError if any field contains invalid data.
-        """
-        # Validate contact number
-        if self.contact_number:
-            if not self.contact_number.isdigit():
-                raise ValidationError(_('Contact number should contain only digits'))
-            if len(self.contact_number) < 10 or len(self.contact_number) > 15:
-                raise ValidationError(_('Contact number should be between 10 and 15 digits'))
-            # Ensure unique contact number across schools
-            if School.objects.filter(contact_number=self.contact_number).exclude(pk=self.pk).exists():
-                raise ValidationError(_('A school account with the provided contact number already exists'))
-
-        # Validate email
-        if self.email:
-            try:
-                validate_email(self.email)
-            except ValidationError:
-                raise ValidationError(_('The provided email address is not valid. Please correct and try again'))
-            if len(self.email) > 254:
-                raise ValidationError(_("Email address cannot exceed 254 characters"))
-            # Ensure unique email across schools
-            if School.objects.filter(email=self.email).exclude(pk=self.pk).exists():
-                raise ValidationError(_('A school account with the provided email address already exists'))
-
-        # Validate school logo format
-        if self.logo and not self.logo.name.endswith(('.png', '.jpg', '.jpeg')):
-            raise ValidationError(_('School logo must be a PNG or JPG/JPEG image'))
-
-        # Validate choice fields
-        if self.type not in dict(self.SCHOOL_TYPE_CHOICES).keys():
-            raise ValidationError(_('Provided school type is invalid'))
-        if self.province not in dict(self.PROVINCE_CHOICES).keys():
-            raise ValidationError(_('Provided school province is invalid'))
-        if self.district not in dict(self.SCHOOL_DISTRICT_CHOICES).keys():
-            raise ValidationError(_('Provided school district is invalid'))
 
     def save(self, *args, **kwargs):
         """
@@ -189,6 +155,52 @@ class School(models.Model):
         self.clean()  # Call the clean method for validation
         try:
             super().save(*args, **kwargs)  # Proceed with saving the model if no validation errors
+        except IntegrityError as e:
+            error_message = str(e).lower()
+            # Handle unique constraint errors gracefully and provide useful feedback.
+            if 'unique constraint' in error_message:
+                if 'email_address' in error_message:
+                    raise ValidationError(_('The email address provided is already in use by another school. Please use a different email address or contact support if you believe this is an error.'))
+                elif 'contact_number' in error_message:
+                    raise ValidationError(_('The contact number provided is already in use by another school. Please use a unique contact number or verify if the correct number has been entered.'))
+            # If it's not handled, re-raise the original exception
+            raise ValidationError(_(error_message))
         except Exception as e:
-            raise ValidationError(_(str(e).lower()))  # Catch and raise any exceptions as validation errors
+            raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
+
+    def clean(self):
+        """
+        Custom validation method to ensure data integrity for contact number, email, and logo.
+        Raises ValidationError if any field contains invalid data.
+        """
+        # Validate contact number
+        if self.contact_number:
+            try:
+                if not self.contact_number.isdigit():
+                    raise ValidationError(_('The contact number provided contains non-numeric characters. Please enter a numeric only contact number (e.g., 0123456789).'))
+            except Exception as e:
+                raise ValidationError(_(str(e)))
+            if len(self.contact_number) < 10 or len(self.contact_number) > 15:
+                raise ValidationError(_('The contact number must be between 10 and 15 digits long. Please provide a valid contact number within this range.'))
+
+        # Validate email
+        if self.email_address:
+            try:
+                validate_email(self.email_address)
+            except ValidationError:
+                raise ValidationError(_('The email address provided is not valid. Please provide a valid email address in the format name@domain.com. If you are unsure, check with your email provider.'))
+            if len(self.email_address) > 254:
+                raise ValidationError(_('The email address exceeds the maximum allowed length of 254 characters. Please provide a shorter email address or use an alias.'))
+
+        # Validate school logo format
+        if self.logo and not self.logo.name.endswith(('.png', '.jpg', '.jpeg')):
+            raise ValidationError(_('The school logo must be in PNG, JPG, or JPEG format. Please upload an image file with one of these extensions.'))
+
+        # Validate choice fields
+        if self.type not in dict(self.SCHOOL_TYPE_CHOICES).keys():
+            raise ValidationError(_('The selected school type is invalid. Please choose a valid option from Primary, Secondary, Hybrid, or Tertiary.'))
+        if self.province not in dict(self.PROVINCE_CHOICES).keys():
+            raise ValidationError(_('The selected province is invalid. Please choose one from the available options.'))
+        if self.district not in dict(self.SCHOOL_DISTRICT_CHOICES).keys():
+            raise ValidationError(_('The selected district is invalid. Please choose a valid school district from the provided options.'))
 

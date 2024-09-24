@@ -11,54 +11,54 @@ from classrooms.models import Classroom
 from users.maps import role_specific_maps
 
 
-@receiver(post_save, sender=Student)
-def update_grade_counts_on_create(sender, instance, created, **kwargs):
-    if created:
-        role = instance.role
+# @receiver(post_save, sender=Student)
+# def update_grade_counts_on_create(sender, instance, created, **kwargs):
+#     if created:
+#         role = instance.role
         
-        if role == 'STUDENT':
-            # Get the appropriate model for the requesting user's role from the mapping.
-            Model= role_specific_maps.account_access_control_mapping[role]
+#         if role == 'STUDENT':
+#             # Get the appropriate model for the requesting user's role from the mapping.
+#             Model= role_specific_maps.account_access_control_mapping[role]
 
-            # Build the queryset for the requesting account with the necessary related fields.
-            student = Model.objects.select_related('grade').get(account_id=instance.account_id)
-            grade = student.grade
+#             # Build the queryset for the requesting account with the necessary related fields.
+#             student = Model.objects.select_related('grade').get(account_id=instance.account_id)
+#             grade = student.grade
 
-            grade.student_count = grade.students.count()
-            grade.save()
+#             grade.student_count = grade.students.count()
+#             grade.save()
 
 
-@receiver(pre_delete, sender=BaseUser)
-def update_grade_and_subject_counts_on_delete(sender, instance, **kwargs):
-    role = instance.role
+# @receiver(pre_delete, sender=BaseUser)
+# def update_grade_and_subject_counts_on_delete(sender, instance, **kwargs):
+#     role = instance.role
 
-    if role in ['STUDENT', 'TEACHER']:
-        # Get the appropriate model for the requesting user's role from the mapping.
-        Model = role_specific_maps.account_access_control_mapping[role]
+#     if role in ['STUDENT', 'TEACHER']:
+#         # Get the appropriate model for the requesting user's role from the mapping.
+#         Model = role_specific_maps.account_access_control_mapping[role]
 
-        if role == 'STUDENT':
-            # Build the queryset for the requesting account with the necessary related fields.
-            deleted_account = Model.objects.select_related('grade').prefetch_related('enrolled_classes').get(account_id=instance.account_id)
+#         if role == 'STUDENT':
+#             # Build the queryset for the requesting account with the necessary related fields.
+#             deleted_account = Model.objects.select_related('grade').prefetch_related('enrolled_classes').get(account_id=instance.account_id)
 
-            # Exclude the student being deleted from the count
-            deleted_account.grade.student_count = deleted_account.grade.students.exclude(account_id=instance.account_id).count()
-            deleted_account.grade.save()
+#             # Exclude the student being deleted from the count
+#             deleted_account.grade.student_count = deleted_account.grade.students.exclude(account_id=instance.account_id).count()
+#             deleted_account.grade.save()
 
-            for classroom in deleted_account.enrolled_classes.all().exclude(subject=None, register_class=True):
-                if classroom.subject:
-                    # Update the subject student count, excluding the student being deleted
-                    classroom.subject.student_count = classroom.grade.classes.filter(subject=classroom.subject).exclude(students=deleted_account).aggregate(student_count=models.Count('students'))['student_count'] or 0
-                    classroom.subject.save()
+#             for classroom in deleted_account.enrolled_classes.all().exclude(subject=None, register_class=True):
+#                 if classroom.subject:
+#                     # Update the subject student count, excluding the student being deleted
+#                     classroom.subject.student_count = classroom.grade.classes.filter(subject=classroom.subject).exclude(students=deleted_account).aggregate(student_count=models.Count('students'))['student_count'] or 0
+#                     classroom.subject.save()
 
-        elif role == 'TEACHER':
-            # Build the queryset for the requesting account with the necessary related fields.
-            deleted_account = Model.objects.prefetch_related('taught_classes').get(account_id=instance.account_id)
+#         elif role == 'TEACHER':
+#             # Build the queryset for the requesting account with the necessary related fields.
+#             deleted_account = Model.objects.prefetch_related('taught_classes').get(account_id=instance.account_id)
 
-            # Update teacher count for all related subjects, excluding the teacher being deleted
-            for classroom in deleted_account.taught_classes.all().exclude(subject=None, register_class=True):
-                if classroom.subject:
-                    classroom.subject.teacher_count = classroom.grade.classes.filter(subject=classroom.subject).exclude(teacher=deleted_account).values_list('teacher', flat=True).distinct().count()
-                    classroom.subject.save()
+#             # Update teacher count for all related subjects, excluding the teacher being deleted
+#             for classroom in deleted_account.taught_classes.all().exclude(subject=None, register_class=True):
+#                 if classroom.subject:
+#                     classroom.subject.teacher_count = classroom.grade.classes.filter(subject=classroom.subject).exclude(teacher=deleted_account).values_list('teacher', flat=True).distinct().count()
+#                     classroom.subject.save()
 
 
 @receiver(post_save, sender=Classroom)

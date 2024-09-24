@@ -1,462 +1,697 @@
-# python
+# django
+from django.test import TestCase
+from django.core.exceptions import ValidationError
 
-# # django
-# from django.test import TestCase
-# from django.core.exceptions import ValidationError
-
-# # models
-# from .models import BaseUser, Principal, Admin, Teacher, Parent, Student
-# from schools.models import School
-# from grades.models import Grade
+# models
+from .models import BaseUser, Founder, Principal, Admin, Teacher, Parent, Student
+from schools.models import School
+from grades.models import Grade
 
 
-# class CustomUserManagerTest(TestCase):
-#     """
-#     Test cases for the CustomUserManager.
-#     """
+class BaseUserTests(TestCase):
+    def setUp(self):
+        self.base_user_data = {
+            'name': 'John',
+            'surname': 'Doe',
+            'email_address': 'john.doe@example.com',
+            'role': 'TEACHER',
+        }
 
-#     def setUp(self):
-#         """
-#         Set up the test environment by creating necessary instances.
-#         """
-#         self.school = School.objects.create(
-#             name="Test School",
-#             email="testschool@example.com",
-#             contact_number="1234567890",
-#             type="PRIMARY",
-#             province="GAUTENG",
-#             district="GAUTENG NORTH"
-#         )
-#         self.school.save()
-#         self.grade = Grade.objects.create(
-#             grade='7',
-#             major_subjects=1,
-#             none_major_subjects=2,
-#             school=self.school
-#         )
-#         self.grade.save()
+    def test_invalid_role(self):
+        test_user_data = self.base_user_data.copy()
 
-#     def test_create_user_with_email(self):
-#         """
-#         Test creating a user with email.
-#         """
+        test_user_data['role'] = 'invalid-role'
+        test_user = BaseUser(**test_user_data)
 
-#         # Case 1: Valid email creation
-#         user = Student.objects.create_user(
-#             email="testuser@example.com",
-#             name="John",
-#             surname="Doe",
-#             id_number='0208285344080',
-#             role="STUDENT",
-#             school=self.school,
-#             grade=self.grade,
-#         )
-#         self.assertEqual(user.email, "testuser@example.com")
-#         self.assertTrue(user.password, None)
+        with self.assertRaises(ValidationError) as e:
+            test_user.clean() # Will raise a validation error due to invalid role
 
-#         # Case 2: Email with invalid format
-#         with self.assertRaises(ValidationError):
-#             Student.objects.create_user(
-#                 email="invalid-email",
-#                 name="Invalid",
-#                 surname="Email",
-#                 id_number='0208285344081',
-#                 role="STUDENT",
-#                 school=self.school,
-#                 grade=self.grade,
-#             )
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
 
-#         # Case 3: Duplicate Emails
-#         Admin.objects.create_user(
-#             email="existinguser@example.com",
-#             name="Charlie",
-#             surname="Brown",
-#             role="PARENT",
-#             school=self.school,
-#         )
-#         with self.assertRaises(ValueError):
-#             Student.objects.create_user(
-#                 email="existinguser@example.com",
-#                 name="David",
-#                 surname="Green",
-#                 id_number='0208285344080',
-#                 role="STUDENT",
-#                 school=self.school,
-#                 grade=self.grade,
-#             )
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, the specified account role is invalid. Please choose a valid role from the options: %s.' % [dict(BaseUser.ROLE_CHOICES).keys()],
+            error_message
+        )
 
-#     def test_create_user_with_id_number(self):
-#         """
-#         Test creating a user with ID number.
-#         """
+    def test_unique_email_address(self):
+        BaseUser.objects.create(**self.base_user_data)
 
-#         # Case 1: Valid ID number creation
-#         user = Student.objects.create_user(
-#             id_number='0208285344080',
-#             name="Jane",
-#             surname="Doe",
-#             role="STUDENT",
-#             grade=self.grade,
-#             school=self.school,
-#         )
-#         self.assertEqual(user.id_number, "0208285344080")
+        test_user_b = BaseUser(
+            name='Jane',
+            surname='Doe',
+            email_address='john.doe@example.com',  # Same email
+            role='STUDENT'
+        )
+        with self.assertRaises(ValidationError) as e:
+            test_user_b.save() # Will raise a validation error due to unique constraint on the email field
 
-#         # Case 2: Duplicate ID number
-#         with self.assertRaises(ValueError):
-#             Student.objects.create_user(
-#                 id_number='0208285344080',
-#                 name="Jane",
-#                 surname="Doe",
-#                 role="STUDENT",
-#                 grade=self.grade,
-#                 school=self.school,
-#             )
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
 
-#     def test_create_user_with_passport_number(self):
-#         """
-#         Test creating a user with passport number.
-#         """
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, an account with the provided email address already exists. Please use a different email address or contact support if you believe this is an error.',
+            error_message
+        )
 
-#         # Case 1: Valid passport number creation
-#         user = Student.objects.create_user(
-#             passport_number="123456789",
-#             name="Alice",
-#             surname="Smith",
-#             role="STUDENT",
-#             grade=self.grade,
-#             school=self.school,
-#         )
-#         self.assertEqual(user.passport_number, "123456789")
+    def test_invalid_email_address(self):
+        test_user_data = self.base_user_data.copy()
 
-#         # Case 2: Duplicate passport number
-#         with self.assertRaises(ValueError):
-#             Student.objects.create_user(
-#                 passport_number="123456789",
-#                 name="Bob",
-#                 surname="Smith",
-#                 role="STUDENT",
-#                 grade=self.grade,
-#                 school=self.school,
-#             )        
+        test_user_data['email_address'] = 'invalid-email'
+        test_user = BaseUser(**test_user_data)
 
-#     def test_activate_user(self):
-#         """
-#         Test activating a user account with various password scenarios.
-#         """
-#         user = Principal.objects.create_user(
-#             email="activateuser@example.com",
-#             name="Eve",
-#             surname="White",
-#             contact_number='0711740824',
-#             role="PRINCIPAL",
-#             school=self.school,
-#         )
+        with self.assertRaises(ValidationError) as e:
+            test_user.clean() # Will raise a validation error due to invalid email
 
-#         # Case 1: Valid password
-#         user = Principal.objects.activate_user(
-#             email="activateuser@example.com",
-#             password="SecurePassword123!"
-#         )
-#         self.assertTrue(user.activated)
-#         self.assertTrue(user.check_password("SecurePassword123!"))
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
 
-#         # Case 2: Password without an uppercase letter
-#         with self.assertRaises(ValueError) as context:
-#             Principal.objects.activate_user(
-#                 email="activateuser@example.com",
-#                 password="securepassword123!"
-#             )
-#         self.assertIn("password must contain at least one uppercase letter", str(context.exception))
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, the provided email address is not in a valid format. Please correct the email address and try again.',
+            error_message
+        )
 
-#         # Case 3: Password without a number
-#         with self.assertRaises(ValueError) as context:
-#             Principal.objects.activate_user(
-#                 email="activateuser@example.com",
-#                 password="SecurePassword!"
-#             )
-#         self.assertIn("password must contain at least one digit", str(context.exception))
+    def test_long_email_address(self):
+        """Test that an email address longer than 254 characters raises a ValidationError."""
+        test_user_data = self.base_user_data.copy()
 
-#         # Case 4: Password without a special character
-#         with self.assertRaises(ValueError) as context:
-#             Principal.objects.activate_user(
-#                 email="activateuser@example.com",
-#                 password="SecurePassword123"
-#             )
-#         self.assertIn("password must contain at least one special character", str(context.exception))
+        test_user_data['email_address'] = 'a' * 255 + '@example.com'  # Creating a long email (255 characters)
+        test_user = BaseUser(**test_user_data)
 
-#         # Case 5: Password too short (e.g., less than 8 characters)
-#         with self.assertRaises(ValueError) as context:
-#             Principal.objects.activate_user(
-#                 email="activateuser@example.com",
-#                 password="S1!"
-#             )
-#         self.assertIn("password must be at least 8 characters long", str(context.exception))
+        with self.assertRaises(ValidationError) as e:
+            test_user.clean() # Will raise a validation error due to invalid email length
 
-#         # Case 6: Password too long (e.g., more than 128 characters)
-#         long_password = "S" + "e" * 127 + "!"
-#         with self.assertRaises(ValueError) as context:
-#             Principal.objects.activate_user(
-#                 email="activateuser@example.com",
-#                 password=long_password
-#             )
-#         self.assertIn("password cannot exceed 128 characters", str(context.exception))
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
 
-#     def test_user_role_requirements(self):
-#         """
-#         Test role-specific requirements for users.
-#         """
-#         # Case 1: Missing school for roles that require it
-#         with self.assertRaises(ValueError):
-#             Student.objects.create_user(
-#                 email="missinggrade@example.com",
-#                 name="Frank",
-#                 surname="Black",
-#                 id_number='0208285344080',
-#                 role="STUDENT",
-#                 grade=None,
-#                 school=self.school
-#             )
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, email address cannot exceed 254 characters. Please correct the email address and try again.',
+            error_message
+        )
 
-#         # Case 2: Missing identifier for STUDENT role
-#         with self.assertRaises(ValueError):
-#             Student.objects.create_user(
-#                 email="missingidentifier@example.com",
-#                 name="Frank",
-#                 surname="Black",
-#                 role="STUDENT",
-#                 grade=self.grade,
-#                 school=self.school
-#             )
+    def test_invalid_name(self):
+        test_user_data = self.base_user_data.copy() # initial user data
+        
+        test_user_data['name'] = 'J' * 65
+        test_user_a = BaseUser(**test_user_data) # user a
 
-#         # Case 3: Missing required fields for TEACHER role
-#         with self.assertRaises(ValueError):
-#             Teacher.objects.create_user(
-#                 name="Grace",
-#                 surname="Gray",
-#                 role="TEACHER",
-#                 school=self.school,
-#             )
+        with self.assertRaises(ValidationError) as e:
+            test_user_a.clean() # Will raise a validation error due to invalid name length
 
-#         # Case 4: Missing phone number for PRINCIPAL role
-#         with self.assertRaises(ValueError):
-#             Principal.objects.create_user(
-#                 email="missingphone@example.com",
-#                 name="Grace",
-#                 surname="Gray",
-#                 role="PRINCIPAL",
-#                 school=self.school,
-#                 phone_number=None
-#             )
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
 
-#     def test_create_user_with_long_fields(self):
-#         """
-#         Test creating a user with field values that exceed the maximum allowed length.
-#         """
-#         # Max length
-#         long_email = "x" * 242 + "@example.com"
-#         long_name = "x" * 64
-#         long_surname = "x" * 64
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, name cannot exceed 64 characters. Please correct the name and try again.',
+            error_message
+        )
 
-#         user = Student.objects.create_user(
-#             email=long_email,
-#             name=long_name,
-#             surname=long_surname,
-#             id_number='0208285344080',
-#             role="STUDENT",
-#             school=self.school,
-#             grade=self.grade,
-#         )
-#         self.assertEqual(user.email, long_email)
-#         self.assertEqual(user.name, long_name)
-#         self.assertEqual(user.surname, long_surname)
+        test_user_data['name'] = ''
+        test_user_b = BaseUser(**test_user_data) # user b
 
-#         # Exceeding length
-#         too_long_email = "x" * 255 + "@example.com"
-#         too_long_name = "x" * 65
-#         too_long_surname = "x" * 65
+        with self.assertRaises(ValidationError) as e:
+            test_user_b.clean() # Will raise a validation error due to unprovided name
 
-#         # Case 1: Long email
-#         with self.assertRaises(ValidationError) as context:
-#             Student.objects.create_user(
-#                 email=too_long_email,
-#                 name='john',
-#                 surname='doe',
-#                 id_number='0208285344081',
-#                 role="STUDENT",
-#                 school=self.school,
-#                 grade=self.grade,
-#             )
-#         self.assertIn("email address cannot exceed 254 characters", str(context.exception))
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
 
-#         # Case 2: Long name
-#         with self.assertRaises(ValidationError) as context:
-#             Student.objects.create_user(
-#                 email="normalemail@example.com",
-#                 name=too_long_name,
-#                 surname='doe',
-#                 id_number='0208285344082',
-#                 role="STUDENT",
-#                 school=self.school,
-#                 grade=self.grade,
-#             )
-#         self.assertIn("name cannot exceed 64 characters", str(context.exception))
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, a name is required for all accounts on the system. Please provide a valid name.',
+            error_message
+        )
 
-#         # Case 3: Long surname
-#         with self.assertRaises(ValidationError) as context:
-#             Student.objects.create_user(
-#                 email="normalemail@example.com",
-#                 name='john',
-#                 surname=too_long_surname,
-#                 id_number='0208285344083',
-#                 role="STUDENT",
-#                 school=self.school,
-#                 grade=self.grade,
-#             )
-#         self.assertIn("surname cannot exceed 64 characters", str(context.exception))
+class FounderTests(TestCase):
+    def setUp(self):
+        self.founder_data = {
+            'name': 'Alice',
+            'surname': 'Smith',
+            'email_address': 'alice.smith@example.com',
+            'role': 'FOUNDER'
+        }
 
-#     def test_profile_picture_upload(self):
-#         """
-#         Test uploading a profile picture with various file sizes and formats.
-#         """
-#         from django.core.files.uploadedfile import SimpleUploadedFile
+    def test_invalid_role(self):
+        founder_data = self.founder_data.copy()
 
-#         # Test valid file upload
-#         valid_file = SimpleUploadedFile("profile.jpg", b"file_content", content_type="image/jpeg")
-#         user = Student.objects.create_user(
-#             email="profilepic@example.com",
-#             name="Profile",
-#             surname="Pic",
-#             id_number='0208285344080',
-#             role="STUDENT",
-#             school=self.school,
-#             grade=self.grade,
-#             profile_picture=valid_file
-#         )
-#         self.assertTrue(user.profile_picture)
+        founder_data['role'] = 'ADMIN' # Invalid role for founder
+        founder = Founder(**founder_data)
 
-#         # Test invalid file upload
-#         invalid_file = SimpleUploadedFile("profile.txt", b"file_content", content_type="text/plain")
-#         with self.assertRaises(ValueError):
-#             Student.objects.create_user(
-#                 email="invalidpic@example.com",
-#                 name="Invalid",
-#                 surname="Pic",
-#                 id_number='0208285344080',
-#                 role="STUDENT",
-#                 school=self.school,
-#                 grade=self.grade,
-#                 profile_picture=invalid_file
-#             )
+        with self.assertRaises(ValidationError) as e:
+            founder.clean()
 
-    # def test_concurrent_user_creation_race_condition(self):
-    #     """
-    #     Test handling race conditions when creating users.
-    #     """
-    #     def create_user(email_suffix):
-    #         with transaction.atomic():
-    #             CustomUser.objects.create_user(
-    #                 email=f"raceconditionuser{email_suffix}@example.com",
-    #                 name="RaceCondition",
-    #                 surname="User",
-    #                 id_number=f'020828{email_suffix}',  # Ensure unique ID
-    #                 role="STUDENT",
-    #                 school=self.school,
-    #                 grade=self.grade,
-    #             )
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
 
-    #     email_suffixes = [f"{i:03d}" for i in range(10)]
-    #     threads = [threading.Thread(target=create_user, args=(suffix,)) for suffix in email_suffixes]
-    #     for thread in threads:
-    #         thread.start()
-    #     for thread in threads:
-    #         thread.join()
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, founder accounts can only have a role of "Founder". Please correct the provided information and try again.',
+            error_message
+        )
 
-    #     self.assertEqual(CustomUser.objects.count(), 10)
+    def test_invalid_email(self):
+        founder_data = self.founder_data.copy()
 
+        founder_data['email_address'] = None # Invalid email for founder, email address missing
+        founder = Founder(**founder_data)
 
-    # def test_concurrent_user_creation_with_duplicate_emails(self):
-    #     """
-    #     Test creating multiple users with the same email simultaneously.
-    #     """
-    #     def create_user(email):
-    #         with transaction.atomic():
-    #             try:
-    #                 # Generate a unique 13-character ID number
-    #                 id_number = f'020828{threading.current_thread().name[-7:].zfill(7)}'
-    #                 CustomUser.objects.create_user(
-    #                     email=email,
-    #                     name="DuplicateEmail",
-    #                     surname="User",
-    #                     id_number=id_number,  # Ensure 13 characters including prefix
-    #                     role="STUDENT",
-    #                     school=self.school,
-    #                     grade=self.grade,
-    #                 )
-    #             except IntegrityError:
-    #                 pass
+        with self.assertRaises(ValidationError) as e:
+            founder.clean()
 
-    #     email = "duplicateemail@example.com"
-    #     threads = [threading.Thread(target=create_user, args=(email,)) for _ in range(10)]
-    #     for thread in threads:
-    #         thread.start()
-    #     for thread in threads:
-    #         thread.join()
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
 
-    #     self.assertEqual(CustomUser.objects.filter(email=email).count(), 1)
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, all founder accounts in the system are required to have an email address linked to their account. Please provide a valid email address.',
+            error_message
+        )
 
+class PrincipalTests(TestCase):
+    def setUp(self):
+        self.school = School.objects.create(
+            name= 'Test School',
+            email_address= 'testschool@example.com',
+            contact_number= '0123456789',
+            student_count= 130,
+            teacher_count= 24,
+            admin_count= 19,
+            in_arrears= False,
+            none_compliant= False,
+            type= 'SECONDARY',
+            province= 'GAUTENG',
+            district= 'GAUTENG EAST',
+            grading_system= 'A-F Grading',
+            library_details= 'Well-stocked library',
+            laboratory_details= 'State-of-the-art labs',
+            sports_facilities= 'Football field, Basketball court',
+            operating_hours= '07:45 - 14:00',
+            location= '456 OUTER St',
+            website= 'https://testschool2.com',
+        )
+        self.principal_data = {
+            'name': 'Bob',
+            'surname': 'Brown',
+            'email_address': 'bob.brown@example.com',
+            'contact_number': '0123456789',
+            'role': 'PRINCIPAL',
+            'school': self.school
+        }
 
-    # def test_concurrent_user_creation_with_duplicate_id_numbers(self):
-    #     """
-    #     Test creating multiple users with the same ID number simultaneously.
-    #     """
-    #     def create_user(id_number):
-    #         try:
-    #             with transaction.atomic():
-    #                 CustomUser.objects.create_user(
-    #                     email=f"uniqueuser{threading.current_thread().name}@example.com",
-    #                     name="DuplicateID",
-    #                     surname="User",
-    #                     id_number=id_number,
-    #                     role="STUDENT",
-    #                     school=self.school,
-    #                     grade=self.grade,
-    #                 )
-    #         except IntegrityError:
-    #             pass
+    def test_invalid_role(self):
+        principal_data = self.principal_data.copy()
 
-    #     id_number = '0208285344080'
-    #     threads = [threading.Thread(target=create_user, args=(id_number,)) for _ in range(10)]
-    #     for thread in threads:
-    #         thread.start()
-    #     for thread in threads:
-    #         thread.join()
+        principal_data['role'] = 'FOUNDER' # Invalid role for principal
+        principal = Principal(**principal_data)
 
-    #     self.assertEqual(CustomUser.objects.filter(id_number=id_number).count(), 1)
+        with self.assertRaises(ValidationError):
+            principal.clean()
 
-    # def test_concurrent_user_creation_with_duplicate_passport_number(self):
-    #     """
-    #     Test creating multiple users with the same passport number simultaneously.
-    #     """
-    #     def create_user(passport_number):
-    #         try:
-    #             with transaction.atomic():
-    #                 CustomUser.objects.create_user(
-    #                     email=f"uniqueuser{threading.current_thread().name}@example.com",
-    #                     name="DuplicatePassport",
-    #                     surname="User",
-    #                     passport_number=passport_number,
-    #                     role="STUDENT",
-    #                     school=self.school,
-    #                     grade=self.grade,
-    #                 )
-    #         except IntegrityError:
-    #             pass
+    def test_invalid_email(self):
+        principal_data = self.principal_data.copy()
 
-    #     passport_number = '1234567890'
-    #     threads = [threading.Thread(target=create_user, args=(passport_number,)) for _ in range(10)]
-    #     for thread in threads:
-    #         thread.start()
-    #     for thread in threads:
-    #         thread.join()
+        principal_data['email_address'] = None # Invalid email for principal account, email address missing
+        principal = Principal(**principal_data)
 
-    #     self.assertEqual(CustomUser.objects.filter(passport_number=passport_number).count(), 1)
+        with self.assertRaises(ValidationError):
+            principal.clean()
+
+    def test_invalid_contact(self):
+        principal_data = self.principal_data.copy()
+
+        principal_data['contact_number'] = 'invalid-number' # Invalid contact number
+        principal_a = Principal(**principal_data)
+
+        with self.assertRaises(ValidationError):
+            principal_a.clean()
+
+        principal_data['contact_number'] = None # Invalid contact number, contact number missing
+        principal_b = Principal(**principal_data)
+
+        with self.assertRaises(ValidationError):
+            principal_b.clean()
+
+    def test_invalid_school(self):
+        principal_data = self.principal_data.copy()
+
+        principal_data['school'] = None # Invalid school
+        principal = Principal(**principal_data)
+
+        with self.assertRaises(ValidationError):
+            principal.clean()
+
+class AdminTests(TestCase):
+    def setUp(self):
+        self.school = School.objects.create(
+            name= 'Test School',
+            email_address= 'testschool@example.com',
+            contact_number= '0123456789',
+            student_count= 130,
+            teacher_count= 24,
+            admin_count= 19,
+            in_arrears= False,
+            none_compliant= False,
+            type= 'SECONDARY',
+            province= 'GAUTENG',
+            district= 'GAUTENG EAST',
+            grading_system= 'A-F Grading',
+            library_details= 'Well-stocked library',
+            laboratory_details= 'State-of-the-art labs',
+            sports_facilities= 'Football field, Basketball court',
+            operating_hours= '07:45 - 14:00',
+            location= '456 OUTER St',
+            website= 'https://testschool2.com',
+        )
+        self.admin_data = {
+            'name': 'Bob',
+            'surname': 'Brown',
+            'email_address': 'bob.brown@example.com',
+            'role': 'ADMIN',
+            'school': self.school
+        }
+
+    def test_invalid_role(self):
+        admin_data = self.admin_data.copy()
+
+        admin_data['role'] = 'FOUNDER' # Invalid role for admin
+        admin = Admin(**admin_data)
+
+        with self.assertRaises(ValidationError) as e:
+            admin.clean()
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, admin accounts can only have a role of "ADMIN". Please correct the provided information and try again.',
+            error_message
+        )
+
+    def test_invalid_email(self):
+        admin_data = self.admin_data.copy()
+
+        admin_data['email_address'] = None # Invalid email for admin account, email address missing
+        admin = Admin(**admin_data)
+
+        with self.assertRaises(ValidationError) as e:
+            admin.clean()
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, all admin accounts in the system are required to have an email address linked to their account. Please provide a valid email address.',
+            error_message
+        )
+
+    def test_invalid_school(self):
+        admin_data = self.admin_data.copy()
+
+        admin_data['school'] = None # Invalid school
+        admin = Admin(**admin_data)
+
+        with self.assertRaises(ValidationError) as e:
+            admin.clean()
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, admin accounts must be associated with a school. Please provide a school for this account.',
+            error_message
+        )
+class TeacherTests(TestCase):
+    def setUp(self):
+        self.school = School.objects.create(
+            name= 'Test School',
+            email_address= 'testschool@example.com',
+            contact_number= '0123456789',
+            student_count= 130,
+            teacher_count= 24,
+            admin_count= 19,
+            in_arrears= False,
+            none_compliant= False,
+            type= 'SECONDARY',
+            province= 'GAUTENG',
+            district= 'GAUTENG EAST',
+            grading_system= 'A-F Grading',
+            library_details= 'Well-stocked library',
+            laboratory_details= 'State-of-the-art labs',
+            sports_facilities= 'Football field, Basketball court',
+            operating_hours= '07:45 - 14:00',
+            location= '456 OUTER St',
+            website= 'https://testschool2.com',
+        )
+        self.teacher_data = {
+            'name': 'Bob',
+            'surname': 'Brown',
+            'email_address': 'bob.brown@example.com',
+            'role': 'TEACHER',
+            'school': self.school
+        }
+
+    def test_invalid_role(self):
+        teacher_data = self.teacher_data.copy()
+
+        teacher_data['role'] = 'FOUNDER' # Invalid role for teacher
+        teacher = Teacher(**teacher_data)
+
+        with self.assertRaises(ValidationError)as e:
+            teacher.clean()
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, teacher accounts can only have a role of "TEACHER". Please correct the provided information and try again.',
+            error_message
+        )
+
+    def test_invalid_email(self):
+        teacher_data = self.teacher_data.copy()
+
+        teacher_data['email_address'] = None # Invalid email for teacher account, email address missing
+        teacher = Teacher(**teacher_data)
+
+        with self.assertRaises(ValidationError) as e:
+            teacher.clean()
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, all teacher accounts in the system are required to have an email address linked to their account. Please provide a valid email address.',
+            error_message
+        )
+
+    def test_invalid_school(self):
+        teacher_data = self.teacher_data.copy()
+
+        teacher_data['school'] = None # Invalid school
+        teacher = Teacher(**teacher_data)
+
+        with self.assertRaises(ValidationError) as e:
+            teacher.clean()
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, teacher accounts must be associated with a school. Please provide a school for this account.',
+            error_message
+        )
+
+class StudentTests(TestCase):
+    def setUp(self):
+        self.school = School.objects.create(
+            name= 'Test School',
+            email_address= 'testschool@example.com',
+            contact_number= '0123456789',
+            student_count= 130,
+            teacher_count= 24,
+            admin_count= 19,
+            in_arrears= False,
+            none_compliant= False,
+            type= 'SECONDARY',
+            province= 'GAUTENG',
+            district= 'GAUTENG EAST',
+            grading_system= 'A-F Grading',
+            library_details= 'Well-stocked library',
+            laboratory_details= 'State-of-the-art labs',
+            sports_facilities= 'Football field, Basketball court',
+            operating_hours= '07:45 - 14:00',
+            location= '456 OUTER St',
+            website= 'https://testschool2.com',
+        )
+        self.grade = Grade.objects.create(
+            grade='10',
+            school=self.school
+        )
+        self.student_data = {
+            'name': 'Bob',
+            'surname': 'Brown',
+            'id_number': '0208285344080',
+            'role': 'STUDENT',
+            'grade': self.grade,
+            'school': self.school
+        }
+
+    def test_invalid_role(self):
+        student_data = self.student_data.copy()
+
+        student_data['role'] = 'FOUNDER' # Invalid role for student
+        student = Student(**student_data)
+
+        with self.assertRaises(ValidationError)as e:
+            student.clean()
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, student accounts can only have a role of "STUDENT". Please correct the provided information and try again.',
+            error_message
+        )
+
+    def test_unique_id_number(self):
+        student_data = self.student_data.copy()
+
+        Student.objects.create(**student_data)
+
+        with self.assertRaises(ValidationError)as e:
+            Student.objects.create(**student_data) # Will raise a validation error due to unique constraint in the ID number field
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, an account with the provided ID number already exists, please use a different ID number.',
+            error_message
+        )
+
+    def test_invalid_id_number(self):
+        student_data = self.student_data.copy()
+
+        student_data['id_number'] = '0936748364527' # Invalid ID number
+        student_a = Student(**student_data)
+
+        with self.assertRaises(ValidationError)as e:
+            student_a.clean() # Will raise a validation error due to the invlid ID number
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'The provided ID number is invalid. Please ensure it contains 13 digits, follows the correct date format (YYMMDD), and is a valid South African ID number. If unsure, verify the number and try again.',
+            error_message
+        )
+
+        student_data['id_number'] = None # Invalid ID number
+        student_b = Student(**student_data)
+
+        with self.assertRaises(ValidationError)as e:
+            student_b.clean() # Will raise a validation error due to unprovided ID number
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, either ID or Passport number is required for every student account on the system.',
+            error_message
+        )
+
+    def test_unique_passport_number(self):
+        student_data = self.student_data.copy()
+
+        student_data['id_number'] = None
+        student_data['passport_number'] = '012345678'
+        Student.objects.create(**student_data)
+
+        with self.assertRaises(ValidationError)as e:
+            Student.objects.create(**student_data) # Will raise a validation error due to unique constraint in the passport number field
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, an account with the provided passport number already exists, please use a different passport number.',
+            error_message
+        )
+
+    def test_invalid_passport_number(self):
+        student_data = self.student_data.copy()
+
+        student_data['id_number'] = None 
+        student_data['passport_number'] = '56325' # Invalid passport number length, too short
+        student_a = Student(**student_data)
+
+        with self.assertRaises(ValidationError)as e:
+            student_a.clean() # Will raise a validation error due to invalid passport number length
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'The provided passport number is invalid. Please ensure it contains between 6 and 9 alphanumeric characters without spaces or special characters.',
+            error_message
+        )
+
+        student_data['passport_number'] = '6532658974' # Invalid ID number length, too long
+        student_b = Student(**student_data)
+
+        with self.assertRaises(ValidationError):
+            student_b.clean() # Will raise a validation error due to invalid passport number length
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'The provided passport number is invalid. Please ensure it contains between 6 and 9 alphanumeric characters without spaces or special characters.',
+            error_message
+        )
+
+    def test_invalid_grade(self):
+        student_data = self.student_data.copy()
+
+        student_data['grade'] = None 
+        student_a = Student(**student_data)
+
+        with self.assertRaises(ValidationError)as e:
+            student_a.clean() # Will raise a validation error due to unprovided grade
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, student accounts must be assigned to a grade. please correct the provided information and try again.',
+            error_message
+        )
+
+    def test_invalid_school(self):
+        student_data = self.student_data.copy()
+
+        student_data['school'] = None # Invalid school
+        student = Student(**student_data)
+
+        with self.assertRaises(ValidationError)as e:
+            student.clean() # Will raise a validation error due to unprovided school
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, student accounts must be associated with a school. Please provide a school for this account.',
+            error_message
+        )
+
+class ParentTests(TestCase):
+    def setUp(self):
+        self.parent_data = {
+            'name': 'Bob',
+            'surname': 'Brown',
+            'email_address': 'bob.brown@example.com',
+            'role': 'PARENT',
+        }
+        self.school = School.objects.create(
+            name= 'Test School',
+            email_address= 'testschool@example.com',
+            contact_number= '0123456789',
+            student_count= 130,
+            teacher_count= 24,
+            admin_count= 19,
+            in_arrears= False,
+            none_compliant= False,
+            type= 'SECONDARY',
+            province= 'GAUTENG',
+            district= 'GAUTENG EAST',
+            grading_system= 'A-F Grading',
+            library_details= 'Well-stocked library',
+            laboratory_details= 'State-of-the-art labs',
+            sports_facilities= 'Football field, Basketball court',
+            operating_hours= '07:45 - 14:00',
+            location= '456 OUTER St',
+            website= 'https://testschool2.com',
+        )
+        self.grade = Grade.objects.create(
+            grade='10',
+            school=self.school
+        )
+        self.child = Student.objects.create(
+            name= 'Bob',
+            surname= 'Brown',
+            id_number= '0208285344080',
+            role= 'STUDENT',
+            grade= self.grade,
+            school= self.school
+        )
+
+    def test_invalid_role(self):
+        parent_data = self.parent_data.copy()
+
+        parent_data['role'] = 'FOUNDER' # Invalid role for teacher
+        parent = Parent(**parent_data)
+
+        with self.assertRaises(ValidationError)as e:
+            parent.clean() # Will raise a validation error due to invalid role for account
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, parent accounts can only have a role of "PARENT". Please correct the provided information and try again.',
+            error_message
+        )
+
+    def test_invalid_email(self):
+        parent_data = self.parent_data.copy()
+
+        parent_data['email_address'] = None # Invalid email for parent account, email address missing
+        parent = Parent(**parent_data)
+
+        with self.assertRaises(ValidationError) as e:
+            parent.clean() # Will raise a validation error due to unprovided email address
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, all parent accounts in the system are required to have an email address linked to their account. Please provide a valid email address.',
+            error_message
+        )
+
+    def test_children_assignment(self):
+        parent = Parent.objects.create(**self.parent_data)
+        parent.add_child(self.child)
+
+        with self.assertRaises(ValidationError)as e:
+            parent.add_child(parent)
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, only student accounts can be assigned as children to a parent account.',
+            error_message
+        )

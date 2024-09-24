@@ -75,10 +75,10 @@ class Grade(models.Model):
     student_count = models.IntegerField(default=0)
 
     # Number of major subjects a student in this grade needs to fail in order to fail the term.
-    major_subjects = models.PositiveIntegerField()
+    major_subjects = models.PositiveIntegerField(default=1)
 
     # Number of non-major subjects a student in this grade needs to fail in order to fail the term.
-    none_major_subjects = models.PositiveIntegerField()
+    none_major_subjects = models.PositiveIntegerField(default=2)
 
     # The time the grade record was last updated.
     last_updated = models.DateTimeField(auto_now=True)
