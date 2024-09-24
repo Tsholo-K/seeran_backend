@@ -9,26 +9,26 @@ class TeacherAccountCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Teacher
-        fields = ['name', 'surname', 'email', 'school', 'role']
+        fields = ['name', 'surname', 'email_address', 'school', 'role']
 
     def __init__(self, *args, **kwargs):
         super(TeacherAccountCreationSerializer, self).__init__(*args, **kwargs)
         # Remove the unique together validator that's added by DRF
-        self.fields['email'].validators = []
+        self.fields['email_address'].validators = []
 
 
 class TeacherAccountUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Teacher
-        fields = ['name', 'surname', 'email']
+        fields = ['name', 'surname', 'email_address']
 
     def __init__(self, *args, **kwargs):
         super(TeacherAccountUpdateSerializer, self).__init__(*args, **kwargs)
         # Make all fields optional 
         for field in self.fields:
             self.fields[field].required = False
-        self.fields['email'].validators = []
+        self.fields['email_address'].validators = []
 
 
 class TeacherSecurityInformationSerializer(serializers.ModelSerializer):
@@ -63,7 +63,7 @@ class TeacherAccountSerializer(serializers.ModelSerializer):
 
     def get_identifier(self, obj):
         """Return the identifier for the user: ID number, passport number, or email."""
-        return obj.email
+        return obj.email_address
     
 
 class TeacherAccountDetailsSerializer(serializers.ModelSerializer):
@@ -85,7 +85,7 @@ class TeacherAccountDetailsSerializer(serializers.ModelSerializer):
         return obj.surname.title()
     
     def get_identifier(self, obj):
-        return obj.email
+        return obj.email_address
         
     def get_role(self, obj):
         return obj.role.title()

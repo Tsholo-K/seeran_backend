@@ -30,7 +30,7 @@ class FounderAccountDetailsSerializer(serializers.ModelSerializer):
         return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
     
     def get_identifier(self, obj):
-        return obj.email
+        return obj.email_address
 
 
 class FounderSecurityInformationSerializer(serializers.ModelSerializer):

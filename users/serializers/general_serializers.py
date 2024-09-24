@@ -49,7 +49,7 @@ class BasicAccountDetailsEmailSerializer(serializers.ModelSerializer):
             
     def get_identifier(self, obj):
         """Return the email of the user."""
-        return obj.email
+        return obj.email_address
             
     def get_image(self, obj):
         """Return the URL of the user's image or a default image."""
@@ -81,7 +81,7 @@ class SourceAccountSerializer(serializers.ModelSerializer):
 
     def get_identifier(self, obj):
         """Return the identifier for the user: email."""
-        return obj.email
+        return obj.email_address
 
 
 class BareAccountDetailsSerializer(serializers.ModelSerializer):

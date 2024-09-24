@@ -9,14 +9,14 @@ class PrincipalAccountCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Principal
-        fields = ['name', 'surname', 'contact_number', 'email', 'school', 'role']
+        fields = ['name', 'surname', 'contact_number', 'email_address', 'school', 'role']
         
 
 class UpdatePrincipalAccountSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Principal
-        fields = ['name', 'surname', 'email', 'contact_number']
+        fields = ['name', 'surname', 'email_address', 'contact_number']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -52,7 +52,7 @@ class PrincipalAccountSerializer(serializers.ModelSerializer):
 
     def get_identifier(self, obj):
         """Return the identifier for the user: email."""
-        return obj.email
+        return obj.email_address
             
     def get_image(self, obj):
         """Return the URL of the user's image or a default image."""
@@ -80,7 +80,7 @@ class PrincipalAccountSerializer(serializers.ModelSerializer):
         return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
 
     def get_identifier(self, obj):
-        return obj.email
+        return obj.email_address
 
 
 class PrincipalAccountDetailsSerializer(serializers.ModelSerializer):
@@ -108,6 +108,6 @@ class PrincipalAccountDetailsSerializer(serializers.ModelSerializer):
         return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
     
     def get_identifier(self, obj):
-        return obj.email
+        return obj.email_address
 
 

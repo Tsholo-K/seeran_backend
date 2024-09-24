@@ -9,12 +9,12 @@ class StudentAccountCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Student
-        fields = ['name', 'surname', 'email', 'role', 'id_number', 'passport_number', 'grade', 'school']
+        fields = ['name', 'surname', 'email_address', 'role', 'id_number', 'passport_number', 'grade', 'school']
 
     def __init__(self, *args, **kwargs):
         super(StudentAccountCreationSerializer, self).__init__(*args, **kwargs)
         # Make some fields optional
-        for field in ['email', 'id_number', 'passport_number']:
+        for field in ['email_address', 'id_number', 'passport_number']:
             self.fields[field].required = False
             self.fields[field].validators = []
 
@@ -23,14 +23,14 @@ class StudentAccountUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Student
-        fields = ['name', 'surname', 'email']
+        fields = ['name', 'surname', 'email_address']
 
     def __init__(self, *args, **kwargs):
         super(StudentAccountUpdateSerializer, self).__init__(*args, **kwargs)
         # Make all fields optional 
         for field in self.fields:
             self.fields[field].required = False
-        self.fields['email'].validators = []
+        self.fields['email_address'].validators = []
 
 
 class StudentSecurityInformationSerializer(serializers.ModelSerializer):
@@ -65,7 +65,7 @@ class StudentSourceAccountSerializer(serializers.ModelSerializer):
 
     def get_identifier(self, obj):
         """Return the identifier for the user: ID number, passport number, or email."""
-        return obj.id_number or obj.passport_number or obj.email
+        return obj.id_number or obj.passport_number or obj.email_address
 
 
 class StudentAccountDetailsSerializer(serializers.ModelSerializer):
@@ -78,7 +78,7 @@ class StudentAccountDetailsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Student
-        fields = ['name', 'surname', 'email', 'identifier', 'role', 'image', 'account_id']
+        fields = ['name', 'surname', 'email_address', 'identifier', 'role', 'image', 'account_id']
     
     def get_name(self, obj):
         return obj.name.title()
