@@ -57,24 +57,24 @@ class Subject(models.Model):
     pass_mark = models.DecimalField(max_digits=5, decimal_places=2, default=40.00)
 
     # The number of students enrolled in this subject. This value should be updated as students are enrolled or leave the subject.
-    student_count = models.IntegerField(default=0)
+    student_count = models.PositiveBigIntegerField(default=0)
 
     # The number of teachers assigned to teach this subject. Useful for balancing workload and teacher assignment.
-    teacher_count = models.IntegerField(default=0)
+    teacher_count = models.PositiveBigIntegerField(default=0)
 
     # The number of classrooms associated with this subject. For instance, if a subject is taught across multiple rooms.
-    classroom_count = models.IntegerField(default=0)
+    classroom_count = models.PositiveBigIntegerField(default=0)
 
     # Links the subject to a specific grade level, establishing a one-to-many relationship where
     # each grade can have multiple subjects but a subject is associated with only one grade.
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='subjects')
 
-    # A UUID field to uniquely identify the subject. Using UUID ensures uniqueness even across distributed systems.
-    subject_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-
     # Tracks the last time this subject's record was updated in the database.
     # Automatically updates whenever the record is saved, without needing manual intervention.
     last_updated = models.DateTimeField(auto_now=True)
+
+    # A UUID field to uniquely identify the subject. Using UUID ensures uniqueness even across distributed systems.
+    subject_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
         """
@@ -84,10 +84,8 @@ class Subject(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['grade', 'subject'], name='unique_grade_subject')
         ]
-
         # Default ordering for querying subjects, sorting by subject name alphabetically.
         ordering = ['subject']
-
         # Adds an index to the combination of subject and grade fields to speed up queries.
         indexes = [models.Index(fields=['subject', 'grade'])]
 
@@ -106,22 +104,15 @@ class Subject(models.Model):
         - Attempts to catch and handle IntegrityError related to unique constraint violations, providing
           more user-friendly error messages if a duplicate subject is detected.
         """
-        if not self.pk:  # Only perform this check on object creation
-            if not self.grade:
-                raise ValidationError(_('A subject needs to be associated with a school grade'))
-
         self.clean()  # Ensure the model's fields are valid before saving.
-
         try:
             super().save(*args, **kwargs)  # Call the original save method
         except IntegrityError as e:
             error_message = str(e).lower()
             # Handle unique constraint errors gracefully and provide useful feedback.
             if 'unique constraint' in error_message:
-                if 'grade_subject' in error_message:
-                    raise ValidationError(_('The provided subject already exists for this grade. Duplicate subjects are not permitted.'))
-                else:
-                    raise ValidationError(_('A unique constraint error occurred.'))
+                if 'subject' in error_message:
+                    raise ValidationError(_('Could not process your request, the subject "{}" already exists for the selected grade. Duplicate subjects are not permitted. Please choose a different subject for this grade or check existing subjects.').format(self.subject))
             # If it's not handled, re-raise the original exception
             raise
 
@@ -130,7 +121,11 @@ class Subject(models.Model):
         Custom validation method for ensuring that the pass mark is within a valid range (0 to 100).
         This method is called before the subject is saved to ensure data integrity.
         """
+        if not self.grade_id:
+            raise ValidationError(_('Could not process your request, a subject needs to be associated with a school grade. Please provide a grade before saving the subject.'))
+        if self.subject not in dict(Subject.SCHOOL_SUBJECTS_CHOICES).keys():
+            raise ValidationError(_('Could not process your request, the specified school subject is invalid. Please choose a valid subject from the provided options.'))
         # Ensure the pass mark is between 0 and 100
         if not (0 <= self.pass_mark <= 100):
-            raise ValidationError(_('The subject\'s pass mark must be between 0 and 100'))
+            raise ValidationError(_('Could not process your request, the subject\'s pass mark must be between 0.00 and 100.00.'))
 

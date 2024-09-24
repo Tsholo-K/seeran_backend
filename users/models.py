@@ -250,7 +250,7 @@ class Principal(BaseUser):
     school = models.OneToOneField(School, on_delete=models.CASCADE, related_name='principal')
 
     class Meta:
-        # A unique constraint that prevents accounts from having duplicate contact numbers and schools.
+        # A unique constraint that prevents principals from having duplicate contact numbers.
         constraints = [
             models.UniqueConstraint(fields=['contact_number'], name='unique_account_contact_number')
         ]

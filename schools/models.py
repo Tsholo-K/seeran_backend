@@ -98,9 +98,9 @@ class School(models.Model):
     contact_number = models.CharField(_('school contact number'), max_length=15)
 
     # Counts of different types of staff members
-    student_count = models.IntegerField(default=0)  # Number of students enrolled
-    teacher_count = models.IntegerField(default=0)  # Number of teachers
-    admin_count = models.IntegerField(default=0)    # Number of administrative staff
+    student_count = models.PositiveBigIntegerField(default=0)  # Number of students enrolled
+    teacher_count = models.PositiveBigIntegerField(default=0)  # Number of teachers
+    admin_count = models.PositiveBigIntegerField(default=0)    # Number of administrative staff
 
     # Billing and compliance statuses
     in_arrears = models.BooleanField(_('school bill'), default=False)  # Whether the school has unpaid bills

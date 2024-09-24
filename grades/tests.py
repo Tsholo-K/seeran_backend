@@ -1,288 +1,218 @@
-# python 
-from datetime import timedelta
-
 # django
 from django.test import TestCase
 from django.core.exceptions import ValidationError
-from django.utils import timezone
 
 # models
-# from .models import Term
-# from schools.models import School
-# from grades.models import Grade, Subject
+from .models import Grade
+from schools.models import School
 
 
-# SCHOOL_GRADES_CHOICES = [
-#     ('000', 'Grade 000'), 
-#     ('00', 'Grade 00'), 
-#     ('R', 'Grade R'), 
-#     ('1', 'Grade 1'), 
-#     ('2', 'Grade 2'), 
-#     ('3', 'Grade 3'), 
-#     ('4', 'Grade 4'), 
-#     ('5', 'Grade 5'), 
-#     ('6', 'Grade 6'), 
-#     ('7', 'Grade 7'), 
-#     ('8', 'Grade 8'), 
-#     ('9', 'Grade 9'), 
-#     ('10', 'Grade 10'), 
-#     ('11', 'Grade 11'), 
-#     ('12', 'Grade 12')
-# ]
+class GradeModelTestCase(TestCase):
+    def setUp(self):
+        """Set up test data for Grade model tests."""
+        """
+        Set up test data for Grade model tests.
 
+        - Creates a test `School` instance as grades are linked to a school.
+        - Prepares a valid grade data dictionary that can be reused across tests.
+        """
+        # Create primary school instance for testing
+        self.primary_school = School.objects.create(
+            name='Test School 1',
+            email_address='primaryschool@example.com',
+            contact_number='0123456789',
+            student_count=130,
+            teacher_count=24,
+            admin_count=19,
+            in_arrears=False,
+            none_compliant=False,
+            type='PRIMARY',
+            province='GAUTENG',
+            district='GAUTENG WEST',
+            grading_system='A-F Grading',
+            library_details='Well-stocked library',
+            laboratory_details='State-of-the-art labs',
+            sports_facilities='Football field, Basketball court',
+            operating_hours='07:45 - 14:00',
+            location='456 INNER St',
+            website='https://primaryschool.com',
+        )
 
-# class GradeModelTest(TestCase):
-#     def setUp(self):
-#         """Set up a sample school instance for use in the tests."""
-#         self.school = School.objects.create(
-#             name="Test School",
-#             email="testschool@example.com",
-#             contact_number="1234567890",
-#             type="PRIMARY",
-#             province="GAUTENG",
-#             district="JHB NORTH"
-#         )
-#         self.grade = Grade.objects.create(
-#             grade='7',
-#             major_subjects=1,
-#             none_major_subjects=2,
-#             school=self.school
-#         )
+        # Create secondary school instance for testing
+        self.secondary_school = School.objects.create(
+            name='Test School 2',
+            email_address='secondaryschool@example.com',
+            contact_number='1011121314',
+            student_count=130,
+            teacher_count=24,
+            admin_count=19,
+            in_arrears=False,
+            none_compliant=False,
+            type='SECONDARY',
+            province='GAUTENG',
+            district='GAUTENG EAST',
+            grading_system='A-F Grading',
+            library_details='Well-stocked library',
+            laboratory_details='State-of-the-art labs',
+            sports_facilities='Football field, Basketball court',
+            operating_hours='07:45 - 14:00',
+            location='123 OUTER St',
+            website='https://secondaryschool.com',
+        )
 
-#     def test_grade_creation(self):
-#         """Test that a grade instance is created successfully."""
-#         self.assertEqual(Grade.objects.count(), 1)
-#         self.assertEqual(self.grade.grade, '7')
-#         self.assertEqual(self.grade.major_subjects, 1)
-#         self.assertEqual(self.grade.none_major_subjects, 2)
+        # Default data for creating a Grade
+        self.grade_data = {
+            'major_subjects': 1, 
+            'none_major_subjects': 2,
+            'grade': '10', 
+            'school': self.secondary_school
+        }
+    
+    def test_create_valid_grade(self):
+        """Test creating a valid grade."""
+        grade = Grade.objects.create(**self.grade_data)  # Create a new Grade instance
+        self.assertEqual(grade.grade, '10')  # Check if the grade is set correctly
+        self.assertEqual(grade.school, self.secondary_school)  # Check if the school is set correctly
+        self.assertEqual(grade.grade_order, 12)  # Ensure the correct order based on the grading system
 
-#     def test_grade_order(self):
-#         """Test that the grade_order is set correctly based on the grade."""
-#         self.assertEqual(self.grade.grade_order, [choice[0] for choice in SCHOOL_GRADES_CHOICES].index('7'))
+    def test_invalid_subjects(self):
+        """Test validation for negative major and non-major subjects."""
+        grade_data = self.grade_data.copy()  # Create a copy of the default grade data
 
-#     def test_invalid_grade_value(self):
-#         """Test that an invalid grade value raises a ValidationError."""
-#         with self.assertRaises(ValidationError):
-#             invalid_grade = Grade(
-#                 grade='INVALID',
-#                 major_subjects=2,
-#                 none_major_subjects=1,
-#                 school=self.school
-#             )
-#             invalid_grade.save()  # This should raise ValidationError
+        # Test case for negative major subjects
+        grade_data['major_subjects'] = -1  # Set major subjects to an invalid negative number
+        grade_a = Grade(**grade_data)  # Create a Grade instance
 
-#     def test_negative_subjects(self):
-#         """Test that negative values for major_subjects and none_major_subjects raise a ValidationError."""
-#         with self.assertRaises(ValidationError):
-#             invalid_grade = Grade(
-#                 grade='8',
-#                 major_subjects=-1,
-#                 none_major_subjects=1,
-#                 school=self.school
-#             )
-#             invalid_grade.clean()  # This should raise ValidationError
+        with self.assertRaises(ValidationError) as e:  # Expect a validation error
+            grade_a.clean()  # Attempt to validate the Grade instance
 
-#     def test_no_subjects(self):
-#         """Test that having zero major and non-major subjects raises a ValidationError."""
-#         with self.assertRaises(ValidationError):
-#             invalid_grade = Grade(
-#                 grade='8',
-#                 major_subjects=0,
-#                 none_major_subjects=0,
-#                 school=self.school
-#             )
-#             invalid_grade.clean()  # This should raise ValidationError
+        # Access the actual message from the exception
+        error_message = str(e.exception).strip("[]'\"")
+        self.assertIn(
+            'Could not process your request, major subjects and non-major subjects must be non-negative integers. Please correct the values and try again.',
+            error_message  # Verify the correct error message is raised
+        )
 
-#     def test_unique_grade_within_school(self):
-#         """Test that duplicate grades within the same school raise a ValidationError."""
-#         with self.assertRaises(ValidationError):
-#             duplicate_grade = Grade(
-#                 grade='8',
-#                 major_subjects=1,
-#                 none_major_subjects=2,
-#                 school=self.school
-#             )
-#             duplicate_grade.save()  # This should raise ValidationError
+        # Test case for negative non-major subjects
+        grade_data['major_subjects'] = 0  # Set major subjects to 0 (valid)
+        grade_data['none_major_subjects'] = -1  # Set non-major subjects to an invalid negative number
+        grade_b = Grade(**grade_data)  # Create another Grade instance
 
+        with self.assertRaises(ValidationError) as e:  # Expect a validation error
+            grade_b.clean()  # Attempt to validate the Grade instance
 
-# class TermModelTest(TestCase):
-#     def setUp(self):
-#         """Set up a sample school and term instance for use in the tests."""
-#         self.school = School.objects.create(
-#             name="Test School",
-#             email="testschool@example.com",
-#             contact_number="1234567890",
-#             type="PRIMARY",
-#             province="GAUTENG",
-#             district="JHB NORTH"
-#         )
-#         self.grade = Grade.objects.create(
-#             grade='7',
-#             major_subjects=1,
-#             none_major_subjects=2,
-#             school=self.school
-#         )
-#         self.term = Term.objects.create(
-#             term=1,
-#             weight=30.00,
-#             start_date=timezone.now().date(),
-#             end_date=timezone.now().date() + timedelta(days=60),
-#             grade=self.grade,
-#             school=self.school
-#         )
+        # Access the actual message from the exception
+        error_message = str(e.exception).strip("[]'\"")
+        self.assertIn(
+            'Could not process your request, major subjects and non-major subjects must be non-negative integers. Please correct the values and try again.',
+            error_message  # Verify the correct error message is raised
+        )
 
-#     def test_term_creation(self):
-#         """Test that a term instance is created successfully."""
-#         self.assertEqual(Term.objects.count(), 1)
-#         self.assertEqual(self.term.term, 1)
-#         self.assertEqual(self.term.weight, 30.00)
+    def test_at_least_one_subject_required(self):
+        """Test validation that at least one subject must be specified."""
+        grade_data = self.grade_data.copy()  # Create a copy of the default grade data
 
-#     def test_term_start_date_before_end_date(self):
-#         """Test that a term's start date cannot be after its end date, raising a ValidationError."""
-#         with self.assertRaises(ValidationError):
-#             self.term.start_date = timezone.now().date() + timedelta(days=61)
-#             self.term.end_date = timezone.now().date() + timedelta(days=60)
-#             self.term.clean()  # Trigger validation
+        grade_data['major_subjects'] = 0  # Set major subjects to 0
+        grade_data['none_major_subjects'] = 0  # Set non-major subjects to 0
+        grade = Grade(**grade_data)  # Create a Grade instance
 
-#     def test_term_overlapping_dates(self):
-#         """Test that overlapping term dates raise a ValidationError."""
-#         overlapping_term = Term(
-#             term=2,
-#             weight=20.00,
-#             start_date=self.term.start_date + timedelta(days=15),
-#             end_date=self.term.end_date + timedelta(days=15),
-#             grade=self.grade,
-#             school=self.school
-#         )
-#         with self.assertRaises(ValidationError):
-#             overlapping_term.clean()  # Trigger validation
+        with self.assertRaises(ValidationError) as e:  # Expect a validation error
+            grade.clean()  # Attempt to validate the Grade instance
 
-#     def test_term_weight_exceeding_100(self):
-#         """Test that a term's total weight exceeding 100% raises a ValidationError."""
-#         term_2 = Term.objects.create(
-#             term=2,
-#             weight=60.00,
-#             start_date=timezone.now().date() + timedelta(days=61),
-#             end_date=timezone.now().date() + timedelta(days=120),
-#             grade=self.grade,
-#             school=self.school
-#         )
-#         with self.assertRaises(ValidationError):
-#             term_2.weight = 80.00  # Total weight would exceed 100%
-#             term_2.clean()  # Trigger validation
+        # Access the actual message from the exception
+        error_message = str(e.exception).strip("[]'\"")
+        self.assertIn(
+            'Could not process your request, you must specify at least one major or non-major subject for the grading criteria. Please correct the values and try again.',
+            error_message  # Verify the correct error message is raised
+        )
 
-#     def test_term_school_days_calculation(self):
-#         """Test that the school days for a term are calculated correctly."""
-#         start_date = self.term.start_date
-#         end_date = self.term.end_date
+    def test_primary_school_grade_limit(self):
+        """Test validation for grade limit in primary schools."""
+        grade_data = self.grade_data.copy()  # Create a copy of the default grade data
 
-#         total_days = 0
-#         current_date = start_date
+        grade_data['grade'] = 10  # Set grade to 10 (invalid for primary school)
+        grade_data['school'] = self.primary_school  # Set school to primary school
+        grade_a = Grade(**grade_data)  # Create a Grade instance
 
-#         while current_date <= end_date:
-#             if current_date.weekday() < 5:  # Monday to Friday are considered school days
-#                 total_days += 1
-#             current_date += timedelta(days=1)
+        with self.assertRaises(ValidationError) as e:  # Expect a validation error
+            grade_a.clean()  # Attempt to validate the Grade instance
 
-#         self.assertEqual(self.term.school_days, total_days)  # Assuming there are 44 weekdays in a 60-day period
+        # Access the actual message from the exception
+        error_message = str(e.exception).strip("[]'\"")
+        self.assertIn(
+            'Could not process your request, primary schools cannot assign grades higher than Grade 7. Please choose a valid grade for primary school and try again.',
+            error_message  # Verify the correct error message is raised
+        )
 
-#     def test_term_update(self):
-#         """Test that a term instance can be updated successfully."""
-#         self.term.term = 2
-#         self.term.save()
-#         self.assertEqual(Term.objects.get(pk=self.term.pk).term, 2)
+        # Test case for secondary school
+        grade_data['grade'] = 6  # Set grade to 6 (invalid for secondary school)
+        grade_data['school'] = self.secondary_school  # Set school to secondary school
+        grade_b = Grade(**grade_data)  # Create another Grade instance
 
-#     def test_term_unique_constraint(self):
-#         """Test that a duplicate term for the same school raises a ValidationError."""
-#         with self.assertRaises(ValidationError):
-#             duplicate_term = Term(
-#                 term=1,
-#                 weight=25.00,
-#                 start_date=self.term.start_date + timedelta(days=120),
-#                 end_date=self.term.end_date + timedelta(days=180),
-#                 grade=self.grade,
-#                 school=self.school
-#             )
-#             duplicate_term.clean()  # Trigger validation
+        with self.assertRaises(ValidationError) as e:  # Expect a validation error
+            grade_b.clean()  # Attempt to validate the Grade instance
 
-#     def test_term_id_is_unique(self):
-#         """Test that each term instance has a unique 'term_id'."""
-#         term_2 = Term.objects.create(
-#             term=2,
-#             weight=50.00,
-#             start_date=timezone.now().date() + timedelta(days=61),
-#             end_date=timezone.now().date() + timedelta(days=120),
-#             grade=self.grade,
-#             school=self.school
-#         )
-#         self.assertNotEqual(self.term.term_id, term_2.term_id)
+        # Access the actual message from the exception
+        error_message = str(e.exception).strip("[]'\"")
+        self.assertIn(
+            'Could not process your request, secondary schools must assign grades higher than Grade 7. Please update the grade accordingly.',
+            error_message  # Verify the correct error message is raised
+        )
 
+        # Test case for non-numeric grade
+        grade_data['grade'] = 'R'  # Set grade to a non-numeric value
+        grade_c = Grade(**grade_data)  # Create another Grade instance
 
-# class SubjectModelTest(TestCase):
-#     def setUp(self):
-#         """Set up a sample school and grade instance for use in the tests."""
-#         self.school = School.objects.create(
-#             name="Test School",
-#             email="testschool@example.com",
-#             contact_number="1234567890",
-#             type="PRIMARY",
-#             province="GAUTENG",
-#             district="JHB NORTH"
-#         )
-#         self.grade = Grade.objects.create(
-#             grade='7',
-#             major_subjects=2,
-#             none_major_subjects=1,
-#             school=self.school
-#         )
-#         self.subject = Subject.objects.create(
-#             grade=self.grade,
-#             subject='ENGLISH',
-#             major_subject=True,
-#             pass_mark=50.00
-#         )
+        with self.assertRaises(ValidationError) as e:  # Expect a validation error
+            grade_c.clean()  # Attempt to validate the Grade instance
 
-#     def test_subject_creation(self):
-#         """Test that a subject instance is created successfully."""
-#         self.assertEqual(Subject.objects.count(), 1)
-#         self.assertEqual(self.subject.subject, 'ENGLISH')
-#         self.assertTrue(self.subject.major_subject)
-#         self.assertEqual(self.subject.pass_mark, 50.00)
+        # Access the actual message from the exception
+        error_message = str(e.exception).strip("[]'\"")
+        self.assertIn(
+            'Could not process your request, secondary and tertiary schools cannot assign non-numeric grades such as "R", "00", or "000". Please select a valid numeric grade.',
+            error_message  # Verify the correct error message is raised
+        )
 
-#     def test_pass_mark_validation(self):
-#         """Test that an invalid pass mark raises a ValidationError."""
-#         with self.assertRaises(ValidationError):
-#             invalid_subject = Subject(
-#                 grade=self.grade,
-#                 subject='ENGLISH',
-#                 major_subject=True,
-#                 pass_mark=105.00  # Pass mark exceeds 100
-#             )
-#             invalid_subject.clean()  # This should raise ValidationError
+    def test_duplicate_grades(self):
+        """Test that duplicate grades for the same school raise a ValidationError."""
+        Grade.objects.create(**self.grade_data)  # Create the first Grade instance
+        with self.assertRaises(ValidationError) as e:  # Expect a validation error on duplicate
+            Grade.objects.create(**self.grade_data)  # Attempt to create a duplicate Grade instance
 
-#     def test_unique_subject_within_grade(self):
-#         """Test that duplicate subjects within the same grade raise a ValidationError."""
-#         with self.assertRaises(ValidationError):
-#             duplicate_subject = Subject(
-#                 grade=self.grade,
-#                 subject='ENGLISH',
-#                 major_subject=False,
-#                 pass_mark=40.00
-#             )
-#             duplicate_subject.save()  # This should raise ValidationError
+        # Access the actual message from the exception
+        error_message = str(e.exception).strip("[]'\"")
+        self.assertIn(
+            'Could not process your request, the provided grade already exists for your school, duplicate grades are not permitted. Please choose a different grade.',
+            error_message  # Verify the correct error message is raised
+        )
 
-#     def test_subject_update(self):
-#         """Test that a subject instance can be updated successfully."""
-#         self.subject.subject = 'MATHEMATICS'
-#         self.subject.save()
-#         self.assertEqual(Subject.objects.get(pk=self.subject.pk).subject, 'MATHEMATICS')
+    def test_save_without_school(self):
+        """Test saving a grade without an associated school raises a ValidationError."""
+        grade_data = self.grade_data.copy()  # Create a copy of the default grade data
 
-#     def test_subject_id_is_unique(self):
-#         """Test that each subject instance has a unique 'subject_id'."""
-#         subject_2 = Subject.objects.create(
-#             grade=self.grade,
-#             subject='MATHEMATICS',
-#             major_subject=True,
-#             pass_mark=60.00
-#         )
-#         self.assertNotEqual(self.subject.subject_id, subject_2.subject_id)
+        grade_data['school'] = None  # Set school to None (invalid)
+        grade = Grade(**grade_data)  # Create a Grade instance
+
+        with self.assertRaises(ValidationError) as e:  # Expect a validation error
+            grade.clean()  # Attempt to validate the Grade instance
+
+        # Access the actual message from the exception
+        error_message = str(e.exception).strip("[]'\"")
+        self.assertIn(
+            'Could not process your request, a grade needs to be associated with a school. Please provide a school and try again.',
+            error_message  # Verify the correct error message is raised
+        )
+
+    def test_grade_order_is_set_on_creation(self):
+        """Test that grade_order is set correctly based on SCHOOL_GRADES_CHOICES."""
+        grade_data = self.grade_data.copy()  # Create a copy of the default grade data
+
+        grade = Grade.objects.create(**grade_data)  # Create a new Grade instance
+        self.assertEqual(grade.grade_order, 12)  # Check that the grade_order is correctly set
+
+    def test_string_representation(self):
+        """Test the string representation of the grade."""
+        grade_data = self.grade_data.copy()  # Create a copy of the default grade data
+
+        grade = Grade.objects.create(**grade_data)  # Create a Grade instance
+        self.assertEqual(str(grade), "Grade 10 (Order: 12)")  # Verify the string representation

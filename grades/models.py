@@ -72,7 +72,7 @@ class Grade(models.Model):
     grade_order = models.PositiveIntegerField()
 
     # The number of students currently assigned to this grade in the school.
-    student_count = models.IntegerField(default=0)
+    student_count = models.PositiveBigIntegerField(default=0)
 
     # Number of major subjects a student in this grade needs to fail in order to fail the term.
     major_subjects = models.PositiveIntegerField(default=1)
@@ -92,7 +92,9 @@ class Grade(models.Model):
 
     class Meta:
         # Ensures that within each school, a grade can only appear once (no duplicates).
-        unique_together = ('school', 'grade')
+        constraints = [
+            models.UniqueConstraint(fields=['grade', 'school'], name='unique_school_grade')
+        ]
         # Orders grades based on their grade_order field, so that they can be retrieved in the correct order (e.g., Grade 1, Grade 2).
         ordering = ['grade_order']
         # Indexes for improved performance when querying by grade and school fields.
@@ -101,34 +103,6 @@ class Grade(models.Model):
     def __str__(self):
         # String representation of the grade, useful for debugging and in Django admin.
         return f"Grade {self.grade} (Order: {self.grade_order})"
-    
-    def clean(self):
-        """
-        Custom validation method for the Grade model. Ensures that fields contain valid data.
-        """
-        # Ensure major_subjects and non-major_subjects are non-negative.
-        if self.major_subjects < 0 or self.none_major_subjects < 0:
-            raise ValidationError(_('Major subjects and non-major subjects must be non-negative integers.'))
-
-        # Ensure at least one subject is required for the grading criteria.
-        if self.major_subjects + self.none_major_subjects <= 0:
-            raise ValidationError(_('There must be at least one major or non-major subject for the grading criteria.'))
-
-        # Validate that the grade level is set.
-        if not self.grade:
-            raise ValidationError(_('Grades need to have a grade level'))
-
-        # Only apply integer checks for numeric grade levels
-        try:
-            grade_num = int(self.grade)
-            if self.school.type == 'PRIMARY' and grade_num > 7:
-                raise ValidationError(_('primary schools cannot assign grades higher than 7'))
-            if self.school.type == 'SECONDARY' and grade_num <= 7:
-                raise ValidationError(_('secondary schools must assign grades higher than 7'))
-        except ValueError:
-            # Handle non-numeric grades like 'R', '00', '000'
-            if self.school.type in ['SECONDARY', 'TERTIARY'] and self.grade in ['R', '00', '000']:
-                raise ValidationError(_('secondary schools cannot assign non-numeric grades'))
 
     def save(self, *args, **kwargs):
         """
@@ -143,13 +117,7 @@ class Grade(models.Model):
                     grade_keys = [choice[0] for choice in self.SCHOOL_GRADES_CHOICES]
                     self.grade_order = grade_keys.index(self.grade)
                 except ValueError:
-                    raise ValidationError(_('The provided grade level is invalid'))
-            else:
-                raise ValidationError(_('Validation error, a grade cannot have an empty level'))
-
-            # Ensure a school is linked to the grade.
-            if not self.school:
-                raise ValidationError(_('Validation error, a grade needs to be associated with a school'))
+                    raise ValidationError(_('Could not process your request, the provided grade level is invalid. Please choose a grade from the available options and try again.'))
 
         # Clean and validate the instance.
         self.clean()
@@ -161,13 +129,42 @@ class Grade(models.Model):
             error_message = str(e).lower()
             # Check for unique constraint violations.
             if 'unique constraint' in error_message:
-                raise ValidationError(_('The provided grade already exists for your school, duplicate grades are not permitted. Please choose a different grade.'))
-            # Check for foreign key constraint violations (e.g., invalid school reference).
-            elif 'foreign key constraint' in error_message:
-                raise ValidationError(_('The school referenced does not exist. Please check and select a valid school'))
-            # Check for check constraint violations (e.g., invalid data).
-            elif 'check constraint' in error_message:
-                raise ValidationError(_('The data provided does not meet the required constraints. Please review and correct the provided information'))
+                if 'grade' in error_message:
+                    raise ValidationError(_('Could not process your request, the provided grade already exists for your school, duplicate grades are not permitted. Please choose a different grade.'))
             # Re-raise the original exception if it's not specifically handled.
-            raise
+            raise ValidationError(_(error_message))
+        except Exception as e:
+            raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
+    
+    def clean(self):
+        """
+        Custom validation method for the Grade model. Ensures that fields contain valid data.
+        """
+        # Ensure a school is linked to the grade.
+        if not self.school_id:
+            raise ValidationError(_('Could not process your request, a grade needs to be associated with a school. Please provide a school and try again.'))
+        
+        # Ensure major_subjects and non-major_subjects are non-negative.
+        if self.major_subjects < 0 or self.none_major_subjects < 0:
+            raise ValidationError(_('Could not process your request, major subjects and non-major subjects must be non-negative integers. Please correct the values and try again.'))
+
+        # Ensure at least one subject is required for the grading criteria.
+        if self.major_subjects + self.none_major_subjects <= 0:
+            raise ValidationError(_('Could not process your request, you must specify at least one major or non-major subject for the grading criteria. Please correct the values and try again.'))
+
+        # Validate that the grade level is set.
+        if not self.grade:
+            raise ValidationError(_('Could not process your request, a grade cannot have an empty level. Please ensure you provide a valid grade level and try again.'))
+
+        # Only apply integer checks for numeric grade levels
+        try:
+            grade_num = int(self.grade)
+            if self.school.type == 'PRIMARY' and grade_num > 7:
+                raise ValidationError(_('Could not process your request, primary schools cannot assign grades higher than Grade 7. Please choose a valid grade for primary school and try again.'))
+            if self.school.type == 'SECONDARY' and grade_num <= 7:
+                raise ValidationError(_('Could not process your request, secondary schools must assign grades higher than Grade 7. Please update the grade accordingly.'))
+        except ValueError:
+            # Handle non-numeric grades like 'R', '00', '000'
+            if self.school.type in ['SECONDARY', 'TERTIARY'] and self.grade in ['R', '00', '000']:
+                raise ValidationError(_('Could not process your request, secondary and tertiary schools cannot assign non-numeric grades such as "R", "00", or "000". Please select a valid numeric grade.'))
 

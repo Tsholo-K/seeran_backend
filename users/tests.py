@@ -208,8 +208,17 @@ class PrincipalTests(TestCase):
         principal_data['role'] = 'FOUNDER' # Invalid role for principal
         principal = Principal(**principal_data)
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError) as e:
             principal.clean()
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, principal accounts can only have a role of "Principal". Please correct the provided information and try again.',
+            error_message
+        )
 
     def test_invalid_email(self):
         principal_data = self.principal_data.copy()
@@ -217,23 +226,80 @@ class PrincipalTests(TestCase):
         principal_data['email_address'] = None # Invalid email for principal account, email address missing
         principal = Principal(**principal_data)
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError) as e:
             principal.clean()
 
-    def test_invalid_contact(self):
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, all principal accounts in the system are required to have an email address linked to their account. Please provide a valid email address.',
+            error_message
+        )
+
+    def test_invalid_contact_number(self):
         principal_data = self.principal_data.copy()
 
         principal_data['contact_number'] = 'invalid-number' # Invalid contact number
         principal_a = Principal(**principal_data)
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError) as e:
             principal_a.clean()
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'The contact number provided contains non-numeric characters. Please enter a numeric only contact number (e.g., 0123456789).',
+            error_message
+        )
 
         principal_data['contact_number'] = None # Invalid contact number, contact number missing
         principal_b = Principal(**principal_data)
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError) as e:
             principal_b.clean()
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Could not process your request, all principal accounts in the system are required to have an contact number linked to their account. Please provide a valid contact number.',
+            error_message
+        )
+
+        principal_data['contact_number'] = '01236587498562548' # Invalid contact number, contact number too long
+        principal_c = Principal(**principal_data)
+
+        with self.assertRaises(ValidationError) as e:
+            principal_c.clean()
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'The contact number must be between 10 and 15 digits long. Please provide a valid contact number within this range.',
+            error_message
+        )
+
+        principal_data['contact_number'] = '02135647' # Invalid contact number, contact number too short
+        principal_d = Principal(**principal_data)
+
+        with self.assertRaises(ValidationError) as e:
+            principal_d.clean()
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'The contact number must be between 10 and 15 digits long. Please provide a valid contact number within this range.',
+            error_message
+        )
 
     def test_invalid_school(self):
         principal_data = self.principal_data.copy()
@@ -241,8 +307,17 @@ class PrincipalTests(TestCase):
         principal_data['school'] = None # Invalid school
         principal = Principal(**principal_data)
 
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(ValidationError) as e:
             principal.clean()
+
+        # Access the actual message from the exception and clean it
+        error_message = str(e.exception).strip("[]'\"")
+
+        # Ensure the correct message is in the exception
+        self.assertIn(
+            'Principal accounts must be associated with a school. Please provide a school for this account.',
+            error_message
+        )
 
 class AdminTests(TestCase):
     def setUp(self):
