@@ -40,11 +40,11 @@ class CustomRateThrottle(UserRateThrottle):
 @throttle_classes([CustomRateThrottle])
 def login(request):
     try:
-        email = request.data.get('email')
+        email_address = request.data.get('email_address')
         password = request.data.get('password')
         
         # Verify user credentials
-        user = authenticate_user(email=email, password=password)
+        user = authenticate_user(email_address=email_address, password=password)
         if user is None:
             return Response({"error": "the provided credentials are invalid, please check your email and password and try again"}, status=status.HTTP_401_UNAUTHORIZED)
         
@@ -128,15 +128,15 @@ def multi_factor_authentication_login(request):
     # try to get the user object using the provided email address
     try:
         # retrieve the provided email, otp and the authorization otp in the cookie
-        email = request.data.get('email')
+        email_address = request.data.get('email_address')
         otp = request.data.get('otp')
         authorization_cookie_otp = request.COOKIES.get('login_authorization_otp')
         
         # if anyone of these is missing return a 400 error
-        if not email or not otp or not authorization_cookie_otp:
+        if not email_address or not otp or not authorization_cookie_otp:
             return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
         
-        user = BaseUser.objects.get(email=email)
+        user = BaseUser.objects.get(email_address=email_address)
 
         if user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
             # Fetch the corresponding child model based on the user's role
@@ -147,10 +147,10 @@ def multi_factor_authentication_login(request):
                 return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
 
         # after getting the user object retrieve the stored otp from cache 
-        stored_hashed_otp_and_salt = cache.get(user.email+'login_otp')
+        stored_hashed_otp_and_salt = cache.get(user.email_address+'login_otp')
         
         # try to get the the authorization otp from cache
-        hashed_authorization_otp_and_salt = cache.get(user.email + 'login_authorization_otp')
+        hashed_authorization_otp_and_salt = cache.get(user.email_address + 'login_authorization_otp')
         
         if not (hashed_authorization_otp_and_salt and stored_hashed_otp_and_salt):
             # if there's no authorization otp in cache( wasn't provided in the first place, or expired since it also has a 5 minute lifespan )
@@ -165,15 +165,15 @@ def multi_factor_authentication_login(request):
                 response = Response({"denied": "incorrect authorization OTP, action forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
                             
                 # if there's no error till here verification is successful, delete all cached otps
-                cache.delete(user.email+'login_otp')
-                cache.delete(user.email + 'login_authorization_otp')
+                cache.delete(user.email_address+'login_otp')
+                cache.delete(user.email_address+'login_authorization_otp')
 
                 response.delete_cookie('login_authorization_otp', domain='.seeran-grades.cloud')
                 return response
             
             # if there's no error till here verification is successful, delete all cached otps
-            cache.delete(user.email+'login_otp')
-            cache.delete(user.email + 'login_authorization_otp_attempts')
+            cache.delete(user.email_address+'login_otp')
+            cache.delete(user.email_address+'login_authorization_otp_attempts')
             
             # then generate an access and refresh token for the user 
             token = generate_token(user)
@@ -191,16 +191,16 @@ def multi_factor_authentication_login(request):
             
             return Response({"error": "the server could not generate an access token for your account, please try again in a moment"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        attempts = cache.get(email + 'login_authorization_otp_attempts', 3)
+        attempts = cache.get(email_address + 'login_authorization_otp_attempts', 3)
         
         if attempts <= 0:
-            cache.delete(email+'login_otp')
-            cache.delete(email + 'login_authorization_otp_attempts')
+            cache.delete(email_address+'login_otp')
+            cache.delete(email_address+'login_authorization_otp_attempts')
             return Response({"denied": "maximum OTP verification attempts exceeded.."}, status=status.HTTP_400_BAD_REQUEST)
         
         # Incorrect OTP, decrement attempts and handle expiration
         attempts -= 1
-        cache.set(email + 'login_authorization_otp_attempts', attempts, timeout=300)  # Update attempts with expiration
+        cache.set(email_address+'login_authorization_otp_attempts', attempts, timeout=300)  # Update attempts with expiration
 
         return Response({"error": f"incorrect OTP.. {attempts} remaining"}, status=status.HTTP_400_BAD_REQUEST)
     
@@ -218,21 +218,21 @@ def multi_factor_authentication_login(request):
 def signin(request):
     try:
         full_names = request.data.get('fullname')
-        email = request.data.get('email')
+        email_address = request.data.get('email_address')
 
         # if there's a missing credential return an error
-        if not full_names or not email:
+        if not full_names or not email_address:
             return Response({"error": "sign-in credentials are incomplete. please provide all required information"}, status=status.HTTP_400_BAD_REQUEST)
     
         # validate email format
-        validate_email(email)
+        validate_email(email_address)
 
         # validate provided names
         if not validate_names(full_names):
             return Response({"error": "please enter only your first name and surname"}, status=status.HTTP_400_BAD_REQUEST)
 
         # try to validate the credentials by getting a user with the provided credentials 
-        user = BaseUser.objects.get(email=email)
+        user = BaseUser.objects.get(email_address=email_address)
 
         # Access control based on user role and school compliance
         if user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
@@ -264,7 +264,7 @@ def signin(request):
         email_response = send_otp_email(user, otp, reason="We are pleased to have you trying out our service, this OTP was generated in response to your account activation request..")
         
         if email_response['status'] == 'success':
-            cache.set(user.email + 'signin_otp', (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
+            cache.set(user.email_address+'signin_otp', (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
             return Response({"message": "a sign-in OTP has been generated and sent to your email address.. it will be valid for the next 5 minutes",}, status=status.HTTP_200_OK)
         
         else:
@@ -303,21 +303,21 @@ def activate_account(request):
     """
     
     try:
-        email = request.data.get('email')
+        email_address = request.data.get('email_address')
         new_password = request.data.get('password')
 
-        if not (email or new_password):
+        if not (email_address or new_password):
             return Response({"error": "missing credentials, all fields are required"}, status=status.HTTP_400_BAD_REQUEST)
 
         # get authorization otp 
         otp = request.COOKIES.get('signin_authorization_otp')
-        hashed_authorization_otp_and_salt = cache.get(email + 'signin_authorization_otp')
+        hashed_authorization_otp_and_salt = cache.get(email_address + 'signin_authorization_otp')
 
         if not (hashed_authorization_otp_and_salt or otp or verify_user_otp(otp, hashed_authorization_otp_and_salt)):
             # if the authorization otp does'nt match the one stored for the user return an error 
             response = Response({"denied": "requests provided authorization OTP is invalid.. process forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
                         
-            cache.delete(user.email + 'signin_authorization_otp')
+            cache.delete(user.email_address + 'signin_authorization_otp')
             if otp:
                 response.delete_cookie('signin_authorization_otp', domain='.seeran-grades.cloud')
                 
@@ -325,7 +325,7 @@ def activate_account(request):
         
         # activate users account
         with transaction.atomic():
-            user = BaseUser.objects.activate(email=email, password=new_password)
+            user = BaseUser.objects.activate(email_address=email_address, password=new_password)
 
         response = Response({"message": "account activation successful", "role": user.role.title()}, status=status.HTTP_200_OK)
                 
@@ -388,46 +388,46 @@ def authenticate(request):
 def verify_otp(request):
 
     try:
-        email = request.data.get('email')
+        email_address = request.data.get('email_address')
         otp = request.data.get('otp')
     
-        if not email or not otp:
+        if not email_address or not otp:
             return Response({"error": "invalid request.. email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
         
-        stored_hashed_otp_and_salt = cache.get(email + 'signin_otp')
+        stored_hashed_otp_and_salt = cache.get(email_address+'signin_otp')
 
         if not stored_hashed_otp_and_salt:
-            cache.delete(email + 'signin_otp_attempts')
+            cache.delete(email_address+'signin_otp_attempts')
             return Response({"denied": "no sign-in OTP for account on record.. please generate a new one "}, status=status.HTTP_403_FORBIDDEN)
 
         if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
             
             # OTP is verified, prompt the user to set their password
-            cache.delete(email + 'signin_otp')
+            cache.delete(email_address+'signin_otp')
             
             authorization_otp, hashed_authorization_otp, salt = generate_otp()
             
             response = Response({"message": "OTP verified successfully"}, status=status.HTTP_200_OK)
 
-            cache.set(email + 'signin_authorization_otp', (hashed_authorization_otp, salt), timeout=300)  # 300 seconds = 5 mins
+            cache.set(email_address+'signin_authorization_otp', (hashed_authorization_otp, salt), timeout=300)  # 300 seconds = 5 mins
             response.set_cookie('signin_authorization_otp', authorization_otp, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
         
             return response
         
         else:
 
-            attempts = cache.get(email + 'signin_otp_attempts', 3)
+            attempts = cache.get(email_address+'signin_otp_attempts', 3)
             
             # Incorrect OTP, decrement attempts and handle expiration
             attempts -= 1
             
             if attempts <= 0:
-                cache.delete(email + 'signin_otp')
-                cache.delete(email + 'signin_otp_attempts')
+                cache.delete(email_address+'signin_otp')
+                cache.delete(email_address+'signin_otp_attempts')
                 
                 return Response({"denied": "maximum OTP verification attempts exceeded.. generated sign-in OTP for account discarded"}, status=status.HTTP_403_FORBIDDEN)
             
-            cache.set(email + 'signin_otp_attempts', attempts, timeout=300)  # Update attempts with expiration
+            cache.set(email_address+'signin_otp_attempts', attempts, timeout=300)  # Update attempts with expiration
 
             return Response({"error": f"provided OTP incorrect.. you have {attempts} verification attempts remaining"}, status=status.HTTP_400_BAD_REQUEST)
  
@@ -442,12 +442,12 @@ def validate_password_reset(request):
     
     try:
         # check for sent email
-        sent_email = request.data.get('email')
-        if not sent_email:
+        email_address = request.data.get('email_address')
+        if not email_address:
             return Response({"error": "request error, no email address provided.. email address is required"}, status=status.HTTP_400_BAD_REQUEST)
         
         # try to get the user with the provided email
-        user = BaseUser.objects.get(email=sent_email)
+        user = BaseUser.objects.get(email_address=email_address)
 
         # Access control based on user role and school compliance
         if user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
@@ -467,7 +467,7 @@ def validate_password_reset(request):
             return Response({ "error" : "your email address has been banned, failed to send OTP.. you can visit your school to have it changed"}, status=status.HTTP_400_BAD_REQUEST)
         
         # validate email format
-        validate_email(sent_email)
+        validate_email(email_address)
         
         # if everything checks out without an error 
         # create an otp for the user
@@ -475,7 +475,7 @@ def validate_password_reset(request):
         email_response = send_otp_email(user, otp, reason="We recieved a password reset request for your account, this OTP was generated in response to your password reset request..")
         
         if email_response['status'] == 'success':
-            cache.set(user.email + 'password_reset_otp', (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
+            cache.set(user.email_address+'password_reset_otp', (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
             return Response({"message": "a password reset OTP has been generated and sent to your email address.. it will be valid for the next 5 minutes",}, status=status.HTTP_200_OK)
         
         else:
@@ -496,26 +496,26 @@ def validate_password_reset(request):
 def password_reset_otp_verification(request):
     
     try:
-        email = request.data.get('email')
+        email_address = request.data.get('email_address')
         otp = request.data.get('otp')
     
-        if not email or not otp:
+        if not email_address or not otp:
             return Response({"error": "email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
     
-        stored_hashed_otp_and_salt = cache.get(email + 'password_reset_otp')
+        stored_hashed_otp_and_salt = cache.get(email_address+'password_reset_otp')
         if not stored_hashed_otp_and_salt:
             return Response({"denied": "no password reset OTP for account on record.. please generate a new one"}, status=status.HTTP_400_BAD_REQUEST)
     
         if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
             
-            cache.delete(email + 'password_reset_otp')
+            cache.delete(email_address+'password_reset_otp')
             authorization_otp, hashed_authorization_otp, salt = generate_otp()
 
             response = Response({"message": "OTP verified successfully"}, status=status.HTTP_200_OK)
 
-            cache.set(email + 'password_reset_authorization_otp', (hashed_authorization_otp, salt), timeout=300)  # 300 seconds = 5 mins
+            cache.set(email_address + 'password_reset_authorization_otp', (hashed_authorization_otp, salt), timeout=300)  # 300 seconds = 5 mins
             response.set_cookie('password_reset_authorization_otp', authorization_otp, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
-            response.set_cookie('email', email, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
+            response.set_cookie('email_address', email_address, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
 
             return response
         
@@ -533,16 +533,16 @@ def reset_password(request):
     try:
         # Get the new password and confirm password from the request data, and authorization otp from the cookies
         otp = request.COOKIES.get('password_reset_authorization_otp')
+        email_address = request.COOKIES.get('email_address')
         new_password = request.data.get('new_password')
-        email = request.COOKIES.get('email')
         
-        if not (new_password or otp or email):
+        if not (new_password or otp or email_address):
             return Response({"error": "invalid request.. missing credentials"}, status=status.HTTP_400_BAD_REQUEST)    
     
-        user = BaseUser.objects.get(email=email)
+        user = BaseUser.objects.get(email_address=email_address)
         
         # get authorization otp from cache and verify provided otp
-        hashed_authorization_otp_and_salt = cache.get(user.email + 'password_reset_authorization_otp')
+        hashed_authorization_otp_and_salt = cache.get(user.email_address+'password_reset_authorization_otp')
         if not hashed_authorization_otp_and_salt:
             return Response({"denied": "no password reset authorization OTP for account on record.. process forrbiden"}, status=status.HTTP_403_FORBIDDEN)
         

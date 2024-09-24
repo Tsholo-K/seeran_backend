@@ -25,7 +25,7 @@ def send_otp_email(user, otp, reason):
     mailgun_api_url = f"https://api.eu.mailgun.net/v3/{config('MAILGUN_DOMAIN')}/messages"
     email_data = {
         "from": f"seeran grades <authorization@{config('MAILGUN_DOMAIN')}>",
-        "to": f"{user.surname.title()} {user.name.title()}<{user.email}>",
+        "to": f"{user.surname.title()} {user.name.title()}<{user.email_address}>",
         "subject": "One Time Passcode",
         "template": "one-time passcode",
         "v:onetimecode": otp,
