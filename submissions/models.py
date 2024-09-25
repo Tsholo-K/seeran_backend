@@ -35,7 +35,7 @@ class Submission(models.Model):
     submission_date = models.DateTimeField(auto_now_add=True)
 
     # Status of the submission: 'On Time', 'Late', or 'Not Submitted'.
-    status = models.CharField(max_length=20, choices=SUBMISSION_STATUS_CHOICES, default='ONTIME')
+    status = models.CharField(max_length=20, choices=SUBMISSION_STATUS_CHOICES)
 
     # The assessment for which the submission is made.
     # CASCADE ensures that when an assessment is deleted, all related submissions are also deleted.
@@ -66,8 +66,15 @@ class Submission(models.Model):
         - Call the clean() method before saving to ensure all validations are enforced.
         - Handle IntegrityErrors related to unique constraints (such as a duplicate submission).
         """
-        self.clean()  # Ensure validation rules are followed
 
+        if not self.pk:  # If this is a new submission
+            if not self.status:
+                # Check if the current time is before or after the deadline and set status accordingly
+                if timezone.now() <= self.assessment.dead_line and not self.assessment.collected:
+                    self.status = 'ONTIME'
+                else:
+                    self.status = 'LATE'
+        self.clean()  # Ensure validation rules are followed
         try:
             super().save(*args, **kwargs)  # Call the base save method to save the instance
         except IntegrityError as e:
@@ -85,13 +92,6 @@ class Submission(models.Model):
         - Automatically sets the submission status to 'ONTIME' or 'LATE' if it's a new submission.
         - Validates that the submission date is after the assessment's set date.
         """
-        if not self.pk:  # If this is a new submission
-            if not self.status:
-                # Check if the current time is before or after the deadline and set status accordingly
-                if timezone.now() <= self.assessment.dead_line and not self.assessment.collected:
-                    self.status = 'ONTIME'
-                else:
-                    self.status = 'LATE'
 
         # Validate that the submission date is not before the assessment was set
         if self.submission_date and self.submission_date < self.assessment.date_set:

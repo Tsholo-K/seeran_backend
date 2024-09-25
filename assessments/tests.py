@@ -1,5 +1,4 @@
 # python
-from datetime import timedelta
 from datetime import date
 from decimal import Decimal
 

@@ -97,23 +97,14 @@ class Transcript(models.Model):
         """
         # Perform validation before saving
         self.clean()
-
         try:
             # Call the parent class's save method to actually save the instance
             super().save(*args, **kwargs)
-        
         except IntegrityError as e:
             # Handle unique constraint violations (e.g., if a duplicate transcript exists)
             if 'unique constraint' in str(e).lower():
-                raise ValidationError(
-                    'The provided student already has a transcript for this assessment. '
-                    'Try updating the student\'s score instead. Duplicate assessment transcripts '
-                    'for the same student in the same assessment are not permitted.'
-                )
-            else:
-                # Re-raise the original exception if it's not related to unique constraints
-                raise
-        
+                raise ValidationError('Could not process your request, the provided student already has a transcript for this assessment. Try updating the student\'s score instead. Duplicate assessment transcripts for the same student in the same assessment are not permitted.')
+            raise
         except Exception as e:
             # Catch all other exceptions and raise them as validation errors
             raise ValidationError(_(str(e).lower()))
@@ -132,27 +123,20 @@ class Transcript(models.Model):
         """
         # Ensure that the assessment is flagged as collected before grading
         if not self.assessment.collected:
-            raise ValidationError(
-                'Could not process your request. The provided assessment has not been collected. '
-                'Please make sure to flag the assessment as collected before grading any students.'
-            )
+            raise ValidationError('Could not process your request, The provided assessment has not been collected. Please make sure to flag the assessment as collected before grading any students.')
 
         # Ensure that the student has submitted the assessment
         if not self.assessment.submissions.filter(student=self.student).exists():
-            raise ValidationError(
-                'Could not process your request. The provided student did not submit the assessment. '
-                'Cannot grade an unsubmitted assessment. Please make sure to collect the student\'s '
-                'assessment before grading.'
-            )
+            raise ValidationError('Could not process your request, the provided student did not submit the assessment. Cannot grade an unsubmitted assessment. Please make sure to collect the student\'s assessment before grading.')
 
         # Validate moderated score if present and calculate the weighted score
         if self.moderated_score:
             if self.moderated_score < 0 or self.moderated_score > self.assessment.total:
-                raise ValidationError(f'The student\'s moderated score must be within the range of 0 to {self.assessment.total}.')
+                raise ValidationError(f'Could not process your request, the student\'s moderated score must be within the range of 0 to {self.assessment.total}.')
             self.weighted_score = (self.moderated_score / self.assessment.total) * 100 if self.moderated_score > 0 else 0
         else:
             # Validate the raw score and calculate the weighted score based on it
             if self.score < 0 or self.score > self.assessment.total:
-                raise ValidationError(f'The student\'s score must be within the range of 0 to {self.assessment.total}.')
+                raise ValidationError(f'Could not process your request, the student\'s score must be within the range of 0 to {self.assessment.total}.')
             self.weighted_score = (self.score / self.assessment.total) * 100 if self.score > 0 else 0
 
