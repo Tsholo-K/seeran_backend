@@ -174,6 +174,17 @@ class Assessment(models.Model):
     def __str__(self):
         # Returns a string representation of the unique identifier for this assessment.
         return str(self.assessment_id)
+        
+    def save(self, *args, **kwargs):
+        """
+        Overrides the save method to run custom validation logic via the clean method.
+        Also handles potential integrity errors related to unique constraints.
+        """
+        self.clean()
+        try:
+            super().save(*args, **kwargs)
+        except Exception as e:
+            raise ValidationError(_(str(e).lower()))
 
     def clean(self):
         """
@@ -185,45 +196,45 @@ class Assessment(models.Model):
         - The total percentage towards the term mark does not exceed 100%.
         """
         if not self.grade:
-            raise ValidationError(_('Assessments must be assigned to a grade.'))
+            raise ValidationError(_('Could not proccess your request, assessments must be assigned to a grade.'))
 
         if not self.term:
-            raise ValidationError(_('Assessments must be assigned to a term.'))
+            raise ValidationError(_('Could not proccess your request, assessments must be assigned to a term.'))
 
         if not self.subject:
-            raise ValidationError(_('Assessments must be assigned to a subject.'))
+            raise ValidationError(_('Could not proccess your request, assessments must be assigned to a subject.'))
 
         if not self.school:
-            raise ValidationError(_('Assessments must be assigned to a school.'))
+            raise ValidationError(_('Could not proccess your request, assessments must be assigned to a school.'))
 
         if self.total < 1:
-            raise ValidationError(_('Assessments total can not be less than 1.'))
+            raise ValidationError(_('Could not proccess your request, assessments total can not be less than 1.'))
         
         # Validating the assessor's role and ensuring they belong to the same school as the assessment.
         if self.assessor:
+            if self.assessor.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
+                raise ValidationError(_('Could not proccess your request, only principals, admins, and teachers can set assessments.'))
             assessor = users_utilities.get_account_and_linked_school(self.assessor.account_id, self.assessor.role)
-            if assessor.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
-                raise ValidationError(_('Only principals, admins, and teachers can set assessments.'))
             if assessor.school != self.school:
-                raise ValidationError(_('Assessors can only create assessments for their own school.'))
+                raise ValidationError(_('Could not proccess your request, assessors can only create assessments for their own school.'))
 
         # Similar validation for the moderator.
         if self.moderator:
+            if self.moderator.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
+                raise ValidationError(_('Could not proccess your request, only principals, admins, and teachers can moderate assessments.'))
             moderator = users_utilities.get_account_and_linked_school(self.moderator.account_id, self.moderator.role)
-            if moderator.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
-                raise ValidationError(_('Only principals, admins, and teachers can moderate assessments.'))
             if moderator.school != self.school:
-                raise ValidationError(_('Moderators can only oversee assessments from their own school.'))
+                raise ValidationError(_('Could not proccess your request, moderators can only oversee assessments from their own school.'))
 
         # Ensure the start time is before the deadline.
         if self.start_time and self.dead_line:
             if self.start_time > self.dead_line:
-                raise ValidationError(_('The assessment\'s start time cannot be after the deadline.'))
+                raise ValidationError(_('Could not proccess your request, the assessment\'s start time cannot be after the deadline.'))
 
         # Ensure date_collected is after the start time, if applicable.
         if self.date_collected and self.start_time:
             if self.date_collected < self.start_time:
-                raise ValidationError(_('You cannot collect an assessment before its start time.'))
+                raise ValidationError(_('Could not proccess your request, you cannot collect an assessment before its start time.'))
 
         # Calculate the total percentage of all assessments for this term and subject.
         total_percentage = self.term.assessments.filter(subject=self.subject).exclude(pk=self.pk).aggregate(total_percentage=models.Sum('percentage_towards_term_mark'))['total_percentage'] or Decimal('0.00')
@@ -236,11 +247,11 @@ class Assessment(models.Model):
         
         # Ensure the percentage is within the valid range
         if not (Decimal('0.00') <= self.percentage_towards_term_mark <= Decimal('100.00')):
-            raise ValidationError(_('percentage towards the term mark must be between 0 and 100.'))
+            raise ValidationError(_('Could not proccess your request, percentage towards the term mark must be between 0 and 100.'))
         
         # Ensure total percentage doesn't exceed 100%
         if (total_percentage + self.percentage_towards_term_mark) > Decimal('100.00'):
-            raise ValidationError(_('total percentage towards the term cannot exceed 100%.'))
+            raise ValidationError(_('Could not proccess your request, total percentage towards the term cannot exceed 100%.'))
         
         if not self.classroom:
             self.unique_identifier = None
@@ -248,26 +259,13 @@ class Assessment(models.Model):
         # Set assessment as formal if it contributes to the term mark
         self.formal = self.percentage_towards_term_mark > Decimal('0.00')
         
-    def save(self, *args, **kwargs):
-        """
-        Overrides the save method to run custom validation logic via the clean method.
-        Also handles potential integrity errors related to unique constraints.
-        """
-        self.clean()
-
-        try:
-            super().save(*args, **kwargs)
-
-        except Exception as e:
-            raise ValidationError(_(str(e).lower()))
-        
     def mark_as_collected(self):
         """
         Marks the assessment as collected. This should be called only after the assessment's deadline has passed or all submissions have been received.
         Raises validation errors if the conditions for marking as collected are not met.
         """
         if self.collected:
-            raise ValidationError(_('could not proccess your request, the provided assessment has already been flagged as collected.'))
+            raise ValidationError(_('Could not proccess your request, the provided assessment has already been flagged as collected.'))
 
         if timezone.now() > self.dead_line:
             self.collected = True
@@ -281,7 +279,7 @@ class Assessment(models.Model):
                 self.collected = True
                 self.date_collected = timezone.now()
             else:
-                raise ValidationError(_('could not proccess your request, can not flag assessment as collected unless its past the deadline or all students have submitted the assessment.'))
+                raise ValidationError(_('Could not proccess your request, can not flag assessment as collected unless its past the deadline or all students have submitted the assessment.'))
         
         self.save()
 
@@ -323,15 +321,15 @@ class Assessment(models.Model):
             for i in range(0, len(penalties), batch_size):
                 Transcript.objects.bulk_create(penalties[i:i + batch_size])
 
-        accessed_students = (self.classroom.students if self.classroom else self.grade.students)
-        for student in accessed_students:
-            performance, created = student.subject_performances.get_or_create(subject=self.subject, term=self.term, defaults={'grade':self.grade, 'school':self.school})
-            performance.update_performance_metrics()
-
         self.grades_released = True
         self.date_grades_released = timezone.now()
 
         self.save()
+
+        accessed_students = (self.classroom.students if self.classroom else self.grade.students)
+        for student in accessed_students.all():
+            performance, created = student.subject_performances.get_or_create(subject=self.subject, term=self.term, defaults={'grade':self.grade, 'school':self.school})
+            performance.update_performance_metrics()
 
     def update_performance_metrics(self):
         """
@@ -358,9 +356,10 @@ class Assessment(models.Model):
         submission_count = self.submissions.count()
         self.completion_rate = (submission_count / accessed_students_count) * 100
 
+
         transcript_data = transcripts.aggregate(
             avg_score=models.Avg('weighted_score'),
-            passed_students=models.Count('weighted_score', filter=models.Q(weighted_score__gte=self.subject.pass_mark)),
+            passed_students=models.Count('id', filter=models.Q(weighted_score__gte=self.subject.pass_mark)),
             highest=models.Max('weighted_score'),
             lowest=models.Min('weighted_score'),
             stddev=models.StdDev('weighted_score'),
@@ -377,17 +376,12 @@ class Assessment(models.Model):
 
         # Retrieve all scores and the associated student for the assessment
         student_scores = np.array(transcripts.order_by('weighted_score').values_list('weighted_score', 'student_id'))
-        # Get weighted scores for all students as a NumPy array
-        scores = np.array(transcripts.values_list('weighted_score', flat=True))
 
-        # Rank-based Percentile Calculation
-        total_students = len(scores)
+        # Extract weighted scores for all students
+        scores = student_scores[:, 0]  # Extract the first column (weighted_score)
 
-        # Percentile boundaries
-        rank_10 = int(0.10 * total_students)
-        rank_25 = int(0.25 * total_students)
-        rank_50 = int(0.50 * total_students)
-        rank_75 = int(0.75 * total_students)
+        # Calculate percentile boundaries
+        percentiles = np.percentile(scores, [Decimal(10), Decimal(25), Decimal(50), Decimal(75), Decimal(90)])
 
         # Create empty lists for student IDs based on percentile ranges
         students_in_10th_percentile = []
@@ -396,15 +390,15 @@ class Assessment(models.Model):
         students_in_75th_percentile = []
         students_in_90th_percentile = []
 
-        # Assign students to percentiles based on sorted rank
-        for i, (weighted_score, student_id) in enumerate(student_scores):
-            if i < rank_10:
+        # Assign students to percentiles based on their weighted score
+        for weighted_score, student_id in student_scores:
+            if weighted_score <= percentiles[0]:
                 students_in_10th_percentile.append(student_id)
-            elif i < rank_25:
+            elif weighted_score <= percentiles[1]:
                 students_in_25th_percentile.append(student_id)
-            elif i < rank_50:
+            elif weighted_score <= percentiles[2]:
                 students_in_50th_percentile.append(student_id)
-            elif i < rank_75:
+            elif weighted_score <= percentiles[3]:
                 students_in_75th_percentile.append(student_id)
             else:
                 students_in_90th_percentile.append(student_id)
@@ -418,6 +412,38 @@ class Assessment(models.Model):
             '90th': {'count': len(students_in_90th_percentile), 'students': students_in_90th_percentile},
         }
 
+        # Get the Transcript model dynamically
+        Transcript = apps.get_model('transcripts', 'Transcript')
+
+        # Create a dictionary mapping student IDs to percentiles
+        student_to_percentile = {}
+
+        for student_id in students_in_10th_percentile:
+            student_to_percentile[student_id] = Decimal(10.0)
+        for student_id in students_in_25th_percentile:
+            student_to_percentile[student_id] = Decimal(25.0)
+        for student_id in students_in_50th_percentile:
+            student_to_percentile[student_id] = Decimal(50.0)
+        for student_id in students_in_75th_percentile:
+            student_to_percentile[student_id] = Decimal(75.0)
+        for student_id in students_in_90th_percentile:
+            student_to_percentile[student_id] = Decimal(90.0)
+        
+        # Update each transcript with the calculated percentile
+        transcripts_to_update = []
+        for transcript in transcripts.all():
+            student_id = transcript.student_id
+            if student_id in student_to_percentile:
+                transcript.percentile = student_to_percentile[student_id].quantize(Decimal('0.01'))
+            else:
+                transcript.percentile = Decimal(0.0)  # If no percentile found, set to 0.0
+            transcripts_to_update.append(transcript)
+
+        # Batch update the transcripts
+        batch_size = 50
+        for i in range(0, len(transcripts_to_update), batch_size):
+            Transcript.objects.bulk_update(transcripts_to_update[i:i + batch_size], ['percentile'])
+
         # Calculate median score, standard deviation, and interquartile range (IQR)
         self.median_score = np.median(scores)
 
@@ -426,27 +452,9 @@ class Assessment(models.Model):
         self.mode_score = unique_scores[np.argmax(counts)]
 
         # Interquartile range (IQR)
-        q1 = np.percentile(scores, 25)
-        q3 = np.percentile(scores, 75)
+        q1 = np.percentile(scores, Decimal(25))
+        q3 = np.percentile(scores, Decimal(75))
         self.interquartile_range = Decimal(q3 - q1).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-
-        # Calculate Student Percentiles
-        sorted_scores = np.sort(scores)
-        # Create a dictionary to map each score to its percentile rank
-        score_to_percentile = {score: (rank / total_students) * 100 for rank, score in enumerate(sorted_scores)}
-
-        # Get the Transcript model dynamically
-        Transcript = apps.get_model('transcripts', 'Transcript')
-        
-        # Update each transcript with the calculated percentile
-        transcripts_to_update = []
-        for transcript in transcripts:
-            transcript.percentile = Decimal(score_to_percentile.get(transcript.weighted_score, 0.0)).quantize(Decimal('0.01'))
-            transcripts_to_update.append(transcript)
-
-        batch_size = 50
-        for i in range(0, len(transcripts_to_update), batch_size):
-            Transcript.objects.bulk_update(transcripts_to_update[i:i + batch_size], ['percentile'])
 
         # Top 5 performers
         top_performers_count = 3

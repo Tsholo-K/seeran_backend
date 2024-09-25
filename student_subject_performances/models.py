@@ -129,17 +129,18 @@ class StudentSubjectPerformance(models.Model):
         # If no assessments exist, set relevant scores to None.
         if not grade_assessments.exists():
             self.score = self.normalized_score = self.weighted_score = self.average_score = None
+            print('no assessments')
             return
 
         grade_assessments_count = grade_assessments.count()
         pass_mark = self.subject.pass_mark
 
         # Fetch the student's transcripts and submissions for the subject's assessments.
-        students_transcripts = grade_assessments.scores.filter(student=self.student)
+        students_transcripts = self.student.transcripts.filter(assessment__in=grade_assessments)
         students_transcripts_data = students_transcripts.aggregate(
-            score=models.Sum('score'),
+            score=models.Sum('weighted_score'),
             maximum_score_achievable=models.Sum('assessment__percentage_towards_term_mark'),
-            passed_assessments_count=models.Count(filter=models.Q(weighted_score__gte=pass_mark)),
+            passed_assessments_count=models.Count('id', filter=models.Q(weighted_score__gte=pass_mark)),
             average=models.Avg('weighted_score'),
             highest=models.Max('weighted_score'),
             lowest=models.Min('weighted_score')
@@ -179,7 +180,7 @@ class StudentSubjectPerformance(models.Model):
             self.mode_score = unique_scores[np.argmax(counts)]
 
         # Calculate the completion rate: percentage of assessments the student has submitted.
-        submitted_assessments_count = grade_assessments.submissions.filter(student=self.student).count()
+        submitted_assessments_count = self.student.submissions.filter(assessment__in=grade_assessments).exclude(status='NOT_SUBMITTED').count()
         self.completion_rate = (submitted_assessments_count / grade_assessments_count) * 100
 
         # Save the updated performance metrics.

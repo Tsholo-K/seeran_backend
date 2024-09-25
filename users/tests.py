@@ -1,5 +1,9 @@
+# threading
+from threading import Thread
+
 # django
-from django.test import TestCase
+from django.db import IntegrityError, transaction
+from django.test import TestCase, TransactionTestCase
 from django.core.exceptions import ValidationError
 
 # models
@@ -677,6 +681,41 @@ class StudentTests(TestCase):
             'Could not process your request, student accounts must be associated with a school. Please provide a school for this account.',
             error_message
         )
+
+    # def create_student_concurrently(self, student_data, results, index):
+    #     """
+    #     Helper function to create a student and catch exceptions.
+    #     Each thread will call this function to attempt concurrent creation.
+    #     """
+    #     try:
+    #         with transaction.atomic():  # Use atomic transactions to ensure data integrity
+    #             student = Student.objects.create(**student_data)
+    #             results[index] = f'Success: {student.name} created'
+    #     except IntegrityError as e:
+    #         results[index] = f'Failed: {str(e)}'
+
+    # def test_concurrent_student_creation(self):
+    #     """
+    #     Test to check the behavior when multiple students with the same ID/passport number are created concurrently.
+    #     """
+    #     # To store results of each thread
+    #     results = [None] * 2  # Expecting two concurrent attempts
+
+    #     # Create two threads simulating concurrent creation
+    #     thread_1 = Thread(target=self.create_student_concurrently, args=(self.student_data, results, 0))
+    #     thread_2 = Thread(target=self.create_student_concurrently, args=(self.student_data, results, 1))
+
+    #     # Start both threads
+    #     thread_1.start()
+    #     thread_2.start()
+
+    #     # Wait for both threads to finish
+    #     thread_1.join()
+    #     thread_2.join()
+
+    #     # Check the results
+    #     self.assertEqual(results.count('Success: Bob created'), 1)  # Only one should succeed
+    #     self.assertEqual(results.count('Failed: UNIQUE constraint failed'), 1)  # One should fail due to uniqueness constraint
 
 class ParentTests(TestCase):
     def setUp(self):

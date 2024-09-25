@@ -9,8 +9,8 @@ from django.test import TestCase
 
 # models
 from .models import Term
-from grades.models import Grade
 from schools.models import School
+from grades.models import Grade
 
 
 class TermModelTestCase(TestCase):

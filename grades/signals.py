@@ -61,33 +61,33 @@ from users.maps import role_specific_maps
 #                     classroom.subject.save()
 
 
-@receiver(post_save, sender=Classroom)
-def update_subject_counts_on_create(sender, instance, created, **kwargs):
-    if created and instance.subject:
-        # Update the count of classrooms associated with this subject
-        instance.subject.classes_count = instance.grade.classes.filter(subject=instance.subject).count()
+# @receiver(post_save, sender=Classroom)
+# def update_subject_counts_on_create(sender, instance, created, **kwargs):
+#     if created and instance.subject:
+#         # Update the count of classrooms associated with this subject
+#         instance.subject.classrooms_count = instance.grade.classrooms.filter(subject=instance.subject).count()
 
-        # Update the count of unique teachers for this subject
-        if instance.teacher:
-            instance.subject.teacher_count = instance.grade.classes.filter(subject=instance.subject).exclude(teacher=None).values_list('teacher', flat=True).distinct().count()
+#         # Update the count of unique teachers for this subject
+#         if instance.teacher:
+#             instance.subject.teacher_count = instance.grade.classrooms.filter(subject=instance.subject).exclude(teacher=None).values_list('teacher', flat=True).distinct().count()
 
-        # Save the updated subject instance
-        instance.subject.save()
+#         # Save the updated subject instance
+#         instance.subject.save()
 
 
-@receiver(pre_delete, sender=Classroom)
-def update_subject_counts_on_delete(sender, instance, **kwargs):
-    if instance.subject:
-        # Update the count of classrooms associated with this subject, excluding the classroom being deleted
-        instance.subject.classes_count = instance.grade.classes.filter(subject=instance.subject).exclude(id=instance.id).count()
+# @receiver(pre_delete, sender=Classroom)
+# def update_subject_counts_on_delete(sender, instance, **kwargs):
+#     if instance.subject:
+#         # Update the count of classrooms associated with this subject, excluding the classroom being deleted
+#         instance.subject.classrooms_count = instance.grade.classrooms.filter(subject=instance.subject).exclude(id=instance.id).count()
 
-        # Update the count of unique teachers for this subject, excluding the classroom being deleted
-        if instance.teacher:
-            instance.subject.teacher_count = instance.grade.classes.filter(subject=instance.subject).exclude(id=instance.id).exclude(teacher=None).values_list('teacher', flat=True).distinct().count()
+#         # Update the count of unique teachers for this subject, excluding the classroom being deleted
+#         if instance.teacher:
+#             instance.subject.teacher_count = instance.grade.classrooms.filter(subject=instance.subject).exclude(id=instance.id).exclude(teacher=None).values_list('teacher', flat=True).distinct().count()
 
-        # Update the count of students for this subject, excluding the classroom being deleted
-        if instance.students.exists():
-            instance.subject.student_count = instance.grade.classes.filter(subject=instance.subject).exclude(id=instance.id).aggregate(student_count=models.Count('students'))['student_count'] or 0
+#         # Update the count of students for this subject, excluding the classroom being deleted
+#         if instance.students.exists():
+#             instance.subject.student_count = instance.grade.classrooms.filter(subject=instance.subject).exclude(id=instance.id).aggregate(student_count=models.Count('students'))['student_count'] or 0
 
-        # Save the updated subject instance
-        instance.subject.save()
+#         # Save the updated subject instance
+#         instance.subject.save()

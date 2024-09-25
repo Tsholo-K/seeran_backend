@@ -1,5 +1,4 @@
 # python
-from datetime import datetime
 import uuid
 
 # django 
@@ -61,27 +60,6 @@ class Submission(models.Model):
         ordering = ['-submission_date']
         indexes = [models.Index(fields=['assessment', 'student'])]
 
-    def clean(self):
-        """
-        Validation logic for ensuring data consistency and correctness:
-        - Automatically sets the submission status to 'ONTIME' or 'LATE' if it's a new submission.
-        - Validates that the submission date is after the assessment's set date.
-        """
-        if not self.pk:  # If this is a new submission
-            if not self.status:
-                # Calculate the assessment deadline combining due_date and dead_line (time)
-                deadline = timezone.make_aware(datetime.combine(self.assessment.due_date, self.assessment.dead_line))
-                
-                # Check if the current time is before or after the deadline and set status accordingly
-                if timezone.now() <= deadline and not self.assessment.collected:
-                    self.status = 'ONTIME'
-                else:
-                    self.status = 'LATE'
-
-        # Validate that the submission date is not before the assessment was set
-        if self.submission_date and self.submission_date < self.assessment.date_set:
-            raise ValidationError(_('Submission date must be after the date the assessment was set.'))
-
     def save(self, *args, **kwargs):
         """
         Override the save method to:
@@ -92,17 +70,30 @@ class Submission(models.Model):
 
         try:
             super().save(*args, **kwargs)  # Call the base save method to save the instance
-
         except IntegrityError as e:
             # Handle unique constraint violation for duplicate submissions
             if 'unique constraint' in str(e).lower():
-                raise ValidationError(
-                    f'There is no need to create a new {self.status} submission list for the provided assessment as it '
-                    f'already exists. Instead, just add the students into the existing {self.status} submission list.'
-                )
+                raise ValidationError('Could not process your request, a submission for this assessment and student already exists. Please add the student to the existing submission list for this assessment instead of creating a new one.')
             else:
                 raise  # Re-raise any other exceptions
-
         except Exception as e:
-            raise ValidationError(_(str(e).lower()))
+            raise ValidationError(_(str(e)))
+
+    def clean(self):
+        """
+        Validation logic for ensuring data consistency and correctness:
+        - Automatically sets the submission status to 'ONTIME' or 'LATE' if it's a new submission.
+        - Validates that the submission date is after the assessment's set date.
+        """
+        if not self.pk:  # If this is a new submission
+            if not self.status:
+                # Check if the current time is before or after the deadline and set status accordingly
+                if timezone.now() <= self.assessment.dead_line and not self.assessment.collected:
+                    self.status = 'ONTIME'
+                else:
+                    self.status = 'LATE'
+
+        # Validate that the submission date is not before the assessment was set
+        if self.submission_date and self.submission_date < self.assessment.date_set:
+            raise ValidationError(_('Could not process your request, cannot collect submissions before the date the assessment was set.'))
 

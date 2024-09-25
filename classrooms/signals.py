@@ -6,10 +6,10 @@ from django.dispatch import receiver
 from users.models import Student
 
 
-@receiver(pre_delete, sender=Student)
-def update_user_counts_on_delete(sender, instance, **kwargs):
-    for classroom in instance.enrolled_classes.all():
-        # Update the student count in the class, excluding the student being deleted
-        classroom.student_count = classroom.students.exclude(account_id=instance.account_id).count()
-        classroom.save()
+# @receiver(pre_delete, sender=Student)
+# def update_user_counts_on_delete(sender, instance, **kwargs):
+#     for classroom in instance.enrolled_classrooms.all():
+#         # Update the student count in the class, excluding the student being deleted
+#         classroom.student_count = classroom.students.exclude(account_id=instance.account_id).count()
+#         classroom.save()
 

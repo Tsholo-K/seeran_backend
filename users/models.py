@@ -247,7 +247,8 @@ class Principal(BaseUser):
     """
     
     contact_number = models.CharField(_('phone number'), max_length=15)
-    school = models.OneToOneField(School, on_delete=models.CASCADE, related_name='principal')
+    
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='principal')
 
     class Meta:
         # A unique constraint that prevents principals from having duplicate contact numbers.
@@ -298,7 +299,7 @@ class Admin(BaseUser):
         save: Saves the admin instance with validation.
     """
     
-    school = models.OneToOneField(School, on_delete=models.CASCADE, related_name='admins')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='admins')
 
     class Meta:
         # Additional metadata options can be defined here
@@ -334,7 +335,7 @@ class Teacher(BaseUser):
         save: Saves the teacher instance with validation.
     """
     
-    school = models.OneToOneField(School, on_delete=models.CASCADE, related_name='teachers')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='teachers')
 
     class Meta:
         # Additional metadata options can be defined here
@@ -379,8 +380,8 @@ class Student(BaseUser):
 
     event_emails = models.BooleanField(_('email subscription'), default=False)
     
-    grade = models.OneToOneField(Grade, on_delete=models.CASCADE, related_name='students')
-    school = models.OneToOneField(School, on_delete=models.CASCADE, related_name='students')
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='students')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='students')
 
     class Meta:
         # A unique constraint that prevents accounts from having duplicate contact numbers and schools.
