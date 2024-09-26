@@ -6,8 +6,6 @@ from decimal import Decimal
 from django.test import TestCase
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from django.test import TestCase
-from django.core.exceptions import ValidationError
 
 # models
 from .models import Assessment
@@ -328,7 +326,7 @@ class AssessmentTest(TestCase):
             transcripts = []
             for student in assessment_d.classroom.students.all():
                 submissions.append(Submission(assessment=assessment_d, student=student, status='ON_TIME'))
-                transcripts.append(Transcript(assessment=assessment_d, student=student, score=50, weighted_score=15, comment=''))
+                transcripts.append(Transcript(assessment=assessment_d, student=student, score=50, weighted_score=7.5, comment=''))
 
             batch_size = 50
             for i in range(0, len(submissions), batch_size):
@@ -361,7 +359,7 @@ class AssessmentTest(TestCase):
             transcripts = []
             for student in assessment_a.classroom.students.all():
                 submissions.append(Submission(assessment=assessment_a, student=student, status='ON_TIME'))
-                transcripts.append(Transcript(assessment=assessment_a, student=student, score=50, weighted_score=50, comment=''))
+                transcripts.append(Transcript(assessment=assessment_a, student=student, score=50, weighted_score=7.5, comment=''))
 
             batch_size = 50
             for i in range(0, len(submissions), batch_size):

@@ -1,9 +1,7 @@
 # python 
 import uuid
 import numpy as np
-
-# logging
-# import logging
+from decimal import Decimal, ROUND_HALF_UP
 
 # django 
 from django.db import models, IntegrityError
@@ -15,8 +13,6 @@ from users.models import Student
 from schools.models import School
 from terms.models import Term
 from subjects.models import Subject
-
-# logger = logging.getLogger(__name__)
 
 # utility functions
 from terms import utils as term_utilities
@@ -125,13 +121,12 @@ class TermSubjectPerformance(models.Model):
         - Handle potential unique constraint violations, ensuring that no duplicate performance records are created.
         """
         self.clean()  # Ensure fields are valid before saving.
-
         try:
             super().save(*args, **kwargs)  # Call the original save method.
         except IntegrityError as e:
             # If a unique constraint error occurs, raise an appropriate exception.
-            if 'unique constraint' in str(e):
-                raise IntegrityError(_('A student cannot have duplicate subject scores for the same subject in the same term. Consider regenerating new subject scores for the term, which will discard the current ones.'))
+            if 'unique constraint' in str(e).lower():
+                raise ValidationError(_('A student cannot have duplicate subject scores for the same subject in the same term. Consider regenerating new subject scores for the term, which will discard the current ones.'))
             else:
                 raise
 
@@ -146,6 +141,7 @@ class TermSubjectPerformance(models.Model):
         """
         # Retrieve all performances for the subject in the current term.
         performances = self.subject.student_performances.filter(term=self.term)
+        print(f'performances: {performances}')
         if not performances.exists():
             self.pass_rate = self.average_score = self.median_score = None
             return
@@ -155,9 +151,10 @@ class TermSubjectPerformance(models.Model):
             lowest_score=models.Min('normalized_score'),
             average_score=models.Avg('normalized_score'),
             stddev=models.StdDev('normalized_score'),
-            students_passing_the_term=models.Count('id', filter(normalized_score__gte=self.subject.pass_mark)),
+            students_passing_the_term=models.Count('id', filter=models.Q(normalized_score__gte=self.subject.pass_mark)),
             students_in_the_subject_count=models.Count('student')
         )
+        print(f'performance_data: {performance_data}')
 
         self.highest_score = performance_data['highest_score']
         self.lowest_score = performance_data['lowest_score']
@@ -166,47 +163,58 @@ class TermSubjectPerformance(models.Model):
         
         # Calculate pass rate
         self.pass_rate = (performance_data['students_passing_the_term'] / performance_data['students_in_the_subject_count']) * 100
+        print(f'pass_rate: {self.pass_rate}')
         self.failure_rate = 100 - self.pass_rate
 
         # Retrieve and sort scores for statistical calculations.
-        scores = performances.order_by('normalized_score').values_list('normalized_score', 'student_id')
-        score_list = np.array([score[0] for score in scores])
+        student_scores = performances.order_by('normalized_score').values_list('normalized_score', 'student_id')
+        scores = np.array([score[0] for score in student_scores])
+        print(f'scores: {scores}')
 
-        if score_list.size > 0:
+        if scores.size > 0:
             # Calculate median score
-            self.median_score = np.median(score_list)
+            self.median_score = np.median(scores)
 
-            # Percentile rank calculation: Maps percentiles (10th, 25th, etc.) to student IDs.
-            percentiles = {'10th': [], '25th': [], '50th': [], '75th': [], '90th': []}
-            rank_boundaries = {
-                '10th': int(0.10 * performance_data['students_in_the_subject_count']),
-                '25th': int(0.25 * performance_data['students_in_the_subject_count']),
-                '50th': int(0.50 * performance_data['students_in_the_subject_count']),
-                '75th': int(0.75 * performance_data['students_in_the_subject_count']),
-                '90th': performance_data['students_in_the_subject_count']
-            }
+            # Calculate percentile boundaries
+            percentiles = np.percentile(scores, [Decimal(10), Decimal(25), Decimal(50), Decimal(75), Decimal(90)])
 
-            # Assign students to percentile groups based on their scores.
-            for i, (normalized_score, student_id) in enumerate(scores):
-                if i < rank_boundaries['10th']:
-                    percentiles['10th'].append(student_id)
-                elif i < rank_boundaries['25th']:
-                    percentiles['25th'].append(student_id)
-                elif i < rank_boundaries['50th']:
-                    percentiles['50th'].append(student_id)
-                elif i < rank_boundaries['75th']:
-                    percentiles['75th'].append(student_id)
+            # Create empty lists for student IDs based on percentile ranges
+            students_in_10th_percentile = []
+            students_in_25th_percentile = []
+            students_in_50th_percentile = []
+            students_in_75th_percentile = []
+            students_in_90th_percentile = []
+
+            # Assign students to percentiles based on their weighted score
+            for weighted_score, student_id in student_scores:
+                if weighted_score <= percentiles[0]:
+                    students_in_10th_percentile.append(student_id)
+                elif weighted_score <= percentiles[1]:
+                    students_in_25th_percentile.append(student_id)
+                elif weighted_score <= percentiles[2]:
+                    students_in_50th_percentile.append(student_id)
+                elif weighted_score <= percentiles[3]:
+                    students_in_75th_percentile.append(student_id)
                 else:
-                    percentiles['90th'].append(student_id)
+                    students_in_90th_percentile.append(student_id)
 
-            self.percentile_distribution = {k: {'count': len(v), 'students': v} for k, v in percentiles.items()}
+            # Store the percentile distribution
+            self.percentile_distribution = {
+                '10th': {'count': len(students_in_10th_percentile), 'students': students_in_10th_percentile},
+                '25th': {'count': len(students_in_25th_percentile), 'students': students_in_25th_percentile},
+                '50th': {'count': len(students_in_50th_percentile), 'students': students_in_50th_percentile},
+                '75th': {'count': len(students_in_75th_percentile), 'students': students_in_75th_percentile},
+                '90th': {'count': len(students_in_90th_percentile), 'students': students_in_90th_percentile},
+            }
+            print(f'percentile_distribution: {self.percentile_distribution}')
 
-            students_in_the_subject = Student.objects.filter(id__in=performances.values_list('student_id', flat=True)).distinct()
+        students_in_the_subject = Student.objects.filter(id__in=performances.values_list('student_id', flat=True)).distinct()
 
-            # Calculate improvement rate.
-            previous_term = term_utilities.get_previous_term(self.school, self.term.grade)
-            if previous_term:
-                previous_scores = self.subject.student_performances.filter(student__in=students_in_the_subject, term=previous_term).values('student_id', 'normalized_score')
+        # Calculate improvement rate.
+        previous_term = term_utilities.get_previous_term(self.school, self.term.grade)
+        if previous_term:
+            previous_scores = self.subject.student_performances.filter(student__in=students_in_the_subject, term=previous_term).values('student_id', 'normalized_score')
+            if previous_scores.exists():
                 previous_subject_scores_dict = {score['student_id']: score['normalized_score'] for score in previous_scores}
 
                 improved_students = sum(
@@ -216,29 +224,38 @@ class TermSubjectPerformance(models.Model):
                 self.improvement_rate = (improved_students / performance_data['students_in_the_subject_count']) * 100
             else:
                 self.improvement_rate = None
-                
-            student_submissions = students_in_the_subject.annotate(
-                submission_count=models.Count(
-                    'submissions',
-                    filter=models.Q(submissions__assessment__subject=self.subject, submissions__assessment__term=self.term, submissions__assessment__formal=True, submissions__status__neq='NOT_SUBMITTED')
-                )
+        else:
+            self.improvement_rate = None
+            
+        student_submissions = students_in_the_subject.annotate(
+            submission_count=models.Count(
+                'submissions',
+                filter=models.Q(~models.Q(submissions__status='NOT_SUBMITTED'), submissions__assessment__subject=self.subject, submissions__assessment__term=self.term, submissions__assessment__formal=True),
             )
-            required_assessments = self.subject.assessments.filter(formal=True, term=self.term).count()
-            completed_students = student_submissions.filter(submission_count__gte=required_assessments).count()
-            self.completion_rate = (completed_students / performance_data['students_in_the_subject_count']) * 100
+        )
+        print(f'student_submissions: {student_submissions}')
 
-            # Identify top performers.
-            top_performers_count = 3
-            top_performers = performances.filter(normalized_score__gte=self.subject.pass_mark).values_list('student_id', flat=True).order_by('-normalized_score')[:top_performers_count]
-            if top_performers.exists():
-                self.top_performers.set(top_performers)
+        required_assessments = self.subject.assessments.filter(formal=True, term=self.term).count()
+        print(f'required_assessments: {required_assessments}')
 
-            # Update the students_failing_the_subject_in_the_term field.
-            students_failing_the_term = performances.filter(normalized_score__lt=self.subject.pass_mark).values_list('student_id', flat=True)
-            if students_failing_the_term.exists():
-                self.students_failing_the_subject_in_the_term.set(students_failing_the_term)
+        completed_students = student_submissions.filter(submission_count__gte=required_assessments).count()
+        self.completion_rate = (completed_students / performance_data['students_in_the_subject_count']) * 100
+        print(f'completion_rate: {self.completion_rate}')
 
-            # Save the updated performance metrics.
-            self.save()
+        # Identify top performers.
+        top_performers_count = 3
+        top_performers = performances.filter(normalized_score__gte=self.subject.pass_mark).values_list('student_id', flat=True).order_by('-normalized_score')[:top_performers_count]
+        if top_performers.exists():
+            self.top_performers.set(top_performers)
+        print(f'top_performers: {top_performers}')
+
+        # Update the students_failing_the_subject_in_the_term field.
+        students_failing_the_term = performances.filter(normalized_score__lt=self.subject.pass_mark).values_list('student_id', flat=True)
+        if students_failing_the_term.exists():
+            self.students_failing_the_subject_in_the_term.set(students_failing_the_term)
+        print(f'students_failing_the_term: {students_failing_the_term}')
+
+        # Save the updated performance metrics.
+        self.save()
 
 

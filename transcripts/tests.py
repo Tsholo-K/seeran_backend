@@ -6,8 +6,6 @@ from decimal import Decimal
 from django.test import TestCase
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from django.test import TestCase
-from django.core.exceptions import ValidationError
 
 # models
 from .models import Transcript

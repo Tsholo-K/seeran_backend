@@ -330,6 +330,9 @@ class Assessment(models.Model):
         for student in accessed_students.all():
             performance, created = student.subject_performances.get_or_create(subject=self.subject, term=self.term, defaults={'grade':self.grade, 'school':self.school})
             performance.update_performance_metrics()
+        
+        self.update_performance_metrics()
+
 
     def update_performance_metrics(self):
         """
@@ -356,7 +359,6 @@ class Assessment(models.Model):
         submission_count = self.submissions.count()
         self.completion_rate = (submission_count / accessed_students_count) * 100
 
-
         transcript_data = transcripts.aggregate(
             avg_score=models.Avg('weighted_score'),
             passed_students=models.Count('id', filter=models.Q(weighted_score__gte=self.subject.pass_mark)),
@@ -376,7 +378,6 @@ class Assessment(models.Model):
 
         # Retrieve all scores and the associated student for the assessment
         student_scores = np.array(transcripts.order_by('weighted_score').values_list('weighted_score', 'student_id'))
-
         # Extract weighted scores for all students
         scores = student_scores[:, 0]  # Extract the first column (weighted_score)
 
@@ -468,6 +469,12 @@ class Assessment(models.Model):
             self.students_who_failed_the_assessment.set(students_who_failed_the_assessment)
 
         self.save()
+        
+        if self.classroom:
+            self.classroom.update_performance_metrics(self.term.term_id)
+        else:
+            performance, created = self.subject.termly_performances.get_or_create(term=self.term, defaults={'school': self.school})
+            performance.update_performance_metrics()
 
 
 """

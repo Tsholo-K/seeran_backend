@@ -133,10 +133,10 @@ class Transcript(models.Model):
         if self.moderated_score:
             if self.moderated_score < 0 or self.moderated_score > self.assessment.total:
                 raise ValidationError(f'Could not process your request, the student\'s moderated score must be within the range of 0 to {self.assessment.total}.')
-            self.weighted_score = (self.moderated_score / self.assessment.total) * 100 if self.moderated_score > 0 else 0
+            self.weighted_score = (self.moderated_score / self.assessment.total) * 100
         else:
             # Validate the raw score and calculate the weighted score based on it
             if self.score < 0 or self.score > self.assessment.total:
                 raise ValidationError(f'Could not process your request, the student\'s score must be within the range of 0 to {self.assessment.total}.')
-            self.weighted_score = (self.score / self.assessment.total) * 100 if self.score > 0 else 0
+            self.weighted_score = (self.score / self.assessment.total) * 100
 
