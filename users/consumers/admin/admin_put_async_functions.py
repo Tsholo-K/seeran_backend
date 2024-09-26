@@ -636,7 +636,7 @@ def release_assessment_grades(user, role, details):
         assessment = requesting_account.school.assessments.get(assessment_id=details.get('assessment'))
         release_grades_task.delay(assessment.id)
 
-        response = f"the grades release process for assessment with assessment ID {assessment.name} has been triggered, results will be made available once performance metrics have been calculated and updated."
+        response = f"the grades release process for assessment with assessment ID {assessment.title} has been triggered, results will be made available once performance metrics have been calculated and updated."
         audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='UPDATED', response=response, school=assessment.school)
 
         return {"message": response}
