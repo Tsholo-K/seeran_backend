@@ -22,6 +22,10 @@ from topics.models import Topic
 # utility functions 
 from users import utils as users_utilities
 
+# tasks
+from term_subject_performances import tasks as  term_subject_performances_tasks
+from classrooms import tasks as  classrooms_tasks
+
 
 class Assessment(models.Model):
     """
@@ -471,10 +475,10 @@ class Assessment(models.Model):
         self.save()
         
         if self.classroom:
-            self.classroom.update_performance_metrics(self.term.term_id)
+            classrooms_tasks.update_classroom_performance_metrics_task.delay(self.classroom.id, self.term)
         else:
-            performance, created = self.subject.termly_performances.get_or_create(term=self.term, defaults={'school': self.school})
-            performance.update_performance_metrics()
+            term_performance, created = self.subject.termly_performances.get_or_create(term=self.term, defaults={'school': self.school})
+            term_subject_performances_tasks.update_term_performance_metrics_task.delay(term_performance.id)
 
 
 """

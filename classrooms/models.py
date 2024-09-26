@@ -17,6 +17,9 @@ from subjects.models import Subject
 # utility functions
 from terms import utils as term_utilities
 
+# tasks
+from term_subject_performances import tasks as  term_subject_performances_tasks
+
 
 class Classroom(models.Model):
     """
@@ -275,7 +278,7 @@ class Classroom(models.Model):
             self.save()
 
             term_performance, created = self.subject.termly_performances.get_or_create(term=current_term, defaults={'school':self.school})
-            term_performance.update_performance_metrics()
+            term_subject_performances_tasks.update_term_performance_metrics_task.delay(term_performance.id)
             # print(f'term_performance {term_performance}')
 
     def update_students(self, student_ids=None, remove=False):
