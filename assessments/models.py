@@ -4,7 +4,7 @@ from decimal import Decimal, ROUND_HALF_UP
 import numpy as np
 
 # django 
-from django.db import models
+from django.db import models, transaction
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -190,6 +190,7 @@ class Assessment(models.Model):
         except Exception as e:
             raise ValidationError(_(str(e).lower()))
 
+    @transaction.atomic
     def clean(self):
         """
         Custom validation to ensure business logic is respected before saving the assessment.
@@ -262,7 +263,8 @@ class Assessment(models.Model):
         
         # Set assessment as formal if it contributes to the term mark
         self.formal = self.percentage_towards_term_mark > Decimal('0.00')
-        
+    
+    @transaction.atomic
     def mark_as_collected(self):
         """
         Marks the assessment as collected. This should be called only after the assessment's deadline has passed or all submissions have been received.
@@ -287,6 +289,7 @@ class Assessment(models.Model):
         
         self.save()
 
+    @transaction.atomic
     def release_grades(self):
         """
         Releases the grades for the assessment after verifying all submissions are graded. Grades can only be released if all submissions have been 
@@ -316,7 +319,7 @@ class Assessment(models.Model):
             penalties = []
             for student in students_who_have_not_submitted:
                 non_submissions.append(Submission(assessment=self, student=student, status='NOT_SUBMITTED'))
-                penalties.append(Transcript(assessment=self, student=student, score=0, weighted_score=0, comment=''))
+                penalties.append(Transcript(assessment=self, student=student, score=0, weighted_score=0, percent_score=0, comment='you have failed to submit this assessment and have been penalized for non submission'))
             
             batch_size = 50
             for i in range(0, len(non_submissions), batch_size):
@@ -337,7 +340,7 @@ class Assessment(models.Model):
         
         self.update_performance_metrics()
 
-
+    @transaction.atomic
     def update_performance_metrics(self):
         """
         Updates key performance metrics for the assessment, such as pass rate, failure rate, 
