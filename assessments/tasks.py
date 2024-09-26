@@ -2,8 +2,8 @@
 from celery import shared_task
 from celery.exceptions import Reject
 
-# models
-from .models import Assessment
+# django 
+from django.apps import apps
 
 # utility functions
 from seeran_backend import utils as system_utilities
@@ -16,6 +16,9 @@ def update_assessment_performance_metrics_task(self, assessment_id):
         raise Reject('Task is already queued or running')
 
     try:
+        # Get the Assessment model dynamically
+        Assessment = apps.get_model('assessments', 'Assessment')
+
         assessment = Assessment.objects.get(id=assessment_id)
         assessment.update_performance_metrics()
     except Assessment.DoesNotExist:
@@ -32,6 +35,9 @@ def release_grades_task(self, assessment_id):
     if not system_utilities.acquire_lock(lock_id):
         raise Reject('Task is already queued or running')
     try:
+        # Get the Assessment model dynamically
+        Assessment = apps.get_model('assessments', 'Assessment')
+
         assessment = Assessment.objects.get(id=assessment_id)
         assessment.release_grades()
     except Assessment.DoesNotExist:
@@ -47,6 +53,9 @@ def mark_as_collected_task(self, assessment_id):
     if not system_utilities.acquire_lock(lock_id):
         raise Reject('Task is already queued or running')
     try:
+        # Get the Assessment model dynamically
+        Assessment = apps.get_model('assessments', 'Assessment')
+
         assessment = Assessment.objects.get(id=assessment_id)
         assessment.mark_as_collected()
     except Assessment.DoesNotExist:
