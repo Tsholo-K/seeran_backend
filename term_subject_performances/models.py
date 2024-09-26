@@ -141,7 +141,7 @@ class TermSubjectPerformance(models.Model):
         """
         # Retrieve all performances for the subject in the current term.
         performances = self.subject.student_performances.filter(term=self.term)
-        print(f'performances: {performances}')
+        # print(f'performances: {performances}')
         if not performances.exists():
             self.pass_rate = self.average_score = self.median_score = None
             return
@@ -154,7 +154,7 @@ class TermSubjectPerformance(models.Model):
             students_passing_the_term=models.Count('id', filter=models.Q(normalized_score__gte=self.subject.pass_mark)),
             students_in_the_subject_count=models.Count('student')
         )
-        print(f'performance_data: {performance_data}')
+        # print(f'performance_data: {performance_data}')
 
         self.highest_score = performance_data['highest_score']
         self.lowest_score = performance_data['lowest_score']
@@ -163,13 +163,13 @@ class TermSubjectPerformance(models.Model):
         
         # Calculate pass rate
         self.pass_rate = (performance_data['students_passing_the_term'] / performance_data['students_in_the_subject_count']) * 100
-        print(f'pass_rate: {self.pass_rate}')
+        # print(f'pass_rate: {self.pass_rate}')
         self.failure_rate = 100 - self.pass_rate
 
         # Retrieve and sort scores for statistical calculations.
         student_scores = performances.order_by('normalized_score').values_list('normalized_score', 'student_id')
         scores = np.array([score[0] for score in student_scores])
-        print(f'scores: {scores}')
+        # print(f'scores: {scores}')
 
         if scores.size > 0:
             # Calculate median score
@@ -206,7 +206,7 @@ class TermSubjectPerformance(models.Model):
                 '75th': {'count': len(students_in_75th_percentile), 'students': students_in_75th_percentile},
                 '90th': {'count': len(students_in_90th_percentile), 'students': students_in_90th_percentile},
             }
-            print(f'percentile_distribution: {self.percentile_distribution}')
+            # print(f'percentile_distribution: {self.percentile_distribution}')
 
         students_in_the_subject = Student.objects.filter(id__in=performances.values_list('student_id', flat=True)).distinct()
 
@@ -233,29 +233,31 @@ class TermSubjectPerformance(models.Model):
                 filter=models.Q(~models.Q(submissions__status='NOT_SUBMITTED'), submissions__assessment__subject=self.subject, submissions__assessment__term=self.term, submissions__assessment__formal=True),
             )
         )
-        print(f'student_submissions: {student_submissions}')
+        # print(f'student_submissions: {student_submissions}')
 
         required_assessments = self.subject.assessments.filter(formal=True, term=self.term).count()
-        print(f'required_assessments: {required_assessments}')
+        # print(f'required_assessments: {required_assessments}')
 
         completed_students = student_submissions.filter(submission_count__gte=required_assessments).count()
         self.completion_rate = (completed_students / performance_data['students_in_the_subject_count']) * 100
-        print(f'completion_rate: {self.completion_rate}')
+        # print(f'completion_rate: {self.completion_rate}')
 
         # Identify top performers.
         top_performers_count = 3
         top_performers = performances.filter(normalized_score__gte=self.subject.pass_mark).values_list('student_id', flat=True).order_by('-normalized_score')[:top_performers_count]
         if top_performers.exists():
             self.top_performers.set(top_performers)
-        print(f'top_performers: {top_performers}')
+        # print(f'top_performers: {top_performers}')
 
         # Update the students_failing_the_subject_in_the_term field.
         students_failing_the_term = performances.filter(normalized_score__lt=self.subject.pass_mark).values_list('student_id', flat=True)
         if students_failing_the_term.exists():
             self.students_failing_the_subject_in_the_term.set(students_failing_the_term)
-        print(f'students_failing_the_term: {students_failing_the_term}')
+        # print(f'students_failing_the_term: {students_failing_the_term}')
 
         # Save the updated performance metrics.
         self.save()
+        
+        print(f'term performance metrics calculated successfully')
 
 

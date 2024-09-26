@@ -280,6 +280,7 @@ class Classroom(models.Model):
             term_performance, created = self.subject.termly_performances.get_or_create(term=current_term, defaults={'school':self.school})
             term_subject_performances_tasks.update_term_performance_metrics_task.delay(term_performance_id=term_performance.id)
             # print(f'term_performance {term_performance}')
+            print(f'classroom performance metrics calculated successfully')
 
     def update_students(self, student_ids=None, remove=False):
         if student_ids:

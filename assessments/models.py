@@ -340,6 +340,7 @@ class Assessment(models.Model):
             performance.update_performance_metrics()
         
         assessments_tasks.update_assessment_performance_metrics_task.delay(assessment_id=self.id)
+        print(f'grades released successfully')
 
     @transaction.atomic
     def update_performance_metrics(self):
@@ -483,6 +484,8 @@ class Assessment(models.Model):
         else:
             term_performance, created = self.subject.termly_performances.get_or_create(term=self.term, defaults={'school': self.school})
             term_subject_performances_tasks.update_term_performance_metrics_task.delay(term_performance_id=term_performance.id)
+        
+        print(f'assessment performance metrics calculated successfully')
 
 
 """
