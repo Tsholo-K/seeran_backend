@@ -271,8 +271,8 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 
 # With this configuration, tasks will run in the Django process, allowing you to use regular Django debugging techniques like breakpoints and error handling.
-# CELERY_TASK_ALWAYS_EAGER = True
-# CELERY_TASK_EAGER_PROPAGATES = True  # Propagate exceptions
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True  # Propagate exceptions
 
 LOGGING = {
     'version': 1,
