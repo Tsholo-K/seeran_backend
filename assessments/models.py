@@ -25,6 +25,7 @@ from users import utils as users_utilities
 # tasks
 from term_subject_performances import tasks as  term_subject_performances_tasks
 from classrooms import tasks as  classrooms_tasks
+from assessments import tasks as  assessments_tasks
 
 
 class Assessment(models.Model):
@@ -338,7 +339,7 @@ class Assessment(models.Model):
             performance, created = student.subject_performances.get_or_create(subject=self.subject, term=self.term, defaults={'grade':self.grade, 'school':self.school})
             performance.update_performance_metrics()
         
-        self.update_performance_metrics()
+        assessments_tasks.update_assessment_performance_metrics_task.delay(assessment_id=self.id)
 
     @transaction.atomic
     def update_performance_metrics(self):

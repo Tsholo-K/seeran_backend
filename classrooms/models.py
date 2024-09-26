@@ -152,7 +152,7 @@ class Classroom(models.Model):
             if term_id:
                 # print(f'term_id {term_id}')
                 try:
-                    current_term = self.school.terms.get(term_id=term_id)
+                    current_term = self.school.terms.get(id=term_id)
                 except Exception as e:
                     raise ValidationError(_('Could not proccess your request, a term in your school with the provided credentials does not exist. Please review the provided information and try again, if you think this is a mistake log a bug report in the settings section and we\'ll investigate the issue.'))
             else:

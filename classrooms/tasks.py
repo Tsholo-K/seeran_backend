@@ -19,7 +19,7 @@ def update_classroom_performance_metrics_task(self, classroom_id, term_id):
     try:
         term = Term.objects.get(id=term_id)
         classroom = Classroom.objects.get(id=classroom_id)
-        classroom.update_performance_metrics(term.id)
+        classroom.update_performance_metrics(term_id=term.id)
     except Classroom.DoesNotExist:
         # Handle error
         raise Reject('Could not update classroom performance metrics, a classroom in your school with the provided credentials does not exist, please check the classroom details and try again.')
