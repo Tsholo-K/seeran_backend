@@ -2,9 +2,8 @@
 from celery import shared_task
 from celery.exceptions import Reject
 
-# models
-from .models import Classroom
-from terms.models import Term
+# django 
+from django.apps import apps
 
 # utility functions
 from seeran_backend import utils as system_utilities
@@ -17,6 +16,11 @@ def update_classroom_performance_metrics_task(self, classroom_id, term_id):
         raise Reject('Task is already queued or running')
 
     try:
+        # Get the Classroom model dynamically
+        Classroom = apps.get_model('classrooms', 'Classroom')
+        # Get the Term model dynamically
+        Term = apps.get_model('terms', 'Term')
+
         term = Term.objects.get(id=term_id)
         classroom = Classroom.objects.get(id=classroom_id)
         classroom.update_performance_metrics(term_id=term.id)
