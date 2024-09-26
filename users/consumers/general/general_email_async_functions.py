@@ -20,7 +20,7 @@ async def send_account_confirmation_email(user):
         
         email_data = {
             "from": "seeran grades <accounts@" + config('MAILGUN_DOMAIN') + ">",
-            "to": user.surname.title() + " " + user.name.title() + "<" + user.email + ">",
+            "to": user.surname.title() + " " + user.name.title() + "<" + user.email_address + ">",
             "subject": "Account Creation Confirmation",
             "template": "account creation confirmation",
         }
@@ -57,7 +57,7 @@ async def send_one_time_pin_email(user, reason):
         # Define your email data
         email_data = {
             "from": "seeran grades <authorization@" + config('MAILGUN_DOMAIN') + ">",
-            "to": user.surname.title() + " " + user.name.title() + "<" + user.email + ">",
+            "to": user.surname.title() + " " + user.name.title() + "<" + user.email_address + ">",
             "subject": "One Time Passcode",
             "template": "one-time passcode",
             "v:onetimecode": otp,
@@ -106,7 +106,7 @@ async def send_email_revalidation_one_time_pin_email(user):
         # Define your email data
         email_data = {
             "from": "seeran grades <authorization@" + config('MAILGUN_DOMAIN') + ">",
-            "to": user.surname.title() + " " + user.name.title() + "<" + user.email + ">",
+            "to": user.surname.title() + " " + user.name.title() + "<" + user.email_address + ">",
             "subject": "One Time Passcode",
             "template": "one-time passcode",
             "v:onetimecode": otp,
