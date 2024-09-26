@@ -29,7 +29,7 @@ class StudentSubjectPerformance(models.Model):
     # The student whose performance is being recorded.
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='subject_performances')
 
-    # The raw score achieved by the student out of 100.
+    # The raw score achieved by the student
     score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
     # The student's score normalized against the total possible score for all assessments in the subject.

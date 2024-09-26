@@ -34,9 +34,13 @@ class Transcript(models.Model):
     # Optional field allowing teachers to leave comments on the student's performance.
     # The field can be blank or null if no comments are provided.
     comment = models.TextField(max_length=1024, null=True, blank=True)
+    
+    # The student's score in the assessment as a percentage relative to the weight of the assessment
+    # This is calculated based on either the raw or moderated score.
+    percent_score = models.DecimalField(max_digits=5, decimal_places=2)
 
     # The student's normalized score in the form of a percentage (weighted score).
-    # This is calculated based on either the raw or moderated score.
+    # The weighted score can range from 0 to 100.
     weighted_score = models.DecimalField(max_digits=5, decimal_places=2)
 
     # The student's score after moderation (if applicable). Moderation can happen
@@ -133,10 +137,12 @@ class Transcript(models.Model):
         if self.moderated_score:
             if self.moderated_score < 0 or self.moderated_score > self.assessment.total:
                 raise ValidationError(f'Could not process your request, the student\'s moderated score must be within the range of 0 to {self.assessment.total}.')
-            self.weighted_score = (self.moderated_score / self.assessment.total) * 100
+            self.percent_score = (self.moderated_score / self.assessment.total) * 100
         else:
             # Validate the raw score and calculate the weighted score based on it
             if self.score < 0 or self.score > self.assessment.total:
                 raise ValidationError(f'Could not process your request, the student\'s score must be within the range of 0 to {self.assessment.total}.')
-            self.weighted_score = (self.score / self.assessment.total) * 100
+            self.percent_score = (self.score / self.assessment.total) * 100
+
+        self.weighted_score = self.percent_score * (self.assessment.percentage_towards_term_mark / 100) if self.assessment.formal > 0 else 0
 
