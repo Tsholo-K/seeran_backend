@@ -16,12 +16,12 @@ class SchoolCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = School
-        fields = [ 'name', 'email', 'contact_number', 'type', 'province', 'district' ]
+        fields = [ 'name', 'email_address', 'contact_number', 'type', 'province', 'district' ]
 
     def __init__(self, *args, **kwargs):
         super(SchoolCreationSerializer, self).__init__(*args, **kwargs)
         # Remove the unique together validator that's added by DRF
-        self.fields['email'].validators = []
+        self.fields['email_address'].validators = []
         self.fields['contact_number'].validators = []
     
 
@@ -29,7 +29,7 @@ class UpdateSchoolAccountSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = School
-        fields = ['name', 'email', 'contact_number', 'type', 'district', 'operating_hours', 'location', 'website']
+        fields = ['name', 'email_address', 'contact_number', 'type', 'district', 'operating_hours', 'location', 'website']
 
     def __init__(self, *args, **kwargs):
         super(UpdateSchoolAccountSerializer, self).__init__(*args, **kwargs)
@@ -88,7 +88,7 @@ class SchoolDetailsSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = School
-        fields = ['name', 'email', 'contact_number', 'in_arrears', 'type', 'province', 'district', 'operating_hours', 'location', 'website', 'student_count', 'teacher_count', 'admin_count', 'school_id' ]
+        fields = ['name', 'email_address', 'contact_number', 'in_arrears', 'type', 'province', 'district', 'operating_hours', 'location', 'website', 'student_count', 'teacher_count', 'admin_count', 'school_id' ]
         
     def get_name(self, obj):
         return obj.name.title()
