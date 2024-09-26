@@ -138,7 +138,7 @@ def create_account(user, role, details):
                 response = f"{details['role']} account successfully created. the {details['role']} can now sign-in and activate the account".lower()
                 audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(created_account.account_id) if created_account else 'N/A', outcome='CREATED', response=response, school=requesting_account.school,)
 
-            if details['role'] == 'STUDENT' and not details.get('email'):
+            if details['role'] == 'STUDENT' and not details.get('email_address'):
                 return {'message' : 'the students account has been successfully created, accounts with no email addresses can not '}
             
             return {'user' : created_account}
@@ -994,7 +994,7 @@ def grade_student(user, role, details):
             with transaction.atomic():
                 Transcript.objects.create(**serializer.validated_data)
 
-                response = f"student graded for assessment {assessment.unique_identifier}."
+                response = f"student graded for assessment {assessment.title}."
                 audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='GRADED', response=response, school=assessment.school)
 
             return {"message": response}
