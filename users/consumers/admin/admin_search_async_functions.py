@@ -402,7 +402,7 @@ def search_term_subject_performance(user, role, details):
 
             return {'error': response}
 
-        performance = requesting_account.school.termly_subject_performances.get_or_create(term__term_id=details['term'], subject__subject_id=details['subject'], defaults={'school': requesting_account.school})
+        performance, created = requesting_account.school.termly_subject_performances.get_or_create(term__term_id=details['term'], subject__subject_id=details['subject'], defaults={'school': requesting_account.school})
         serialized_term = TermSubjectPerformanceSerializer(performance).data
         
         # Return the serialized terms in a dictionary
