@@ -153,7 +153,7 @@ class GradedAssessmentSerializer(serializers.ModelSerializer):
     topics = TopicSerializer(many=True)
     moderator = serializers.SerializerMethodField()
     top_performers = serializers.SerializerMethodField()
-    students_failing_the_subject_in_the_term = serializers.SerializerMethodField()
+    students_who_failed_the_assessment = serializers.SerializerMethodField()
 
     class Meta:
         model = Assessment
