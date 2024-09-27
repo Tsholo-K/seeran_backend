@@ -168,7 +168,7 @@ class GradedAssessmentSerializer(serializers.ModelSerializer):
     def get_top_performers(self, obj):
         return LeastAccountDetailsSerializer(obj.top_performers, many=True).data
 
-    def get_students_failing_the_subject_in_the_term(self, obj):
+    def get_students_who_failed_the_assessment(self, obj):
         return LeastAccountDetailsSerializer(obj.students_who_failed_the_assessment, many=True).data
     
     def get_moderator(self, obj):
