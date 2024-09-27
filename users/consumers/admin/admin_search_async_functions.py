@@ -628,7 +628,7 @@ def search_transcripts(user, role, details):
             return {'error': response}
 
         assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'])
-        transcripts = assessment.scores.select_related('student').only('student__surname', 'student_name')
+        transcripts = assessment.scores.select_related('student').only('student__surname', 'student__name')
 
         serialized_transcripts = TranscriptsSerializer(transcripts, many=True).data 
 
