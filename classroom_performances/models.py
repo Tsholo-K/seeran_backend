@@ -79,7 +79,7 @@ class ClassroomPerformance(models.Model):
     # Percentage of students who completed all assessments
     completion_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
-    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='classrooms', help_text='School to which the classroom belongs.')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='classroom_performances', help_text='School to which the classroom belongs.')
     
     last_updated = models.DateTimeField(auto_now=True)
 
