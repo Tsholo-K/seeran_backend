@@ -370,11 +370,11 @@ class Assessment(models.Model):
         self.completion_rate = (submission_count / accessed_students_count) * 100
 
         transcript_data = transcripts.aggregate(
-            avg_score=models.Avg('weighted_score'),
-            passed_students=models.Count('id', filter=models.Q(weighted_score__gte=self.subject.pass_mark)),
-            highest=models.Max('weighted_score'),
-            lowest=models.Min('weighted_score'),
-            stddev=models.StdDev('weighted_score'),
+            avg_score=models.Avg('percent_score'),
+            passed_students=models.Count('id', filter=models.Q(percent_score__gte=self.subject.pass_mark)),
+            highest=models.Max('percent_score'),
+            lowest=models.Min('percent_score'),
+            stddev=models.StdDev('percent_score'),
         )
 
         # Calculate pass rate and failure rate
@@ -387,7 +387,7 @@ class Assessment(models.Model):
         self.standard_deviation = transcript_data['stddev']
 
         # Retrieve all scores and the associated student for the assessment
-        student_scores = np.array(transcripts.order_by('weighted_score').values_list('weighted_score', 'student_id'))
+        student_scores = np.array(transcripts.order_by('percent_score').values_list('percent_score', 'student_id'))
         # Extract weighted scores for all students
         scores = student_scores[:, 0]  # Extract the first column (weighted_score)
 
@@ -469,12 +469,12 @@ class Assessment(models.Model):
 
         # Top 5 performers
         top_performers_count = 3
-        top_performers = transcripts.order_by('-weighted_score').values_list('student_id', flat=True)[:top_performers_count]
+        top_performers = transcripts.order_by('-percent_score').values_list('student_id', flat=True)[:top_performers_count]
         if top_performers.exists():
             self.top_performers.set(top_performers)
 
         # Students Who Failed The Assessment
-        students_who_failed_the_assessment = transcripts.filter(weighted_score__lt=self.subject.pass_mark).values_list('student_id', flat=True)
+        students_who_failed_the_assessment = transcripts.filter(percent_score__lt=self.subject.pass_mark).values_list('student_id', flat=True)
         if students_who_failed_the_assessment.exists():
             self.students_who_failed_the_assessment.set(students_who_failed_the_assessment)
 
