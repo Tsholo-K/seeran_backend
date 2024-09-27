@@ -469,7 +469,7 @@ class Assessment(models.Model):
 
         # Top 5 performers
         top_performers_count = 3
-        top_performers = transcripts.filter(percent_score__lt=self.subject.pass_mark).order_by('-percent_score').values_list('student_id', flat=True)[:top_performers_count]
+        top_performers = transcripts.filter(percent_score__gte=self.subject.pass_mark).order_by('-percent_score').values_list('student_id', flat=True)[:top_performers_count]
         if top_performers.exists():
             self.top_performers.set(top_performers)
 
