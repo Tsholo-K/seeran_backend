@@ -401,12 +401,23 @@ def search_term_subject_performance(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TERM', outcome='ERROR', response=response, school=requesting_account.school)
 
             return {'error': response}
+        
+        term = requesting_account.school.terms.get(term_id=details['term'])
+        subject = Subject.objects.get(subject_id=details['subject'], grade__school=requesting_account.school)
 
-        performance, created = requesting_account.school.termly_subject_performances.get_or_create(term__term_id=details['term'], subject__subject_id=details['subject'], defaults={'school': requesting_account.school})
+        performance, created = requesting_account.school.termly_subject_performances.get_or_create(term=term, subject=subject, defaults={'school': requesting_account.school})
         serialized_term = TermSubjectPerformanceSerializer(performance).data
         
         # Return the serialized terms in a dictionary
         return {'performance': serialized_term}
+    
+    except Term.DoesNotExist:
+        # Handle the case where the provided term ID does not exist
+        return {'error': 'a term in your school with the provided credentials does not exist, please check the term details and try again'}
+    
+    except Subject.DoesNotExist:
+        # Handle case where the subject does not exist
+        return {'error': 'a subject in your school with the provided credentials does not exist, please check the subject details and try again'}
 
     except Exception as e:
         # Handle any unexpected errors with a general error message
