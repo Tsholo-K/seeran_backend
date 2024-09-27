@@ -66,16 +66,16 @@ class TermSubjectPerformance(models.Model):
     completion_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
     # Many-to-many relationship with students who are top performers in this subject for the term.
-    top_performers = models.ManyToManyField(Student, related_name='classroom_top_performers_term')
+    top_performers = models.ManyToManyField(Student, related_name='subject_term_top_performers', blank=True)
 
     # Many-to-many relationship with students who failed the subject in this term.
-    students_failing_the_subject_in_the_term = models.ManyToManyField(Student, related_name='failing_classroom_term', help_text='Students who failed the term.')
+    students_failing_the_subject_in_the_term = models.ManyToManyField(Student, related_name='subject_term_in_danger', help_text='Students who failed the term.')
 
     # Reference to the specific subject for which the performance data is tracked.
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, editable=False, related_name='classroom_termly_performances')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, editable=False, related_name='termly_performances')
 
     # Reference to the school where this term's performance is assessed.
-    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='termly_classroom_performances')
+    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='termly_subject_performances')
 
     # Automatically updated timestamp for the last time this performance data was modified.
     last_updated = models.DateTimeField(auto_now=True)
