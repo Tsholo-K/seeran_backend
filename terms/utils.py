@@ -16,8 +16,8 @@ def get_current_term(school, grade):
 
     return term if term else None
 
-def get_previous_term(school, grade):
-    today = date.today()
+def get_previous_term(school, grade, end_date=None):
+    today = end_date if end_date else date.today()
     
     # Filter for terms that ended before today and order by end_date descending
     previous_term = Term.objects.filter(

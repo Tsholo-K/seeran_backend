@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'subjects',
     'student_subject_performances',
     'classrooms',
+    'classroom_performances',
     'attendances',
     'emergencies',
     'assessments',

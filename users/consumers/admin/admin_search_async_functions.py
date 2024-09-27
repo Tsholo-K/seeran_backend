@@ -28,6 +28,7 @@ from schools.serializers import SchoolDetailsSerializer
 from audit_logs.serializers import AuditEntriesSerializer, AuditEntrySerializer
 from grades.serializers import GradeSerializer, GradesSerializer, GradeDetailsSerializer
 from terms.serializers import  TermsSerializer, TermSerializer
+from term_subject_performances.serializers import TermSubjectPerformanceSerializer
 from subjects.serializers import SubjectSerializer, SubjectDetailsSerializer
 from classrooms.serializers import TeacherClassesSerializer, ClassesSerializer
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer
@@ -289,36 +290,6 @@ def search_grade_details(user, role, details):
 
 
 @database_sync_to_async
-def search_grade_terms(user, role, details):
-    try:
-        # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
-
-        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'TERM'):
-            response = f'could not proccess your request, you do not have the necessary permissions to view terms. please contact your administrator to adjust you permissions for viewing terms.'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TERM', outcome='DENIED', response=response, school=requesting_account.school)
-
-            return {'error': response}
-
-        if 'grade' not in details:
-            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid grade ID and try again'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TERM', outcome='ERROR', response=response, school=requesting_account.school)
-
-            return {'error': response}
-
-        # Prefetch related school terms to minimize database hits
-        grade_terms = requesting_account.school.terms.filter(grade__grade_id=details['grade'])
-        serialized_terms = TermsSerializer(grade_terms, many=True).data
-        
-        # Return the serialized terms in a dictionary
-        return {'terms': serialized_terms}
-
-    except Exception as e:
-        # Handle any unexpected errors with a general error message
-        return {'error': f'An unexpected error occurred: {str(e)}'}
-
-
-@database_sync_to_async
 def search_grade_register_classes(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
@@ -351,6 +322,36 @@ def search_grade_register_classes(user, role, details):
 
 
 @database_sync_to_async
+def search_grade_terms(user, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'TERM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view terms. please contact your administrator to adjust you permissions for viewing terms.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TERM', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        if 'grade' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid grade ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TERM', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        # Prefetch related school terms to minimize database hits
+        grade_terms = requesting_account.school.terms.filter(grade__grade_id=details['grade'])
+        serialized_terms = TermsSerializer(grade_terms, many=True).data
+        
+        # Return the serialized terms in a dictionary
+        return {'terms': serialized_terms}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': f'An unexpected error occurred: {str(e)}'}
+
+
+@database_sync_to_async
 def search_term_details(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
@@ -358,6 +359,39 @@ def search_term_details(user, role, details):
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'TERM'):
             response = f'could not proccess your request, you do not have the necessary permissions to view terms. please contact your administrator to adjust you permissions for viewing terms.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TERM', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        if 'term' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid term ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TERM', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        term = requesting_account.school.terms.get(term_id=details['term'])
+        serialized_term = TermSerializer(term).data
+        
+        # Return the serialized terms in a dictionary
+        return {'term': serialized_term}
+    
+    except Term.DoesNotExist:
+        # Handle the case where the provided term ID does not exist
+        return {'error': 'a term in your school with the provided credentials does not exist, please check the term details and try again'}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': f'An unexpected error occurred: {str(e)}'}
+
+
+@database_sync_to_async
+def search_term_subject_performance(user, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'TERM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view term performances. please contact your administrator to adjust you permissions for viewing term details.'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TERM', outcome='DENIED', response=response, school=requesting_account.school)
 
             return {'error': response}

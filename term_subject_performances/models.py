@@ -258,6 +258,6 @@ class TermSubjectPerformance(models.Model):
         # Save the updated performance metrics.
         self.save()
         
-        print(f'term performance metrics calculated successfully')
+        # print(f'term performance metrics calculated successfully')
 
 

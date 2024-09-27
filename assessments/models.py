@@ -24,7 +24,7 @@ from users import utils as users_utilities
 
 # tasks
 from term_subject_performances import tasks as  term_subject_performances_tasks
-from classrooms import tasks as  classrooms_tasks
+from classroom_performances import tasks as  classroom_performances_tasks
 from assessments import tasks as  assessments_tasks
 
 
@@ -111,9 +111,11 @@ class Assessment(models.Model):
     # Timestamp indicating when the assessment was collected (if applicable).
     date_collected = models.DateTimeField(null=True, blank=True)
 
+    # Whether the grades for this assessment being released released to the students.
+    releasing_grades = models.BooleanField(default=False)
+
     # Whether the grades for this assessment have been released to the students.
     grades_released = models.BooleanField(default=False)
-
     # Timestamp when the grades were released (if applicable).
     date_grades_released = models.DateTimeField(null=True, blank=True)
 
@@ -329,6 +331,8 @@ class Assessment(models.Model):
             for i in range(0, len(penalties), batch_size):
                 Transcript.objects.bulk_create(penalties[i:i + batch_size])
 
+        self.releasing_grades = False
+
         self.grades_released = True
         self.date_grades_released = timezone.now()
 
@@ -480,7 +484,7 @@ class Assessment(models.Model):
         self.save()
         
         if self.classroom:
-            classrooms_tasks.update_classroom_performance_metrics_task.delay(classroom_id=self.classroom.id, term_id=self.term.id)
+            classroom_performances_tasks.update_classroom_performance_metrics_task.delay(classroom_id=self.classroom.id, term_id=self.term.id)
         else:
             term_performance, created = self.subject.termly_performances.get_or_create(term=self.term, defaults={'school': self.school})
             term_subject_performances_tasks.update_term_performance_metrics_task.delay(term_performance_id=term_performance.id)
