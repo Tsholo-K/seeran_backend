@@ -122,9 +122,9 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
     async def handle_search(self, description, details, user, role, access_token):
         search_map = {
-            "school_details": admin_search_async_functions.search_school_details,
+            'school_details': admin_search_async_functions.search_school_details,
 
-            "audit_entries": admin_search_async_functions.search_audit_entries,
+            'audit_entries': admin_search_async_functions.search_audit_entries,
             "audit_entry": admin_search_async_functions.search_audit_entry,
 
             'accounts': admin_search_async_functions.search_accounts,
@@ -137,13 +137,14 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'grades': admin_search_async_functions.search_grades,
             'grade': admin_search_async_functions.search_grade,
-            "grade_details": admin_search_async_functions.search_grade_details,
+            'grade_details': admin_search_async_functions.search_grade_details,
 
             'subject': admin_search_async_functions.search_subject,
-            "subject_details": admin_search_async_functions.search_subject_details,
+            'subject_details': admin_search_async_functions.search_subject_details,
 
             "terms": admin_search_async_functions.search_grade_terms,
             'term_details': admin_search_async_functions.search_term_details,
+            'term_subject_performance': admin_search_async_functions.search_term_subject_performance,
 
             'teacher_classes': admin_search_async_functions.search_teacher_classes,
             'register_classes': admin_search_async_functions.search_grade_register_classes,
