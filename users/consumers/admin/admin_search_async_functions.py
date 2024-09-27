@@ -519,7 +519,7 @@ def search_assessments(user, role, details):
             elif status == 'collected':
                 assessments = subject.assessments.filter(collected=True, releasing_grades=False, grades_released=False)
             elif status == 'graded':
-                assessments = subject.assessments.filter(releasing_grades=True, grades_released=True)
+                assessments = subject.assessments.filter(Q(releasing_grades=True) | Q(grades_released=True))
 
         elif details.get('classroom'):
             # Fetch the specific classroom based on classroom_id and school
@@ -530,7 +530,7 @@ def search_assessments(user, role, details):
             elif status == 'collected':
                 assessments = classroom.assessments.filter(collected=True, releasing_grades=False, grades_released=False)
             elif status == 'graded':
-                assessments = classroom.assessments.filter(releasing_grades=True, grades_released=True)
+                assessments = classroom.assessments.filter(Q(releasing_grades=True) | Q(grades_released=True))
 
         else:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid grade and subject IDs or a valid classroom ID and try again'
