@@ -32,6 +32,7 @@ from term_subject_performances.serializers import TermSubjectPerformanceSerializ
 from subjects.serializers import SubjectSerializer, SubjectDetailsSerializer
 from classrooms.serializers import TeacherClassesSerializer, ClassesSerializer
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, GradedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer, GradedAssessmentSerializer
+from transcripts.serializers import TranscriptsSerializer
 from activities.serializers import ActivitiesSerializer
 from daily_schedules.serializers import DailyScheduleSerializer
 
@@ -597,6 +598,41 @@ def search_assessment(user, role, details):
             serialized_assessment = GradedAssessmentSerializer(assessment).data 
 
         return {"assessment": serialized_assessment}
+        
+    except Assessment.DoesNotExist:
+        # Handle the case where the provided assessment ID does not exist
+        return { 'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
+        
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def search_transcripts(user, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        
+        # Check if the user has permission to create an assessment
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ASSESSMENT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view assessments. please contact your principal to adjust you permissions for viewing assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENTS', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+        
+        if 'assessment' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid assessment ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        assessment = requesting_account.school.assessments.select_related('student').get(assessment_id=details['assessment'])
+        transcripts = assessment.scores.select_related('student').get(assessment_id=details['assessment'])
+
+        serialized_transcripts = TranscriptsSerializer(transcripts, many=True).data 
+
+        return {"transcripts": serialized_transcripts}
         
     except Assessment.DoesNotExist:
         # Handle the case where the provided assessment ID does not exist

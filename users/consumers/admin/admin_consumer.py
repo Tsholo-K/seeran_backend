@@ -154,6 +154,9 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'assessments': admin_search_async_functions.search_assessments,
             'assessment': admin_search_async_functions.search_assessment,
 
+            'transcripts': admin_search_async_functions.search_transcripts,
+            # 'transcript': admin_search_async_functions.search_transcript,
+
             'student_class_card': admin_search_async_functions.search_student_class_card,
             'activity': general_search_async_functions.search_activity,
 
