@@ -8,8 +8,9 @@ from users.models import BaseUser
 from classrooms.models import Classroom
 
 # serializers
-from topics.serializers import TopicSerializer
 from users.serializers.general_serializers import SourceAccountSerializer
+from users.serializers.students.students_serializers import LeastAccountDetailsSerializer
+from topics.serializers import TopicSerializer
 
 
 class AssessmentCreationSerializer(serializers.ModelSerializer):
@@ -144,3 +145,31 @@ class CollectedAssessmentSerializer(serializers.ModelSerializer):
         return SourceAccountSerializer(obj.moderator).data if obj.moderator else None
 
 
+class GradedAssessmentSerializer(serializers.ModelSerializer):
+
+    title = serializers.SerializerMethodField()
+    term = serializers.SerializerMethodField()
+    assessment_type = serializers.CharField(source='get_assessment_type_display')
+    topics = TopicSerializer(many=True)
+    moderator = serializers.SerializerMethodField()
+    top_performers = serializers.SerializerMethodField()
+    students_failing_the_subject_in_the_term = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Assessment
+        fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'date_collected', 'date_grades_released', 'term', 'topics', 'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'mode_score', 'standard_deviation', 'percentile_distribution', 'completion_rate', 'interquartile_range', 'top_performers', 'students_who_failed_the_assessment', 'moderator']
+
+    def get_title(self, obj):
+        return obj.title.title()
+
+    def get_term(self, obj):
+        return obj.term.term.title()
+    
+    def get_top_performers(self, obj):
+        return LeastAccountDetailsSerializer(obj.top_performers, many=True).data
+
+    def get_students_failing_the_subject_in_the_term(self, obj):
+        return LeastAccountDetailsSerializer(obj.students_who_failed_the_assessment, many=True).data
+    
+    def get_moderator(self, obj):
+        return SourceAccountSerializer(obj.moderator).data if obj.moderator else None

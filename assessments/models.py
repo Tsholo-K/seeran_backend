@@ -125,10 +125,8 @@ class Assessment(models.Model):
 
     # The highest score achieved by any student in this assessment.
     highest_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    
     # The lowest score achieved by any student in this assessment.
     lowest_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    
     # The average score for this assessment.
     average_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
@@ -144,17 +142,16 @@ class Assessment(models.Model):
     # The standard deviation of the scores, a measure of how spread out the scores are.
     standard_deviation = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
-    # Many-to-many relationship to the top-performing students in this assessment.
-    top_performers = models.ManyToManyField(Student, related_name='top_performers_assessments', blank=True)
-
-    # Many-to-many relationship to the students who failed this assessment.
-    students_who_failed_the_assessment = models.ManyToManyField(Student, related_name='failed_assessments', help_text='Students who failed the assessment.')
-
     # The interquartile range (IQR), a measure of statistical spread in the scores.
     interquartile_range = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
     # The percentage of students who completed the assessment (submitted their work).
     completion_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+    # Many-to-many relationship to the top-performing students in this assessment.
+    top_performers = models.ManyToManyField(Student, related_name='top_performers_assessments', blank=True)
+    # Many-to-many relationship to the students who failed this assessment.
+    students_who_failed_the_assessment = models.ManyToManyField(Student, related_name='failed_assessments', help_text='Students who failed the assessment.')
 
     # Foreign key linking to the classroom where this assessment was conducted (optional).
     classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE, related_name='assessments', null=True, blank=True)

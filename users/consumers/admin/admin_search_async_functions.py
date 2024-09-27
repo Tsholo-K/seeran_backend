@@ -31,7 +31,7 @@ from terms.serializers import  TermsSerializer, TermSerializer
 from term_subject_performances.serializers import TermSubjectPerformanceSerializer
 from subjects.serializers import SubjectSerializer, SubjectDetailsSerializer
 from classrooms.serializers import TeacherClassesSerializer, ClassesSerializer
-from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer, GradedAssessmentsSerializer
+from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, GradedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer, GradedAssessmentSerializer
 from activities.serializers import ActivitiesSerializer
 from daily_schedules.serializers import DailyScheduleSerializer
 
@@ -503,7 +503,7 @@ def search_assessments(user, role, details):
             return {'error': response}
 
         status = details.get('status')
-        if not status:
+        if not status or status not in ['due', 'collected', 'graded']:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid assessment status and try again'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='SUBJECT', outcome='ERROR', response=response, school=requesting_account.school)
 
@@ -580,14 +580,21 @@ def search_assessment(user, role, details):
 
             return {'error': response}
         
-        if 'assessment' not in details:
-            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid assessment ID and try again'
+        if not {'assessment', 'status'}.issubset(details) or details['status'] not in ['due', 'collected', 'graded']:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid assessment ID and status and try again'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='ERROR', response=response, school=requesting_account.school)
 
             return {'error': response}
 
-        assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'], collected=details.get('collected'), grades_released=False)
-        serialized_assessment = CollectedAssessmentSerializer(assessment).data if details.get('collected') else DueAssessmentSerializer(assessment).data
+        status = details['status']
+        assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'])
+
+        if status == 'due':
+            serialized_assessment = DueAssessmentSerializer(assessment).data
+        elif status == 'collected':
+            serialized_assessment = CollectedAssessmentSerializer(assessment).data 
+        elif status == 'graded':
+            serialized_assessment = GradedAssessmentSerializer(assessment).data 
 
         return {"assessment": serialized_assessment}
         
