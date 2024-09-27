@@ -58,7 +58,7 @@ class TranscriptsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Transcript
-        fields = ['student', 'percent_score']
+        fields = ['student', 'percent_score', 'transcript_id']
 
     def get_student(self, obj):
         return LeastAccountDetailsSerializer(obj.student).data

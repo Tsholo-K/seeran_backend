@@ -366,7 +366,7 @@ class Assessment(models.Model):
             return
 
         # Completion rate (percentage of students who submitted)
-        submission_count = self.submissions.count()
+        submission_count = self.submissions.exclude(models.Q(status='NOT_SUBMITTED') | models.Q(status='EXCUSED')).count()
         self.completion_rate = (submission_count / accessed_students_count) * 100
 
         transcript_data = transcripts.aggregate(
