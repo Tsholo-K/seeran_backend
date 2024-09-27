@@ -31,7 +31,7 @@ from terms.serializers import  TermsSerializer, TermSerializer
 from term_subject_performances.serializers import TermSubjectPerformanceSerializer
 from subjects.serializers import SubjectSerializer, SubjectDetailsSerializer
 from classrooms.serializers import TeacherClassesSerializer, ClassesSerializer
-from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer
+from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer, GradedAssessmentsSerializer
 from activities.serializers import ActivitiesSerializer
 from daily_schedules.serializers import DailyScheduleSerializer
 
@@ -501,19 +501,36 @@ def search_assessments(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENTS', outcome='DENIED', response=response, school=requesting_account.school)
 
             return {'error': response}
+
+        status = details.get('collected')
+        if not status:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid assessment status and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='SUBJECT', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
         
         # Determine the classroom based on the request details
         if details.get('grade') and details.get('subject'):
             grade = requesting_account.school.grades.get(grade_id=details['grade'])
             subject = grade.subjects.get(subject_id=details['subject'])
 
-            assessments = subject.assessments.filter(collected=details.get('collected'), grades_released=False)
+            if status == 'due':
+                assessments = subject.assessments.filter(collected=False, grades_released=False)
+            elif status == 'collected':
+                assessments = subject.assessments.filter(collected=True, releasing_grades=False, grades_released=False)
+            elif status == 'graded':
+                assessments = subject.assessments.filter(releasing_grades=True, grades_released=True)
 
         elif details.get('classroom'):
             # Fetch the specific classroom based on classroom_id and school
             classroom = requesting_account.school.classrooms.get(classroom_id=details['classroom'])
-        
-            assessments = classroom.assessments.filter(collected=details.get('collected'), grades_released=False)
+
+            if status == 'due':
+                assessments = classroom.assessments.filter(collected=False, grades_released=False)
+            elif status == 'collected':
+                assessments = classroom.assessments.filter(collected=True, releasing_grades=False, grades_released=False)
+            elif status == 'graded':
+                assessments = classroom.assessments.filter(releasing_grades=True, grades_released=True)
 
         else:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid grade and subject IDs or a valid classroom ID and try again'
@@ -521,8 +538,13 @@ def search_assessments(user, role, details):
 
             return {'error': response}
 
-        if assessments:
-            serialized_assessments = CollectedAssessmentsSerializer(assessments, many=True).data if details.get('collected') else DueAssessmentsSerializer(assessments, many=True).data
+        if assessments.exists():
+            if status == 'due':
+                serialized_assessments = DueAssessmentsSerializer(assessments, many=True).data
+            elif status == 'collected':
+                serialized_assessments = CollectedAssessmentsSerializer(assessments, many=True).data 
+            elif status == 'graded':
+                serialized_assessments = GradedAssessmentsSerializer(assessments, many=True).data 
         else:
             serialized_assessments = []
 

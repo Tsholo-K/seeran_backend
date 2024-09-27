@@ -75,6 +75,7 @@ class DueAssessmentsSerializer(serializers.ModelSerializer):
     def get_title(self, obj):
         return obj.title.title()
 
+
 class CollectedAssessmentsSerializer(serializers.ModelSerializer):
 
     title = serializers.SerializerMethodField()
@@ -85,6 +86,19 @@ class CollectedAssessmentsSerializer(serializers.ModelSerializer):
 
     def get_title(self, obj):
         return obj.title.title()
+
+
+class GradedAssessmentsSerializer(serializers.ModelSerializer):
+
+    title = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Assessment
+        fields = ['title', 'assessment_type', 'date_grades_released', 'formal', 'assessment_id']
+
+    def get_title(self, obj):
+        return obj.title.title()
+
 
 class DueAssessmentSerializer(serializers.ModelSerializer):
 
