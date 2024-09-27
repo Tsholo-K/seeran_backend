@@ -502,7 +502,7 @@ def search_assessments(user, role, details):
 
             return {'error': response}
 
-        status = details.get('collected')
+        status = details.get('status')
         if not status:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid assessment status and try again'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='SUBJECT', outcome='ERROR', response=response, school=requesting_account.school)
