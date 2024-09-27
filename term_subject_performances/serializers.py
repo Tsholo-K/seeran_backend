@@ -18,9 +18,9 @@ class TermSubjectPerformanceSerializer(serializers.ModelSerializer):
         fields = ['pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'standard_deviation', 'percentile_distribution', 'completion_rate', 'top_performers', 'students_failing_the_subject_in_the_term', 'improvement_rate']
 
     def get_top_performers(self, obj):
-        return LeastAccountDetailsSerializer(obj.top_performers.all(), many=True).data if obj.top_performers.exists() else None
+        return LeastAccountDetailsSerializer(obj.top_performers, many=True).data
 
     def get_students_failing_the_subject_in_the_term(self, obj):
-        return LeastAccountDetailsSerializer(obj.students_failing_the_subject_in_the_term.all(), many=True).data
+        return LeastAccountDetailsSerializer(obj.students_failing_the_subject_in_the_term, many=True).data
 
 
