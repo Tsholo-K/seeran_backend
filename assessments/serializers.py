@@ -8,8 +8,8 @@ from users.models import BaseUser
 from classrooms.models import Classroom
 
 # serializers
-from users.serializers.general_serializers import SourceAccountSerializer
-from users.serializers.students.students_serializers import LeastAccountDetailsSerializer
+from users.serializers.general_serializers import SourceAccountSerializer, BasicAccountDetailsEmailSerializer
+from users.serializers.students.students_serializers import StudentBasicAccountDetailsEmailSerializer
 from topics.serializers import TopicSerializer
 
 
@@ -62,7 +62,7 @@ class AssessmentUpdateFormDataSerializer(serializers.ModelSerializer):
         return str(obj.term.term_id)
 
     def get_moderator(self, obj):
-        return SourceAccountSerializer(obj.moderator).data if obj.moderator else None
+        return BasicAccountDetailsEmailSerializer(obj.moderator).data if obj.moderator else None
 
 
 class DueAssessmentsSerializer(serializers.ModelSerializer):
@@ -120,7 +120,7 @@ class DueAssessmentSerializer(serializers.ModelSerializer):
         return obj.term.term.title()
 
     def get_moderator(self, obj):
-        return SourceAccountSerializer(obj.moderator).data if obj.moderator else None
+        return BasicAccountDetailsEmailSerializer(obj.moderator).data if obj.moderator else None
 
 
 class CollectedAssessmentSerializer(serializers.ModelSerializer):
@@ -142,7 +142,7 @@ class CollectedAssessmentSerializer(serializers.ModelSerializer):
         return obj.term.term.title()
 
     def get_moderator(self, obj):
-        return SourceAccountSerializer(obj.moderator).data if obj.moderator else None
+        return BasicAccountDetailsEmailSerializer(obj.moderator).data if obj.moderator else None
 
 
 class GradedAssessmentSerializer(serializers.ModelSerializer):
@@ -166,10 +166,10 @@ class GradedAssessmentSerializer(serializers.ModelSerializer):
         return obj.term.term.title()
     
     def get_top_performers(self, obj):
-        return LeastAccountDetailsSerializer(obj.top_performers, many=True).data
+        return StudentBasicAccountDetailsEmailSerializer(obj.top_performers, many=True).data
 
     def get_students_who_failed_the_assessment(self, obj):
-        return LeastAccountDetailsSerializer(obj.students_who_failed_the_assessment, many=True).data
+        return StudentBasicAccountDetailsEmailSerializer(obj.students_who_failed_the_assessment, many=True).data
     
     def get_moderator(self, obj):
-        return SourceAccountSerializer(obj.moderator).data if obj.moderator else None
+        return BasicAccountDetailsEmailSerializer(obj.moderator).data if obj.moderator else None
