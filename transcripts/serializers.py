@@ -6,7 +6,7 @@ from rest_framework.validators import UniqueTogetherValidator
 from .models import Transcript
 
 # serializers
-from users.serializers.students.students_serializers import StudentSourceAccountSerializer, LeastAccountDetailsSerializer
+from users.serializers.students.students_serializers import StudentSourceAccountSerializer, LeastAccountDetailsSerializer, StudentBasicAccountDetailsEmailSerializer
 
 
 class TranscriptCreationSerializer(serializers.ModelSerializer):
@@ -74,7 +74,7 @@ class TranscriptSerializer(serializers.ModelSerializer):
         fields = ['student', 'score', 'comment', 'total']
 
     def get_student(self, obj):
-        return StudentSourceAccountSerializer(obj.student).data
+        return StudentBasicAccountDetailsEmailSerializer(obj.student).data
 
     def get_total(self, obj):
         return str(obj.assessment.total)

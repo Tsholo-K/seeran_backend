@@ -65,7 +65,7 @@ class StudentSourceAccountSerializer(serializers.ModelSerializer):
 
     def get_identifier(self, obj):
         """Return the identifier for the user: ID number, passport number, or email."""
-        return obj.id_number or obj.passport_number or obj.email_address
+        return obj.id_number or obj.passport_number
 
 
 class StudentAccountDetailsSerializer(serializers.ModelSerializer):
@@ -87,6 +87,7 @@ class StudentAccountDetailsSerializer(serializers.ModelSerializer):
         return obj.surname.title()
     
     def get_identifier(self, obj):
+        """Return the identifier for the user: ID number, passport number, or email."""
         return obj.id_number or obj.passport_number
       
     def get_role(self, obj):
@@ -94,7 +95,34 @@ class StudentAccountDetailsSerializer(serializers.ModelSerializer):
             
     def get_image(self, obj):
         return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
+
+
+class StudentBasicAccountDetailsEmailSerializer(serializers.ModelSerializer):
+
+    name = serializers.SerializerMethodField()
+    surname = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
+    identifier = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Student
+        fields = ['name', 'surname', 'identifier', 'image']
     
+    def get_name(self, obj):
+        """Return the formatted name of the user."""
+        return obj.name.title()
+
+    def get_surname(self, obj):
+        """Return the formatted surname of the user."""
+        return obj.surname.title()
+            
+    def get_identifier(self, obj):
+        """Return the identifier for the user: ID number, passport number, or email."""
+        return obj.id_number or obj.passport_number
+            
+    def get_image(self, obj):
+        """Return the URL of the user's image or a default image."""
+        return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
 
 class LeastAccountDetailsSerializer(serializers.ModelSerializer):
 
