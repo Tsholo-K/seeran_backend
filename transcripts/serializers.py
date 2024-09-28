@@ -63,3 +63,18 @@ class TranscriptsSerializer(serializers.ModelSerializer):
     def get_student(self, obj):
         return LeastAccountDetailsSerializer(obj.student).data
 
+
+class TranscriptSerializer(serializers.ModelSerializer):
+
+    student = serializers.SerializerMethodField()
+    total = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Transcript
+        fields = ['student', 'percent_score', 'comment', 'total']
+
+    def get_student(self, obj):
+        return StudentSourceAccountSerializer(obj.student).data
+
+    def get_total(self, obj):
+        return obj.assessment.total
