@@ -71,7 +71,7 @@ class TranscriptSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Transcript
-        fields = ['student', 'percent_score', 'comment', 'total']
+        fields = ['student', 'score', 'comment', 'total']
 
     def get_student(self, obj):
         return StudentSourceAccountSerializer(obj.student).data
