@@ -77,4 +77,4 @@ class TranscriptSerializer(serializers.ModelSerializer):
         return StudentSourceAccountSerializer(obj.student).data
 
     def get_total(self, obj):
-        return obj.assessment.total
+        return str(obj.assessment.total)
