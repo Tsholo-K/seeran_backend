@@ -115,6 +115,8 @@ class School(models.Model):
     # School district within the province
     district = models.CharField(_('school district'), max_length=100, choices=SCHOOL_DISTRICT_CHOICES, default="GAUTENG NORTH")
 
+    data_retention_period = models.PositiveIntegerField(default=3)
+
     # Additional school-related information
     grading_system = models.JSONField(blank=True, null=True)         # Details about the school's grading system
     library_details = models.TextField(blank=True, null=True)        # Information about the school's library

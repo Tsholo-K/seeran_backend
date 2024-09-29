@@ -1,160 +1,163 @@
-# python 
-import uuid
-
 # django imports
-from django.db import models, IntegrityError
+from django.db import models, IntegrityError, transaction
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 
 # models
-from users.models import Admin, Teacher
-from schools.models import School
-
-
-class AdminPermissionGroup(models.Model):
-    name = models.CharField(max_length=64)
-    description = models.TextField(blank=True, null=True)
-
-    actors = models.ManyToManyField(Admin, related_name='permissions')
-    actors_count = models.IntegerField(default=0)
-    
-    permissions_count = models.IntegerField(default=0)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='admin_permission_groups')
-    
-    last_updated = models.DateTimeField(auto_now=True)
-
-    permission_group_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-
-    class Meta:
-        unique_together = ('name', 'school')
-
-    def __str__(self):
-        return f"{self.name} - {self.school.name}"
-
-    def save(self, *args, **kwargs):
-        self.clean()
-        
-        try:
-            super().save(*args, **kwargs)
-
-        except IntegrityError as e:
-            # Handle unique constraint violation on the email field
-            if 'unique constraint' in str(e).lower():
-                raise ValidationError(_('a permission group with the provided name already exists for your school, please pick a different name'))
-            else:
-                raise e  # Re-raise the exception if it's a different IntegrityError
+from permission_groups.models import AdminPermissionGroup, TeacherPermissionGroup
 
 
 class AdminPermission(models.Model):
+    """
+    Represents the permissions granted to administrators within the system.
+    Each permission is associated with a specific action and target model, 
+    allowing for granular control over what administrators can do.
+    """
 
+    # Defining the possible actions that can be performed
     ACTION_CHOICES = [
-        ('CREATE', 'Create'),
-        ('UPDATE', 'Update'),
-        ('DELETE', 'Delete'),
-        ('SUBMIT', 'Submit'),
-        ('GENERATE', 'Generate'),
-        ('GRADE', 'Grade'),
-        ('LINK', 'Link'),
-        ('UNLINK', 'Unlink'),
+        ('CREATE', 'Create'),       # Permission to create a new entity
+        ('UPDATE', 'Update'),       # Permission to modify an existing entity
+        ('VIEW', 'View'),           # Permission to view an entity
+        ('ASSIGN', 'Assign'),       # Permission to assign an entity to another entity
+        ('DELETE', 'Delete'),       # Permission to remove an entity
+        ('SUBMIT', 'Submit'),       # Permission to finalize an entry
+        ('GENERATE', 'Generate'),   # Permission to create reports or documents
+        ('LINK', 'Link'),           # Permission to associate related entities
+        ('UNLINK', 'Unlink'),       # Permission to remove associations between entities
     ]
 
+    # Defining the possible target models that can be affected by actions
     TARGET_MODEL_CHOICES = [
-        ('ACCOUNT', 'Account'),
-        ('GRADE', 'Grade'),
-        ('TERM', 'Term'),
-        ('REPORT_CARD', 'Report Card'),
-        ('SUBJECT', 'Subject'),
-        ('CLASSROOM', 'Classroom'),
-        ('ATTENDANCE', 'Attendance'),
-        ('ANNOUNCEMENT', 'Announcement'),
-        ('ASSESSMENT', 'Assessment'),
-        ('TRANSCRPIT', 'Transcript'),
-        ('DAILY_SCHEDULE', 'Daily Schedule'),
-        ('GROUP_TIMETABLE', 'Group Timetable'),
-        ('TEACHER_TIMETABLE', 'Teacher Timetable'),
+        ('ACCOUNT', 'Account'),                     # User accounts
+        ('PERMISSION', 'Permission'),               # Permission settings
+        ('ANNOUNCEMENT', 'Announcement'),           # School announcements
+        ('GRADE', 'Grade'),                         # Grade-related actions
+        ('TERM', 'Term'),                           # Academic terms
+        ('PROGRESS_REPORT', 'Progress Report'),     # Student progress reports
+        ('SUBJECT', 'Subject'),                     # Subjects offered
+        ('CLASSROOM', 'Classroom'),                 # Classroom settings
+        ('ATTENDANCE', 'Attendance'),               # Attendance records
+        ('ASSESSMENT', 'Assessment'),               # Assessments and tests
+        ('TRANSCRIPT', 'Transcript'),               # Student transcripts
+        ('DAILY_SCHEDULE', 'Daily Schedule'),       # Daily schedules for classes
+        ('GROUP_TIMETABLE', 'Group Timetable'),     # Timetables for groups of students
+        ('TEACHER_TIMETABLE', 'Teacher Timetable'), # Individual teacher schedules
     ]
 
+    # Foreign key linking to the permission group
     permission_group = models.ForeignKey(AdminPermissionGroup, on_delete=models.CASCADE, related_name='permissions')
 
+    # Field to store the action associated with the permission
     action = models.CharField(max_length=64, choices=ACTION_CHOICES)
 
+    # Field to store the target model associated with the permission
     target_model = models.CharField(max_length=64, choices=TARGET_MODEL_CHOICES)
 
+    # Boolean field to indicate if the permission can be executed
     can_execute = models.BooleanField(default=True)
 
     class Meta:
-        ...
+        # Ensures that the combination of permission group, action, and target model is unique
+        unique_together = ('permission_group', 'action', 'target_model')
 
     def __str__(self):
+        # String representation of the permission instance
         return f"can {self.action} on {self.target_model}"
-    
 
-class TeacherPermissionGroup(models.Model):
-    name = models.CharField(max_length=64)
-    description = models.TextField(blank=True, null=True)
-
-    actors = models.ManyToManyField(Teacher, related_name='permissions')
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='teacher_permission_groups')
-    
-    last_updated = models.DateTimeField(auto_now=True)
-
-    permission_group_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-
-    class Meta:
-        unique_together = ('name', 'school')
-
-    def __str__(self):
-        return f"{self.name} - {self.school.name}"
-
+    @transaction.atomic
     def save(self, *args, **kwargs):
-        self.clean()
-        
+        """
+        Overrides the default save method to implement custom validation 
+        and ensure unique permissions for each permission group.
+        """
+        self.clean()  # Calls the clean method to validate the instance
         try:
-            super().save(*args, **kwargs)
-
+            super().save(*args, **kwargs)  # Calls the parent class's save method
         except IntegrityError as e:
-            # Handle unique constraint violation on the email field
+            # Handle unique constraint violation on permissions
             if 'unique constraint' in str(e).lower():
-                raise ValidationError(_('a permission group with the provided name already exists for your school, please pick a different name'))
+                raise ValidationError(_('Could not process your request, the provided permission group contains duplicate permissions. Please review the group\'s permissions and try again.'))
             else:
                 raise e  # Re-raise the exception if it's a different IntegrityError
 
+    def clean(self):
+        """
+        Custom validation method to ensure the integrity of the model's data.
+        """
+        if self.action not in dict(self.ACTION_CHOICES).keys():
+            raise ValidationError(_('The specified action is not valid. Please check the available permission actions and ensure your input is correct.'))
+
+        if self.target_model not in dict(self.TARGET_MODEL_CHOICES).keys():
+            raise ValidationError(_('The specified target entity is invalid. Please verify the available target entities and ensure your input is correct.'))
 
 
 class TeacherPermission(models.Model):
+    """
+    Represents the permissions granted to teachers within the system.
+    Similar to the AdminPermission model but tailored for teacher roles,
+    with specific actions and target models relevant to their responsibilities.
+    """
 
+    # Defining the possible actions that can be performed by teachers
     ACTION_CHOICES = [
-        ('CREATE', 'Create'),
-        ('UPDATE', 'Update'),
-        ('DELETE', 'Delete'),
-        ('SUBMIT', 'Submit'),
-        ('GRADE', 'Grade'),
+        ('CREATE', 'Create'),  # Permission to create new assessments or records
+        ('UPDATE', 'Update'),  # Permission to modify existing assessments or records
+        ('VIEW', 'View'),      # Permission to view assessments or records
+        ('DELETE', 'Delete'),  # Permission to remove assessments or records
+        ('SUBMIT', 'Submit'),  # Permission to finalize and submit records
     ]
 
+    # Defining the possible target models that can be affected by actions
     TARGET_MODEL_CHOICES = [
-        ('ASSESSMENT', 'Assessment'),
-        ('TRANSCRPIT', 'Transcript'),
-        ('ATTENDANCE', 'Attendance'),
+        ('ASSESSMENT', 'Assessment'),  # Related to assessments given to students
+        ('TRANSCRIPT', 'Transcript'),   # Related to student transcripts
+        ('ATTENDANCE', 'Attendance'),   # Related to attendance records
     ]
 
+    # Foreign key linking to the teacher permission group
     permission_group = models.ForeignKey(TeacherPermissionGroup, on_delete=models.CASCADE, related_name='permissions')
 
+    # Field to store the action associated with the permission
     action = models.CharField(max_length=64, choices=ACTION_CHOICES)
 
+    # Field to store the target model associated with the permission
     target_model = models.CharField(max_length=64, choices=TARGET_MODEL_CHOICES)
 
+    # Boolean field to indicate if the permission can be executed
     can_execute = models.BooleanField(default=True)
 
     class Meta:
-        ...
+        # Ensures that the combination of permission group, action, and target model is unique
+        unique_together = ('permission_group', 'action', 'target_model')
 
     def __str__(self):
+        # String representation of the permission instance
         return f"can {self.action} on {self.target_model}"
+
+    @transaction.atomic
+    def save(self, *args, **kwargs):
+        """
+        Overrides the default save method to implement custom validation 
+        and ensure unique permissions for each permission group.
+        """
+        self.clean()  # Calls the clean method to validate the instance
+        try:
+            super().save(*args, **kwargs)  # Calls the parent class's save method
+        except IntegrityError as e:
+            # Handle unique constraint violation on permissions
+            if 'unique constraint' in str(e).lower():
+                raise ValidationError(_('Could not process your request, the provided permission group contains duplicate permissions. Please review the group\'s permissions and try again.'))
+            else:
+                raise e  # Re-raise the exception if it's a different IntegrityError
+
+    def clean(self):
+        """
+        Custom validation method to ensure the integrity of the model's data.
+        """
+        if self.action not in dict(self.ACTION_CHOICES).keys():
+            raise ValidationError(_('The specified action is not valid. Please check the available permission actions and ensure your input is correct.'))
+
+        if self.target_model not in dict(self.TARGET_MODEL_CHOICES).keys():
+            raise ValidationError(_('The specified target entity is invalid. Please verify the available target entities and ensure your input is correct.'))
+

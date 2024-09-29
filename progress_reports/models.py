@@ -34,6 +34,8 @@ class ProgressReport(models.Model):
 
     # Whether the student passed the term based on their subject scores
     passed = models.BooleanField(default=False)
+    # If flag is set to true, the student will be promoted regardless of their status
+    manuallyPromoted = models.BooleanField(default=False)
 
     # Indicates whether this is the year-end report
     year_end_report = models.BooleanField(default=False)

@@ -179,6 +179,7 @@ class Assessment(models.Model):
         # Returns a string representation of the unique identifier for this assessment.
         return str(self.assessment_id)
         
+    @transaction.atomic
     def save(self, *args, **kwargs):
         """
         Overrides the save method to run custom validation logic via the clean method.
@@ -190,7 +191,6 @@ class Assessment(models.Model):
         except Exception as e:
             raise ValidationError(_(str(e).lower()))
 
-    @transaction.atomic
     def clean(self):
         """
         Custom validation to ensure business logic is respected before saving the assessment.

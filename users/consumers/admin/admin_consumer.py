@@ -321,6 +321,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'create_account': admin_post_async_functions.create_account,
             'delete_account': admin_post_async_functions.delete_account,
+            
+            'create_permission_group': admin_post_async_functions.create_permission_group,
 
             'link_parent': admin_post_async_functions.link_parent,
             'unlink_parent': admin_post_async_functions.unlink_parent,
