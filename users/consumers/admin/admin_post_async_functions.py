@@ -390,14 +390,14 @@ def create_permission_group(user, role, details):
                 # Determine the group type based on the role
                 if details['group'] == 'admin':
                     # Create an admin permission group
-                    permission_group  = AdminPermissionGroup(**serializer.validated_data)
+                    permission_group  = AdminPermissionGroup.objects.create(**serializer.validated_data)
                     for action, targets in details['permissions'].items():
                         for target in targets:
                             AdminPermission.objects.create(permission_group=permission_group, action=action.upper(), target_model=target.upper(), can_execute=True)
 
                 elif details['group'] == 'teacher':
                     # Create a teacher permission group
-                    permission_group  = TeacherPermissionGroup(**serializer.validated_data)
+                    permission_group  = TeacherPermissionGroup.objects.create(**serializer.validated_data)
                     for action, targets in details['permissions'].items():
                         for target in targets:
                             TeacherPermission.objects.create(permission_group=permission_group, action=action.upper(), target_model=target.upper(), can_execute=True)

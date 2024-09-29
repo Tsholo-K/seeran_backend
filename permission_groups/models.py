@@ -6,10 +6,6 @@ from django.db import models, IntegrityError, transaction
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 
-# models
-from users.models import Admin, Teacher
-from schools.models import School
-
 
 class AdminPermissionGroup(models.Model):
     """
