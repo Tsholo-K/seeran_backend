@@ -142,12 +142,12 @@ def permission_groups(user, role, details):
             return {'error': response}
         
         # Determine the group type based on the role
-        if details['group'] == 'admin':
+        if details['group'] == 'admins':
             # Create an admin permission group
             groups = requesting_account.school.admin_permission_groups
             serialized_permission_groups = AdminPermissionGroupsSerializer(groups, many=True).data
             
-        elif details['group'] == 'teacher':
+        elif details['group'] == 'teachers':
             # Create a teacher permission group
             groups = requesting_account.school.teacher_permission_groups
             serialized_permission_groups = TeacherPermissionGroupsSerializer(groups, many=True).data
@@ -179,11 +179,11 @@ def permission_group(user, role, details):
             return {'error': response}
         
         # Determine the group type based on the role
-        if details['group'] == 'admin':
+        if details['group'] == 'admins':
             group = requesting_account.school.admin_permission_groups.get(permission_group_id=details['permission_group'])
             serialized_permission_group = AdminPermissionGroupSerializer(instance=group).data
       
-        elif details['group'] == 'teacher':
+        elif details['group'] == 'teachers':
             group = requesting_account.school.teacher_permission_groups.get(permission_group_id=details['permission_group'])
             serialized_permission_group = TeacherPermissionGroupSerializer(instance=group).data
 
