@@ -5,6 +5,9 @@ from rest_framework.validators import UniqueTogetherValidator
 # models
 from .models import AdminPermissionGroup, TeacherPermissionGroup
 
+# serilializers
+from permissions.serializers import AdminPermissionsSerializer, TeacherPermissionsSerializer
+
 
 class AdminPermissionGroupCreationSerializer(serializers.ModelSerializer):
 
@@ -23,7 +26,7 @@ class TeacherPermissionGroupCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TeacherPermissionGroup
-        fields = ['assessor', 'title', 'assessment_type', 'total', 'percentage_towards_term_mark', 'start_time', 'dead_line', 'term', 'classroom', 'subject', 'grade', 'school', 'moderator']
+        fields = ['group_name', 'description', 'school']
 
     def __init__(self, *args, **kwargs):
         super(TeacherPermissionGroupCreationSerializer, self).__init__(*args, **kwargs)
@@ -31,3 +34,40 @@ class TeacherPermissionGroupCreationSerializer(serializers.ModelSerializer):
         self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
         self.fields['description'].required = False
 
+
+class AdminPermissionGroupsSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = AdminPermissionGroup
+        fields = ['group_name', 'subscribers_count', 'permissions_count']
+
+
+class TeacherPermissionGroupsSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = TeacherPermissionGroup
+        fields = ['group_name', 'subscribers_count', 'permissions_count']
+
+
+class AdminPermissionGroupSerializer(serializers.ModelSerializer):
+
+    permissions = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AdminPermissionGroup
+        fields = ['group_name', 'subscribers_count', 'permissions_count', 'description', 'created_at', 'permissions']
+
+    def get_permissions(self, obj):
+        return AdminPermissionsSerializer(obj.permissions.all(), many=True).data
+
+
+class TeacherPermissionGroupSerializer(serializers.ModelSerializer):
+
+    permissions = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TeacherPermissionGroup
+        fields = ['group_name', 'subscribers_count', 'permissions_count', 'description', 'created_at', 'permissions']
+
+    def get_permissions(self, obj):
+        return TeacherPermissionsSerializer(obj.permissions.all(), many=True).data

@@ -27,6 +27,7 @@ from users.serializers.admins.admins_serializers import AdminAccountSerializer
 from users.serializers.teachers.teachers_serializers import TeacherAccountSerializer
 from schools.serializers import SchoolDetailsSerializer
 from audit_logs.serializers import AuditEntriesSerializer, AuditEntrySerializer
+from permission_groups.serializers import AdminPermissionGroupsSerializer, TeacherPermissionGroupsSerializer, AdminPermissionGroupSerializer, TeacherPermissionGroupSerializer
 from grades.serializers import GradeSerializer, GradesSerializer, GradeDetailsSerializer
 from terms.serializers import  TermsSerializer, TermSerializer
 from term_subject_performances.serializers import TermSubjectPerformanceSerializer
@@ -115,6 +116,78 @@ def search_audit_entry(user, role, details):
         serialized_entry = AuditEntrySerializer(instance=entries).data
 
         return {"entry": serialized_entry}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def permission_groups(user, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to create an assessment
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'PERMISSION'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view permission groups. please contact your administrator to adjust you permissions for viewing permissions.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='PERMISSION', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+        
+        if 'group' not in details and details['group'] in ['admin', 'teacher']:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid group (admin or teacher) for which to filter the permission groups and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='AUDIT_ENTRY', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+        
+        # Determine the group type based on the role
+        if details['group'] == 'admin':
+            # Create an admin permission group
+            groups = requesting_account.school.admin_permission_groups
+            serialized_permission_groups = AdminPermissionGroupsSerializer(groups, many=True).data
+            
+        elif details['group'] == 'teacher':
+            # Create a teacher permission group
+            groups = requesting_account.school.teacher_permission_groups
+            serialized_permission_groups = TeacherPermissionGroupsSerializer(groups, many=True).data
+
+        return {"permission_groups": serialized_permission_groups}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def permission_group(user, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to create an assessment
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'PERMISSION'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view permission group details. please contact your administrator to adjust you permissions for viewing permissions.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='PERMISSION', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+        
+        if not {'permission_group', 'group'}.issubset(details) and details['group'] in ['admin', 'teacher']:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid group ID and group (admin or teacher) for which to filter the permission groups and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='AUDIT_ENTRY', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+        
+        # Determine the group type based on the role
+        if details['group'] == 'admin':
+            group = requesting_account.school.admin_permission_groups.get(permission_group_id=details['permission_group'])
+            serialized_permission_group = AdminPermissionGroupSerializer(instance=group).data
+      
+        elif details['group'] == 'teacher':
+            group = requesting_account.school.teacher_permission_groups.get(permission_group_id=details['permission_group'])
+            serialized_permission_group = TeacherPermissionGroupSerializer(instance=group).data
+
+        return {"permission_group": serialized_permission_group}
 
     except Exception as e:
         # Handle any unexpected errors with a general error message
