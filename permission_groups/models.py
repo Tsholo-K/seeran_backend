@@ -24,14 +24,14 @@ class AdminPermissionGroup(models.Model):
 
     # Many-to-many relationship with the Admin model, allowing multiple admins
     # to be linked to this permission group
-    subscribers = models.ManyToManyField('Admin', related_name='permissions')
+    subscribers = models.ManyToManyField('users.Admin', related_name='permissions')
 
     # Counters for tracking the number of subscribers and permissions
     subscribers_count = models.IntegerField(default=0)
     permissions_count = models.IntegerField(default=0)
 
     # Foreign key linking this permission group to a specific school
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='admin_permission_groups')
+    school = models.ForeignKey('schools.School', on_delete=models.CASCADE, related_name='admin_permission_groups')
 
     last_updated = models.DateTimeField(auto_now=True)  # Automatically set to now when the object is updated
     
@@ -85,14 +85,14 @@ class TeacherPermissionGroup(models.Model):
 
     # Many-to-many relationship with the Teacher model, allowing multiple teachers
     # to be linked to this permission group
-    subscribers = models.ManyToManyField('Teacher', related_name='permissions')
+    subscribers = models.ManyToManyField('users.Teacher', related_name='permissions')
     
     # Counters for tracking the number of subscribers and permissions
     subscribers_count = models.IntegerField(default=0)
     permissions_count = models.IntegerField(default=0)
 
     # Foreign key linking this permission group to a specific school
-    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='teacher_permission_groups')
+    school = models.ForeignKey('schools.School', on_delete=models.CASCADE, related_name='teacher_permission_groups')
     
     last_updated = models.DateTimeField(auto_now=True)  # Automatically set to now when the object is updated
 
