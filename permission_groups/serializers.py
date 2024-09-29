@@ -39,14 +39,14 @@ class AdminPermissionGroupsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AdminPermissionGroup
-        fields = ['group_name', 'subscribers_count', 'permissions_count']
+        fields = ['group_name', 'subscribers_count', 'permissions_count', 'last_updated']
 
 
 class TeacherPermissionGroupsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TeacherPermissionGroup
-        fields = ['group_name', 'subscribers_count', 'permissions_count']
+        fields = ['group_name', 'subscribers_count', 'permissions_count', 'last_updated']
 
 
 class AdminPermissionGroupSerializer(serializers.ModelSerializer):

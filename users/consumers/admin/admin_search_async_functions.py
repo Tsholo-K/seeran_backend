@@ -135,7 +135,7 @@ def permission_groups(user, role, details):
 
             return {'error': response}
         
-        if 'group' not in details and details['group'] in ['admin', 'teacher']:
+        if 'group' not in details or details['group'] not in ['admins', 'teachers']:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid group (admin or teacher) for which to filter the permission groups and try again'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='AUDIT_ENTRY', outcome='ERROR', response=response, school=requesting_account.school)
 
@@ -172,7 +172,7 @@ def permission_group(user, role, details):
 
             return {'error': response}
         
-        if not {'permission_group', 'group'}.issubset(details) and details['group'] in ['admin', 'teacher']:
+        if not {'permission_group', 'group'}.issubset(details) or details['group'] not in ['admins', 'teachers']:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid group ID and group (admin or teacher) for which to filter the permission groups and try again'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='AUDIT_ENTRY', outcome='ERROR', response=response, school=requesting_account.school)
 

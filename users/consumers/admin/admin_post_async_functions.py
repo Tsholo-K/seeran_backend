@@ -367,7 +367,7 @@ def create_permission_group(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='PERMISSION', outcome='ERROR', response=response, school=requesting_account.school)
             return {'error': response}
         
-        if 'group' not in details and details['group'] in ['admin', 'teacher']:
+        if 'group' not in details or details['group'] not in ['admin', 'teacher']:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid group (admin or teacher) for which the permission group is for and try again'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='ERROR', response=response, school=requesting_account.school)
 
