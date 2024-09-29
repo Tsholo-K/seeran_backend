@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     # project apps
     'authentication',
     'permissions',
+    'permission_groups',
     'audit_logs',
     'users',
     'access_tokens',
