@@ -17,9 +17,9 @@ from . import founder_put_async_functions
 from . import founder_get_async_functions
 
 # general async functions 
-from users.consumers.general import general_post_async_functions
+from users.consumers.general import general_submit_async_functions
 from users.consumers.general import general_put_async_functions
-from users.consumers.general import general_get_async_functions
+from users.consumers.general import general_view_async_functions
 from users.consumers.general import general_verify_async_functions
 from users.consumers.general import general_email_async_functions
 
@@ -95,7 +95,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
     async def handle_get(self, description, details, user, role, access_token):
         if description == 'my_security_information':
-            return await general_get_async_functions.fetch_security_information(user, role)
+            return await general_view_async_functions.fetch_security_information(user, role)
         
         elif description == 'schools':
             return await founder_get_async_functions.fetch_schools()
@@ -191,7 +191,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
             return await founder_post_async_functions.delete_principal_account(details)
         
         elif description == 'log_out':
-            return await general_post_async_functions.log_out(access_token)
+            return await general_submit_async_functions.log_out(access_token)
         
         else:
             return {'error': 'Invalid post description'}

@@ -11,10 +11,10 @@ from seeran_backend.middleware import connection_manager
 from authentication.utils import validate_access_token
 
 # general async functions 
-from users.consumers.general import general_post_async_functions
+from users.consumers.general import general_submit_async_functions
 from users.consumers.general import general_put_async_functions
 from users.consumers.general import general_search_async_functions
-from users.consumers.general import general_get_async_functions
+from users.consumers.general import general_view_async_functions
 from users.consumers.general import general_verify_async_functions
 from users.consumers.general import general_email_async_functions
 
@@ -91,12 +91,12 @@ class ParentConsumer(AsyncWebsocketConsumer):
 
     async def handle_get(self, description, details, user, role, access_token):
         get_map = {
-            'my_security_information': general_get_async_functions.fetch_security_information,
-            'email_information': general_get_async_functions.fetch_email_information,
+            'my_security_information': general_view_async_functions.fetch_security_information,
+            'email_information': general_view_async_functions.fetch_email_information,
 
-            'chats': general_get_async_functions.fetch_chats,
+            'chats': general_view_async_functions.fetch_chats,
 
-            'announcements': general_get_async_functions.fetch_announcements,
+            'announcements': general_view_async_functions.fetch_announcements,
         }
 
         func = get_map.get(description)
@@ -230,9 +230,9 @@ class ParentConsumer(AsyncWebsocketConsumer):
 
     async def handle_post(self, description, details, user, role, access_token):
         post_map = {
-            'text': general_post_async_functions.text,
+            'text': general_submit_async_functions.text,
             
-            'log_out': general_post_async_functions.log_out,
+            'log_out': general_submit_async_functions.log_out,
         }
 
         func = post_map.get(description)

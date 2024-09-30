@@ -20,7 +20,7 @@ from announcements.models import Announcement
 from users.serializers.founders.founders_serializers import FounderAccountDetailsSerializer
 
 # maops
-from users.maps import role_specific_maps
+from users.maps import role_specific_attr_maps
 
 # queries
 from users.complex_queries import queries
@@ -40,7 +40,7 @@ def my_account_details(request):
         # Check if the role is valid
         elif request.user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT', 'PARENT']:
             # Fetch the corresponding child model and serializer based on the user's role
-            Model, Serializer, select_related, prefetch_related = role_specific_maps.account_model_details_and_attr_serializer_mapping[request.user.role]
+            Model, Serializer, select_related, prefetch_related = role_specific_attr_maps.account_model_details_and_attr_serializer_mapping[request.user.role]
             requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=request.user.account_id)
 
             # Determine unread announcements based on user role

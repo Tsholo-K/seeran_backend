@@ -42,22 +42,12 @@ class StudentSecurityInformationSerializer(serializers.ModelSerializer):
     
 class StudentSourceAccountSerializer(serializers.ModelSerializer):
 
-    name = serializers.SerializerMethodField()
-    surname = serializers.SerializerMethodField()
     identifier = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
 
     class Meta:
         model = Student
-        fields = ['name', 'surname', 'identifier', 'account_id', 'image']
-    
-    def get_name(self, obj):
-        """Return the formatted name of the user."""
-        return obj.name.title()
-
-    def get_surname(self, obj):
-        """Return the formatted surname of the user."""
-        return obj.surname.title()
+        fields = ['name', 'surname', 'identifier', 'image', 'account_id']
             
     def get_image(self, obj):
         """Return the URL of the user's image or a default image."""

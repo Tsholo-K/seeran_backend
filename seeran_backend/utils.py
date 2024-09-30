@@ -1,9 +1,19 @@
+# python
+import gzip
+from io import BytesIO
+
 # celery
 from celery.signals import task_failure
 
 # django
 from django.core.cache import cache
 
+
+def compress_data(data):
+    buf = BytesIO()
+    with gzip.GzipFile(fileobj=buf, mode='wb') as f:
+        f.write(data.encode('utf-8'))
+    return buf.getvalue()
 
 LOCK_EXPIRE = 60 * 15  # Lock expires after 15 minutes
 

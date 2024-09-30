@@ -47,7 +47,7 @@ def update_email_ban_otp_sends(email_ban_id):
 
 
 @database_sync_to_async
-def update_email(user, details, access_token):
+def update_email_address(user, details, access_token):
     try:
         validate_password(details.get('new_email'))
 
@@ -156,7 +156,7 @@ def update_multi_factor_authentication(user, details):
     
 
 @database_sync_to_async
-def mark_messages_as_read(user, details):
+def update_messages_as_read(user, details):
     try:
         # Retrieve the account making the request
         account = BaseUser.objects.get(account_id=user)

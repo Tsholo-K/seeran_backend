@@ -10,6 +10,7 @@ from django.db.models import Q
 from channels.db import database_sync_to_async
 
 # models
+from permission_groups.models import AdminPermissionGroup, TeacherPermissionGroup
 from grades.models import Grade
 from subjects.models import Subject
 from classrooms.models import Classroom
@@ -18,6 +19,7 @@ from submissions.models import Submission
 from student_group_timetables.models import StudentGroupTimetable
 
 # serilializers
+from users.serializers.general_serializers import SourceAccountSerializer
 from users.serializers.teachers.teachers_serializers import TeacherAccountSerializer
 from users.serializers.students.students_serializers import StudentSourceAccountSerializer
 from terms.serializers import FormTermsSerializer
@@ -30,8 +32,61 @@ from permissions import utils as permissions_utilities
 from audit_logs import utils as audits_utilities
 
 
+
+
 @database_sync_to_async
-def form_data_for_creating_class(user, role, details):
+def form_data_for_subscribing_accounts_to_permission_group(user, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to create an assessment
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'ASSIGN', 'PERMISSION'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view permission group subscribers. please contact your principal to adjust you permissions for viewing permissions.'
+            audits_utilities.log_audit(actor=requesting_account, action='ASSIGN', target_model='PERMISSION', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+        
+        if not {'permission_group', 'group'}.issubset(details) or details['group'] not in ['admins', 'teachers']:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid group ID and group (admin or teacher) for which to filter the permission groups and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='ASSIGN', target_model='PERMISSION', outcome='ERROR', response=response, school=requesting_account.school)
+
+            return {'error': response}
+        
+        # Determine the group type based on the role
+        if details['group'] == 'admins':
+            group = requesting_account.school.admin_permission_groups.select_related('subscribers').get(permission_group_id=details['permission_group'])
+            users = requesting_account.school.admins.exclude(id__in=group.subscribers_id)
+      
+        elif details['group'] == 'teachers':
+            group = requesting_account.school.teacher_permission_groups.select_related('subscribers').get(permission_group_id=details['permission_group'])
+            users = requesting_account.school.teachers.exclude(id__in=group.subscribers_id)
+
+        serialized_users = SourceAccountSerializer(users, many=True).data
+
+        # Compress the serialized data
+        compressed_users = zlib.compress(json.dumps(serialized_users).encode('utf-8'))
+
+        # Encode compressed data as base64 for safe transport
+        encoded_users = base64.b64encode(compressed_users).decode('utf-8')
+
+        return {"users": encoded_users}
+    
+    except AdminPermissionGroup.DoesNotExist:
+        # Handle the case where the provided grade ID does not exist
+        return { 'error': 'Could not process your request, a admin permission group in your school with the provided credentials does not exist. Please review the group details and try again'}
+    
+    except TeacherPermissionGroup.DoesNotExist:
+        # Handle the case where the provided grade ID does not exist
+        return { 'error': 'Could not process your request, a teacher permission group  in your school with the provided credentials does not exist. Please review the group details and try again'}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def form_data_for_creating_classroom(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
@@ -75,7 +130,7 @@ def form_data_for_creating_class(user, role, details):
 
 
 @database_sync_to_async
-def form_data_for_updating_class(user, role, details):
+def form_data_for_updating_classroom(user, role, details):
     try:
         classroom = None  # Initialize classroom as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
@@ -122,7 +177,7 @@ def form_data_for_updating_class(user, role, details):
 
 
 @database_sync_to_async
-def form_data_for_adding_students_to_class(user, role, details):
+def form_data_for_adding_students_to_classroom(user, role, details):
     try:
         classroom = None  # Initialize classroom as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
@@ -365,7 +420,7 @@ def form_data_for_assessment_submissions(user, role, details):
 
 
 @database_sync_to_async
-def form_data_for_submission_details(user, role, details):
+def form_data_for_assessment_submission_details(user, role, details):
     try:
         # Retrieve the requesting user's account and related school in a single query using select_related
         requesting_account = users_utilities.get_account_and_linked_school(user, role)

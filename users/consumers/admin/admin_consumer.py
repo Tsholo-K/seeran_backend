@@ -11,17 +11,20 @@ from seeran_backend.middleware import  connection_manager
 from authentication.utils import validate_access_token
 
 # admin async functions 
-from . import admin_post_async_functions
-from . import admin_put_async_functions
+from . import admin_create_async_functions
+from . import admin_update_async_functions
 from . import admin_search_async_functions
-from . import admin_get_async_functions
+from . import admin_submit_async_functions
+from . import admin_assign_async_functions
+from . import admin_view_async_functions
 from . import admin_form_data_async_functions
 
-# general async functions 
-from users.consumers.general import general_post_async_functions
+# general async functions
+from users.consumers.general import general_message_async_functions
+from users.consumers.general import general_submit_async_functions
 from users.consumers.general import general_put_async_functions
 from users.consumers.general import general_search_async_functions
-from users.consumers.general import general_get_async_functions
+from users.consumers.general import general_view_async_functions
 from users.consumers.general import general_verify_async_functions
 from users.consumers.general import general_email_async_functions
 from users.consumers.general import general_form_data_async_functions
@@ -83,123 +86,144 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
     async def handle_request(self, action, description, details, user, role, access_token):
         action_map = {
-            'GET': self.handle_get,
+            'VIEW': self.handle_view,
             'SEARCH': self.handle_search,
             'VERIFY': self.handle_verify,
             'FORM DATA': self.handle_form_data,
-            'PUT': self.handle_put,
-            'POST': self.handle_post,
+            'UPDATE': self.handle_update,
+            'MESSAGE': self.handle_message,
+            'SUBMIT': self.handle_submit,
+            'ASSIGN': self.handle_assign,
+            'DELETE': self.handle_delete,
+            'LINK': self.handle_link,
+            'UNLINK': self.handle_unlink,
+            'CREATE': self.handle_create,
         }
 
         handler = action_map.get(action)
         if handler:
             return await handler(description, details, user, role, access_token)
         
-        return {'error': 'Invalid action'}
+        return {'error': 'Could not process your request, an invalid action was provided. If this problem persist open a bug report ticket.'}
 
-# GET
+# VIEW
 
-    async def handle_get(self, description, details, user, role, access_token):
-        get_map = {
-            'my_security_information': general_get_async_functions.fetch_security_information,
-            'email_information': general_get_async_functions.fetch_email_information,
+    async def handle_view(self, description, details, user, role, access_token):
+        view_map = {
+            'view_my_security_information': general_view_async_functions.view_my_security_information,
+            'view_my_email_address_status_information': general_view_async_functions.view_my_email_address_status_information,
 
-            'chats': general_get_async_functions.fetch_chats,
+            'view_chat_rooms': general_view_async_functions.view_chat_rooms,
 
-            'announcements': general_get_async_functions.fetch_announcements,
+            'view_school_details': admin_view_async_functions.view_school_details,
+
+            'view_school_announcements': admin_view_async_functions.view_school_announcements,
         }
 
-        func = get_map.get(description)
+        func = view_map.get(description)
         if func:
-            if description in ['chats', 'email_information']:
+            if description in ['view_chat_rooms', 'view_my_email_address_status_information']:
                 return await func(user)
             else:
                 return await func(user, role)
-        
-        return {'error': 'Invalid get description'}
+
+        return {'error': 'Could not process your request, an invalid view description was provided. If this problem persist open a bug report ticket.'}
 
 # SEARCH
 
     async def handle_search(self, description, details, user, role, access_token):
         search_map = {
-            'school_details': admin_search_async_functions.search_school_details,
+            'search_audit_entries': admin_search_async_functions.search_audit_entries,
+            'search_audit_entry': admin_search_async_functions.search_audit_entry,
 
-            'audit_entries': admin_search_async_functions.search_audit_entries,
-            'audit_entry': admin_search_async_functions.search_audit_entry,
+            'search_permission_groups': admin_search_async_functions.search_permission_groups,
+            'search_permission_group': admin_search_async_functions.search_permission_group,
 
-            'permission_groups': admin_search_async_functions.permission_groups,
-            'permission_group': admin_search_async_functions.permission_group,
+            'search_permission_group_subscribers': admin_search_async_functions.search_permission_group_subscribers,
 
-            'accounts': admin_search_async_functions.search_accounts,
-            'students': admin_search_async_functions.search_students,
-            'parents': general_search_async_functions.search_parents,
+            'search_accounts': admin_search_async_functions.search_accounts,
+            'search_students': admin_search_async_functions.search_students,
+            'search_parents': admin_search_async_functions.search_parents,
 
-            'account': general_search_async_functions.search_account,
+            'search_account': admin_search_async_functions.search_account,
 
-            'announcement': general_search_async_functions.search_announcement,
+            'search_announcement': admin_search_async_functions.search_announcement,
 
-            'grades': admin_search_async_functions.search_grades,
-            'grade': admin_search_async_functions.search_grade,
-            'grade_details': admin_search_async_functions.search_grade_details,
+            'search_grades': admin_search_async_functions.search_grades,
+            'search_grade': admin_search_async_functions.search_grade,
+            'search_grade_details': admin_search_async_functions.search_grade_details,
+            'search_grade_register_classrooms': admin_search_async_functions.search_grade_register_classrooms,
 
-            'subject': admin_search_async_functions.search_subject,
-            'subject_details': admin_search_async_functions.search_subject_details,
+            'search_subject': admin_search_async_functions.search_subject,
+            'search_subject_details': admin_search_async_functions.search_subject_details,
 
-            'terms': admin_search_async_functions.search_grade_terms,
-            'term_details': admin_search_async_functions.search_term_details,
-            'term_subject_performance': admin_search_async_functions.search_term_subject_performance,
+            'search_grade_terms': admin_search_async_functions.search_grade_terms,
+            'search_term_details': admin_search_async_functions.search_term_details,
+            'search_term_subject_performance': admin_search_async_functions.search_term_subject_performance,
 
-            'teacher_classes': admin_search_async_functions.search_teacher_classes,
-            'register_classes': admin_search_async_functions.search_grade_register_classes,
+            'search_teacher_classrooms': admin_search_async_functions.search_teacher_classrooms,
 
-            'class': general_search_async_functions.search_class,
+            'search_classrooms': general_search_async_functions.search_classrooms,
 
-            'assessments': admin_search_async_functions.search_assessments,
-            'assessment': admin_search_async_functions.search_assessment,
+            'search_assessments': admin_search_async_functions.search_assessments,
+            'search_assessment': admin_search_async_functions.search_assessment,
 
-            'transcripts': admin_search_async_functions.search_transcripts,
-            'transcript': admin_search_async_functions.search_transcript,
+            'search_transcripts': admin_search_async_functions.search_transcripts,
+            'search_transcript': admin_search_async_functions.search_transcript,
 
-            'student_class_card': admin_search_async_functions.search_student_class_card,
-            'activity': general_search_async_functions.search_activity,
+            'search_student_classroom_card': admin_search_async_functions.search_student_classroom_card,
+            'search_activity': general_search_async_functions.search_activity,
 
-            'teacher_schedule_schedules': admin_search_async_functions.search_teacher_schedule_schedules,
+            'search_teacher_schedule_schedules': admin_search_async_functions.search_teacher_schedule_schedules,
 
-            'group_schedules': general_search_async_functions.search_group_schedules,
-            'group_schedule_schedules': general_search_async_functions.search_group_schedule_schedules,
-            'subscribed_students': admin_search_async_functions.search_subscribed_students,
+            'search_group_schedules': general_search_async_functions.search_group_schedules,
+            'search_group_schedule_schedules': general_search_async_functions.search_group_schedule_schedules,
+            'search_subscribed_students': admin_search_async_functions.search_subscribed_students,
 
-            'schedule_sessions': general_search_async_functions.search_schedule_sessions,
+            'search_schedule_sessions': general_search_async_functions.search_schedule_sessions,
 
-            'month_attendance_records': admin_search_async_functions.search_month_attendance_records,
+            'search_month_attendance_records': admin_search_async_functions.search_month_attendance_records,
 
-            'chat_room': general_search_async_functions.search_chat_room,
-            'chat_room_messages': general_search_async_functions.search_chat_room_messages,
+            'search_chat_room': general_search_async_functions.search_chat_room,
+            'search_chat_room_messages': general_search_async_functions.search_chat_room_messages,
 
-            'email_ban': general_search_async_functions.search_email_ban,
+            'search_email_ban': general_search_async_functions.search_email_ban,
         }
 
         func = search_map.get(description)
         
         if func:
-            if description in ['schedule_sessions', 'email_ban']:
+            if description in ['search_schedule_sessions', 'search_email_ban']:
                 response = await func(details) 
-            elif description in ['chat_room_messages']:
+            elif description in ['search_chat_room_messages']:
                 response = await func(user, details)
-            elif description in ['school_details']:
-                response = await func(user, role)
             else:
                 response =  await func(user, role, details)
-            
-            if description in ['chat_room_messages'] and response.get('user'):
-                await connection_manager.send_message(response['user'], json.dumps({'description': 'read_receipt', 'chat': response['chat']}))
-                await connection_manager.send_message(user, json.dumps({'unread_messages': response['unread_messages']} ))
 
-                response = {'messages': response['messages'], 'next_cursor': response['next_cursor']}  
+            if description in ['search_chat_room_messages'] and response.get('user'):
+                await connection_manager.send_message(response['user'], json.dumps({'description': 'read_receipt', 'chat': response['chat']}))
+                await connection_manager.send_message(user, json.dumps({'unread_messages': response['unread_messages']}))
+
+                return {'messages': response['messages'], 'next_cursor': response['next_cursor']}  
 
             return response
-        
-        return {'error': 'Invalid search description'}
+
+        return {'error': 'Could not process your request, an invalid search description was provided. If this problem persist open a bug report ticket.'}
+
+
+# ASSIGN
+
+    async def handle_assign(self, description, details, user, role, access_token):
+        assign_map = {
+            'assign_permission_group_subscribers': admin_assign_async_functions.assign_permission_group_subscribers,
+        }
+
+        func = assign_map.get(description)
+        if func:
+            response =  await func(user, role, details)
+            return response
+
+        return {'error': 'Could not process your request, an invalid search description was provided. If this problem persist open a bug report ticket.'}
 
 # VERIFY
 
@@ -209,9 +233,9 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'verify_password': general_verify_async_functions.verify_password,
 
             'verify_otp': general_verify_async_functions.verify_otp,
-                        
-            'send_email_revalidation_otp': general_verify_async_functions.validate_email_revalidation,
-            'verify_email_revalidation_otp': general_verify_async_functions.verify_email_revalidate_otp,
+
+            'verify_email_ban_revalidation_otp_send': general_verify_async_functions.verify_email_ban_revalidation_otp_send,
+            'verify_email_ban_revalidation_otp': general_verify_async_functions.verify_email_ban_revalidation_otp,
         }
 
         func = verify_map.get(description)
@@ -224,160 +248,226 @@ class AdminConsumer(AsyncWebsocketConsumer):
             if response.get('user'):
                 if description in ['verify_email', 'verify_password']:
                     return await general_email_async_functions.send_one_time_pin_email(response.get('user'), reason='This OTP was generated in response to your request.')
-                elif description in ['verify_email_revalidation_otp']:
-                    return await general_email_async_functions.send_email_revalidation_one_time_pin_email(response.get('user'))
-                
+                elif description in ['verify_email_ban_revalidation_otp_send']:
+                    response = await general_email_async_functions.send_email_revalidation_one_time_pin_email(response['user'])
+
+                    if response.get('message'):
+                        return await general_put_async_functions.update_email_ban_otp_sends(details)
+
             return response
-        
-        return {'error': 'Invalid verify description'}
+
+        return {'error': 'Could not process your request, an invalid verify description was provided. If this problem persist open a bug report ticket.'}
 
 # FORM DATA
 
     async def handle_form_data(self, description, details, user, role, access_token):
         form_data_map = {
-            'class_creation': admin_form_data_async_functions.form_data_for_creating_class,
-            'class_update': admin_form_data_async_functions.form_data_for_updating_class,
+            'form_data_for_creating_classroom': admin_form_data_async_functions.form_data_for_creating_classroom,
+            'form_data_for_updating_classroom': admin_form_data_async_functions.form_data_for_updating_classroom,
 
-            'add_students_to_class': admin_form_data_async_functions.form_data_for_adding_students_to_class,
+            'form_data_for_adding_students_to_classroom': admin_form_data_async_functions.form_data_for_adding_students_to_classroom,
 
-            'attendance_register': general_form_data_async_functions.form_data_for_attendance_register,
+            'form_data_for_classroom_attendance_register': general_form_data_async_functions.form_data_for_classroom_attendance_register,
 
-            'set_assessment' : admin_form_data_async_functions.form_data_for_setting_assessment,
-            'update_assessment' : admin_form_data_async_functions.form_data_for_updating_assessment,
+            'form_data_for_setting_assessment' : admin_form_data_async_functions.form_data_for_setting_assessment,
+            'form_data_for_updating_assessment' : admin_form_data_async_functions.form_data_for_updating_assessment,
 
-            'assessment_submission_collection' : admin_form_data_async_functions.form_data_for_collecting_assessment_submissions,
-            'assessment_submissions' : admin_form_data_async_functions.form_data_for_assessment_submissions,
-            'submission_details' : admin_form_data_async_functions.form_data_for_submission_details,
+            'form_data_for_collecting_assessment_submissions' : admin_form_data_async_functions.form_data_for_collecting_assessment_submissions,
+            'form_data_for_assessment_submissions' : admin_form_data_async_functions.form_data_for_assessment_submissions,
+            'form_data_for_assessment_submission_details' : admin_form_data_async_functions.form_data_for_assessment_submission_details,
 
-            'add_students_to_group_schedule': admin_form_data_async_functions.form_data_for_adding_students_to_group_schedule,
+            'form_data_for_adding_students_to_group_schedule': admin_form_data_async_functions.form_data_for_adding_students_to_group_schedule,
         }
 
         func = form_data_map.get(description)
         if func:
             response = await func(user, role, details)
-
             return response
         
-        return {'error': 'Invalid form data description'}
+        return {'error': 'Could not process your request, an invalid form data description was provided. If this problem persist open a bug report ticket.'}
 
-# PUT
+# UPDATE
 
-    async def handle_put(self, description, details, user, role, access_token):
-        put_map = {
-            'update_email': general_put_async_functions.update_email,
+    async def handle_update(self, description, details, user, role, access_token):
+        update_map = {
+            'update_email_address': general_put_async_functions.update_email_address,
             'update_password': general_put_async_functions.update_password,
 
             'update_multi_factor_authentication': general_put_async_functions.update_multi_factor_authentication,
 
-            'update_school_details' : admin_put_async_functions.update_school_account,
+            'update_school_account_details' : admin_update_async_functions.update_school_account_account,
+
+            'update_account_details': admin_update_async_functions.update_account_details,
             
-            'update_grade_details' : admin_put_async_functions.update_grade_details,
+            'update_grade_details' : admin_update_async_functions.update_grade_details,
             
-            'update_subject_details' : admin_put_async_functions.update_subject_details,
+            'update_subject_details' : admin_update_async_functions.update_subject_details,
 
-            'update_term_details' : admin_put_async_functions.update_term_details,
+            'update_term_details' : admin_update_async_functions.update_term_details,
 
-            'update_assessment' : admin_put_async_functions.update_assessment,
-            'flag_assessment_as_collected' : admin_put_async_functions.update_assessment_as_collected,
+            'update_assessment' : admin_update_async_functions.update_assessment,
+            'update_assessment_as_collected' : admin_update_async_functions.update_assessment_as_collected,
+            'update_assessment_as_graded' : admin_update_async_functions.update_assessment_as_graded,
 
-            'update_student_grade' : admin_put_async_functions.update_student_grade,
+            'update_student_grade' : admin_update_async_functions.update_student_transcript_score,
             
-            'release_assessment_grades' : admin_put_async_functions.release_assessment_grades,
+            'update_messages_as_read': general_put_async_functions.update_messages_as_read,
 
-            'mark_messages_as_read': general_put_async_functions.mark_messages_as_read,
-
-            'update_account': admin_put_async_functions.update_account,
-
-            'update_class': admin_put_async_functions.update_class,
-            'update_class_students': admin_put_async_functions.update_class_students,
+            'update_classroom_details': admin_update_async_functions.update_classroom_details,
+            'update_classroom_students': admin_update_async_functions.update_classroom_students,
         }
 
-        func = put_map.get(description)
+        func = update_map.get(description)
         if func:
-            if description in ['update_email', 'update_password']:
+            if description in ['update_email_address', 'update_password']:
                 response = await func(user, role, details, access_token)
-            elif description in ['update_multi_factor_authentication', 'mark_messages_as_read']:
+            elif description in ['update_multi_factor_authentication', 'update_messages_as_read']:
                 response = await func(user, details)
             else:
                 response = await func(user, role, details)
 
             if response.get('user'):
-                if description in ['mark_messages_as_read']:
+                if description in ['update_messages_as_read']:
                     await connection_manager.send_message(response['user'], json.dumps({'description': 'read_receipt', 'chat': response['chat']}))
                     return {'message': 'read receipt sent'}
-
-                elif description in ['send_email_revalidation_otp']:
-                    response = await general_email_async_functions.send_email_revalidation_one_time_pin_email(response['user'])
-
-                    if response.get('message'):
-                        return await general_put_async_functions.update_email_ban_otp_sends(details)
                 
             return response
         
-        return {'error': 'Invalid put description'}
+        return {'error': 'Could not process your request, an invalid update description was provided. If this problem persist open a bug report ticket.'}
 
-# POST
+# MESSAGE
 
-    async def handle_post(self, description, details, user, role, access_token):
-        post_map = {
-            'delete_school_account': admin_post_async_functions.delete_school_account,
-
-            'create_account': admin_post_async_functions.create_account,
-            'delete_account': admin_post_async_functions.delete_account,
-            
-            'create_permission_group': admin_post_async_functions.create_permission_group,
-
-            'link_parent': admin_post_async_functions.link_parent,
-            'unlink_parent': admin_post_async_functions.unlink_parent,
-
-            'create_term': admin_post_async_functions.create_term,
-
-            'create_grade': admin_post_async_functions.create_grade,
-            'delete_grade': admin_post_async_functions.delete_grade,
-
-            'create_subject': admin_post_async_functions.create_subject,
-
-            'create_class': admin_post_async_functions.create_class,
-            'delete_class': admin_post_async_functions.delete_class,
-            
-            'create_assessment': admin_post_async_functions.set_assessment,
-            'delete_assessment': admin_post_async_functions.delete_assessment,
-
-            'submit_submissions' : admin_post_async_functions.submit_submissions,
-
-            'grade_student' : admin_post_async_functions.grade_student,
-            
-            'create_schedule': admin_post_async_functions.create_daily_schedule,
-            'delete_schedule': admin_post_async_functions.delete_daily_schedule,
-
-            'create_group_schedule': admin_post_async_functions.create_group_timetable,
-            'delete_group_schedule': admin_post_async_functions.delete_group_schedule,
-
-            'announce': admin_post_async_functions.announce,
-
-            'text': general_post_async_functions.text,
-
-            'submit_attendance': admin_post_async_functions.submit_attendance,
-            
-            'log_out': general_post_async_functions.log_out,
+    async def handle_message(self, description, details, user, role, access_token):
+        message_map = {
+            'message_private': general_message_async_functions.message_private,
         }
 
-        func = post_map.get(description)
+        func = message_map.get(description)
         if func:
-            if description in ['log_out']:
+            response = await func(user, role, details)
+            if response.get('reciever'):
+                if description in ['message_private']:
+                    await connection_manager.send_message(response['recipient']['account_id'], json.dumps({'description': 'text_message', 'message': response['message'], 'author': response['author']}))
+                    await connection_manager.send_message(response['author']['account_id'], json.dumps({'description': 'text_message_fan', 'message': response['message'], 'recipient': response['recipient']}))
+
+                    return {'message': 'private message successfully sent'}
+            
+        return {'error': 'Could not process your request, an invalid text description was provided. If this problem persist open a bug report ticket.'}
+
+# SUBMIT
+
+    async def handle_submit(self, description, details, user, role, access_token):
+        submit_map = {
+            'submit_submissions' : admin_submit_async_functions.submit_submissions,
+
+            'submit_attendance': admin_create_async_functions.submit_attendance,
+
+            'submit_log_out_request': general_submit_async_functions.submit_log_out_request,
+        }
+
+        func = submit_map.get(description)
+        if func:
+            if description in ['submit_log_out_request']:
                 response = await func(access_token)
             else:
-                response = await func(user, role, details)
-
-            if description in ['text'] and response.get('reciever'):
-                await connection_manager.send_message(response['reciever']['account_id'], json.dumps({'description': 'text_message', 'message': response['message'], 'sender': response['sender']}))
-                await connection_manager.send_message(response['sender']['account_id'], json.dumps({'description': 'text_message_fan', 'message': response['message'], 'reciever': response['reciever']}))
-
-                return {'message': 'text message sent'}
-
-            elif description in ['create_account', 'link_parent'] and response.get('user'):
-                return await general_email_async_functions.send_account_confirmation_email(response['user'])
-            
+                response = await func(user, role, details)            
             return response
         
-        return {'error': 'Invalid post description'}
+        return {'error': 'Could not process your request, an invalid submit description was provided. If this problem persist open a bug report ticket.'}
+
+# DELETE
+
+    async def handle_delete(self, description, details, user, role, access_token):
+        delete_map = {
+            'delete_school_account': admin_create_async_functions.delete_school_account,
+
+            'delete_account': admin_create_async_functions.delete_account,
+
+            'delete_grade': admin_create_async_functions.delete_grade,
+
+            'delete_class': admin_create_async_functions.delete_class,
+            
+            'delete_assessment': admin_create_async_functions.delete_assessment,
+            
+            'delete_schedule': admin_create_async_functions.delete_daily_schedule,
+
+            'delete_group_schedule': admin_create_async_functions.delete_group_schedule,
+        }
+
+        func = delete_map.get(description)
+        if func:
+            response = await func(user, role, details)            
+            return response
+        
+        return {'error': 'Could not process your request, an invalid delete description was provided. If this problem persist open a bug report ticket.'}
+
+# LINK
+
+    async def handle_link(self, description, details, user, role, access_token):
+        link_map = {
+            'link_parent': admin_create_async_functions.link_parent,
+        }
+
+        func = link_map.get(description)
+        if func:
+            response = await func(user, role, details)
+            if response.get('user'):
+                return await general_email_async_functions.send_account_confirmation_email(response['user'])
+            return response
+        
+        return {'error': 'Could not process your request, an invalid link description was provided. If this problem persist open a bug report ticket.'}
+
+# UNLINK
+
+    async def handle_unlink(self, description, details, user, role, access_token):
+        unlink_map = {
+            'unlink_parent': admin_create_async_functions.unlink_parent,
+        }
+
+        func = unlink_map.get(description)
+        if func:
+            response = await func(user, role, details)            
+            return response
+        
+        return {'error': 'Could not process your request, an invalid unlink description was provided. If this problem persist open a bug report ticket.'}
+
+# CREATE
+
+    async def handle_create(self, description, details, user, role, access_token):
+        create_map = {
+            'create_account': admin_create_async_functions.create_account,
+            
+            'create_permission_group': admin_create_async_functions.create_permission_group,
+
+            'create_term': admin_create_async_functions.create_term,
+
+            'create_grade': admin_create_async_functions.create_grade,
+
+            'create_subject': admin_create_async_functions.create_subject,
+
+            'create_classroom': admin_create_async_functions.create_classroom,
+            
+            'create_assessment': admin_create_async_functions.set_assessment,
+
+            'create_daily_schedule': admin_create_async_functions.create_daily_schedule,
+
+            'create_group_schedule': admin_create_async_functions.create_group_timetable,
+
+            'create_announcement': admin_create_async_functions.announce,
+        }
+
+        func = create_map.get(description)
+        if func:
+            response = await func(user, role, details)
+            if description in ['create_account'] and response.get('user'):
+                return await general_email_async_functions.send_account_confirmation_email(response['user'])
+            return response
+        
+        return {'error': 'Could not process your request, an invalid create description was provided. If this problem persist open a bug report ticket.'}
+
+
+
+
+
+
+

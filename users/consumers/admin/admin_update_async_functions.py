@@ -27,7 +27,7 @@ from transcripts.serializers import TranscriptUpdateSerializer
 from users.checks import permission_checks
 
 # mappings
-from users.maps import role_specific_maps
+from users.maps import role_specific_attr_maps
 
 # utility functions 
 from users import utils as users_utilities
@@ -39,7 +39,7 @@ from audit_logs import utils as audits_utilities
 from assessments.tasks import release_grades_task
 
 @database_sync_to_async
-def update_school_account(user, role, details):
+def update_school_account_account(user, role, details):
     try:
         school = None  # Initialize requested_account as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
@@ -255,7 +255,7 @@ def update_subject_details(user, role, details):
     
 
 @database_sync_to_async
-def update_account(user, role, details):
+def update_account_details(user, role, details):
     try:
         if details.get('role') not in ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT']:
             return {"error": 'could not proccess your request, the provided account role is invalid'}
@@ -288,7 +288,7 @@ def update_account(user, role, details):
             return permission_error
         
         # Get the appropriate serializer
-        Serializer = role_specific_maps.account_update_serializer_mapping[details['role']]
+        Serializer = role_specific_attr_maps.account_update_serializer_mapping[details['role']]
 
         # Serialize the requested user's profile for returning in the response.
         serializer = Serializer(instance=requested_account, data=details['updates'])
@@ -300,7 +300,7 @@ def update_account(user, role, details):
                 audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(requested_account.account_id) if requested_account else 'N/A', outcome='UPDATED', response=response, school=requesting_account.school,)
             
             # Get the appropriate serializer
-            Serializer = role_specific_maps.account_details_serializer_mapping[details['role']]
+            Serializer = role_specific_attr_maps.account_details_serializer_mapping[details['role']]
 
             # Serialize the requested user's profile for returning in the response.
             serialized_user = Serializer(instance=requested_account).data
@@ -327,7 +327,7 @@ def update_account(user, role, details):
 
 
 @database_sync_to_async
-def update_class(user, role, details):
+def update_classroom_details(user, role, details):
     try:
         classroom = None  # Initialize classroom as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
@@ -382,7 +382,7 @@ def update_class(user, role, details):
 
 
 @database_sync_to_async
-def update_class_students(user, role, details):
+def update_classroom_students(user, role, details):
     try:
         students_list = details.get('students', '').split(', ')
         if not students_list or students_list == ['']:
@@ -503,7 +503,7 @@ def update_assessment(user, role, details):
 
 
 @database_sync_to_async
-def update_student_grade(user, role, details):
+def update_student_transcript_score(user, role, details):
     try:
         assessment = None  # Initialize assessment as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
@@ -613,7 +613,7 @@ def update_assessment_as_collected(user, role, details):
 
 
 @database_sync_to_async
-def release_assessment_grades(user, role, details):
+def update_assessment_as_graded(user, role, details):
     try:
         assessment = None  # Initialize assessment as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related

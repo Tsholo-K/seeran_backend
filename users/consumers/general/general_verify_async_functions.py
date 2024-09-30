@@ -17,7 +17,7 @@ from authentication.utils import generate_otp, verify_user_otp
 
 
 @database_sync_to_async
-def validate_email_revalidation(user, details):
+def verify_email_ban_revalidation_otp_send(user, details):
     """
     Validates whether a user can appeal an email ban and handles OTP limits.
 
@@ -88,7 +88,7 @@ def validate_email_revalidation(user, details):
 
 
 @database_sync_to_async
-def verify_email_revalidate_otp(user, details):
+def verify_email_ban_revalidation_otp(user, details):
     """
     Verifies the OTP for email revalidation and updates the email ban status accordingly.
 

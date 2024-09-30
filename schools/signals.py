@@ -6,7 +6,7 @@ from django.dispatch import receiver
 from users.models import BaseUser
 
 # mappings
-from users.maps import role_specific_maps
+from users.maps import role_specific_attr_maps
 
 
 # @receiver(post_save, sender=BaseUser)

@@ -2,53 +2,79 @@
 import uuid
 
 # django 
-from django.db import models
+from django.db import models, IntegrityError
 from django.utils.translation import gettext_lazy as _
-from django.utils import timezone
+from django.core.exceptions import ValidationError
 
 # models
 from users.models import BaseUser
 
 
-class ChatRoom(models.Model):
-    user_one = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='user_one')
-    user_two = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='user_two')
+class PrivateChatRoom(models.Model):
+    participant_one  = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='participant_one')
+    participant_two = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='participant_two')
 
-    latest_message_timestamp = models.DateTimeField(null=True, blank=True, default=None)
     last_updated = models.DateTimeField(auto_now=True)
+    latest_message_timestamp = models.DateTimeField(null=True, blank=True, default=None)
 
-    chatroom_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    private_chat_room_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     def __str__(self):
-        return f"Chat between {self.user_one.surname + ' ' + self.user_one.name} and {self.user_two.surname + ' ' + self.user_two.name}"
+        return f"Chat between {self.participant_one.surname + ' ' + self.participant_one.name} and {self.participant_two.surname + ' ' + self.participant_two.name}"
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['participant_one', 'participant_two'], name='unique_private_chat_room_participants')
+        ]
 
     def save(self, *args, **kwargs):
-        if self.pk is None:
-            # This means the object is being created
-            self.last_updated = timezone.now()
-        super().save(*args, **kwargs)
+        # Call the clean method to ensure proper validation
+        self.clean()
+        try:
+            # Call the parent class's save method to actually save the instance
+            super().save(*args, **kwargs)
+        except IntegrityError as e:
+            # Handle unique constraint violations (e.g., if a duplicate transcript exists)
+            if 'unique constraint' in str(e).lower():
+                raise ValidationError('Could not process your request, could not create a private chat room betwenn you and the provided account. A private chat room between you and the provided account already exists.')
+            raise
+        except Exception as e:
+            # Catch all other exceptions and raise them as validation errors
+            raise ValidationError(_(str(e).lower()))
 
+    def clean(self):
+        """
+        Ensure participant_one always has a lower ID than participant_two.
+        This ensures that the order doesn't matter when creating the chat room.
+        """
+        if self.participant_one == self.participant_two:
+            raise ValidationError('Could not process your request, an account cannot have a private chat with themselves.')
 
-class ChatRoomMessage(models.Model):
-    chat_room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages')
+        # Sort participants by their IDs to enforce uniqueness without order
+        if self.participant_one.id > self.participant_two.id:
+            self.participant_one, self.participant_two = self.participant_two, self.participant_one
+        
+
+class PrivateMessage(models.Model):
+    chat_room = models.ForeignKey(PrivateChatRoom, on_delete=models.CASCADE, related_name='messages')
     
-    sender = models.ForeignKey(BaseUser, on_delete=models.DO_NOTHING)
+    author = models.ForeignKey(BaseUser, on_delete=models.DO_NOTHING)
+    message_content = models.TextField()
 
-    edited = models.BooleanField(default=False)
-    content = models.TextField()
+    last_message = models.BooleanField(default=True)
 
-    last = models.BooleanField(default=True)
-    timestamp = models.DateTimeField(auto_now_add=True)
-    
     read_receipt = models.BooleanField(default=False)
+    edited = models.BooleanField(default=False)
     
     last_updated = models.DateTimeField(auto_now=True)
 
-    chatroom_message_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    private_chat_room_message_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     def save(self, *args, **kwargs):
-        if self.pk is None:
-            # This means the object is being created
-            self.last_updated = timezone.now()
+        self.chat_room.latest_message_timestamp = self.timestamp
+        self.chat_room.save(update_fields=['latest_message_timestamp'])
+
         super().save(*args, **kwargs)
 

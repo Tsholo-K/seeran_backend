@@ -23,7 +23,7 @@ from access_tokens.utils import manage_user_sessions
 from .decorators import token_required
 
 # maops
-from users.maps import role_specific_maps
+from users.maps import role_specific_attr_maps
 
 
 class CustomRateThrottle(UserRateThrottle):
@@ -51,7 +51,7 @@ def login(request):
         # Access control based on user role and school compliance
         if user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
             # Fetch the corresponding child model based on the user's role
-            Model = role_specific_maps.account_access_control_mapping[user.role]
+            Model = role_specific_attr_maps.account_access_control_mapping[user.role]
             account = Model.objects.select_related('school').only('school').get(account_id=user.account_id)
 
             if account.school.none_compliant:
@@ -140,7 +140,7 @@ def multi_factor_authentication_login(request):
 
         if user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
             # Fetch the corresponding child model based on the user's role
-            Model = role_specific_maps.account_access_control_mapping[user.role]
+            Model = role_specific_attr_maps.account_access_control_mapping[user.role]
             account = Model.objects.select_related('school').only('school').get(account_id=user.account_id)
 
             if account.school.none_compliant:
@@ -237,7 +237,7 @@ def signin(request):
         # Access control based on user role and school compliance
         if user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
             # Fetch the corresponding child model based on the user's role
-            Model = role_specific_maps.account_access_control_mapping[user.role]
+            Model = role_specific_attr_maps.account_access_control_mapping[user.role]
             account = Model.objects.select_related('school').only('school').get(account_id=user.account_id)
 
             if account.school.none_compliant:
@@ -372,7 +372,7 @@ def authenticate(request):
         # Access control based on user role and school compliance
         if request.user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
             # Fetch the corresponding child model based on the user's role
-            Model = role_specific_maps.account_access_control_mapping[request.user.role]
+            Model = role_specific_attr_maps.account_access_control_mapping[request.user.role]
             account = Model.objects.select_related('school').only('school').get(account_id=request.user.account_id)
 
             if account.school.none_compliant:
@@ -452,7 +452,7 @@ def validate_password_reset(request):
         # Access control based on user role and school compliance
         if user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
             # Fetch the corresponding child model based on the user's role
-            Model = role_specific_maps.account_access_control_mapping[user.role]
+            Model = role_specific_attr_maps.account_access_control_mapping[user.role]
             account = Model.objects.select_related('school').only('school').get(account_id=user.account_id)
 
             if account.school.none_compliant:

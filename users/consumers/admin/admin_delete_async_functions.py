@@ -47,7 +47,7 @@ from announcements.serializers import AnnouncementCreationSerializer
 from users.checks import permission_checks
 
 # mappings
-from users.maps import role_specific_maps
+from users.maps import role_specific_attr_maps
 
 # utility functions 
 from users import utils as users_utilities
@@ -131,7 +131,7 @@ def create_account(user, role, details):
 
         # Get the appropriate model and related fields (select_related and prefetch_related)
         # for the requesting user's role from the mapping.
-        Model, Serializer = role_specific_maps.account_creation_model_and_serializer_mapping[details['role']]
+        Model, Serializer = role_specific_attr_maps.account_creation_model_and_serializer_mapping[details['role']]
 
         serializer = Serializer(data=details)
         if serializer.is_valid():

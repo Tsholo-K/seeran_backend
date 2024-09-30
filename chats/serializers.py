@@ -2,73 +2,56 @@
 from rest_framework import serializers
 
 # models
-from .models import ChatRoom, ChatRoomMessage
+from .models import PrivateChatRoom, PrivateMessage
 
 # serializers
 from users.serializers.general_serializers import BasicAccountDetailsSerializer
 
 
-class ChatSerializer(serializers.ModelSerializer):
+class PrivateMessageCreationSerializer(serializers.ModelSerializer):
     
-    user = serializers.SerializerMethodField()
+    class Meta:
+        model = PrivateMessage
+        fields = ['chat_room', 'author', 'message_content']
+
+
+class PrivateChatRoomsSerializer(serializers.ModelSerializer):
+    
+    participant = serializers.SerializerMethodField()
     last_message = serializers.SerializerMethodField()
-    unread = serializers.SerializerMethodField()
 
     class Meta:
-        model = ChatRoom
-        fields = ['user', 'last_message', 'unread']
+        model = PrivateChatRoom
+        fields = ['participant', 'last_message']
     
-    def get_user(self, obj):
+    def get_participant(self, obj):
         # Access the user from the context and determine the sender
-        user = self.context['user']
-        return BasicAccountDetailsSerializer(obj.user_two).data if str(obj.user_one.account_id) == user else BasicAccountDetailsSerializer(obj.user_one).data
+        requesting_account = self.context['user']
+        return BasicAccountDetailsSerializer(obj.participant_two).data if str(obj.participant_one.account_id) == requesting_account else BasicAccountDetailsSerializer(obj.participant_one).data
 
     def get_last_message(self, obj):
         # Fetch the latest messages if no cursor is provided
-        message = obj.messages.order_by('-timestamp').first()
-        serializer = ChatMessageSerializer(message, context={'user': self.context['user']})
-        return serializer.data
-    
-    def get_unread(self, obj):
-        user = self.context['user']
-        # Count unread messages in the chat room that were not sent by the current user
-        unread_count = obj.messages.filter(read_receipt=False).exclude(sender__account_id=user).count()
-        return unread_count
+        private_chat_room_last_message = obj.messages.select_related('message_content', 'timestamp', 'read_receipt').get(timestamp=obj.latest_message_timestamp)
+        return PrivateChatRoomsMessageSerializer(private_chat_room_last_message).data
 
 
-class ChatRoomMessageCreationSerializer(serializers.ModelSerializer):
-    
-    class Meta:
-        model = ChatRoomMessage
-        fields = ['content', 'timestamp', 'read_receipt']
-
-
-class ChatMessageSerializer(serializers.ModelSerializer):
-    
-    read_receipt = serializers.SerializerMethodField()
+class PrivateChatRoomsMessageSerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = ChatRoomMessage
-        fields = ['content', 'timestamp', 'read_receipt']
-
-    def get_read_receipt(self, obj):
-        return obj.read_receipt
+        model = PrivateMessage
+        fields = ['message_content', 'timestamp', 'read_receipt']
 
 
-class ChatRoomMessageSerializer(serializers.ModelSerializer):
+class PrivateChatRoomMessageSerializer(serializers.ModelSerializer):
     
-    read_receipt = serializers.SerializerMethodField()
     whos = serializers.SerializerMethodField()
 
     class Meta:
-        model = ChatRoomMessage
-        fields = ['content', 'timestamp', 'read_receipt', 'edited', 'last', 'whos']
-
-    def get_read_receipt(self, obj):
-        return obj.read_receipt
+        model = PrivateMessage
+        fields = ['message_content', 'timestamp', 'read_receipt', 'last', 'whos']
 
     def get_whos(self, obj):
         # Access the user from the context and determine the sender
-        user = self.context['user']
-        return 'mine' if str(obj.sender.account_id) == user else 'theirs'
+        requesting_account = self.context['user']
+        return 'mine' if str(obj.author.account_id) == requesting_account else 'theirs'
     

@@ -14,18 +14,18 @@ from attendances.models import Attendance
 from users.serializers.students.students_serializers import StudentSourceAccountSerializer
 
 # mappings
-from users.maps import role_specific_maps
+from users.maps import role_specific_attr_maps
     
 
 @database_sync_to_async
-def form_data_for_attendance_register(user, role, details):
+def form_data_for_classroom_attendance_register(user, role, details):
 
     try:
         if role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
             return {"error": 'could not proccess your request.. your account either has insufficient permissions or is invalid for the action you are trying to perform'}
 
         # Get the appropriate model for the requesting user's role from the mapping.
-        Model = role_specific_maps.account_access_control_mapping[role]
+        Model = role_specific_attr_maps.account_access_control_mapping[role]
 
         # Build the queryset for the requesting account with the necessary related fields.
         requesting_account = Model.objects.select_related('school').prefetch_related('school__teachers__taught_classes').get(account_id=user)

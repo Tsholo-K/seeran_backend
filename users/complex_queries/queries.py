@@ -1,4 +1,4 @@
-def account_and_its_attr_query_build(model, select_related, prefetch_related):
+def join_queries(model, select_related, prefetch_related):
     # Initialize the queryset for the requested user's role model.
     queryset = model.objects
     

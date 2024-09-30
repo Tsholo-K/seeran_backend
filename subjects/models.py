@@ -65,14 +65,19 @@ class Subject(models.Model):
     # The number of classrooms associated with this subject. For instance, if a subject is taught across multiple rooms.
     classroom_count = models.PositiveBigIntegerField(default=0)
 
-    # Links the subject to a specific grade level, establishing a one-to-many relationship where
-    # each grade can have multiple subjects but a subject is associated with only one grade.
-    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='subjects')
-
     # Tracks the last time this subject's record was updated in the database.
     # Automatically updates whenever the record is saved, without needing manual intervention.
     last_updated = models.DateTimeField(auto_now=True)
 
+    # Links the subject to a specific grade level, establishing a one-to-many relationship where
+    # each grade can have multiple subjects but a subject is associated with only one grade.
+    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='subjects')
+
+    # A foreign key reference to the school the grade is associated with. 
+    # The grade is linked to a school, and if the school is deleted, the grade will be deleted as well (CASCADE).
+    school = models.ForeignKey('schools.School', on_delete=models.CASCADE, editable=False, related_name='subjects')
+
+    timestamp = models.DateTimeField(auto_now_add=True)
     # A UUID field to uniquely identify the subject. Using UUID ensures uniqueness even across distributed systems.
     subject_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 

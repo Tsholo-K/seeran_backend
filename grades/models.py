@@ -6,9 +6,6 @@ from django.db import models, IntegrityError
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 
-# models
-from schools.models import School
-
 
 class Grade(models.Model):
     """
@@ -85,8 +82,9 @@ class Grade(models.Model):
 
     # A foreign key reference to the school the grade is associated with. 
     # The grade is linked to a school, and if the school is deleted, the grade will be deleted as well (CASCADE).
-    school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='grades')
+    school = models.ForeignKey('schools.School', on_delete=models.CASCADE, editable=False, related_name='grades')
 
+    timestamp = models.DateTimeField(auto_now_add=True)
     # A unique UUID field to identify each grade instance across the system.
     grade_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 

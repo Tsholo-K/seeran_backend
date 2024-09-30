@@ -31,11 +31,12 @@ class AdminPermission(models.Model):
     TARGET_MODEL_CHOICES = [
         ('ACCOUNT', 'Account'),                     # User accounts
         ('PERMISSION', 'Permission'),               # Permission settings
+        ('AUDIT_ENTRY', 'Audit Entry'),             # Audit Entries
         ('ANNOUNCEMENT', 'Announcement'),           # School announcements
         ('GRADE', 'Grade'),                         # Grade-related actions
         ('TERM', 'Term'),                           # Academic terms
-        ('PROGRESS_REPORT', 'Progress Report'),     # Student progress reports
         ('SUBJECT', 'Subject'),                     # Subjects offered
+        ('PROGRESS_REPORT', 'Progress Report'),     # Student progress reports
         ('CLASSROOM', 'Classroom'),                 # Classroom settings
         ('ATTENDANCE', 'Attendance'),               # Attendance records
         ('ASSESSMENT', 'Assessment'),               # Assessments and tests

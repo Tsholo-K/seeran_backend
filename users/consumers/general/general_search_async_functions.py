@@ -34,7 +34,7 @@ from activities.serializers import ActivitySerializer
 from users.checks import permission_checks
 
 # mappings
-from users.maps import role_specific_maps
+from users.mappings import model_mapping
 
 # queries
 from users.complex_queries import queries
@@ -69,7 +69,7 @@ def search_account(user, role, details):
     try:
         # Get the appropriate model and related fields (select_related and prefetch_related)
         # for the requesting user's role from the mapping.
-        Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[role]
+        Model, select_related, prefetch_related = model_mapping.account_model_and_attr_mapping[role]
 
         # Build the queryset for the requesting account with the necessary related fields.
         requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
@@ -78,7 +78,7 @@ def search_account(user, role, details):
         requested_user = BaseUser.objects.get(account_id=details.get('account'))
 
         # Get the appropriate model and related fields for the requested user's role.
-        Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[requested_user.role]
+        Model, select_related, prefetch_related = model_mapping.account_model_and_attr_mapping[requested_user.role]
 
         # Build the queryset for the requested account with the necessary related fields.
         requested_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=requested_user.account_id)
@@ -92,7 +92,7 @@ def search_account(user, role, details):
         # Handle the request based on the reason provided (either 'details' or 'profile').
         if details.get('reason') == 'details':
             # Get the appropriate serializer for the requested user's role.
-            Serializer = role_specific_maps.account_details_serializer_mapping[requested_user.role]
+            Serializer = model_mapping.account_details_serializer_mapping[requested_user.role]
 
             # Serialize the requested user's details and return the serialized data.
             serialized_user = Serializer(instance=requested_account).data
@@ -110,30 +110,30 @@ def search_account(user, role, details):
 
         # Return the serialized user data if everything is successful.
         return {"user": serialized_user}
-               
-    except Principal.DoesNotExist:
-        # Handle the case where the requested principal account does not exist.
-        return {'error': 'A principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the requested admin account does not exist.
-        return {'error': 'An admin account with the provided credentials does not exist, please check the account details and try again'}
-               
-    except Teacher.DoesNotExist:
-        # Handle the case where the requested teacher account does not exist.
-        return {'error': 'A teacher account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Student.DoesNotExist:
-        # Handle the case where the requested student account does not exist.
-        return {'error': 'A student account with the provided credentials does not exist, please check the account details and try again'}
-               
-    except Parent.DoesNotExist:
-        # Handle the case where the requested parent account does not exist.
-        return {'error': 'A parent account with the provided credentials does not exist, please check the account details and try again'}
 
     except BaseUser.DoesNotExist:
         # Handle the case where the base user account does not exist.
-        return {'error': 'An account with the provided credentials does not exist, please check the account details and try again'}
+        return {'error': 'Could not process your request, an account with the provided credentials does not exist, please check the account details and try again.'}
+               
+    except Principal.DoesNotExist:
+        # Handle the case where the requested principal account does not exist.
+        return {'error': 'Could not process your request, a principal account with the provided credentials does not exist, please check the account details and try again.'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the requested admin account does not exist.
+        return {'error': 'Could not process your request, an admin account with the provided credentials does not exist, please check the account details and try again.'}
+               
+    except Teacher.DoesNotExist:
+        # Handle the case where the requested teacher account does not exist.
+        return {'error': 'Could not process your request, a teacher account with the provided credentials does not exist, please check the account details and try again.'}
+                   
+    except Student.DoesNotExist:
+        # Handle the case where the requested student account does not exist.
+        return {'error': 'Could not process your request, a student account with the provided credentials does not exist, please check the account details and try again.'}
+               
+    except Parent.DoesNotExist:
+        # Handle the case where the requested parent account does not exist.
+        return {'error': 'Could not process your request, a parent account with the provided credentials does not exist, please check the account details and try again.'}
     
     except Exception as e:
         # Handle any other unexpected errors and return the error message.
@@ -144,7 +144,7 @@ def search_account(user, role, details):
 def search_parents(user, role, details):
     try:
         # Check if the user is requesting their own parents
-        if role == 'STUDENT' and user == details.get('account') == 'requesting my own parents':
+        if role == 'STUDENT' and details.get('account') == 'requesting my own parents':
             # Build the queryset for the requested account with the necessary related fields.
             requesting_account = Student.objects.prefetch_related('parents').get(account_id=details.get('account'))
 
@@ -153,7 +153,7 @@ def search_parents(user, role, details):
         elif role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'PARENT']:
             # Get the appropriate model and related fields (select_related and prefetch_related)
             # for the requesting user's role from the mapping.
-            Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[role]
+            Model, select_related, prefetch_related = model_mapping.account_model_and_attr_mapping[role]
 
             # Build the queryset for the requesting account with the necessary related fields.
             requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
@@ -180,23 +180,23 @@ def search_parents(user, role, details):
                
     except Principal.DoesNotExist:
         # Handle the case where the requested principal account does not exist.
-        return {'error': 'A principal account with the provided credentials does not exist, please check the account details and try again'}
+        return {'error': 'Could not process your request, a principal account with the provided credentials does not exist. Please review the account details and try again.'}
                    
     except Admin.DoesNotExist:
         # Handle the case where the requested admin account does not exist.
-        return {'error': 'An admin account with the provided credentials does not exist, please check the account details and try again'}
+        return {'error': 'Could not process your request, an admin account with the provided credentials does not exist. Please review the account details and try again.'}
                
     except Teacher.DoesNotExist:
         # Handle the case where the requested teacher account does not exist.
-        return {'error': 'A teacher account with the provided credentials does not exist, please check the account details and try again'}
+        return {'error': 'Could not process your request, a teacher account with the provided credentials does not exist. Please review the account details and try again.'}
                    
     except Student.DoesNotExist:
         # Handle the case where the requested student account does not exist.
-        return {'error': 'A student account with the provided credentials does not exist, please check the account details and try again'}
+        return {'error': 'Could not process your request, a student account with the provided credentials does not exist. Please review the account details and try again.'}
                
     except Parent.DoesNotExist:
         # Handle the case where the requested parent account does not exist.
-        return {'error': 'A parent account with the provided credentials does not exist, please check the account details and try again'}
+        return {'error': 'Could not process your request, a parent account with the provided credentials does not exist. Please review the account details and try again.'}
     
     except Exception as e:
         # Handle any other unexpected errors and return the error message.
@@ -204,7 +204,79 @@ def search_parents(user, role, details):
 
 
 @database_sync_to_async
-def search_class(user, role, details):
+def search_announcement(user, role, details):
+    try:
+        # Validate user role
+        if role not in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT', 'PARENT']:
+            return {"error": "The specified account's role is invalid. Please ensure you are attempting to access an announcement from an authorized account."}
+        
+        # Retrieve the account making the request
+        requesting_user = BaseUser.objects.get(account_id=user)
+
+        # Get the appropriate model for the requesting user's role from the mapping.
+        Model = model_mapping.account_access_control_mapping[role]
+
+        # Retrieve the specified announcement
+        announcement = Announcement.objects.select_related('school').get(announcement_id=details.get('announcement_id'))
+
+        # Check access based on user role
+        if role == 'PARENT':
+            # Build the queryset for the requesting account with the necessary related fields.
+            requesting_account = Model.objects.prefetch_related('children__school').get(account_id=user)
+
+            # Parents can only access announcements related to the schools of their children
+            children_schools = requesting_account.children.values_list('school', flat=True)
+            if announcement.school.id not in children_schools:
+                return {"error": "Unauthorized request. You can only view announcements from schools your children are linked to. Please check announcement details and try again."}
+        
+        else:
+            # Build the queryset for the requesting account with the necessary related fields.
+            requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
+
+            # Other roles can only access announcements from their own school
+            if announcement.school != requesting_account.school:
+                return {"error": "Unauthorized request. You can only view announcements from your own school. Please check announcement details and try again."}
+
+        # Check if the user is already in the reached list and add if not
+        if not announcement.reached.filter(pk=requesting_account.pk).exists():
+            announcement.reached.add(requesting_user)
+
+        # Serialize and return the announcement data
+        serialized_announcement = AnnouncementSerializer(announcement).data
+
+        return {'announcement': serialized_announcement}
+               
+    except BaseUser.DoesNotExist:
+        # Handle case where the user does not exist
+        return {'error': 'Could not process your request, an account with the provided credentials does not exist. Please check the account details and try again.'}
+
+    except Principal.DoesNotExist:
+        # Handle the case where the requested principal account does not exist.
+        return {'error': 'Could not process your request, a principal account with the provided credentials does not exist. Please review the account details and try again.'}
+                   
+    except Admin.DoesNotExist:
+        # Handle the case where the requested admin account does not exist.
+        return {'error': 'Could not process your request, an admin account with the provided credentials does not exist. Please review the account details and try again.'}
+               
+    except Teacher.DoesNotExist:
+        # Handle the case where the requested teacher account does not exist.
+        return {'error': 'Could not process your request, a teacher account with the provided credentials does not exist. Please review the account details and try again.'}
+                   
+    except Student.DoesNotExist:
+        # Handle the case where the requested student account does not exist.
+        return {'error': 'Could not process your request, a student account with the provided credentials does not exist. Please review the account details and try again.'}
+               
+    except Parent.DoesNotExist:
+        # Handle the case where the requested parent account does not exist.
+        return {'error': 'Could not process your request, a parent account with the provided credentials does not exist. Please review the account details and try again.'}
+    
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def search_classrooms(user, role, details):
     try:
         if role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
             return {"error": 'could not proccess your request.. your account either has insufficient permissions or is invalid for the action you are trying to perform'}
@@ -223,7 +295,7 @@ def search_class(user, role, details):
 
         elif details.get('class'):
             # Get the appropriate model for the requesting user's role from the mapping.
-            Model = role_specific_maps.account_access_control_mapping[role]
+            Model = model_mapping.account_access_control_mapping[role]
 
             # Build the queryset for the requesting account with the necessary related fields.
             requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
@@ -329,7 +401,7 @@ def search_group_schedules(user, role, details):
             return {"error": "The specified account's role is invalid. please ensure you are attempting to access group schedules from an authorized account."}
         
         # Get the appropriate model for the requesting user's role from the mapping.
-        Model = role_specific_maps.account_access_control_mapping[role]
+        Model = model_mapping.account_access_control_mapping[role]
 
         group_schedules = []
         if role in ['ADMIN', 'PRINCIPAL']:
@@ -448,78 +520,6 @@ def search_schedule_sessions(details):
     
     except Exception as e:
         return { 'error': str(e) }
-
-
-@database_sync_to_async
-def search_announcement(user, role, details):
-    try:
-        # Validate user role
-        if role not in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT', 'PARENT']:
-            return {"error": "The specified account's role is invalid. Please ensure you are attempting to access an announcement from an authorized account."}
-        
-        # Retrieve the account making the request
-        requesting_user = BaseUser.objects.get(account_id=user)
-
-        # Get the appropriate model for the requesting user's role from the mapping.
-        Model = role_specific_maps.account_access_control_mapping[role]
-
-        # Retrieve the specified announcement
-        announcement = Announcement.objects.select_related('school').get(announcement_id=details.get('announcement_id'))
-
-        # Check access based on user role
-        if role == 'PARENT':
-            # Build the queryset for the requesting account with the necessary related fields.
-            requesting_account = Model.objects.prefetch_related('children__school').get(account_id=user)
-
-            # Parents can only access announcements related to the schools of their children
-            children_schools = requesting_account.children.values_list('school', flat=True)
-            if announcement.school.id not in children_schools:
-                return {"error": "Unauthorized request. You can only view announcements from schools your children are linked to. Please check announcement details and try again."}
-        
-        else:
-            # Build the queryset for the requesting account with the necessary related fields.
-            requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
-
-            # Other roles can only access announcements from their own school
-            if announcement.school != requesting_account.school:
-                return {"error": "Unauthorized request. You can only view announcements from your own school. Please check announcement details and try again."}
-
-        # Check if the user is already in the reached list and add if not
-        if not announcement.reached.filter(pk=requesting_account.pk).exists():
-            announcement.reached.add(requesting_user)
-
-        # Serialize and return the announcement data
-        serialized_announcement = AnnouncementSerializer(announcement).data
-
-        return {'announcement': serialized_announcement}
-               
-    except BaseUser.DoesNotExist:
-        # Handle case where the user does not exist
-        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
-
-    except Principal.DoesNotExist:
-        # Handle the case where the requested principal account does not exist.
-        return {'error': 'A principal account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Admin.DoesNotExist:
-        # Handle the case where the requested admin account does not exist.
-        return {'error': 'An admin account with the provided credentials does not exist, please check the account details and try again'}
-               
-    except Teacher.DoesNotExist:
-        # Handle the case where the requested teacher account does not exist.
-        return {'error': 'A teacher account with the provided credentials does not exist, please check the account details and try again'}
-                   
-    except Student.DoesNotExist:
-        # Handle the case where the requested student account does not exist.
-        return {'error': 'A student account with the provided credentials does not exist, please check the account details and try again'}
-               
-    except Parent.DoesNotExist:
-        # Handle the case where the requested parent account does not exist.
-        return {'error': 'A parent account with the provided credentials does not exist, please check the account details and try again'}
-    
-    except Exception as e:
-        # Handle any other unexpected errors
-        return {'error': str(e)}
     
 
 @database_sync_to_async
@@ -530,7 +530,7 @@ def search_chat_room(user, role, details):
 
         # Get the appropriate model and related fields (select_related and prefetch_related)
         # for the requesting user's role from the mapping.
-        Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[role]
+        Model, select_related, prefetch_related = model_mapping.account_model_and_attr_mapping[role]
 
         # Build the queryset for the requesting account with the necessary related fields.
         requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
@@ -539,7 +539,7 @@ def search_chat_room(user, role, details):
         requested_user = BaseUser.objects.get(account_id=details.get('account'))
 
         # Get the appropriate model and related fields for the requested user's role.
-        Model, select_related, prefetch_related = role_specific_maps.account_model_and_attr_mapping[requested_user.role]
+        Model, select_related, prefetch_related = model_mapping.account_model_and_attr_mapping[requested_user.role]
 
         # Build the queryset for the requested account with the necessary related fields.
         requested_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=details.get('account'))
