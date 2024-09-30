@@ -7,12 +7,12 @@ from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 
 # models
-from accounts.models import BaseUser
+from accounts.models import BaseAccount
 
 
 class PrivateChatRoom(models.Model):
-    participant_one  = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='participant_one')
-    participant_two = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='participant_two')
+    participant_one  = models.ForeignKey(BaseAccount, on_delete=models.CASCADE, related_name='participant_one')
+    participant_two = models.ForeignKey(BaseAccount, on_delete=models.CASCADE, related_name='participant_two')
 
     last_updated = models.DateTimeField(auto_now=True)
     latest_message_timestamp = models.DateTimeField(null=True, blank=True, default=None)
@@ -59,7 +59,7 @@ class PrivateChatRoom(models.Model):
 class PrivateMessage(models.Model):
     chat_room = models.ForeignKey(PrivateChatRoom, on_delete=models.CASCADE, related_name='messages')
     
-    author = models.ForeignKey(BaseUser, on_delete=models.DO_NOTHING)
+    author = models.ForeignKey(BaseAccount, on_delete=models.DO_NOTHING)
     message_content = models.TextField()
 
     last_message = models.BooleanField(default=True)

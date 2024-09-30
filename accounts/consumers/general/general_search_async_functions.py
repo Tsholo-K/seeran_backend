@@ -14,7 +14,7 @@ from email_address_bans.models import EmailAddressBan
 from student_group_timetables.models import StudentGroupTimetable
 from timetables.models import Timetable
 from school_announcements.models import Announcement
-from chats.models import PrivateChatRoom
+from chat_rooms.models import PrivateChatRoom
 from student_activities.models import StudentActivity
 
 # serializers
@@ -27,7 +27,7 @@ from student_group_timetables.serializers import StudentGroupScheduleSerializer
 from timetables.serializers import TimetableSerializer
 from timetable_sessions.serializers import SessoinsSerializer
 from school_announcements.serializers import AnnouncementSerializer
-from chats.serializers import PrivateChatRoomMessageSerializer
+from chat_rooms.serializers import PrivateChatRoomMessageSerializer
 from student_activities.serializers import ActivitySerializer
 
 # checks

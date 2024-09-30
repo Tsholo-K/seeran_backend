@@ -78,7 +78,7 @@ INSTALLED_APPS = [
     'balances',
     'invoices',
 
-    'chats',
+    'chat_rooms',
 
     'bug_reports',
 

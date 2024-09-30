@@ -13,7 +13,7 @@ from authentication.decorators import token_required
 
 # models
 from accounts.models import Founder
-from chats.models import PrivateChatRoom
+from chat_rooms.models import PrivateChatRoom
 from school_announcements.models import Announcement
 
 # serilializers

@@ -7,11 +7,11 @@ from django.utils.translation import gettext as _
 
 # models 
 from accounts.models import BaseAccount
-from chats.models import PrivateChatRoom, PrivateMessage
+from chat_rooms.models import PrivateChatRoom, PrivateMessage
 
 # serializers
 from accounts.serializers.general_serializers import BareAccountDetailsSerializer
-from chats.serializers import PrivateChatRoomMessageSerializer
+from chat_rooms.serializers import PrivateChatRoomMessageSerializer
 
 # checks
 from accounts.checks import permission_checks

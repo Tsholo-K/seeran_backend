@@ -4,7 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 
 # models
-from accounts.models import BaseUser, Student
+from accounts.models import BaseAccount, Student
 from schools.models import School
 from classrooms.models import Classroom
 
@@ -19,7 +19,7 @@ class SchoolAttendance(models.Model):
 
     late_students = models.ManyToManyField(Student, related_name='late_arrivals')
 
-    submitted_by = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, null=True, related_name='submitted_attendances')
+    submitted_by = models.ForeignKey(BaseAccount, on_delete=models.SET_NULL, null=True, related_name='submitted_attendances')
 
     school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='attendances', help_text='School to which the attendace belong.')
 
@@ -70,7 +70,7 @@ class EmergencyAttendance(models.Model):
     missing_students = models.ManyToManyField(Student, related_name='missing')
     missing = models.BooleanField(default=False)
 
-    submitted_by = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, null=True, related_name='submitted_emergencies')
+    submitted_by = models.ForeignKey(BaseAccount, on_delete=models.SET_NULL, null=True, related_name='submitted_emergencies')
 
     school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='emergencies', help_text='School to which the emergency belongs.')
 

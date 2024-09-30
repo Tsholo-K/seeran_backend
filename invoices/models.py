@@ -5,11 +5,11 @@ import uuid
 from django.db import models
 
 # models 
-from accounts.models import BaseUser
+from accounts.models import BaseAccount
 
 
 class Invoice(models.Model):
-    user = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='bills')
+    user = models.ForeignKey(BaseAccount, on_delete=models.CASCADE, related_name='bills')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
 
     date_billed = models.DateField()

@@ -2,14 +2,14 @@
 from rest_framework import serializers
 
 # models
-from .models import EmailBan
+from .models import EmailAddressBan
 
 
 # users email bans serializer   
 class EmailBansSerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = EmailBan
+        model = EmailAddressBan
         fields = ['can_appeal', 'ban_id', 'banned_at', 'status']
 
 
@@ -17,7 +17,7 @@ class EmailBansSerializer(serializers.ModelSerializer):
 class EmailBanSerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = EmailBan
+        model = EmailAddressBan
         fields = ['can_appeal', 'email', 'banned_at', 'reason', 'ban_id', 'status', 'otp_send']
  
 
@@ -25,6 +25,6 @@ class EmailBanSerializer(serializers.ModelSerializer):
 class AppealEmailBanSerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = EmailBan
+        model = EmailAddressBan
         fields = ['appeal']
         

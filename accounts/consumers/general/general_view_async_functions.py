@@ -7,11 +7,11 @@ from django.utils.translation import gettext as _
 
 # models 
 from accounts.models import BaseAccount
-from chats.models import PrivateChatRoom
+from chat_rooms.models import PrivateChatRoom
 from email_address_bans.models import EmailAddressBan
 
 # serializers
-from chats.serializers import PrivateChatRoomsSerializer
+from chat_rooms.serializers import PrivateChatRoomsSerializer
 from email_address_bans.serializers import EmailBansSerializer
 
 # utility functions 

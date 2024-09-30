@@ -2,7 +2,7 @@
 from rest_framework import serializers
 
 # models
-from .models import Activity
+from .models import StudentActivity
 from classrooms.models import Classroom
 
 # serializers
@@ -14,7 +14,7 @@ class ActivityCreationSerializer(serializers.ModelSerializer):
     classroom = serializers.PrimaryKeyRelatedField(queryset=Classroom.objects.all(), required=False, allow_null=True)
 
     class Meta:
-        model = Activity
+        model = StudentActivity
         fields = ['offence', 'details', 'logger', 'recipient', 'school', 'classroom']
 
 
@@ -23,7 +23,7 @@ class ActivitiesSerializer(serializers.ModelSerializer):
     offence = serializers.SerializerMethodField()
 
     class Meta:
-        model = Activity
+        model = StudentActivity
         fields = ['offence', 'date_logged', 'activity_id']
 
     def get_offence(self, obj):
@@ -36,7 +36,7 @@ class ActivitySerializer(serializers.ModelSerializer):
     logger = serializers.SerializerMethodField()
 
     class Meta:
-        model = Activity
+        model = StudentActivity
         fields = ['offence', 'details', 'date_logged', 'logger']
 
     def get_offence(self, obj):

@@ -16,8 +16,8 @@ from terms.models import Term
 from subjects.models import Subject
 from classrooms.models import Classroom
 from assessments.models import Assessment
-from assessment_submissions.models import Submission
-from assessment_transcripts.models import Transcript
+from assessment_submissions.models import AssessmentSubmission
+from assessment_transcripts.models import AssessmentTranscript
 
 
 class TermSubjectPerformanceTest(TestCase):
@@ -211,15 +211,15 @@ class TermSubjectPerformanceTest(TestCase):
             submissions = []
             transcripts = []
             for student in self.assessment.classroom.students.all():
-                submissions.append(Submission(assessment=self.assessment, student=student, status='ON_TIME'))
-                transcripts.append(Transcript(assessment=self.assessment, student=student, score=50, weighted_score=15, comment=''))
+                submissions.append(AssessmentSubmission(assessment=self.assessment, student=student, status='ON_TIME'))
+                transcripts.append(AssessmentTranscript(assessment=self.assessment, student=student, score=50, weighted_score=15, comment=''))
 
             batch_size = 50
             for i in range(0, len(submissions), batch_size):
-                Submission.objects.bulk_create(submissions[i:i + batch_size])
+                AssessmentSubmission.objects.bulk_create(submissions[i:i + batch_size])
 
             for i in range(0, len(transcripts), batch_size):
-                Transcript.objects.bulk_create(transcripts[i:i + batch_size])
+                AssessmentTranscript.objects.bulk_create(transcripts[i:i + batch_size])
 
         self.assessment.release_grades()  # Should allow for releasing grades as all submissions have been graded
         self.assertTrue(self.assessment.grades_released)

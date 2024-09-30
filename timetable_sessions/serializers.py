@@ -2,7 +2,7 @@
 from rest_framework import serializers
 
 # models
-from .models import DailyScheduleSession
+from .models import TimetableSession
 
 
 class SessoinsSerializer(serializers.ModelSerializer):
@@ -11,6 +11,6 @@ class SessoinsSerializer(serializers.ModelSerializer):
     session_till = serializers.TimeField(format='%H:%M')
 
     class Meta:
-        model = DailyScheduleSession
+        model = TimetableSession
         fields = [ 'type', 'classroom', 'session_from', 'session_till' ]
 

@@ -19,7 +19,7 @@ from rest_framework_simplejwt.tokens import AccessToken as decode
 from account_access_tokens.models import AccountAccessToken
 from accounts.models import BaseAccount
 from email_address_bans.models import EmailAddressBan
-from chats.models import PrivateChatRoom, PrivateMessage
+from chat_rooms.models import PrivateChatRoom, PrivateMessage
 
 # utility functions 
 from authentication.utils import verify_user_otp
