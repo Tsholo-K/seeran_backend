@@ -54,27 +54,5 @@ class PrivateChatRoom(models.Model):
         # Sort participants by their IDs to enforce uniqueness without order
         if self.participant_one.id > self.participant_two.id:
             self.participant_one, self.participant_two = self.participant_two, self.participant_one
-        
 
-class PrivateMessage(models.Model):
-    chat_room = models.ForeignKey(PrivateChatRoom, on_delete=models.CASCADE, related_name='messages')
-    
-    author = models.ForeignKey(BaseAccount, on_delete=models.DO_NOTHING)
-    message_content = models.TextField()
-
-    last_message = models.BooleanField(default=True)
-
-    read_receipt = models.BooleanField(default=False)
-    edited = models.BooleanField(default=False)
-    
-    last_updated = models.DateTimeField(auto_now=True)
-
-    timestamp = models.DateTimeField(auto_now_add=True)
-    private_chat_room_message_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-
-    def save(self, *args, **kwargs):
-        self.chat_room.latest_message_timestamp = self.timestamp
-        self.chat_room.save(update_fields=['latest_message_timestamp'])
-
-        super().save(*args, **kwargs)
 
