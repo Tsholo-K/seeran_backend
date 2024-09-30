@@ -23,14 +23,14 @@ from . import admin_link_async_functions
 from . import admin_unlink_async_functions
 
 # general async functions
-from accounts.consumers.general import general_message_async_functions
-from accounts.consumers.general import general_submit_async_functions
-from accounts.consumers.general import general_put_async_functions
-from accounts.consumers.general import general_search_async_functions
-from accounts.consumers.general import general_view_async_functions
-from accounts.consumers.general import general_verify_async_functions
-from accounts.consumers.general import general_email_async_functions
-from accounts.consumers.general import general_form_data_async_functions
+from websockets.consumers.general import general_message_async_functions
+from websockets.consumers.general import general_submit_async_functions
+from websockets.consumers.general import general_put_async_functions
+from websockets.consumers.general import general_search_async_functions
+from websockets.consumers.general import general_view_async_functions
+from websockets.consumers.general import general_verify_async_functions
+from websockets.consumers.general import general_email_async_functions
+from websockets.consumers.general import general_form_data_async_functions
 
 
 class AdminConsumer(AsyncWebsocketConsumer):

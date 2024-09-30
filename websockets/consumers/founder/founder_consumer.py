@@ -17,11 +17,11 @@ from . import founder_put_async_functions
 from . import founder_get_async_functions
 
 # general async functions 
-from accounts.consumers.general import general_submit_async_functions
-from accounts.consumers.general import general_put_async_functions
-from accounts.consumers.general import general_view_async_functions
-from accounts.consumers.general import general_verify_async_functions
-from accounts.consumers.general import general_email_async_functions
+from websockets.consumers.general import general_submit_async_functions
+from websockets.consumers.general import general_put_async_functions
+from websockets.consumers.general import general_view_async_functions
+from websockets.consumers.general import general_verify_async_functions
+from websockets.consumers.general import general_email_async_functions
 
 
 class FounderConsumer(AsyncWebsocketConsumer):

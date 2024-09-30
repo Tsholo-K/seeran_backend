@@ -24,11 +24,11 @@ from django.urls import path
 from channels.routing import ProtocolTypeRouter, URLRouter
 
 # consumers
-from accounts.consumers.founder.founder_consumer import FounderConsumer
-from accounts.consumers.admin.admin_consumer import AdminConsumer
-from accounts.consumers.teacher.teacher_consumer import TeacherConsumer
-from accounts.consumers.parent.parent_consumer import ParentConsumer
-from accounts.consumers.student.student_consumer import StudentConsumer
+from websockets.consumers.founder.founder_consumer import FounderConsumer
+from websockets.consumers.admin.admin_consumer import AdminConsumer
+from websockets.consumers.teacher.teacher_consumer import TeacherConsumer
+from websockets.consumers.parent.parent_consumer import ParentConsumer
+from websockets.consumers.student.student_consumer import StudentConsumer
 
 # middleware
 from .middleware import TokenAuthMiddleware

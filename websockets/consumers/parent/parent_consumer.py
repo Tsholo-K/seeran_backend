@@ -11,12 +11,12 @@ from seeran_backend.middleware import connection_manager
 from authentication.utils import validate_access_token
 
 # general async functions 
-from accounts.consumers.general import general_submit_async_functions
-from accounts.consumers.general import general_put_async_functions
-from accounts.consumers.general import general_search_async_functions
-from accounts.consumers.general import general_view_async_functions
-from accounts.consumers.general import general_verify_async_functions
-from accounts.consumers.general import general_email_async_functions
+from websockets.consumers.general import general_submit_async_functions
+from websockets.consumers.general import general_put_async_functions
+from websockets.consumers.general import general_search_async_functions
+from websockets.consumers.general import general_view_async_functions
+from websockets.consumers.general import general_verify_async_functions
+from websockets.consumers.general import general_email_async_functions
 
 
 class ParentConsumer(AsyncWebsocketConsumer):
