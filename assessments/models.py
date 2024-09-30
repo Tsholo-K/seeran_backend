@@ -10,17 +10,8 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.apps import apps
 
-# models
-from users.models import BaseUser, Student
-from schools.models import School
-from grades.models import Grade
-from terms.models import Term
-from subjects.models import Subject
-from classrooms.models import Classroom
-from topics.models import Topic
-
 # utility functions 
-from users import utils as users_utilities
+from accounts import utils as accounts_utilities
 
 # tasks
 from term_subject_performances import tasks as  term_subject_performances_tasks
@@ -68,14 +59,11 @@ class Assessment(models.Model):
 
     # The user (assessor) who set the assessment.
     # SET_NULL ensures that if the user is deleted, the assessment isn't deleted, but the assessor field is set to null.
-    assessor = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, related_name='assessed_assessments', null=True)
+    assessor = models.ForeignKey('accounts.BaseUser', on_delete=models.SET_NULL, related_name='assessed_assessments', null=True)
 
     # The user who moderated (oversaw) the assessment.
     # Moderators ensure the fairness and quality of the assessment.
-    moderator = models.ForeignKey(BaseUser, on_delete=models.SET_NULL, related_name='assessments_moderated', null=True)
-
-    # Date and time when the assessment was created, automatically set when the record is created.
-    date_set = models.DateTimeField(auto_now_add=True, editable=False)
+    moderator = models.ForeignKey('accounts.BaseUser', on_delete=models.SET_NULL, related_name='assessments_moderated', null=True)
 
     # Optional date and time when the assessment is set to begin.
     start_time = models.DateTimeField(null=True, blank=True)
@@ -87,7 +75,7 @@ class Assessment(models.Model):
     title = models.CharField(max_length=124)
 
     # Topics covered in the assessment, allowing many-to-many relationships to the Topic model.
-    topics = models.ManyToManyField(Topic, related_name='assessments')
+    topics = models.ManyToManyField('topics.Topic', related_name='assessments')
 
     # Type of assessment (e.g., test, exam, or practical). A predefined list of choices must be used.
     assessment_type = models.CharField(max_length=124, choices=ASSESSMENT_TYPE_CHOICES, default='TEST')
@@ -103,7 +91,7 @@ class Assessment(models.Model):
     percentage_towards_term_mark = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
 
     # The term (e.g., "Term 1") in which the assessment takes place.
-    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name='assessments')
+    term = models.ForeignKey('terms.Term', on_delete=models.CASCADE, related_name='assessments')
 
     # Whether the assessment has been collected (i.e., whether all students have submitted their work).
     collected = models.BooleanField(default=False)
@@ -149,23 +137,25 @@ class Assessment(models.Model):
     completion_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
     # Many-to-many relationship to the top-performing students in this assessment.
-    top_performers = models.ManyToManyField(Student, related_name='top_performers_assessments', blank=True)
+    top_performers = models.ManyToManyField('accounts.Student', related_name='top_performers_assessments', blank=True)
     # Many-to-many relationship to the students who failed this assessment.
-    students_who_failed_the_assessment = models.ManyToManyField(Student, related_name='failed_assessments', help_text='Students who failed the assessment.')
+    students_who_failed_the_assessment = models.ManyToManyField('accounts.Student', related_name='failed_assessments', help_text='Students who failed the assessment.')
 
     # Foreign key linking to the classroom where this assessment was conducted (optional).
-    classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE, related_name='assessments', null=True, blank=True)
+    classroom = models.ForeignKey('classrooms.Classroom', on_delete=models.CASCADE, related_name='assessments', null=True, blank=True)
 
     # Foreign keys linking to the subject and grade for which this assessment is conducted.
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='assessments')
-    grade = models.ForeignKey(Grade, on_delete=models.CASCADE, related_name='assessments')
+    subject = models.ForeignKey('subjects.Subject', on_delete=models.CASCADE, related_name='assessments')
+    grade = models.ForeignKey('grades.Grade', on_delete=models.CASCADE, related_name='assessments')
 
     # Foreign key linking to the school where the assessment took place.
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='assessments')
+    school = models.ForeignKey('schools.School', on_delete=models.CASCADE, related_name='assessments')
 
-    # Timestamp automatically updated when the assessment record is modified.
+    # This field is automatically updated to the current date and time whenever the
+    # assessment is modified.
     last_updated = models.DateTimeField(auto_now=True)
 
+    timestamp = models.DateTimeField(auto_now_add=True)
     # A unique identifier for each assessment (UUID).
     assessment_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
@@ -219,7 +209,7 @@ class Assessment(models.Model):
         if self.assessor:
             if self.assessor.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
                 raise ValidationError(_('Could not proccess your request, only principals, admins, and teachers can set assessments.'))
-            assessor = users_utilities.get_account_and_linked_school(self.assessor.account_id, self.assessor.role)
+            assessor = accounts_utilities.get_account_and_linked_school(self.assessor.account_id, self.assessor.role)
             if assessor.school != self.school:
                 raise ValidationError(_('Could not proccess your request, assessors can only create assessments for their own school.'))
 
@@ -227,7 +217,7 @@ class Assessment(models.Model):
         if self.moderator:
             if self.moderator.role not in ['PRINCIPAL', 'ADMIN', 'TEACHER']:
                 raise ValidationError(_('Could not proccess your request, only principals, admins, and teachers can moderate assessments.'))
-            moderator = users_utilities.get_account_and_linked_school(self.moderator.account_id, self.moderator.role)
+            moderator = accounts_utilities.get_account_and_linked_school(self.moderator.account_id, self.moderator.role)
             if moderator.school != self.school:
                 raise ValidationError(_('Could not proccess your request, moderators can only oversee assessments from their own school.'))
 

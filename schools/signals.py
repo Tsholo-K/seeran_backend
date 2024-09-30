@@ -3,10 +3,10 @@ from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
 
 # models
-from users.models import BaseUser
+from accounts.models import BaseUser
 
 # mappings
-from users.maps import role_specific_attr_maps
+from accounts.maps import role_specific_attr_maps
 
 
 # @receiver(post_save, sender=BaseUser)

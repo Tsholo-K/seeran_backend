@@ -4,10 +4,6 @@ import uuid
 # djnago 
 from django.db import models
 
-# models
-from users.models import BaseUser
-from schools.models import School
-
 
 class AuditLog(models.Model):
 
@@ -54,7 +50,7 @@ class AuditLog(models.Model):
         ('ERROR', 'Error'),
     ]
 
-    actor = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='audited_actions')
+    actor = models.ForeignKey('users.BaseAccount', on_delete=models.CASCADE, related_name='audited_actions')
 
     action = models.CharField(choices=ACTION_CHOICES, max_length=32)
     target_model = models.CharField(choices=TARGET_MODEL_CHOICES, max_length=32)
@@ -64,7 +60,7 @@ class AuditLog(models.Model):
     outcome = models.CharField(choices=OUTCOME_CHOICES, max_length=32)
     server_response = models.TextField()
 
-    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='audit_logs')
+    school = models.ForeignKey('schools.School', on_delete=models.CASCADE, related_name='audit_logs')
 
     timestamp = models.DateTimeField(auto_now_add=True)
     audit_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)

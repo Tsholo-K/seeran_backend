@@ -9,7 +9,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
 
 # models
-from users.models import BaseUser
+from accounts.models import BaseUser
 
 # utility functions
 from authentication.utils import validate_access_token

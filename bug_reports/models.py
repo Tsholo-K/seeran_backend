@@ -5,25 +5,25 @@ import uuid
 from django.db import models
 
 # models
-from users.models import BaseUser
+from accounts.models import BaseAccount
 
-
-DASHBOARD_CHOICES = [
-    ('STUDENT', 'Student'),
-    ('TEACHER', 'Teacher'),
-    ('ADMIN', 'Admin'),
-    ('PRINCIPAL', 'Principal')
-]
-
-STATUS_CHOICES = [
-    ('NEW', 'New'),
-    ('IN_PROGRESS', 'In Progress'),
-    ('RESOLVED', 'Resolved')
-]
 
 class BugReport(models.Model):
+    DASHBOARD_CHOICES = [
+        ('STUDENT', 'Student'),
+        ('TEACHER', 'Teacher'),
+        ('ADMIN', 'Admin'),
+        ('PRINCIPAL', 'Principal')
+    ]
+
+    STATUS_CHOICES = [
+        ('NEW', 'New'),
+        ('IN_PROGRESS', 'In Progress'),
+        ('RESOLVED', 'Resolved')
+    ]
+
     # User who reported the bug
-    reporter = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name='my_bug_reports')
+    reporter = models.ForeignKey(BaseAccount, on_delete=models.CASCADE, related_name='my_bug_reports')
     section = models.CharField(max_length=124)
 
     dashboard = models.CharField(choices=DASHBOARD_CHOICES, max_length=10)

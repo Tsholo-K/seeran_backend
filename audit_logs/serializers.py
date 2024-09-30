@@ -8,7 +8,7 @@ from rest_framework import serializers
 from .models import AuditLog
 
 # serilializers
-from users.serializers.general_serializers import BasicAccountDetailsEmailSerializer
+from accounts.serializers.general_serializers import BasicAccountDetailsEmailSerializer
 
 
 class AuditEntriesSerializer(serializers.ModelSerializer):

@@ -5,7 +5,7 @@ import uuid
 from django.db import models
 
 # models 
-from users.models import BaseUser
+from accounts.models import BaseUser
 
 
 class Invoice(models.Model):

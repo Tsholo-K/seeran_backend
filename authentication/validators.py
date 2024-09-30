@@ -2,7 +2,7 @@ from django.core.exceptions import ValidationError
 import re
 
 class PasswordValidator:
-    def validate(self, password, user=None):
+    def validate(self, password):
         if len(password) < 8:
             raise ValidationError("Password must be at least 8 characters long")
         if len(password) > 128:

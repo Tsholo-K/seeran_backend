@@ -5,10 +5,10 @@ from rest_framework import serializers
 
 # models
 from .models import School
-from users.models import Principal
+from accounts.models import Principal
 
 # serializers
-from users.serializers.principals.principals_serializers import PrincipalAccountSerializer
+from accounts.serializers.principals.principals_serializers import PrincipalAccountSerializer
 from balances.serializers import BalanceSerializer
 
 

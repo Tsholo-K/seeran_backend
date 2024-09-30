@@ -38,37 +38,52 @@ INSTALLED_APPS = [
 
     # project apps
     'authentication',
-    'permissions',
+
+    'accounts',
+    'account_access_tokens',
+    'email_address_bans',
+    'account_permissions',
     'permission_groups',
+
     'audit_logs',
-    'users',
-    'access_tokens',
+
     'schools',
-    'balances',
-    'invoices',
-    'chats',
+    'school_announcements',
+
     'grades',
+
+    'subjects',
+    'topics',
+    'student_subject_performances',
+
     'terms',
     'term_subject_performances',
-    'subjects',
-    'student_subject_performances',
+
     'classrooms',
     'classroom_performances',
-    'attendances',
-    'emergencies',
     'assessments',
-    'submissions',
-    'topics',
-    'transcripts',
-    'progress_reports',
-    'announcements',
-    'activities',
-    'bug_reports',
-    'email_bans',
-    'daily_schedules',
+    'assessment_submissions',
+    'assessment_transcripts',
+
+    'school_attendances',
+    'student_activities',
+    'student_progress_reports',
     'student_group_timetables',
+
     'teacher_timetables',
-    'daily_schedule_sessions',
+
+    'timetables',
+    'timetable_sessions',
+
+    'balances',
+    'invoices',
+
+    'chats',
+
+    'bug_reports',
+
+    'emergencies',
+
     'uploads',
     
     # third party apps

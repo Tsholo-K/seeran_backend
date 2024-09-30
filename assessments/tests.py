@@ -10,13 +10,13 @@ from django.utils import timezone
 # models
 from .models import Assessment
 from schools.models import School
-from users.models import BaseUser, Teacher, Student
+from accounts.models import BaseAccount, Teacher, Student
 from grades.models import Grade
 from terms.models import Term
 from subjects.models import Subject
 from classrooms.models import Classroom
-from submissions.models import Submission
-from transcripts.models import Transcript
+from assessment_submissions.models import AssessmentSubmission
+from assessment_transcripts.models import AssessmentTranscript
 
 
 class AssessmentTest(TestCase):
@@ -171,7 +171,7 @@ class AssessmentTest(TestCase):
         """
         assessment_data = self.assessment_data.copy()
 
-        invalid_user = BaseUser.objects.create(name="invalid_assessor", surname="invalid_assessor", role="STUDENT")
+        invalid_user = BaseAccount.objects.create(name="invalid_assessor", surname="invalid_assessor", role="STUDENT")
 
         assessment_data['assessor'] = invalid_user
         assessment_a = Assessment(**assessment_data)
@@ -241,11 +241,11 @@ class AssessmentTest(TestCase):
         if assessment_b.classroom and assessment_b.classroom.students.exists(): # mark all students in the classroom as submitted
             submissions = []
             for student in assessment_b.classroom.students.all():
-                submissions.append(Submission(assessment=assessment_b, student=student, status='ON_TIME'))
+                submissions.append(AssessmentSubmission(assessment=assessment_b, student=student, status='ON_TIME'))
             
             batch_size = 50
             for i in range(0, len(submissions), batch_size):
-                Submission.objects.bulk_create(submissions[i:i + batch_size])
+                AssessmentSubmission.objects.bulk_create(submissions[i:i + batch_size])
 
         assessment_b.mark_as_collected()  # Should allow marking as collected as all students have submitted the assessment, even tho the deadline is not elapsed
         self.assertTrue(assessment_b.collected)
@@ -266,11 +266,11 @@ class AssessmentTest(TestCase):
         if not assessment_d.classroom and assessment_d.grade.students.exists(): # mark all students in the grade as submitted
             non_submissions = []
             for student in assessment_d.grade.students.all():
-                non_submissions.append(Submission(assessment=assessment_d, student=student, status='ON_TIME'))
+                non_submissions.append(AssessmentSubmission(assessment=assessment_d, student=student, status='ON_TIME'))
             
             batch_size = 50
             for i in range(0, len(non_submissions), batch_size):
-                Submission.objects.bulk_create(non_submissions[i:i + batch_size])
+                AssessmentSubmission.objects.bulk_create(non_submissions[i:i + batch_size])
 
         assessment_d.mark_as_collected()  # Should allow marking as collected as all students have submitted the assessment, even tho the deadline is not elapsed
         self.assertTrue(assessment_d.collected)
@@ -310,11 +310,11 @@ class AssessmentTest(TestCase):
         if assessment_c.classroom and assessment_c.classroom.students.exists(): # mark all students in the classroom as submitted
             submissions = []
             for student in assessment_c.classroom.students.all():
-                submissions.append(Submission(assessment=assessment_c, student=student, status='ON_TIME'))
+                submissions.append(AssessmentSubmission(assessment=assessment_c, student=student, status='ON_TIME'))
 
             batch_size = 50
             for i in range(0, len(submissions), batch_size):
-                Submission.objects.bulk_create(submissions[i:i + batch_size])
+                AssessmentSubmission.objects.bulk_create(submissions[i:i + batch_size])
 
         with self.assertRaises(ValidationError):
             assessment_c.release_grades()  # Should not allow releasing grades because not all submissions are graded
@@ -325,15 +325,15 @@ class AssessmentTest(TestCase):
             submissions = []
             transcripts = []
             for student in assessment_d.classroom.students.all():
-                submissions.append(Submission(assessment=assessment_d, student=student, status='ON_TIME'))
-                transcripts.append(Transcript(assessment=assessment_d, student=student, score=50, weighted_score=7.5, comment=''))
+                submissions.append(AssessmentSubmission(assessment=assessment_d, student=student, status='ON_TIME'))
+                transcripts.append(AssessmentTranscript(assessment=assessment_d, student=student, score=50, weighted_score=7.5, comment=''))
 
             batch_size = 50
             for i in range(0, len(submissions), batch_size):
-                Submission.objects.bulk_create(submissions[i:i + batch_size])
+                AssessmentSubmission.objects.bulk_create(submissions[i:i + batch_size])
 
             for i in range(0, len(transcripts), batch_size):
-                Transcript.objects.bulk_create(transcripts[i:i + batch_size])
+                AssessmentTranscript.objects.bulk_create(transcripts[i:i + batch_size])
 
         assessment_d.release_grades()  # Should allow for releasing grades as all submissions have been graded
         self.assertTrue(assessment_d.grades_released)
@@ -358,15 +358,15 @@ class AssessmentTest(TestCase):
             submissions = []
             transcripts = []
             for student in assessment_a.classroom.students.all():
-                submissions.append(Submission(assessment=assessment_a, student=student, status='ON_TIME'))
-                transcripts.append(Transcript(assessment=assessment_a, student=student, score=50, weighted_score=7.5, comment=''))
+                submissions.append(AssessmentSubmission(assessment=assessment_a, student=student, status='ON_TIME'))
+                transcripts.append(AssessmentTranscript(assessment=assessment_a, student=student, score=50, weighted_score=7.5, comment=''))
 
             batch_size = 50
             for i in range(0, len(submissions), batch_size):
-                Submission.objects.bulk_create(submissions[i:i + batch_size])
+                AssessmentSubmission.objects.bulk_create(submissions[i:i + batch_size])
 
             for i in range(0, len(transcripts), batch_size):
-                Transcript.objects.bulk_create(transcripts[i:i + batch_size])
+                AssessmentTranscript.objects.bulk_create(transcripts[i:i + batch_size])
 
         # Simulate grades being calculated
         assessment_a.release_grades()

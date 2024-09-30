@@ -9,7 +9,7 @@ from rest_framework import serializers
 from .models import BugReport
 
 # serializers
-from users.serializers.general_serializers import SourceAccountSerializer
+from accounts.serializers.general_serializers import SourceAccountSerializer
 
 
 

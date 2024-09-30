@@ -4,11 +4,11 @@ from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
 
 # models
-from users.models import BaseUser, Student
+from accounts.models import BaseUser, Student
 from classrooms.models import Classroom
 
 # mappings
-from users.maps import role_specific_attr_maps
+from accounts.maps import role_specific_attr_maps
 
 
 # @receiver(post_save, sender=Student)

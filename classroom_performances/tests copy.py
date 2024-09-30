@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 # models
 from .models import ClassroomPerformance
 from schools.models import School
-from users.models import Teacher, Student
+from accounts.models import Teacher, Student
 from grades.models import Grade
 from subjects.models import Subject
 from terms.models import Term

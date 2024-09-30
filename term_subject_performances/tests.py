@@ -10,14 +10,14 @@ from django.utils import timezone
 # models
 from .models import TermSubjectPerformance
 from schools.models import School
-from users.models import Teacher, Student
+from accounts.models import Teacher, Student
 from grades.models import Grade
 from terms.models import Term
 from subjects.models import Subject
 from classrooms.models import Classroom
 from assessments.models import Assessment
-from submissions.models import Submission
-from transcripts.models import Transcript
+from assessment_submissions.models import Submission
+from assessment_transcripts.models import Transcript
 
 
 class TermSubjectPerformanceTest(TestCase):

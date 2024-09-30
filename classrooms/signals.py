@@ -3,7 +3,7 @@ from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 
 # models
-from users.models import Student
+from accounts.models import Student
 
 
 # @receiver(pre_delete, sender=Student)

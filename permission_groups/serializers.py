@@ -6,7 +6,7 @@ from rest_framework.validators import UniqueTogetherValidator
 from .models import AdminPermissionGroup, TeacherPermissionGroup
 
 # serilializers
-from permissions.serializers import AdminPermissionsSerializer, TeacherPermissionsSerializer
+from account_permissions.serializers import AdminPermissionsSerializer, TeacherPermissionsSerializer
 
 
 class AdminPermissionGroupCreationSerializer(serializers.ModelSerializer):

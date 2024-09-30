@@ -12,18 +12,18 @@ from django.core.cache import cache
 from django.core.validators import validate_email
 
 # models
-from users.models import BaseUser
-from access_tokens.models import AccessToken
+from accounts.models import BaseUser
+from account_access_tokens.models import AccessToken
 
 # utility functions 
 from .utils import generate_token, generate_otp, verify_user_otp, validate_names, send_otp_email
-from access_tokens.utils import manage_user_sessions
+from account_access_tokens.utils import manage_user_sessions
 
 # custom decorators
 from .decorators import token_required
 
 # maops
-from users.maps import role_specific_attr_maps
+from accounts.maps import role_specific_attr_maps
 
 
 class CustomRateThrottle(UserRateThrottle):

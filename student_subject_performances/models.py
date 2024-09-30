@@ -8,7 +8,7 @@ from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 
 # models
-from users.models import Student
+from accounts.models import Student
 from schools.models import School
 from grades.models import Grade
 from terms.models import Term

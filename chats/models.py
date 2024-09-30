@@ -7,7 +7,7 @@ from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 
 # models
-from users.models import BaseUser
+from accounts.models import BaseUser
 
 
 class PrivateChatRoom(models.Model):

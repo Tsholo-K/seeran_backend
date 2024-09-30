@@ -5,7 +5,7 @@ from rest_framework import serializers
 from .models import PrivateChatRoom, PrivateMessage
 
 # serializers
-from users.serializers.general_serializers import BasicAccountDetailsSerializer
+from accounts.serializers.general_serializers import BasicAccountDetailsSerializer
 
 
 class PrivateMessageCreationSerializer(serializers.ModelSerializer):

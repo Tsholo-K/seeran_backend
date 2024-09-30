@@ -7,11 +7,11 @@ from django.db import models
 from django.utils import timezone
 
 # models 
-from users.models import BaseUser
+from accounts.models import BaseAccount
 
 
 class Balance(models.Model):
-    user = models.OneToOneField(BaseUser, on_delete=models.CASCADE, limit_choices_to={'role__in': ['PRINCIPAL', 'STUDENT']}, related_name='balance' )
+    user = models.OneToOneField(BaseAccount, on_delete=models.CASCADE, limit_choices_to={'role__in': ['PRINCIPAL', 'STUDENT']}, related_name='balance' )
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     billing_date = models.DateField(default=(timezone.now() + relativedelta(months=1)).replace(day=7))

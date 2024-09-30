@@ -11,7 +11,7 @@ from celery.exceptions import MaxRetriesExceededError
 
 # models
 from .models import Balance
-from users.models import BaseUser
+from accounts.models import BaseAccount
 from invoices.models import Invoice
 
 
@@ -20,7 +20,7 @@ def bill_single_user(self, user_id):
 
     try:
         # Get the user associated with the task
-        user = BaseUser.objects.get(pk=user_id)
+        user = BaseAccount.objects.get(pk=user_id)
 
         # Check if a bill already exists for this user for this month
         existing_bill = Invoice.objects.filter(user=user, date_billed__year=today.year, date_billed__month=today.month).first()

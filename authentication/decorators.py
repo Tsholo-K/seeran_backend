@@ -8,7 +8,7 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import AccessToken
 
 # models
-from users.models import BaseUser
+from accounts.models import BaseAccount
 
 # utility functions 
 from .utils import validate_access_token
@@ -30,7 +30,7 @@ def token_required(view_func):
                 return JsonResponse({'error': 'invalid security credentials.. request revoked'}, status=status.HTTP_400_BAD_REQUEST)
         
             decoded_token = AccessToken(new_access_token)
-            request.user = BaseUser.objects.get(pk=decoded_token['user_id'])
+            request.user = BaseAccount.objects.get(pk=decoded_token['user_id'])
                 
             response = view_func(request, *args, **kwargs)
 

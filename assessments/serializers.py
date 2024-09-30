@@ -4,12 +4,12 @@ from rest_framework.validators import UniqueTogetherValidator
 
 # models
 from .models import Assessment
-from users.models import BaseUser
+from accounts.models import BaseUser
 from classrooms.models import Classroom
 
 # serializers
-from users.serializers.general_serializers import SourceAccountSerializer, BasicAccountDetailsEmailSerializer
-from users.serializers.students.students_serializers import StudentBasicAccountDetailsEmailSerializer
+from accounts.serializers.general_serializers import SourceAccountSerializer, BasicAccountDetailsEmailSerializer
+from accounts.serializers.students.students_serializers import StudentBasicAccountDetailsEmailSerializer
 from topics.serializers import TopicSerializer
 
 

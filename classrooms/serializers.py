@@ -4,13 +4,13 @@ from rest_framework.validators import UniqueTogetherValidator
 
 # models
 from .models import Classroom
-from users.models import Teacher
+from accounts.models import Teacher
 from schools.models import School
 from grades.models import Grade
 from subjects.models import Subject
 
 # serilializers
-from users.serializers.students.students_serializers import StudentSourceAccountSerializer
+from accounts.serializers.students.students_serializers import StudentSourceAccountSerializer
 
 
 class ClassCreationSerializer(serializers.ModelSerializer):

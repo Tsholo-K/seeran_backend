@@ -46,16 +46,12 @@ class UpdateTermSerializer(serializers.ModelSerializer):
 
 class TermsSerializer(serializers.ModelSerializer):
             
-    term = serializers.SerializerMethodField()
     start_date = serializers.DateField(format='%d-%m-%Y')
     end_date = serializers.DateField(format='%d-%m-%Y')
 
     class Meta:
         model = Term
         fields = ['term', 'weight', 'start_date', 'end_date', 'term_id']
-
-    def get_term(self, obj):
-        return obj.term.title()
 
 
 class FormTermsSerializer(serializers.ModelSerializer):
