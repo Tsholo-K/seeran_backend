@@ -15,7 +15,7 @@ from authentication.utils import get_upload_path
 from accounts import validators as users_validators
 
 
-class BaseUserManager(BaseUserManager):
+class BaseAccountManager(BaseUserManager):
     """
     Custom manager for BaseUser model that handles user creation and activation.
 
@@ -144,7 +144,7 @@ class BaseAccount(AbstractBaseUser, PermissionsMixin):
 
     USERNAME_FIELD = 'email_address'  # Specifies the field to be used for authentication
 
-    objects = BaseUserManager()  # Use the custom user manager
+    objects = BaseAccountManager()  # Use the custom user manager
 
     class Meta:
         constraints = [

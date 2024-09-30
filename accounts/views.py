@@ -19,9 +19,6 @@ from school_announcements.models import Announcement
 # serilializers
 from accounts.serializers.founders.founders_serializers import FounderAccountDetailsSerializer
 
-# maops
-from accounts.mappings import role_specific_attr_maps
-
 # mappings
 from accounts.mappings import serializer_mappings
 

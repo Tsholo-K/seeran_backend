@@ -59,11 +59,11 @@ class Assessment(models.Model):
 
     # The user (assessor) who set the assessment.
     # SET_NULL ensures that if the user is deleted, the assessment isn't deleted, but the assessor field is set to null.
-    assessor = models.ForeignKey('accounts.BaseUser', on_delete=models.SET_NULL, related_name='assessed_assessments', null=True)
+    assessor = models.ForeignKey('accounts.BaseAccount', on_delete=models.SET_NULL, related_name='assessed_assessments', null=True)
 
     # The user who moderated (oversaw) the assessment.
     # Moderators ensure the fairness and quality of the assessment.
-    moderator = models.ForeignKey('accounts.BaseUser', on_delete=models.SET_NULL, related_name='assessments_moderated', null=True)
+    moderator = models.ForeignKey('accounts.BaseAccount', on_delete=models.SET_NULL, related_name='assessments_moderated', null=True)
 
     # Optional date and time when the assessment is set to begin.
     start_time = models.DateTimeField(null=True, blank=True)

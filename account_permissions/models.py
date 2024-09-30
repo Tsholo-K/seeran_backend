@@ -61,7 +61,7 @@ class AdminAccountPermission(models.Model):
 
     class Meta:
         # Ensures that the combination of permission group, action, and target model is unique
-        unique_together = ('permission_group', 'action', 'target_model')
+        unique_together = ('linked_permission_group', 'action', 'target_model')
 
     def __str__(self):
         # String representation of the permission instance
@@ -131,7 +131,7 @@ class TeacherAccountPermission(models.Model):
 
     class Meta:
         # Ensures that the combination of permission group, action, and target model is unique
-        unique_together = ('permission_group', 'action', 'target_model')
+        unique_together = ('linked_permission_group', 'action', 'target_model')
 
     def __str__(self):
         # String representation of the permission instance

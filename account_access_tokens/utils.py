@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.db import transaction
 
 # models
-from account_access_tokens.models import AccessToken
+from account_access_tokens.models import AccountAccessToken
 
 
 def manage_user_sessions(user, token, max_sessions=3):
@@ -43,7 +43,7 @@ def manage_user_sessions(user, token, max_sessions=3):
         
         # Create a new access token record
         with transaction.atomic():
-            AccessToken.objects.create(user=user, token=token['access'])
+            AccountAccessToken.objects.create(user=user, token=token['access'])
 
         return None  # No error, so return None
 

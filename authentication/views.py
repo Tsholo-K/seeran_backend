@@ -12,8 +12,8 @@ from django.core.cache import cache
 from django.core.validators import validate_email
 
 # models
-from accounts.models import BaseUser
-from account_access_tokens.models import AccessToken
+from accounts.models import BaseAccount
+from account_access_tokens.models import AccountAccessToken
 
 # utility functions 
 from .utils import generate_token, generate_otp, verify_user_otp, validate_names, send_otp_email
@@ -23,7 +23,7 @@ from account_access_tokens.utils import manage_user_sessions
 from .decorators import token_required
 
 # maops
-from accounts.maps import role_specific_attr_maps
+from accounts.mappings import model_mapping
 
 
 class CustomRateThrottle(UserRateThrottle):
@@ -51,7 +51,7 @@ def login(request):
         # Access control based on user role and school compliance
         if user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
             # Fetch the corresponding child model based on the user's role
-            Model = role_specific_attr_maps.account_access_control_mapping[user.role]
+            Model = model_mapping.account[user.role]
             account = Model.objects.select_related('school').only('school').get(account_id=user.account_id)
 
             if account.school.none_compliant:
@@ -114,7 +114,7 @@ def login(request):
 
         return response
     
-    except BaseUser.DoesNotExist:
+    except BaseAccount.DoesNotExist:
         # Handle the case where the provided account ID does not exist
         return Response({"error": "The credentials you entered are invalid. Please check your email and password and try again"}, status=status.HTTP_404_NOT_FOUND)
     
@@ -136,11 +136,11 @@ def multi_factor_authentication_login(request):
         if not email_address or not otp or not authorization_cookie_otp:
             return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
         
-        user = BaseUser.objects.get(email_address=email_address)
+        user = BaseAccount.objects.get(email_address=email_address)
 
         if user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
             # Fetch the corresponding child model based on the user's role
-            Model = role_specific_attr_maps.account_access_control_mapping[user.role]
+            Model = model_mapping.account[user.role]
             account = Model.objects.select_related('school').only('school').get(account_id=user.account_id)
 
             if account.school.none_compliant:
@@ -204,7 +204,7 @@ def multi_factor_authentication_login(request):
 
         return Response({"error": f"incorrect OTP.. {attempts} remaining"}, status=status.HTTP_400_BAD_REQUEST)
     
-    except BaseUser.DoesNotExist:
+    except BaseAccount.DoesNotExist:
         # Handle the case where the provided email does not exist
         return {'error': 'an account with the provided credentials does not exist, please check the account details and try again'}
 
@@ -232,12 +232,12 @@ def signin(request):
             return Response({"error": "please enter only your first name and surname"}, status=status.HTTP_400_BAD_REQUEST)
 
         # try to validate the credentials by getting a user with the provided credentials 
-        user = BaseUser.objects.get(email_address=email_address)
+        user = BaseAccount.objects.get(email_address=email_address)
 
         # Access control based on user role and school compliance
         if user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
             # Fetch the corresponding child model based on the user's role
-            Model = role_specific_attr_maps.account_access_control_mapping[user.role]
+            Model = model_mapping.account[user.role]
             account = Model.objects.select_related('school').only('school').get(account_id=user.account_id)
 
             if account.school.none_compliant:
@@ -270,7 +270,7 @@ def signin(request):
         else:
             return Response({"error": email_response['message']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-    except BaseUser.DoesNotExist:
+    except BaseAccount.DoesNotExist:
         # if there's no user with the provided credentials return an error 
         return Response({"error": "the credentials you entered are invalid. please check your full name and email and try again"}, status=status.HTTP_404_NOT_FOUND)
     
@@ -325,21 +325,21 @@ def activate_account(request):
         
         # activate users account
         with transaction.atomic():
-            user = BaseUser.objects.activate(email_address=email_address, password=new_password)
+            user = BaseAccount.objects.activate(email_address=email_address, password=new_password)
 
         response = Response({"message": "account activation successful", "role": user.role.title()}, status=status.HTTP_200_OK)
                 
         # generate an access and refresh token for the user 
         token = generate_token(user)
         
-        AccessToken.objects.create(user=user, token=token['access'])
+        AccountAccessToken.objects.create(user=user, token=token['access'])
 
         # set access/refresh token cookies
         response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
         
         return response
     
-    except BaseUser.DoesNotExist:
+    except BaseAccount.DoesNotExist:
         # if theres no user with the provided email return an error
         return Response({"denied": "an account with the provided credentials does not exist. please check the account details and try again"}, status=status.HTTP_404_NOT_FOUND)
   
@@ -372,7 +372,7 @@ def authenticate(request):
         # Access control based on user role and school compliance
         if request.user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
             # Fetch the corresponding child model based on the user's role
-            Model = role_specific_attr_maps.account_access_control_mapping[request.user.role]
+            Model = model_mapping.account[request.user.role]
             account = Model.objects.select_related('school').only('school').get(account_id=request.user.account_id)
 
             if account.school.none_compliant:
@@ -447,12 +447,12 @@ def validate_password_reset(request):
             return Response({"error": "request error, no email address provided.. email address is required"}, status=status.HTTP_400_BAD_REQUEST)
         
         # try to get the user with the provided email
-        user = BaseUser.objects.get(email_address=email_address)
+        user = BaseAccount.objects.get(email_address=email_address)
 
         # Access control based on user role and school compliance
         if user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
             # Fetch the corresponding child model based on the user's role
-            Model = role_specific_attr_maps.account_access_control_mapping[user.role]
+            Model = model_mapping.account[user.role]
             account = Model.objects.select_related('school').only('school').get(account_id=user.account_id)
 
             if account.school.none_compliant:
@@ -481,7 +481,7 @@ def validate_password_reset(request):
         else:
             return Response({"error": email_response['message']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-    except BaseUser.DoesNotExist:
+    except BaseAccount.DoesNotExist:
         # if theres no user with the provided email return an error
         return Response({"error": "an account with the provided credentials does not exist. please check the account details and try again"}, status=status.HTTP_404_NOT_FOUND)
             
@@ -539,7 +539,7 @@ def reset_password(request):
         if not (new_password or otp or email_address):
             return Response({"error": "invalid request.. missing credentials"}, status=status.HTTP_400_BAD_REQUEST)    
     
-        user = BaseUser.objects.get(email_address=email_address)
+        user = BaseAccount.objects.get(email_address=email_address)
         
         # get authorization otp from cache and verify provided otp
         hashed_authorization_otp_and_salt = cache.get(user.email_address+'password_reset_authorization_otp')
@@ -559,7 +559,7 @@ def reset_password(request):
    
         return response
     
-    except BaseUser.DoesNotExist:
+    except BaseAccount.DoesNotExist:
         # if theres no user with the provided email return an error
         return Response({"denied": "an account with the provided credentials does not exist. please check the account details and try again"}, status=status.HTTP_404_NOT_FOUND)
 

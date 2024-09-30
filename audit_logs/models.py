@@ -50,7 +50,7 @@ class AuditLog(models.Model):
         ('ERROR', 'Error'),
     ]
 
-    actor = models.ForeignKey('users.BaseAccount', on_delete=models.CASCADE, related_name='audited_actions')
+    actor = models.ForeignKey('accounts.BaseAccount', on_delete=models.CASCADE, related_name='audited_actions')
 
     action = models.CharField(choices=ACTION_CHOICES, max_length=32)
     target_model = models.CharField(choices=TARGET_MODEL_CHOICES, max_length=32)

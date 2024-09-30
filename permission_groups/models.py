@@ -20,7 +20,7 @@ class AdminPermissionGroup(models.Model):
 
     # Many-to-many relationship with the Admin model, allowing multiple admins
     # to be linked to this permission group
-    subscribers = models.ManyToManyField('users.Admin', related_name='permissions')
+    subscribers = models.ManyToManyField('accounts.Admin', related_name='permissions')
 
     # Counters for tracking the number of subscribers and permissions
     subscribers_count = models.IntegerField(default=0)
@@ -81,7 +81,7 @@ class TeacherPermissionGroup(models.Model):
 
     # Many-to-many relationship with the Teacher model, allowing multiple teachers
     # to be linked to this permission group
-    subscribers = models.ManyToManyField('users.Teacher', related_name='permissions')
+    subscribers = models.ManyToManyField('accounts.Teacher', related_name='permissions')
     
     # Counters for tracking the number of subscribers and permissions
     subscribers_count = models.IntegerField(default=0)

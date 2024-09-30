@@ -39,7 +39,7 @@ class Timetable(models.Model):
     teacher_timetable = models.ForeignKey(TeacherTimetable, on_delete=models.CASCADE, related_name='timetables')
     student_group_timetable = models.ForeignKey(StudentGroupTimetable, on_delete=models.CASCADE, related_name='timetables')
 
-    school = models.ForeignKey('schools.School', on_delete=models.CASCADE, related_name='activities')
+    school = models.ForeignKey('schools.School', on_delete=models.CASCADE, related_name='timetables')
 
     # This field is automatically updated to the current date and time whenever the
     # transcript is modified.

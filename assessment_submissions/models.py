@@ -52,7 +52,7 @@ class AssessmentSubmission(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['assessment', 'student'], name='unique_student_assessment_submission')
         ]
-        ordering = ['-submission_date']
+        ordering = ['-timestamp']
         indexes = [models.Index(fields=['assessment', 'student'])]
 
     def save(self, *args, **kwargs):
