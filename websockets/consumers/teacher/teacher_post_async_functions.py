@@ -12,7 +12,7 @@ from accounts.models import BaseAccount, Teacher, Student
 from classrooms.models import Classroom
 from school_attendances.models import SchoolAttendance
 from assessments.models import Assessment
-from assessment_transcripts.models import Transcript
+from assessment_transcripts.models import AssessmentTranscript
 from topics.models import Topic
 from student_activities.models import StudentActivity
 
@@ -184,7 +184,7 @@ def grade_student(user, details):
         student = Student.objects.get(student_id=details.get('student'))
         
         with transaction.atomic():
-            transcript = Transcript.objects.create(student=student, score=details.get('student'), assessment=assessment)
+            transcript = AssessmentTranscript.objects.create(student=student, score=details.get('student'), assessment=assessment)
             response = f"student graded for assessment {assessment.unique_identifier}."
             audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ASSESSMENT', target_object_id=str(transcript.transcript_id), outcome='GRADED', response=response, school=requesting_account.school,)
 

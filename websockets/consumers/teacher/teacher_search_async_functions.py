@@ -15,7 +15,7 @@ from accounts.serializers.students.serializers import StudentSourceAccountSerial
 from classrooms.serializers import TeacherClassesSerializer
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer
 from student_activities.serializers import ActivitiesSerializer
-from timetables.serializers import DailyScheduleSerializer
+from timetables.serializers import TimetableSerializer
 
 # checks
 from accounts.checks import permission_checks
@@ -131,7 +131,7 @@ def search_teacher_schedule_schedules(user, role, details):
             return {'schedules': []}
         
         # Serialize the schedules to return them in the response
-        serialized_schedules = DailyScheduleSerializer(schedules, many=True).data
+        serialized_schedules = TimetableSerializer(schedules, many=True).data
 
         return {"schedules": serialized_schedules}
                

@@ -8,7 +8,7 @@ from django.utils import timezone
 
 # models 
 from assessments.models import Assessment
-from assessment_transcripts.models import Transcript
+from assessment_transcripts.models import AssessmentTranscript
 from topics.models import Topic
 
 # serilializers
@@ -272,7 +272,7 @@ def release_assessment_grades(user, role, details):
             assessment.date_grades_released = timezone.now()
             
             for student in not_submitted_students:
-                Transcript.objects.create(student=student, score=0, assessment=assessment)
+                AssessmentTranscript.objects.create(student=student, score=0, assessment=assessment)
 
             assessment.save()
             
