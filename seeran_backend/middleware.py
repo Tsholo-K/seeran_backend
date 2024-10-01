@@ -54,23 +54,6 @@ class TokenAuthMiddleware:
         """
         user = BaseAccount.objects.values('account_id', 'role').get(pk=account_id)
         return (str(user['account_id']), user['role'])
-    
-    async def send_error_message(self, send, message):
-        """
-        Sends an error message to the WebSocket client and then closes the connection.
-
-        Args:
-            send (callable): The send function to send messages to the client.
-            message (str): The error message to send to the client.
-        """
-        # Accept the WebSocket connection first
-        await send({'type': 'websocket.accept'})
-
-        # Send the error message to the client
-        await send({'type': 'websocket.send', 'text_data': json.dumps({'websocket_unauthenticated': message})})
-
-        # Close the WebSocket connection after sending the message
-        await send({'type': 'websocket.close'})
 
     async def __call__(self, scope, receive, send):
         """
@@ -83,24 +66,28 @@ class TokenAuthMiddleware:
         """
         headers = dict(scope['headers'])
 
+        # Default to None for unauthenticated users
+        scope['user'] = None
+        scope['role'] = None
+        scope['auth_error'] = None
+
         # Check if the 'cookie' header is present
         if b'cookie' in headers:
             try:
                 # Decode the cookies
                 cookies = headers[b'cookie'].decode()
-                cookie_dict = {}
-                for cookie in cookies.split('; '):
-                    cookie_parts = cookie.split('=')
-                    cookie_dict[cookie_parts[0]] = cookie_parts[1] if len(cookie_parts) > 1 else ''
-
+                cookie_dict = {k: v for k, v in (cookie.split('=') for cookie in cookies.split('; '))}
                 # Retrieve the access token from the cookies
                 access_token = cookie_dict.get('access_token')
 
                 # Check if the access token is in cache (indicating it might be invalid/blacklisted)
                 if not access_token:
-                    return await self.send_error_message(send, 'Could not process your request, not access token was provided.')
+                    scope['auth_error'] = 'Could not process your request, no access token was provided.'
+                    return await self.app(scope, receive, send)
+                
                 elif cache.get(access_token):
-                    return await self.send_error_message(send, 'Could not process your request, your access token has been blacklisted and cannot be used to access the system.')
+                    scope['auth_error'] = 'Could not process your request, your access token has been blacklisted and cannot be used to access the system.'
+                    return await self.app(scope, receive, send)
 
                 # Validate the access token
                 authorized = validate_access_token(access_token)
@@ -111,18 +98,17 @@ class TokenAuthMiddleware:
 
                 # Decode the access token to get the user ID
                 decoded_token = AccessToken(access_token)
-
                 # Fetch the user and their role from the database
                 scope['user'], scope['role'] = await self.get_account(decoded_token['user_id'])
                 scope['access_token'] = access_token
 
-            except ObjectDoesNotExist:
+            except BaseAccount.DoesNotExist:
                 # If the user does not exist, close the connection
-                    return None
+                    scope['auth_error'] = 'An account with the provided credentials does not exists. Please review you account details and try again.'
 
             # If any other exception occurs, close the connection and send the error message
             except Exception as e:
-                    return None
+                    scope['auth_error'] = str(e)
 
         # Call the next application/middleware in the stack
         return await self.app(scope, receive, send)

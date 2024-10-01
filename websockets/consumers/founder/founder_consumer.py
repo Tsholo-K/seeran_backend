@@ -31,6 +31,19 @@ class FounderConsumer(AsyncWebsocketConsumer):
 # CONNECT
 
     async def connect(self):
+        # Check if authentication failed in the middleware
+        auth_error = self.scope.get('auth_error')
+
+        if auth_error:
+            # Accept the connection so we can send the error message
+            await self.accept()
+
+            # Send the error message
+            await self.send(text_data=json.dumps({'error': auth_error}))
+
+            # Close the connection after sending the error
+            return await self.close()
+        
         # Get the user's role from the scope
         role = self.scope.get('role')
 
