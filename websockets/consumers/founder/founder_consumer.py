@@ -28,22 +28,20 @@ from websockets.consumers.general import general_email_async_functions
 
 class FounderConsumer(AsyncWebsocketConsumer):
 
-    @classmethod
-    def as_asgi(cls):
-        return super().as_asgi()
-
 # CONNECT
 
     async def connect(self):
         # Get the user's role from the scope
         role = self.scope['role']
+
+        # Check if the user has the required role
         if role != 'FOUNDER':
             return await self.close()
-        
-        await self.accept()
                         
         account = self.scope['account']
         await connection_manager.connect(account, self)
+
+        await self.accept()
 
         response = await founder_connect_async_functions.account_details(account, role)
         if 'error' in response:

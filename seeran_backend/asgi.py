@@ -24,8 +24,12 @@ from django.urls import path
 from channels.routing import ProtocolTypeRouter, URLRouter
 
 # consumers
-from websockets.consumers.authentication.authentication_consumer import AccountsWebsocketHandler
-
+from websockets.consumers.authentication.authentication_error_consumer import UnathenticationError
+from websockets.consumers.founder.founder_consumer import FounderConsumer
+from websockets.consumers.admin.admin_consumer import AdminConsumer
+from websockets.consumers.teacher.teacher_consumer import TeacherConsumer
+from websockets.consumers.parent.parent_consumer import ParentConsumer
+from websockets.consumers.student.student_consumer import StudentConsumer
 
 # middleware
 from .middleware import TokenAuthMiddleware
@@ -38,7 +42,14 @@ application = ProtocolTypeRouter({
     "http": get_asgi_application(),
     "websocket": TokenAuthMiddleware(
         URLRouter([
-            path('ws/accounts/', AccountsWebsocketHandler.as_asgi()),
+            path('ws/authentication-error/', UnathenticationError.as_asgi()),
+            path('ws/founder/', FounderConsumer.as_asgi()),
+            path('ws/admin/', AdminConsumer.as_asgi()),
+            path('ws/teacher/', TeacherConsumer.as_asgi()),
+            path('ws/parent/', ParentConsumer.as_asgi()),
+            path('ws/student/', StudentConsumer.as_asgi()),
         ])
     ),
 })
+
+

@@ -65,10 +65,6 @@ class TokenAuthMiddleware:
             send (callable): The send function to send messages to the client.
         """
         headers = dict(scope['headers'])
-        
-        print(f"Scope: {scope}")
-        print(f"Receive: {receive}")
-        print(f"Send: {send}")
 
         # Default to None for unauthenticated users
         scope['account'] = None
@@ -86,10 +82,14 @@ class TokenAuthMiddleware:
 
                 # Check if the access token is in cache (indicating it might be invalid/blacklisted)
                 if not access_token:
+                    # Handle unauthorized roles
+                    scope['path'] = '/ws/authentication-error/'
                     scope['authentication_error'] = 'Could not process your request, no access token was provided.'
                     return await self.app(scope, receive, send)
                 
                 elif cache.get(access_token):
+                    # Handle unauthorized roles
+                    scope['path'] = '/ws/authentication-error/'
                     scope['authentication_error'] = 'Could not process your request, your access token has been blacklisted and cannot be used to access the system.'
                     return await self.app(scope, receive, send)
 
@@ -98,6 +98,8 @@ class TokenAuthMiddleware:
 
                 # If the token is not valid, send an error message
                 if authorized is None:
+                    # Handle unauthorized roles
+                    scope['path'] = '/ws/authentication-error/'
                     scope['authentication_error'] = 'Could not process your request, your access token has expired.'
                     return await self.app(scope, receive, send)
 
@@ -107,19 +109,37 @@ class TokenAuthMiddleware:
                 scope['account'], scope['role'] = await self.get_account(decoded_token['user_id'])
                 scope['access_token'] = access_token
 
+                # Redirect based on user role
+                if scope['role'] == 'FOUNDER':
+                    scope['path'] = '/ws/founder/'  # Change path for FOUNDER role
+                elif scope['role'] in ['PRINCIPAL', 'ADMIN']:
+                    scope['path'] = '/ws/admin/'  # Change path for ADMIN role
+                elif scope['role'] == 'TEACHER':
+                    scope['path'] = '/ws/teacher/'  # Change path for TEACHER role
+                elif scope['role'] == 'STUDENT':
+                    scope['path'] = '/ws/student/'  # Change path for STUDENT role
+                elif scope['role'] == 'PARENT':
+                    scope['path'] = '/ws/parent/'  # Change path for PARENT role
+
                 # Call the next application/middleware in the stack
                 return await self.app(scope, receive, send)
 
             except BaseAccount.DoesNotExist:
                 # If the user does not exist, close the connection
+                # Handle unauthorized roles
+                scope['path'] = '/ws/authentication-error/'
                 scope['authentication_error'] = 'An account with the provided credentials does not exists. Please review you account details and try again.'
                 return await self.app(scope, receive, send)
 
             # If any other exception occurs, close the connection and send the error message
             except Exception as e:
+                # Handle unauthorized roles
+                scope['path'] = '/ws/authentication-error/'
                 scope['authentication_error'] = str(e)
                 return await self.app(scope, receive, send)
 
+        # Handle unauthorized roles
+        scope['path'] = '/ws/authentication-error/'
         scope['authentication_error'] = 'Could not process your request, no access token was provided.'
         # Call the next application/middleware in the stack
         return await self.app(scope, receive, send)
