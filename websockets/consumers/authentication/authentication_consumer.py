@@ -44,25 +44,36 @@ class AccountsWebsocketHandler(AsyncWebsocketConsumer):
                 'websocket_error',
                 'Authentication failed, your access token is missing. Please log in again to obtain the correct permissions.'
             )
-        # Now route the connection to the specific consumer based on the role
+        
+        await self.accept()
+        
         role_specific_consumer_mapping = {
             'FOUNDER': FounderConsumer,
-            'PRINCIPAL': AdminConsumer,
-            'ADMIN': AdminConsumer,
-            'TEACHER': TeacherConsumer,
-            'STUDENT': StudentConsumer,
-            'PARENT': ParentConsumer,
+            'PRINCIPAL': AdminConsumer.as_asgi(),
+            'ADMIN': AdminConsumer.as_asgi(),
+            'TEACHER': TeacherConsumer.as_asgi(),
+            'STUDENT': StudentConsumer.as_asgi(),
+            'PARENT': ParentConsumer.as_asgi(),
         }
 
         consumer_class = role_specific_consumer_mapping.get(self.role)
-        
         if consumer_class:
-            # Create an instance of the specific consumer
-            consumer_instance = consumer_class(self.scope, self.receive, self.send)
-            await consumer_instance.connect()  # Call the connect method of the specific consumer
+            try:
+                # Instantiate the consumer class and pass the scope, receive, and send methods
+                consumer_instance = consumer_class(self.scope, self.receive, self.send, self.channel_layer)
+                await consumer_instance.connect()  # Call connect method of the specific consumer
+            except TypeError as te:
+                print(f"Type error in WebsocketHandler delegation: {str(te)}")
+                await self.close()
+            except AttributeError as ae:
+                print(f"Attribute error in WebsocketHandler delegation: {str(ae)}")
+                await self.close()
+            except Exception as e:
+                print(f"General error in WebsocketHandler delegation: {str(e)}")
+                await self.close()
         else:
             print("Unknown role, closing connection.")
-            await self.close()  # Close the connection for unknown roles
+            await self.close()
 
     async def return_error_message_and_close_connection(self, description,  message):
         """Return an error message to the frontend and close connection."""
