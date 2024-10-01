@@ -103,6 +103,9 @@ class TokenAuthMiddleware:
                 scope['account'], scope['role'] = await self.get_account(decoded_token['user_id'])
                 scope['access_token'] = access_token
 
+                # Call the next application/middleware in the stack
+                return await self.app(scope, receive, send)
+
             except BaseAccount.DoesNotExist:
                 # If the user does not exist, close the connection
                 scope['auth_error'] = 'An account with the provided credentials does not exists. Please review you account details and try again.'
@@ -111,6 +114,7 @@ class TokenAuthMiddleware:
             except Exception as e:
                 scope['auth_error'] = str(e)
 
+        scope['auth_error'] = 'Could not process your request, no access token was provided.'
         # Call the next application/middleware in the stack
         return await self.app(scope, receive, send)
 
