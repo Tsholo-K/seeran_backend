@@ -60,17 +60,18 @@ class AdminConsumer(AsyncWebsocketConsumer):
 # DISCONNECT
 
     async def disconnect(self, close_code):
-        account_id = self.scope['user']
-        await connection_manager.disconnect(account_id, self)
+        account = self.scope['account']
+        if account:
+            await connection_manager.disconnect(account, self)
 
 # RECIEVE
 
     async def receive(self, text_data):
-        user = self.scope.get('user')
+        account = self.scope.get('account')
         role = self.scope.get('role')
         access_token = self.scope.get('access_token')
 
-        if not (user and role and access_token and validate_access_token(access_token)):
+        if not (account and role and access_token and validate_access_token(access_token)):
             await self.send(text_data=json.dumps({'error': 'request not authenticated.. access denied'}))
             return await self.close()
 
@@ -85,7 +86,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
         if action == 'INSPECT' and description == 'socket_communication_check':
             return await self.send(text_data=json.dumps({'socket_communication_successful': True}))
 
-        response = await self.handle_request(action, description, details, user, role, access_token)
+        response = await self.handle_request(action, description, details, account, role, access_token)
         
         if response is not None:
             return await self.send(text_data=json.dumps(response))
@@ -94,7 +95,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
 # HANDLER/ROUTER
 
-    async def handle_request(self, action, description, details, user, role, access_token):
+    async def handle_request(self, action, description, details, account, role, access_token):
         action_map = {
             'VIEW': self.handle_view,
             'SEARCH': self.handle_search,
@@ -112,13 +113,13 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         handler = action_map.get(action)
         if handler:
-            return await handler(description, details, user, role, access_token)
+            return await handler(description, details, account, role, access_token)
         
         return {'error': 'Could not process your request, an invalid action was provided. If this problem persist open a bug report ticket.'}
 
 # VIEW
 
-    async def handle_view(self, description, details, user, role, access_token):
+    async def handle_view(self, description, details, account, role, access_token):
         view_map = {
             'view_my_security_information': general_view_async_functions.view_my_security_information,
             'view_my_email_address_status_information': general_view_async_functions.view_my_email_address_status_information,
@@ -133,15 +134,15 @@ class AdminConsumer(AsyncWebsocketConsumer):
         func = view_map.get(description)
         if func:
             if description in ['view_chat_rooms', 'view_my_email_address_status_information']:
-                return await func(user)
+                return await func(account)
             else:
-                return await func(user, role)
+                return await func(account, role)
 
         return {'error': 'Could not process your request, an invalid view description was provided. If this problem persist open a bug report ticket.'}
 
 # SEARCH
 
-    async def handle_search(self, description, details, user, role, access_token):
+    async def handle_search(self, description, details, account, role, access_token):
         search_map = {
             'search_email_ban': general_search_async_functions.search_email_ban,
 
@@ -205,13 +206,13 @@ class AdminConsumer(AsyncWebsocketConsumer):
             if description in ['search_email_ban']:
                 response = await func(details) 
             elif description in ['search_chat_room_messages']:
-                response = await func(user, details)
+                response = await func(account, details)
             else:
-                response =  await func(user, role, details)
+                response =  await func(account, role, details)
 
             if description in ['search_chat_room_messages'] and response.get('user'):
                 await connection_manager.send_message(response['user'], json.dumps({'description': 'read_receipt', 'chat': response['chat']}))
-                await connection_manager.send_message(user, json.dumps({'unread_messages': response['unread_messages']}))
+                await connection_manager.send_message(account, json.dumps({'unread_messages': response['unread_messages']}))
 
                 return {'messages': response['messages'], 'next_cursor': response['next_cursor']}  
 
@@ -222,21 +223,21 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
 # ASSIGN
 
-    async def handle_assign(self, description, details, user, role, access_token):
+    async def handle_assign(self, description, details, account, role, access_token):
         assign_map = {
             'assign_permission_group_subscribers': admin_assign_async_functions.assign_permission_group_subscribers,
         }
 
         func = assign_map.get(description)
         if func:
-            response =  await func(user, role, details)
+            response =  await func(account, role, details)
             return response
 
         return {'error': 'Could not process your request, an invalid search description was provided. If this problem persist open a bug report ticket.'}
 
 # VERIFY
 
-    async def handle_verify(self, description, details, user, role, access_token):
+    async def handle_verify(self, description, details, account, role, access_token):
         verify_map = {
             'verify_email': general_verify_async_functions.verify_email_address,
             'verify_password': general_verify_async_functions.verify_password,
@@ -252,7 +253,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             if description in ['verify_email']:
                 response = await func(role, details)
             else:
-                response = await func(user, details)
+                response = await func(account, details)
 
             if response.get('user'):
                 if description in ['verify_email', 'verify_password']:
@@ -269,7 +270,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
 # FORM DATA
 
-    async def handle_form_data(self, description, details, user, role, access_token):
+    async def handle_form_data(self, description, details, account, role, access_token):
         form_data_map = {
             'form_data_for_creating_classroom': admin_form_data_async_functions.form_data_for_creating_classroom,
             'form_data_for_updating_classroom': admin_form_data_async_functions.form_data_for_updating_classroom,
@@ -290,14 +291,14 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         func = form_data_map.get(description)
         if func:
-            response = await func(user, role, details)
+            response = await func(account, role, details)
             return response
         
         return {'error': 'Could not process your request, an invalid form data description was provided. If this problem persist open a bug report ticket.'}
 
 # UPDATE
 
-    async def handle_update(self, description, details, user, role, access_token):
+    async def handle_update(self, description, details, account, role, access_token):
         update_map = {
             'update_email_address': general_update_async_functions.update_email_address,
             'update_password': general_update_async_functions.update_password,
@@ -329,11 +330,11 @@ class AdminConsumer(AsyncWebsocketConsumer):
         func = update_map.get(description)
         if func:
             if description in ['update_email_address', 'update_password']:
-                response = await func(user, role, details, access_token)
+                response = await func(account, role, details, access_token)
             elif description in ['update_multi_factor_authentication', 'update_messages_as_read']:
-                response = await func(user, details)
+                response = await func(account, details)
             else:
-                response = await func(user, role, details)
+                response = await func(account, role, details)
 
             if response.get('user'):
                 if description in ['update_messages_as_read']:
@@ -346,14 +347,14 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
 # MESSAGE
 
-    async def handle_message(self, description, details, user, role, access_token):
+    async def handle_message(self, description, details, account, role, access_token):
         message_map = {
             'message_private': general_message_async_functions.message_private,
         }
 
         func = message_map.get(description)
         if func:
-            response = await func(user, role, details)
+            response = await func(account, role, details)
             if response.get('reciever'):
                 if description in ['message_private']:
                     await connection_manager.send_message(response['recipient']['account_id'], json.dumps({'description': 'text_message', 'message': response['message'], 'author': response['author']}))
@@ -365,7 +366,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
 # SUBMIT
 
-    async def handle_submit(self, description, details, user, role, access_token):
+    async def handle_submit(self, description, details, account, role, access_token):
         submit_map = {
             'submit_assessment_submissions' : admin_submit_async_functions.submit_assessment_submissions,
 
@@ -379,14 +380,14 @@ class AdminConsumer(AsyncWebsocketConsumer):
             if description in ['submit_log_out_request']:
                 response = await func(access_token)
             else:
-                response = await func(user, role, details)            
+                response = await func(account, role, details)            
             return response
         
         return {'error': 'Could not process your request, an invalid submit description was provided. If this problem persist open a bug report ticket.'}
 
 # DELETE
 
-    async def handle_delete(self, description, details, user, role, access_token):
+    async def handle_delete(self, description, details, account, role, access_token):
         delete_map = {
             'delete_school_account': admin_delete_async_functions.delete_school_account,
 
@@ -405,21 +406,21 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         func = delete_map.get(description)
         if func:
-            response = await func(user, role, details)            
+            response = await func(account, role, details)            
             return response
         
         return {'error': 'Could not process your request, an invalid delete description was provided. If this problem persist open a bug report ticket.'}
 
 # LINK
 
-    async def handle_link(self, description, details, user, role, access_token):
+    async def handle_link(self, description, details, account, role, access_token):
         link_map = {
             'link_parent': admin_link_async_functions.link_parent,
         }
 
         func = link_map.get(description)
         if func:
-            response = await func(user, role, details)
+            response = await func(account, role, details)
             if response.get('user'):
                 return await general_email_async_functions.send_account_confirmation_email(response['user'])
             return response
@@ -428,21 +429,21 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
 # UNLINK
 
-    async def handle_unlink(self, description, details, user, role, access_token):
+    async def handle_unlink(self, description, details, account, role, access_token):
         unlink_map = {
             'unlink_parent': admin_unlink_async_functions.unlink_parent,
         }
 
         func = unlink_map.get(description)
         if func:
-            response = await func(user, role, details)            
+            response = await func(account, role, details)            
             return response
         
         return {'error': 'Could not process your request, an invalid unlink description was provided. If this problem persist open a bug report ticket.'}
 
 # CREATE
 
-    async def handle_create(self, description, details, user, role, access_token):
+    async def handle_create(self, description, details, account, role, access_token):
         create_map = {
             'create_account': admin_create_async_functions.create_account,
             
@@ -467,7 +468,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         func = create_map.get(description)
         if func:
-            response = await func(user, role, details)
+            response = await func(account, role, details)
             if description in ['create_account'] and response.get('user'):
                 return await general_email_async_functions.send_account_confirmation_email(response['user'])
             return response

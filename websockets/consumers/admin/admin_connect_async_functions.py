@@ -16,10 +16,10 @@ from accounts.mappings import serializer_mappings
 
 
 @database_sync_to_async
-def account_details(user, role):
+def account_details(account, role):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         if requesting_account.school.none_compliant:
             return {"denied": "access denied"}
