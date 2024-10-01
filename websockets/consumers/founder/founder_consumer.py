@@ -39,7 +39,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
             await self.accept()
 
             # Send the error message
-            await self.send(text_data=json.dumps({'error': auth_error}))
+            await self.send(text_data=json.dumps({'websocket_unauthenticated': auth_error}))
 
             # Close the connection after sending the error
             return await self.close()

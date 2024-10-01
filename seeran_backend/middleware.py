@@ -109,10 +109,12 @@ class TokenAuthMiddleware:
             except BaseAccount.DoesNotExist:
                 # If the user does not exist, close the connection
                 scope['auth_error'] = 'An account with the provided credentials does not exists. Please review you account details and try again.'
+                return await self.app(scope, receive, send)
 
             # If any other exception occurs, close the connection and send the error message
             except Exception as e:
                 scope['auth_error'] = str(e)
+                return await self.app(scope, receive, send)
 
         scope['auth_error'] = 'Could not process your request, no access token was provided.'
         # Call the next application/middleware in the stack
