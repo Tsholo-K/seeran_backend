@@ -11,20 +11,24 @@ from seeran_backend.middleware import  connection_manager
 from authentication.utils import validate_access_token
 
 # founder async functions 
-from . import founder_post_async_functions
+from . import founder_connect_async_functions
+from . import founder_create_async_functions
+from . import founder_delete_async_functions
 from . import founder_search_async_functions
-from . import founder_put_async_functions
-from . import founder_get_async_functions
+from . import founder_update_async_functions
+from . import founder_view_async_functions
 
 # general async functions 
 from websockets.consumers.general import general_submit_async_functions
-from websockets.consumers.general import general_put_async_functions
+from websockets.consumers.general import general_update_async_functions
 from websockets.consumers.general import general_view_async_functions
 from websockets.consumers.general import general_verify_async_functions
 from websockets.consumers.general import general_email_async_functions
 
 
 class FounderConsumer(AsyncWebsocketConsumer):
+
+# CONNECT
 
     async def connect(self):
         # Get the user's role from the scope
@@ -39,13 +43,19 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
         await self.accept()
 
+        response = await founder_connect_async_functions.account_details(account_id, role)
+        if 'error' in response:
+            await self.send(text_data=json.dumps(response))
+            await connection_manager.disconnect(account_id, self)
+            return await self.close()
 
+# DISCONNECT
 
     async def disconnect(self, close_code):
         account_id = self.scope['user']
         await connection_manager.disconnect(account_id, self)
 
-
+# RECIEVE
 
     async def receive(self, text_data):
         user = self.scope.get('user')
@@ -63,9 +73,6 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
         if not action or not description:
             return await self.send(text_data=json.dumps({'error': 'invalid request..'}))
-        
-        if action == 'AUTHENTICATE' and description == 'socket_authentication':
-            return await self.send(text_data=json.dumps({'authenticated': 'socket connection valid and authenticated'}))
 
         response = await self.handle_request(action, description, details, user, role, access_token)
         
@@ -74,36 +81,37 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
         return await self.send(text_data=json.dumps({'error': 'provided information is invalid.. request revoked'}))
 
-
+# HANDLER/ROUTER
 
     async def handle_request(self, action, description, details, user, role, access_token):
         action_map = {
-            'GET': self.handle_get,
+            'VIEW': self.handle_view,
             'SEARCH': self.handle_search,
             'VERIFY': self.handle_verify,
-            'PUT': self.handle_put,
-            'POST': self.handle_post,
+            'UPDATE': self.handle_update,
+            'SUBMIT': self.handle_submit,
+            'DELETE': self.handle_delete,
+            'CREATE': self.handle_create,
         }
 
         handler = action_map.get(action)
         if handler:
             return await handler(description, details, user, role, access_token)
         
-        return {'error': 'Invalid action'}
+        return {'error': 'Could not process your request, an invalid action was provided. If this problem persist open a bug report ticket.'}
 
+# VIEW
 
-
-    async def handle_get(self, description, details, user, role, access_token):
-        if description == 'my_security_information':
-            return await general_view_async_functions.fetch_security_information(user, role)
+    async def handle_view(self, description, details, user, role, access_token):
+        if description == 'view_my_security_information':
+            return await general_view_async_functions.view_my_security_information(user, role)
         
-        elif description == 'schools':
-            return await founder_get_async_functions.fetch_schools()
+        elif description == 'view_schools':
+            return await founder_view_async_functions.view_schools()
         
-        else:
-            return {'error': 'Invalid get description'}
+        return {'error': 'Could not process your request, an invalid view description was provided. If this problem persist open a bug report ticket.'}
         
-
+# SEARCH
 
     async def handle_search(self, description, details, user, role, access_token):
         search_map = {
@@ -124,74 +132,82 @@ class FounderConsumer(AsyncWebsocketConsumer):
         if func:
             return await func(details)
         
-        return {'error': 'Invalid search description'}
+        return {'error': 'Could not process your request, an invalid search description was provided. If this problem persist open a bug report ticket.'}
 
-
+# VERIFY
 
     async def handle_verify(self, description, details, user, role, access_token):
 
-        if description == 'verify_email':
-            response = await general_verify_async_functions.verify_email(details)
+        if description == 'verify_email_address':
+            response = await general_verify_async_functions.verify_email_address(details)
             if response.get('user'):
                 return await general_email_async_functions.send_one_time_pin_email(response.get('user'), reason='This OTP was generated in response to your email update request..')
-            
+            return response
+        
         elif description == 'verify_password':
             response = await general_verify_async_functions.verify_password(user, details)
             if response.get('user'):
                 return await general_email_async_functions.send_one_time_pin_email(response.get('user'), reason='This OTP was generated in response to your password update request..')
-            
+            return response
+        
         elif description == 'verify_otp':
             return await general_verify_async_functions.verify_otp(user, details)
         
-        else:
-            return {'error': 'Invalid verify description'}
+        return {'error': 'Could not process your request, an invalid verify description was provided. If this problem persist open a bug report ticket.'}
 
+# UPDATE
 
+    async def handle_update(self, description, details, user, role, access_token):
 
-    async def handle_put(self, description, details, user, role, access_token):
-
-        if description == 'update_email':
-            return await general_put_async_functions.update_email(user, details, access_token)
+        if description == 'update_email_address':
+            return await general_update_async_functions.update_email_address(user, details, access_token)
         
         elif description == 'update_password':
-            return await general_put_async_functions.update_password(user, details, access_token)
+            return await general_update_async_functions.update_password(user, details, access_token)
         
         elif description == 'update_multi_factor_authentication':
-            return await general_put_async_functions.update_multi_factor_authentication(user, details)
+            return await general_update_async_functions.update_multi_factor_authentication(user, details)
 
-        elif description == 'update_bug_report':
-            return await founder_put_async_functions.update_bug_report(details)
+        elif description == 'update_bug_report_details':
+            return await founder_update_async_functions.update_bug_report_details(details)
         
-        elif description == 'update_principal_account':
-            return await founder_put_async_functions.update_principal_account(details)
+        elif description == 'update_principal_account_details':
+            return await founder_update_async_functions.update_principal_account_details(details)
                 
-        elif description == 'update_school_details':
-            return await founder_put_async_functions.update_school_account(details)
+        elif description == 'update_school_details_details':
+            return await founder_update_async_functions.update_school_account_details(details)
         
-        else:
-            return {'error': 'Invalid put description'}
+        return {'error': 'Could not process your request, an invalid update description was provided. If this problem persist open a bug report ticket.'}
 
+# SUBMIT
 
+    async def handle_submit(self, description, details, user, role, access_token):
+        if description == 'submit_log_out_request':
+            return await general_submit_async_functions.submit_log_out_request(access_token)
+        
+        return {'error': 'Could not process your request, an invalid submit description was provided. If this problem persist open a bug report ticket.'}
 
-    async def handle_post(self, description, details, user, role, access_token):
+# DELETE
 
+    async def handle_delete(self, description, details, user, role, access_token):
+        if description == 'delete_school_account':
+            return await founder_delete_async_functions.delete_school_account(details)
+            
+        elif description == 'delete_principal_account':
+            return await founder_delete_async_functions.delete_principal_account(details)
+        
+        return {'error': 'Could not process your request, an invalid delete description was provided. If this problem persist open a bug report ticket.'}
+
+# CREATE
+
+    async def handle_create(self, description, details, user, role, access_token):
         if description == 'create_school_account':
-            return await founder_post_async_functions.create_school_account(details)
-        
-        elif description == 'delete_school_account':
-            return await founder_post_async_functions.delete_school_account(details)
+            return await founder_create_async_functions.create_school_account(details)
         
         elif description == 'create_principal_account':
-            response = await founder_post_async_functions.create_principal_account(details)
+            response = await founder_create_async_functions.create_principal_account(details)
             if response.get('user'):
                 return await general_email_async_functions.send_account_confirmation_email(response.get('user'))
             return response
-            
-        elif description == 'delete_principal_account':
-            return await founder_post_async_functions.delete_principal_account(details)
         
-        elif description == 'log_out':
-            return await general_submit_async_functions.log_out(access_token)
-        
-        else:
-            return {'error': 'Invalid post description'}
+        return {'error': 'Could not process your request, an invalid create description was provided. If this problem persist open a bug report ticket.'}

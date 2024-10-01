@@ -9,7 +9,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
 
 # models
-from accounts.models import BaseUser
+from accounts.models import BaseAccount
 
 # utility functions
 from authentication.utils import validate_access_token
@@ -36,7 +36,7 @@ class TokenAuthMiddleware:
         self.app = app
 
     @database_sync_to_async
-    def get_user(self, user_id):
+    def get_account(self, account_id):
         """
         Fetches the user's account ID and role from the database.
 
@@ -49,7 +49,7 @@ class TokenAuthMiddleware:
         Raises:
             CustomUser.DoesNotExist: If the user does not exist.
         """
-        user = BaseUser.objects.values('account_id', 'role').get(pk=user_id)
+        user = BaseAccount.objects.values('account_id', 'role').get(pk=account_id)
         return (str(user['account_id']), user['role'])
 
     async def __call__(self, scope, receive, send):
@@ -91,7 +91,7 @@ class TokenAuthMiddleware:
                 decoded_token = AccessToken(access_token)
 
                 # Fetch the user and their role from the database
-                scope['user'], scope['role'] = await self.get_user(decoded_token['user_id'])
+                scope['user'], scope['role'] = await self.get_account(decoded_token['user_id'])
                 scope['access_token'] = access_token
 
             except ObjectDoesNotExist:

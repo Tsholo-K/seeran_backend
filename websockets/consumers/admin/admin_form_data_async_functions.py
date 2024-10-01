@@ -4,7 +4,8 @@ import zlib
 import json
 
 # django
-from django.db.models import Q
+from django.db import models
+from django.utils import timezone
 
 # channels
 from channels.db import database_sync_to_async
@@ -14,6 +15,7 @@ from permission_groups.models import AdminPermissionGroup, TeacherPermissionGrou
 from grades.models import Grade
 from subjects.models import Subject
 from classrooms.models import Classroom
+from school_attendances.models import SchoolAttendance
 from assessments.models import Assessment
 from assessment_submissions.models import AssessmentSubmission
 from student_group_timetables.models import StudentGroupTimetable
@@ -44,13 +46,11 @@ def form_data_for_subscribing_accounts_to_permission_group(user, role, details):
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'ASSIGN', 'PERMISSION'):
             response = f'could not proccess your request, you do not have the necessary permissions to view permission group subscribers. please contact your principal to adjust you permissions for viewing permissions.'
             audits_utilities.log_audit(actor=requesting_account, action='ASSIGN', target_model='PERMISSION', outcome='DENIED', response=response, school=requesting_account.school)
-
             return {'error': response}
         
         if not {'permission_group', 'group'}.issubset(details) or details['group'] not in ['admins', 'teachers']:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid group ID and group (admin or teacher) for which to filter the permission groups and try again'
             audits_utilities.log_audit(actor=requesting_account, action='ASSIGN', target_model='PERMISSION', outcome='ERROR', response=response, school=requesting_account.school)
-
             return {'error': response}
         
         # Determine the group type based on the role
@@ -229,6 +229,50 @@ def form_data_for_adding_students_to_classroom(user, role, details):
     except Exception as e:
         # Handle any other unexpected errors
         return {'error': str(e)}
+    
+
+@database_sync_to_async
+def form_data_for_classroom_attendance_register(user, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to create an assessment
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'SUBMIT', 'CLASSROOM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to submit classroom attendance register. please contact your principal to adjust you permissions for viewing classrooms.'
+            audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='CLASSROOM', outcome='DENIED', response=response, school=requesting_account.school)
+            return {'error': response}
+        
+        if not {'classroom'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid classroom ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='CLASSROOM', outcome='ERROR', response=response, school=requesting_account.school)
+            return {'error': response}
+        
+        classroom = Classroom.objects.get(classroom_id=details.get('classroom'), register_class=True, school=requesting_account.school)
+
+        # Get today's date
+        today = timezone.now()
+            
+        # Check if an Absent instance exists for today and the given class
+        attendance = SchoolAttendance.objects.prefetch_related('absent_students').filter(date__date=today, classroom=classroom).first()
+
+        if attendance:
+            students = attendance.absent_students.all()
+            attendance_register_taken = True
+
+        else:
+            students = classroom.students.all()
+            attendance_register_taken = False
+
+        serialized_students = StudentSourceAccountSerializer(students, many=True).data
+
+        return {"students": serialized_students, "attendance_register_taken" : attendance_register_taken}
+            
+    except Classroom.DoesNotExist:
+        return { 'error': 'class with the provided credentials does not exist' }
+
+    except Exception as e:
+        return { 'error': str(e) }
 
 
 @database_sync_to_async
@@ -309,17 +353,17 @@ def form_data_for_collecting_assessment_submissions(user, role, details):
         # Get the list of students who have already submitted the assessment
         submitted_student_ids = assessment.submissions.values_list('student__account_id', flat=True)
 
-        search_filters = Q()
+        search_filters = models.Q()
 
         # Apply search filters if provided
         if 'search_query' in details:
             search_query = details.get('search_query')
-            search_filters &= (Q(name__icontains=search_query) | Q(surname__icontains=search_query) | Q(account_id__icontains=search_query))
+            search_filters &= (models.Q(name__icontains=search_query) | models.Q(surname__icontains=search_query) | models.Q(account_id__icontains=search_query))
 
         # Apply cursor for pagination using the primary key (id)
         if 'cursor' in details and details['cursor'] is not None:
             cursor = details.get('cursor')
-            search_filters &= Q(id__gt=cursor)
+            search_filters &= models.Q(id__gt=cursor)
 
         if assessment.classroom:
             # Fetch students in the classroom who haven't submitted
@@ -373,17 +417,17 @@ def form_data_for_assessment_submissions(user, role, details):
         # Get the list of students who have already submitted the assessment
         submitted_student_ids = assessment.submissions.values_list('student__account_id', flat=True)
 
-        search_filters = Q()
+        search_filters = models.Q()
 
         # Apply search filters if provided
         if 'search_query' in details:
             search_query = details.get('search_query')
-            search_filters &= (Q(name__icontains=search_query) | Q(surname__icontains=search_query) | Q(account_id__icontains=search_query))
+            search_filters &= (models.Q(name__icontains=search_query) | models.Q(surname__icontains=search_query) | models.Q(account_id__icontains=search_query))
 
         # Apply cursor for pagination using the primary key (id)
         if 'cursor' in details and details['cursor'] is not None:
             cursor = details.get('cursor')
-            search_filters &= Q(id__gt=cursor)
+            search_filters &= models.Q(id__gt=cursor)
 
         if assessment.classroom:
             # Fetch students in the classroom who haven't submitted

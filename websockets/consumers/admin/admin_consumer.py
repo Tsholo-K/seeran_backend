@@ -26,12 +26,11 @@ from . import admin_unlink_async_functions
 # general async functions
 from websockets.consumers.general import general_message_async_functions
 from websockets.consumers.general import general_submit_async_functions
-from websockets.consumers.general import general_put_async_functions
+from websockets.consumers.general import general_update_async_functions
 from websockets.consumers.general import general_search_async_functions
 from websockets.consumers.general import general_view_async_functions
 from websockets.consumers.general import general_verify_async_functions
 from websockets.consumers.general import general_email_async_functions
-from websockets.consumers.general import general_form_data_async_functions
 
 
 class AdminConsumer(AsyncWebsocketConsumer):
@@ -52,7 +51,6 @@ class AdminConsumer(AsyncWebsocketConsumer):
         await self.accept()
 
         response = await admin_connect_async_functions.account_details(account_id, role)
-
         if 'error' in response or 'denied' in response:
             await self.send(text_data=json.dumps(response))
             await connection_manager.disconnect(account_id, self)
@@ -236,7 +234,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
     async def handle_verify(self, description, details, user, role, access_token):
         verify_map = {
-            'verify_email': general_verify_async_functions.verify_email,
+            'verify_email': general_verify_async_functions.verify_email_address,
             'verify_password': general_verify_async_functions.verify_password,
 
             'verify_otp': general_verify_async_functions.verify_otp,
@@ -259,7 +257,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
                     response = await general_email_async_functions.send_email_revalidation_one_time_pin_email(response['user'])
 
                     if response.get('message'):
-                        return await general_put_async_functions.update_email_ban_otp_sends(details)
+                        return await general_update_async_functions.update_email_ban_otp_sends(details)
 
             return response
 
@@ -274,7 +272,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'form_data_for_adding_students_to_classroom': admin_form_data_async_functions.form_data_for_adding_students_to_classroom,
 
-            'form_data_for_classroom_attendance_register': general_form_data_async_functions.form_data_for_classroom_attendance_register,
+            'form_data_for_classroom_attendance_register': admin_form_data_async_functions.form_data_for_classroom_attendance_register,
 
             'form_data_for_setting_assessment' : admin_form_data_async_functions.form_data_for_setting_assessment,
             'form_data_for_updating_assessment' : admin_form_data_async_functions.form_data_for_updating_assessment,
@@ -297,10 +295,10 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
     async def handle_update(self, description, details, user, role, access_token):
         update_map = {
-            'update_email_address': general_put_async_functions.update_email_address,
-            'update_password': general_put_async_functions.update_password,
+            'update_email_address': general_update_async_functions.update_email_address,
+            'update_password': general_update_async_functions.update_password,
 
-            'update_multi_factor_authentication': general_put_async_functions.update_multi_factor_authentication,
+            'update_multi_factor_authentication': general_update_async_functions.update_multi_factor_authentication,
 
             'update_school_account_details' : admin_update_async_functions.update_school_account_account,
 
@@ -318,7 +316,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'update_student_grade' : admin_update_async_functions.update_student_transcript_score,
             
-            'update_messages_as_read': general_put_async_functions.update_messages_as_read,
+            'update_messages_as_read': general_update_async_functions.update_messages_as_read,
 
             'update_classroom_details': admin_update_async_functions.update_classroom_details,
             'update_classroom_students': admin_update_async_functions.update_classroom_students,

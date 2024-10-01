@@ -16,6 +16,99 @@ from email_address_bans.models import EmailAddressBan
 from authentication.utils import generate_otp, verify_user_otp
 
 
+
+@database_sync_to_async
+def verify_email_address(details):
+
+    try:
+        validate_email(details.get('email'))
+        account = BaseAccount.objects.get(email=details.get('email'))
+        
+        # check if users email is banned
+        if account.email_banned:
+            return { "error" : "your email address has been banned.. request denied"}
+        
+        return {'user' : account}
+    
+    except BaseAccount.DoesNotExist:
+        return {'error': 'invalid email address'}
+
+    except ValidationError:
+        return {"error": "invalid email address"}
+        
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@database_sync_to_async
+def verify_password(user, details):
+    
+    try:
+        account = BaseAccount.objects.get(account_id=user)
+        
+        # check if the users email is banned
+        if account.email_banned:
+            return { "error" : "your email address has been banned, request denied"}
+            
+        # Validate the password
+        if not check_password(details.get('password'), account.password):
+            return {"error": "invalid password, please try again"}
+        
+        return {"user" : account}
+       
+    except BaseAccount.DoesNotExist:
+        return {'error': 'user with the provided credentials does not exist'}
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@database_sync_to_async
+def verify_otp(user, details):
+
+    try:
+        account = BaseAccount.objects.get(account_id=user)
+
+        stored_hashed_otp_and_salt = cache.get(account.email + 'account_otp')
+
+        if not stored_hashed_otp_and_salt:
+            cache.delete(account.email + 'account_otp_attempts')
+            return {"denied": "OTP expired.. please generate a new one"}
+
+        if verify_user_otp(user_otp=details.get('otp'), stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
+            
+            # OTP is verified, prompt the user to set their password
+            cache.delete(account.email)
+            
+            authorization_otp, hashed_authorization_otp, salt = generate_otp()
+            cache.set(account.email + 'authorization_otp', (hashed_authorization_otp, salt), timeout=300)  # 300 seconds = 5 mins
+            
+            return {"message": "OTP verified successfully..", "authorization_otp" : authorization_otp}
+        
+        else:
+
+            attempts = cache.get(account.email + 'account_otp_attempts', 3)
+            
+            # Incorrect OTP, decrement attempts and handle expiration
+            attempts -= 1
+            
+            if attempts <= 0:
+                cache.delete(account.email + 'account_otp')
+                cache.delete(account.email + 'account_otp_attempts')
+                
+                return {"denied": "maximum OTP verification attempts exceeded.."}
+            
+            cache.set(account.email + 'account_otp_attempts', attempts, timeout=300)  # Update attempts with expiration
+
+            return {"error": f"incorrect OTP.. {attempts} attempts remaining"}
+       
+    except BaseAccount.DoesNotExist:
+        return { 'error': 'user with the provided credentials does not exist' }
+ 
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @database_sync_to_async
 def verify_email_ban_revalidation_otp_send(user, details):
     """
@@ -174,96 +267,4 @@ def verify_email_ban_revalidation_otp(user, details):
     
     except Exception as e:
         return {'error': f'An unexpected error occurred while verifying OTP: {str(e)}'}
-
-
-@database_sync_to_async
-def verify_email(details):
-
-    try:
-        validate_email(details.get('email'))
-        account = BaseAccount.objects.get(email=details.get('email'))
-        
-        # check if users email is banned
-        if account.email_banned:
-            return { "error" : "your email address has been banned.. request denied"}
-        
-        return {'user' : account}
-    
-    except BaseAccount.DoesNotExist:
-        return {'error': 'invalid email address'}
-
-    except ValidationError:
-        return {"error": "invalid email address"}
-        
-    except Exception as e:
-        return {"error": str(e)}
-
-
-@database_sync_to_async
-def verify_password(user, details):
-    
-    try:
-        account = BaseAccount.objects.get(account_id=user)
-        
-        # check if the users email is banned
-        if account.email_banned:
-            return { "error" : "your email address has been banned, request denied"}
-            
-        # Validate the password
-        if not check_password(details.get('password'), account.password):
-            return {"error": "invalid password, please try again"}
-        
-        return {"user" : account}
-       
-    except BaseAccount.DoesNotExist:
-        return {'error': 'user with the provided credentials does not exist'}
-
-    except Exception as e:
-        return {"error": str(e)}
-
-
-@database_sync_to_async
-def verify_otp(user, details):
-
-    try:
-        account = BaseAccount.objects.get(account_id=user)
-
-        stored_hashed_otp_and_salt = cache.get(account.email + 'account_otp')
-
-        if not stored_hashed_otp_and_salt:
-            cache.delete(account.email + 'account_otp_attempts')
-            return {"denied": "OTP expired.. please generate a new one"}
-
-        if verify_user_otp(user_otp=details.get('otp'), stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
-            
-            # OTP is verified, prompt the user to set their password
-            cache.delete(account.email)
-            
-            authorization_otp, hashed_authorization_otp, salt = generate_otp()
-            cache.set(account.email + 'authorization_otp', (hashed_authorization_otp, salt), timeout=300)  # 300 seconds = 5 mins
-            
-            return {"message": "OTP verified successfully..", "authorization_otp" : authorization_otp}
-        
-        else:
-
-            attempts = cache.get(account.email + 'account_otp_attempts', 3)
-            
-            # Incorrect OTP, decrement attempts and handle expiration
-            attempts -= 1
-            
-            if attempts <= 0:
-                cache.delete(account.email + 'account_otp')
-                cache.delete(account.email + 'account_otp_attempts')
-                
-                return {"denied": "maximum OTP verification attempts exceeded.."}
-            
-            cache.set(account.email + 'account_otp_attempts', attempts, timeout=300)  # Update attempts with expiration
-
-            return {"error": f"incorrect OTP.. {attempts} attempts remaining"}
-       
-    except BaseAccount.DoesNotExist:
-        return { 'error': 'user with the provided credentials does not exist' }
- 
-    except Exception as e:
-        return {"error": str(e)}
     

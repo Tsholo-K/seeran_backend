@@ -16,9 +16,8 @@ from schools.serializers import UpdateSchoolAccountSerializer, SchoolDetailsSeri
 from bug_reports.serializers import UpdateBugReportStatusSerializer
 
 
-
 @database_sync_to_async
-def update_school_account(details):
+def update_school_account_details(details):
     try:
         school = School.objects.get(school_id=details.get('school'))
 
@@ -49,7 +48,7 @@ def update_school_account(details):
 
 
 @database_sync_to_async
-def update_principal_account(details):
+def update_principal_account_details(details):
     """
     Asynchronously updates a Principal account with the provided details.
 
@@ -99,7 +98,7 @@ def update_principal_account(details):
   
 
 @database_sync_to_async
-def update_bug_report(details):
+def update_bug_report_details(details):
     """
     Asynchronously updates the status of a BugReport with the provided details.
 

@@ -12,7 +12,7 @@ from authentication.utils import validate_access_token
 
 # general async functions 
 from websockets.consumers.general import general_submit_async_functions
-from websockets.consumers.general import general_put_async_functions
+from websockets.consumers.general import general_update_async_functions
 from websockets.consumers.general import general_search_async_functions
 from websockets.consumers.general import general_view_async_functions
 from websockets.consumers.general import general_verify_async_functions
@@ -192,12 +192,12 @@ class ParentConsumer(AsyncWebsocketConsumer):
 
     async def handle_put(self, description, details, user, role, access_token):
         put_map = {
-            'update_email': general_put_async_functions.update_email,
-            'update_password': general_put_async_functions.update_password,
+            'update_email': general_update_async_functions.update_email,
+            'update_password': general_update_async_functions.update_password,
 
-            'update_multi_factor_authentication': general_put_async_functions.update_multi_factor_authentication,
+            'update_multi_factor_authentication': general_update_async_functions.update_multi_factor_authentication,
 
-            'mark_messages_as_read': general_put_async_functions.mark_messages_as_read,
+            'mark_messages_as_read': general_update_async_functions.mark_messages_as_read,
         }
 
         func = put_map.get(description)
@@ -220,7 +220,7 @@ class ParentConsumer(AsyncWebsocketConsumer):
                     response = await general_email_async_functions.send_email_revalidation_one_time_pin_email(response['user'])
 
                     if response.get('message'):
-                        return await general_put_async_functions.update_email_ban_otp_sends(details)
+                        return await general_update_async_functions.update_email_ban_otp_sends(details)
                 
             return response
         

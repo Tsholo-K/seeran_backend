@@ -11,7 +11,7 @@ from schools.serializers import SchoolsSerializer
 
 
 @database_sync_to_async
-def fetch_schools():
+def view_schools():
     """
     Asynchronously fetches all School records from the database and serializes them.
 
