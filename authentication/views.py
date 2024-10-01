@@ -310,7 +310,7 @@ def activate_account(request):
         otp = request.COOKIES.get('signin_authorization_otp')
         stored_hashed_otp_and_salt = cache.get(email_address + 'signin_authorization_otp')
 
-        if not hashed_authorization_otp_and_salt:
+        if not stored_hashed_otp_and_salt:
             response = Response({"denied": "there is no authorization OTP for your account on record.. process forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
             if otp:
                 response.delete_cookie('signin_authorization_otp', domain='.seeran-grades.cloud')
