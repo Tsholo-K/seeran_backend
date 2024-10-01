@@ -60,11 +60,11 @@ class FounderConsumer(AsyncWebsocketConsumer):
 # RECIEVE
 
     async def receive(self, text_data):
-        user = self.scope.get('user')
+        account = self.scope.get('account')
         role = self.scope.get('role')
         access_token = self.scope.get('access_token')
 
-        if not (user and role and access_token and validate_access_token(access_token)):
+        if not (account and role and access_token and validate_access_token(access_token)):
             await self.send(text_data=json.dumps({'error': 'request not authenticated.. access denied'}))
             return await self.close()
 
@@ -74,18 +74,18 @@ class FounderConsumer(AsyncWebsocketConsumer):
         details = data.get('details')
 
         if not action or not description:
-            return await self.send(text_data=json.dumps({'error': 'invalid request..'}))
+            return await self.send(text_data=json.dumps({'error': 'Could not process your request, invalid request..'}))
 
-        response = await self.handle_request(action, description, details, user, role, access_token)
+        response = await self.handle_request(action, description, details, account, role, access_token)
         
         if response is not None:
             return await self.send(text_data=json.dumps(response))
         
-        return await self.send(text_data=json.dumps({'error': 'provided information is invalid.. request revoked'}))
+        return await self.send(text_data=json.dumps({'error': 'Could not process your request, the provided information is invalid.. request revoked'}))
 
 # HANDLER/ROUTER
 
-    async def handle_request(self, action, description, details, user, role, access_token):
+    async def handle_request(self, action, description, details, account, role, access_token):
         action_map = {
             'VIEW': self.handle_view,
             'SEARCH': self.handle_search,
@@ -98,15 +98,15 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
         handler = action_map.get(action)
         if handler:
-            return await handler(description, details, user, role, access_token)
+            return await handler(description, details, account, role, access_token)
         
         return {'error': 'Could not process your request, an invalid action was provided. If this problem persist open a bug report ticket.'}
 
 # VIEW
 
-    async def handle_view(self, description, details, user, role, access_token):
+    async def handle_view(self, description, details, account, role, access_token):
         if description == 'view_my_security_information':
-            return await general_view_async_functions.view_my_security_information(user, role)
+            return await general_view_async_functions.view_my_security_information(account, role)
         
         elif description == 'view_schools':
             return await founder_view_async_functions.view_schools()
@@ -115,7 +115,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
 # SEARCH
 
-    async def handle_search(self, description, details, user, role, access_token):
+    async def handle_search(self, description, details, account, role, access_token):
         search_map = {
             'school': founder_search_async_functions.search_school,
             'school_details': founder_search_async_functions.search_school_details,
@@ -138,7 +138,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
 # VERIFY
 
-    async def handle_verify(self, description, details, user, role, access_token):
+    async def handle_verify(self, description, details, account, role, access_token):
 
         if description == 'verify_email_address':
             response = await general_verify_async_functions.verify_email_address(details)
@@ -147,28 +147,28 @@ class FounderConsumer(AsyncWebsocketConsumer):
             return response
         
         elif description == 'verify_password':
-            response = await general_verify_async_functions.verify_password(user, details)
+            response = await general_verify_async_functions.verify_password(account, details)
             if response.get('user'):
                 return await general_email_async_functions.send_one_time_pin_email(response.get('user'), reason='This OTP was generated in response to your password update request..')
             return response
         
         elif description == 'verify_otp':
-            return await general_verify_async_functions.verify_otp(user, details)
+            return await general_verify_async_functions.verify_otp(account, details)
         
         return {'error': 'Could not process your request, an invalid verify description was provided. If this problem persist open a bug report ticket.'}
 
 # UPDATE
 
-    async def handle_update(self, description, details, user, role, access_token):
+    async def handle_update(self, description, details, account, role, access_token):
 
         if description == 'update_email_address':
-            return await general_update_async_functions.update_email_address(user, details, access_token)
+            return await general_update_async_functions.update_email_address(account, details, access_token)
         
         elif description == 'update_password':
-            return await general_update_async_functions.update_password(user, details, access_token)
+            return await general_update_async_functions.update_password(account, details, access_token)
         
         elif description == 'update_multi_factor_authentication':
-            return await general_update_async_functions.update_multi_factor_authentication(user, details)
+            return await general_update_async_functions.update_multi_factor_authentication(account, details)
 
         elif description == 'update_bug_report_details':
             return await founder_update_async_functions.update_bug_report_details(details)
@@ -183,7 +183,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
 # SUBMIT
 
-    async def handle_submit(self, description, details, user, role, access_token):
+    async def handle_submit(self, description, details, account, role, access_token):
         if description == 'submit_log_out_request':
             return await general_submit_async_functions.submit_log_out_request(access_token)
         
@@ -191,7 +191,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
 # DELETE
 
-    async def handle_delete(self, description, details, user, role, access_token):
+    async def handle_delete(self, description, details, account, role, access_token):
         if description == 'delete_school_account':
             return await founder_delete_async_functions.delete_school_account(details)
             
@@ -202,7 +202,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
 # CREATE
 
-    async def handle_create(self, description, details, user, role, access_token):
+    async def handle_create(self, description, details, account, role, access_token):
         if description == 'create_school_account':
             return await founder_create_async_functions.create_school_account(details)
         
