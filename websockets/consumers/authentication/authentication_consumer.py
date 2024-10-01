@@ -63,8 +63,7 @@ class WebsocketHandler(AsyncWebsocketConsumer):
         if consumer_class:
             try:
                 new_scope = dict(self.scope)
-                consumer_instance = consumer_class(new_scope, self.receive, self.send)
-                await consumer_instance(new_scope, self.receive, self.send)
+                await consumer_class(new_scope, self.receive, self.send)
             except TypeError as te:
                 print(f"Type error in WebsocketHandler delegation: {str(te)}")
                 await self.close()
