@@ -39,22 +39,23 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
         # Get the user's role from the scope
-        role = self.scope.get('role')
+        role = self.scope['role']
 
         # Check if the user has the required role
         if role not in ['ADMIN', 'PRINCIPAL']:
             return await self.close()
-        
-        account_id = self.scope['user']
-        await connection_manager.connect(account_id, self)
+
+        account = self.scope['account']
 
         await self.accept()
 
-        response = await admin_connect_async_functions.account_details(account_id, role)
+        response = await admin_connect_async_functions.account_details(account)
         if 'error' in response or 'denied' in response:
             await self.send(text_data=json.dumps(response))
-            await connection_manager.disconnect(account_id, self)
             return await self.close()
+
+        await connection_manager.connect(account, self)
+        await self.send(text_data=json.dumps(response))
 
 # DISCONNECT
 
@@ -80,6 +81,9 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         if not action or not description:
             return await self.send(text_data=json.dumps({'error': 'invalid request..'}))
+        
+        if action == 'INSPECT' and description == 'socket_communication_check':
+            return await self.send(text_data=json.dumps({'socket_communication_successful': True}))
 
         response = await self.handle_request(action, description, details, user, role, access_token)
         
