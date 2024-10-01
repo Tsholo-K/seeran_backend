@@ -67,7 +67,7 @@ class TokenAuthMiddleware:
         await send({'type': 'websocket.accept'})
 
         # Send the error message to the client
-        await send({'type': 'websocket.send', 'text': json.dumps({'websocket_unauthenticated': message})})
+        await send({'type': 'websocket.send', 'text_data': json.dumps({'websocket_unauthenticated': message})})
 
         # Close the WebSocket connection after sending the message
         await send({'type': 'websocket.close'})
