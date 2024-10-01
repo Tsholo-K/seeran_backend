@@ -30,7 +30,7 @@ def submit_log_out_request(access_token):
             cache.set(access_token, 'blacklisted', timeout=expiration_time)
     
         # delete token from database
-        AccountAccessToken.objects.filter(token=str(access_token)).delete()
+        AccountAccessToken.objects.filter(access_token_string=str(access_token)).delete()
         
         return {"message": "logged you out successful"}
     
