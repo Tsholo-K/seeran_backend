@@ -46,21 +46,20 @@ class AccountsWebsocketHandler(AsyncWebsocketConsumer):
             )
         
         role_specific_consumer_mapping = {
-            'FOUNDER': FounderConsumer.as_asgi(),
-            'PRINCIPAL': AdminConsumer.as_asgi(),
-            'ADMIN': AdminConsumer.as_asgi(),
-            'TEACHER': TeacherConsumer.as_asgi(),
-            'STUDENT': StudentConsumer.as_asgi(),
-            'PARENT': ParentConsumer.as_asgi(),
+            'FOUNDER': FounderConsumer,
+            'PRINCIPAL': AdminConsumer,
+            'ADMIN': AdminConsumer,
+            'TEACHER': TeacherConsumer,
+            'STUDENT': StudentConsumer,
+            'PARENT': ParentConsumer,
         }
-        
+
         print(f"Role: {self.role}")
         print(f"Scope: {self.scope}")
         print(f"Receive: {self.receive}")
         print(f"Send: {self.send}")
 
         consumer_class = role_specific_consumer_mapping.get(self.role)
-
         if consumer_class:
             try:
                 # Check if the scope, receive, and send are None
@@ -70,8 +69,10 @@ class AccountsWebsocketHandler(AsyncWebsocketConsumer):
                     raise ValueError("self.receive is None")
                 if self.send is None:
                     raise ValueError("self.send is None")
-
-                await consumer_class(self.scope, self.receive, self.send)
+                
+                # Instantiate the consumer as ASGI
+                asgi_application = consumer_class.as_asgi()
+                await asgi_application(self.scope, self.receive, self.send)
             except TypeError as te:
                 print(f"Type error in WebsocketHandler delegation: {str(te)}")
                 await self.close()
