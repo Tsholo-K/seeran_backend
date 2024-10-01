@@ -48,6 +48,8 @@ class FounderConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps(response))
             await connection_manager.disconnect(account, self)
             return await self.close()
+        
+        return await self.send(text_data=json.dumps(response))
 
 # DISCONNECT
 
