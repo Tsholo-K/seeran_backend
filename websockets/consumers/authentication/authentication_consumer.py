@@ -64,10 +64,10 @@ class WebsocketHandler(AsyncWebsocketConsumer):
             try:
                 await consumer_class(self.scope, self.receive, self.send)
             except TypeError as te:
-                print(f"Type error in WebsocketHandler delegation: {str(e)}")
+                print(f"Type error in WebsocketHandler delegation: {str(te)}")
                 await self.close()
             except AttributeError as ae:
-                print(f"Attribute error in WebsocketHandler delegation: {str(e)}")
+                print(f"Attribute error in WebsocketHandler delegation: {str(ae)}")
                 await self.close()
             except Exception as e:
                 print(f"General error in WebsocketHandler delegation: {str(e)}")
