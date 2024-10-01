@@ -52,9 +52,9 @@ class WebsocketHandler(AsyncWebsocketConsumer):
         """Route the authenticated user to their respective consumer based on role."""
         print('About to delegate connection')
         role_specific_consumer_mapping = {
-            'FOUNDER': FounderConsumer(self.scope, self.receive, self.send).as_asgi(),
-            'PRINCIPAL': AdminConsumer(self.scope, self.receive, self.send).as_asgi(),
-            'ADMIN': AdminConsumer(self.scope, self.receive, self.send).as_asgi(),
+            'FOUNDER': FounderConsumer.as_asgi(),
+            'PRINCIPAL': AdminConsumer.as_asgi(),
+            'ADMIN': AdminConsumer.as_asgi(),
             'TEACHER': TeacherConsumer.as_asgi(),
             'STUDENT': StudentConsumer.as_asgi(),
             'PARENT': ParentConsumer.as_asgi(),
@@ -64,8 +64,13 @@ class WebsocketHandler(AsyncWebsocketConsumer):
         consumer_class = role_specific_consumer_mapping.get(self.role)
         if consumer_class:
             try:
-                # Pass the necessary context to the child consumer
-                return consumer_class.connect()
+                print(f"User role: {self.role}")
+                print(f"Scope: {self.scope}, Receive: {self.receive}, Send: {self.send}")
+                print(f"Consumer class: {consumer_class}")
+
+                if self.scope is None or self.receive is None or self.send is None:
+                    print("Error: One of the required parameters (scope, receive, send) is None.")
+                await consumer_class
             except TypeError as te:
                 print(f"Type error in WebsocketHandler delegation: {te}")
                 await self.close()
