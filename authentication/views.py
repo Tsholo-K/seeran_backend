@@ -303,7 +303,7 @@ def activate_account(request):
         email_address = request.data.get('email_address')
         password = request.data.get('password')
 
-        if not (email_address or password):
+        if not email_address or not password:
             return Response({"error": "missing credentials, all fields are required"}, status=status.HTTP_400_BAD_REQUEST)
 
         # get authorization otp 
@@ -329,6 +329,7 @@ def activate_account(request):
         
         # activate users account
         with transaction.atomic():
+            print('about to activate account')
             account = BaseAccount.objects.activate(email_address=email_address, password=password)
 
             # generate an access and refresh token for the user 

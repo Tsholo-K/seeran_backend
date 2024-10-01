@@ -48,7 +48,6 @@ class BaseAccountManager(BaseUserManager):
         user = self.model(email_address=email_address, name=name, surname=surname, role=role, **extra_fields)
         user.set_unusable_password()  # User is initially inactive
 
-        user.clean()
         # Save the user and handle potential integrity errors
         user.save()
         
@@ -69,7 +68,8 @@ class BaseAccountManager(BaseUserManager):
 
         try:
             account = self.get(email_address=email_address)
-            validate_password(password=password)  # Ensure the password meets the validation criteria
+            print('got account')
+            validate_password(password)  # Ensure the password meets the validation criteria
 
             account.set_password(password)  # Set the password
             account.activated = True  # Mark as activated
