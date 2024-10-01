@@ -65,9 +65,10 @@ class TokenAuthMiddleware:
             send (callable): The send function to send messages to the client.
         """
         headers = dict(scope['headers'])
-        print(scope)
-        print(receive)
-        print(send)
+        
+        print(f"Scope: {scope}")
+        print(f"Receive: {receive}")
+        print(f"Send: {send}")
 
         # Default to None for unauthenticated users
         scope['account'] = None
