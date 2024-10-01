@@ -70,7 +70,7 @@ class WebsocketHandler(AsyncWebsocketConsumer):
 
                 if self.scope is None or self.receive is None or self.send is None:
                     print("Error: One of the required parameters (scope, receive, send) is None.")
-                await consumer_class(self.scope, self.receive, self.send)
+                await consumer_class(self.scope, self.receive, self.send)()
             except TypeError as te:
                 print(f"Type error in WebsocketHandler delegation: {te}")
                 await self.close()
