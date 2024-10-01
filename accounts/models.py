@@ -50,7 +50,7 @@ class BaseAccountManager(BaseUserManager):
 
         user.clean()
         # Save the user and handle potential integrity errors
-        user.save(using=self._db)
+        user.save()
         
         return user
 
@@ -68,14 +68,14 @@ class BaseAccountManager(BaseUserManager):
         """
 
         try:
-            user = self.get(email_address=email_address)
+            account = self.get(email_address=email_address)
             validate_password(password=password)  # Ensure the password meets the validation criteria
 
-            user.set_password(password)  # Set the password
-            user.activated = True  # Mark as activated
+            account.set_password(password)  # Set the password
+            account.activated = True  # Mark as activated
 
-            user.save(using=self._db)
-            return user
+            account.save()
+            return account
         
         except BaseAccount.DoesNotExist:
             raise ValueError(_('The account with the provided email does not exist. Please check the email and try again.'))
