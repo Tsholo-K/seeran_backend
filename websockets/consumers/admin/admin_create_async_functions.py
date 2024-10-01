@@ -155,14 +155,14 @@ def create_permission_group(user, role, details):
                     permission_group  = AdminPermissionGroup.objects.create(**serializer.validated_data)
                     for action, targets in details['permissions'].items():
                         for target in targets:
-                            AdminAccountPermission.objects.create(permission_group=permission_group, action=action.upper(), target_model=target.upper(), can_execute=True)
+                            AdminAccountPermission.objects.create(linked_permission_group=permission_group, action=action.upper(), target_model=target.upper(), can_execute=True)
 
                 elif details['group'] == 'teacher':
                     # Create a teacher permission group
                     permission_group  = TeacherPermissionGroup.objects.create(**serializer.validated_data)
                     for action, targets in details['permissions'].items():
                         for target in targets:
-                            TeacherAccountPermission.objects.create(permission_group=permission_group, action=action.upper(), target_model=target.upper(), can_execute=True)
+                            TeacherAccountPermission.objects.create(linked_permission_group=permission_group, action=action.upper(), target_model=target.upper(), can_execute=True)
                 
                 response = f"{details['group']} permission group with the name, {details['group_name']}, has been successfully created. you can now subscribe {details['group']}'s to the group to provide them with the specified permissions"
                 audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='PERMISSION', target_object_id=str(permission_group.permission_group_id), outcome='CREATED', response=response, school=requesting_account.school,)
