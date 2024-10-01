@@ -230,7 +230,13 @@ def signin(request):
             return Response({"error": "please enter only your first name and surname"}, status=status.HTTP_400_BAD_REQUEST)
 
         # try to validate the credentials by getting a user with the provided credentials 
-        requesting_user = BaseAccount.objects.get(email_address=email_address)
+        requesting_user = BaseAccount.objects.get(email_address)
+            
+        # check if the provided name and surname are correct
+        name, surname = full_names.split(' ', 1)
+
+        if not ((requesting_user.name.casefold() == name.casefold() and requesting_user.surname.casefold() == surname.casefold()) or (requesting_user.name.casefold() == surname.casefold() and requesting_user.surname.casefold() == name.casefold())):
+            return Response({"error": "the credentials you entered are invalid. please check your full name and email and try again"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Access control based on user role and school compliance
         if requesting_user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
@@ -239,12 +245,6 @@ def signin(request):
 
             if requesting_account.school.none_compliant:
                 return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
-            
-        # check if the provided name and surname are correct
-        name, surname = full_names.split(' ', 1)
-
-        if not ((requesting_user.name.casefold() == name.casefold() and requesting_user.surname.casefold() == surname.casefold()) or (requesting_user.name.casefold() == surname.casefold() and requesting_user.surname.casefold() == name.casefold())):
-            return Response({"error": "the credentials you entered are invalid. please check your full name and email and try again"}, status=status.HTTP_400_BAD_REQUEST)
         
         # if there is a user with the provided credentials check if their account has already been activated 
         if requesting_user.activated == True:
@@ -301,38 +301,43 @@ def activate_account(request):
     
     try:
         email_address = request.data.get('email_address')
-        new_password = request.data.get('password')
+        password = request.data.get('password')
 
-        if not (email_address or new_password):
+        if not (email_address or password):
             return Response({"error": "missing credentials, all fields are required"}, status=status.HTTP_400_BAD_REQUEST)
 
         # get authorization otp 
         otp = request.COOKIES.get('signin_authorization_otp')
         hashed_authorization_otp_and_salt = cache.get(email_address + 'signin_authorization_otp')
 
-        if not (hashed_authorization_otp_and_salt or otp or verify_user_otp(otp, hashed_authorization_otp_and_salt)):
-            # if the authorization otp does'nt match the one stored for the user return an error 
-            response = Response({"denied": "requests provided authorization OTP is invalid.. process forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
-                        
-            cache.delete(user.email_address + 'signin_authorization_otp')
+        if not hashed_authorization_otp_and_salt:
+            response = Response({"denied": "there is no authorization OTP for your account on record.. process forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
             if otp:
                 response.delete_cookie('signin_authorization_otp', domain='.seeran-grades.cloud')
-                
+            return response
+
+        if not otp:
+            cache.delete(email_address + 'signin_authorization_otp')
+            return Response({"denied": "Your request does not contain an authorization OTP.. request forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not verify_user_otp(otp, hashed_authorization_otp_and_salt):
+            response = Response({"denied": "Your requests authorization OTP is invalid.. request forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
+
+            cache.delete(email_address + 'signin_authorization_otp')
+            response.delete_cookie('signin_authorization_otp', domain='.seeran-grades.cloud')
             return response
         
         # activate users account
         with transaction.atomic():
-            user = BaseAccount.objects.activate(email_address=email_address, password=new_password)
+            account = BaseAccount.objects.activate(email_address, password)
 
-        response = Response({"message": "account activation successful", "role": user.role.title()}, status=status.HTTP_200_OK)
-                
-        # generate an access and refresh token for the user 
-        token = generate_token(user)
-        
-        AccountAccessToken.objects.create(user=user, token=token['access'])
+            # generate an access and refresh token for the user 
+            account_access_token = generate_token(account)
+            AccountAccessToken.objects.create(user=account, token=account_access_token['access'])
 
+        response = Response({"message": "You have successully activated your account. Welcome to seeran grades.", "role": account.role}, status=status.HTTP_200_OK)
         # set access/refresh token cookies
-        response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
+        response.set_cookie('access_token', account_access_token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
         
         return response
     
@@ -367,7 +372,7 @@ def authenticate(request):
             return Response({"error": "your request could not be processed, your account has an invalid role"}, status=status.HTTP_401_UNAUTHORIZED)
 
         # Access control based on user role and school compliance
-        if request.user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
+        elif request.user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
             # Fetch the corresponding child model based on the user's role
             requesting_account = accounts_utilities.get_account_and_linked_school(request.user.account_id, request.user.role)
 
