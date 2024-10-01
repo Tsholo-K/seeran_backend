@@ -52,8 +52,9 @@ class FounderConsumer(AsyncWebsocketConsumer):
 # DISCONNECT
 
     async def disconnect(self, close_code):
-        account_id = self.scope['user']
-        await connection_manager.disconnect(account_id, self)
+        account_id = self.scope.get('user')
+        if account_id:
+            await connection_manager.disconnect(account_id, self)
 
 # RECIEVE
 
