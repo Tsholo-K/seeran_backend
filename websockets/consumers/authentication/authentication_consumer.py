@@ -46,7 +46,7 @@ class AccountsWebsocketHandler(AsyncWebsocketConsumer):
             )
 
         role_specific_consumer_mapping = {
-            'FOUNDER': FounderConsumer,
+            'FOUNDER': FounderConsumer.as_asgi(),
             'PRINCIPAL': AdminConsumer.as_asgi(),
             'ADMIN': AdminConsumer.as_asgi(),
             'TEACHER': TeacherConsumer.as_asgi(),
@@ -57,9 +57,7 @@ class AccountsWebsocketHandler(AsyncWebsocketConsumer):
         consumer_class = role_specific_consumer_mapping.get(self.role)
         if consumer_class:
             try:
-                # Instantiate the consumer class and pass the scope, receive, and send methods
-                consumer_instance = consumer_class(self.scope, self.receive, self.send, self.channel_layer)
-                await consumer_instance.connect()  # Call connect method of the specific consumer
+                await consumer_class(self.scope, self.receive, self.send)
             except TypeError as te:
                 print(f"Type error in WebsocketHandler delegation: {str(te)}")
                 await self.close()
