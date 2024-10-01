@@ -165,7 +165,7 @@ def create_permission_group(user, role, details):
                             TeacherAccountPermission.objects.create(linked_permission_group=permission_group, action=action.upper(), target_model=target.upper(), can_execute=True)
                 
                 response = f"{details['group']} permission group with the name, {details['group_name']}, has been successfully created. you can now subscribe {details['group']}'s to the group to provide them with the specified permissions"
-                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='PERMISSION', target_object_id=str(permission_group.permission_group_id), outcome='CREATED', response=response, school=requesting_account.school,)
+                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='PERMISSION', target_object_id=str(permission_group.permission_group_id), outcome='CREATED', server_response=response, school=requesting_account.school)
 
             return {'message' : response}
             
