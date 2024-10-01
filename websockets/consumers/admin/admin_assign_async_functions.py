@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from schools.serializers import UpdateSchoolAccountSerializer, SchoolDetailsSerializer
 
 # utility functions 
-from accounts import utils as users_utilities
+from accounts import utils as accounts_utilities
 from account_permissions import utils as permissions_utilities
 from audit_logs import utils as audits_utilities
 
@@ -19,7 +19,7 @@ def assign_permission_group_subscribers(user, role, details):
     try:
         school = None  # Initialize requested_account as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
         
         school = requesting_account.school
 
