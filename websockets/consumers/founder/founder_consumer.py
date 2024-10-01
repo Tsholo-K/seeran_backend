@@ -31,27 +31,21 @@ class FounderConsumer(AsyncWebsocketConsumer):
 # CONNECT
 
     async def connect(self):
-        try:
-            print('connection successfully delegated')
-            print(**self)
-            # Get the user's role from the scope
-            role = self.scope['role']
-            if role != 'FOUNDER':
-                return await self.close()
-            
-            await self.accept()
-                            
-            account = self.scope['account']
-            await connection_manager.connect(account, self)
+        # Get the user's role from the scope
+        role = self.scope['role']
+        if role != 'FOUNDER':
+            return await self.close()
+        
+        await self.accept()
+                        
+        account = self.scope['account']
+        await connection_manager.connect(account, self)
 
-            response = await founder_connect_async_functions.account_details(account, role)
-            if 'error' in response:
-                await self.send(text_data=json.dumps(response))
-                await connection_manager.disconnect(account, self)
-                return await self.close()
-        except Exception as e:
-            print(f"Error in FounderConsumer connect: {e}")
-            await self.close()
+        response = await founder_connect_async_functions.account_details(account, role)
+        if 'error' in response:
+            await self.send(text_data=json.dumps(response))
+            await connection_manager.disconnect(account, self)
+            return await self.close()
 
 # DISCONNECT
 

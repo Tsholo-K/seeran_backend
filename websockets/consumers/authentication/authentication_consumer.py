@@ -45,11 +45,6 @@ class AccountsWebsocketHandler(AsyncWebsocketConsumer):
                 'Authentication failed, your access token is missing. Please log in again to obtain the correct permissions.'
             )
 
-        # Route to the appropriate consumer based on user role
-        await self.route_account_to_role_specific_consumer_class()
-
-    async def route_account_to_role_specific_consumer_class(self):
-        """Route the authenticated user to their respective consumer based on role."""
         role_specific_consumer_mapping = {
             'FOUNDER': FounderConsumer,
             'PRINCIPAL': AdminConsumer.as_asgi(),
