@@ -31,15 +31,16 @@ class FounderConsumer(AsyncWebsocketConsumer):
 # CONNECT
 
     async def connect(self):
+        print('connection successfully delegated')
         # Get the user's role from the scope
         role = self.scope['role']
         if role != 'FOUNDER':
             return await self.close()
+        
+        await self.accept()
                         
         account = self.scope['account']
         await connection_manager.connect(account, self)
-
-        await self.accept()
 
         response = await founder_connect_async_functions.account_details(account, role)
         if 'error' in response:

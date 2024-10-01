@@ -50,6 +50,7 @@ class WebsocketHandler(AsyncWebsocketConsumer):
 
     async def route_account_to_role_specific_consumer_class(self):
         """Route the authenticated user to their respective consumer based on role."""
+        print('about to delegate connection')
         role_specific_consumer_mapping = {
             'FOUNDER': FounderConsumer,
             'PRINCIPAL': AdminConsumer,

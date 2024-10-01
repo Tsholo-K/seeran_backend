@@ -1,8 +1,12 @@
 from django.core.exceptions import ValidationError
 import re
 
+
+# dont remove this user variable, it's used to match other django validators as they all take in password and user
+# so removing the user variable will raise this error 
+# "PasswordValidator.validate() takes 2 positional arguments but 3 were given"
 class PasswordValidator:
-    def validate(self, password):
+    def validate(self, password, user=None):
         if len(password) < 8:
             raise ValidationError("Password must be at least 8 characters long")
         if len(password) > 128:
