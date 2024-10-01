@@ -64,7 +64,8 @@ class WebsocketHandler(AsyncWebsocketConsumer):
         consumer_class = role_specific_consumer_mapping.get(self.role)
         print(consumer_class)
         if consumer_class:
-            await consumer_class(self.scope, self.receive, self.send)
+            print('consumer found')
+            await consumer_class.as_asgi()(self.scope, self.receive, self.send)
         else:
             await self.close()  # Handle unknown roles
 
