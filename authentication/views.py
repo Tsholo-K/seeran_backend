@@ -434,7 +434,7 @@ def verify_otp(request):
             return Response({"error": f"provided OTP incorrect.. you have {attempts} verification attempts remaining"}, status=status.HTTP_400_BAD_REQUEST)
  
     except Exception as e:
-        return {"error": str(e)}
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # validate email before password reset
