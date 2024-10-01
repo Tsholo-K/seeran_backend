@@ -11,6 +11,7 @@ from seeran_backend.middleware import  connection_manager
 from authentication.utils import validate_access_token
 
 # admin async functions 
+from . import admin_connect_async_functions
 from . import admin_create_async_functions
 from . import admin_view_async_functions
 from . import admin_update_async_functions
@@ -50,6 +51,13 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         await self.accept()
 
+        response = await admin_connect_async_functions.account_details(account_id, role)
+
+        if 'error' in response or 'denied' in response:
+            await self.send(text_data=json.dumps(response))
+            await connection_manager.disconnect(account_id, self)
+            return await self.close()
+
 # DISCONNECT
 
     async def disconnect(self, close_code):
@@ -74,9 +82,6 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         if not action or not description:
             return await self.send(text_data=json.dumps({'error': 'invalid request..'}))
-        
-        if action == 'AUTHENTICATE' and description == 'socket_authentication':
-            return await self.send(text_data=json.dumps({'authenticated': 'socket connection valid and authenticated'}))
 
         response = await self.handle_request(action, description, details, user, role, access_token)
         

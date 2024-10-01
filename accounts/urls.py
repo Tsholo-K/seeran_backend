@@ -5,9 +5,6 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    
-    # my info
-    path('my-account-details/', views.my_account_details, name='users account info'),
 
     # profile picture update 
     # path("update-profile-picture/", views.update_profile_picture, name="update profile picture"),

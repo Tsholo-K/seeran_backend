@@ -21,14 +21,14 @@ class Announcement(models.Model):
    
     school = models.ForeignKey(School, on_delete=models.CASCADE, related_name='announcements', help_text="School related to the announcement")
 
-    announced_at = models.DateTimeField(auto_now_add=True, help_text="Time when the announcement was made")
+    timestamp = models.DateTimeField(auto_now_add=True, help_text="Time when the announcement was made")
     announcement_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     def __str__(self):
         return self.title
 
     class Meta:
-        ordering = ['-announced_at']
+        ordering = ['-timestamp']
 
     def reached(self, user):
         try:

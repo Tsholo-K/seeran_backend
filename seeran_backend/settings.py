@@ -90,10 +90,10 @@ INSTALLED_APPS = [
     # third party apps
     'corsheaders', # handle cors 
     'django_redis', # redis caching
-    'django_celery_results', # celery db comun
+    'django_celery_results', # celery db communication
+    # 'django_celery_beat',
     'channels', # django channels 
     # 'storages', # allows communication with google storage bucket
-    # 'django_celery_beat',
 ]
 
 
@@ -192,7 +192,7 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(seconds=0),    # Longer-lived refresh token (adjust as needed)
     'ROTATE_REFRESH_TOKENS': False,                  # Set to True if you want to rotate refresh tokens
     
-    'TOKEN_BLACKLIST_ENABLED': True,
+    'TOKEN_BLACKLIST_ENABLED': False,
     'TOKEN_BLACKLIST_MODEL': 'rest_framework_simplejwt.token_blacklist.BlacklistedToken',
     # Other settings (e.g., ALGORITHM, SIGNING_KEY, etc.) can be customized as well
 }
