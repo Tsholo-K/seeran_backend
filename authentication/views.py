@@ -402,7 +402,7 @@ def verify_otp(request):
             cache.delete(email_address+'signin_otp_attempts')
             return Response({"denied": "no sign-in OTP for account on record.. please generate a new one "}, status=status.HTTP_403_FORBIDDEN)
 
-        if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
+        if verify_user_otp(account_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
             
             # OTP is verified, prompt the user to set their password
             cache.delete(email_address+'signin_otp')
