@@ -44,32 +44,25 @@ class AccountsWebsocketHandler(AsyncWebsocketConsumer):
                 'websocket_error',
                 'Authentication failed, your access token is missing. Please log in again to obtain the correct permissions.'
             )
-
+        # Now route the connection to the specific consumer based on the role
         role_specific_consumer_mapping = {
-            'FOUNDER': FounderConsumer.as_asgi(),
-            'PRINCIPAL': AdminConsumer.as_asgi(),
-            'ADMIN': AdminConsumer.as_asgi(),
-            'TEACHER': TeacherConsumer.as_asgi(),
-            'STUDENT': StudentConsumer.as_asgi(),
-            'PARENT': ParentConsumer.as_asgi(),
+            'FOUNDER': FounderConsumer,
+            'PRINCIPAL': AdminConsumer,
+            'ADMIN': AdminConsumer,
+            'TEACHER': TeacherConsumer,
+            'STUDENT': StudentConsumer,
+            'PARENT': ParentConsumer,
         }
 
         consumer_class = role_specific_consumer_mapping.get(self.role)
+        
         if consumer_class:
-            try:
-                await consumer_class(self.scope, self.receive, self.send)
-            except TypeError as te:
-                print(f"Type error in WebsocketHandler delegation: {str(te)}")
-                await self.close()
-            except AttributeError as ae:
-                print(f"Attribute error in WebsocketHandler delegation: {str(ae)}")
-                await self.close()
-            except Exception as e:
-                print(f"General error in WebsocketHandler delegation: {str(e)}")
-                await self.close()
+            # Create an instance of the specific consumer
+            consumer_instance = consumer_class(self.scope, self.receive, self.send)
+            await consumer_instance.connect()  # Call the connect method of the specific consumer
         else:
             print("Unknown role, closing connection.")
-            await self.close()
+            await self.close()  # Close the connection for unknown roles
 
     async def return_error_message_and_close_connection(self, description,  message):
         """Return an error message to the frontend and close connection."""
