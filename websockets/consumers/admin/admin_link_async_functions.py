@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from accounts.models import Student, Parent
 
 # serilializers
-from accounts.serializers.parents.parents_serializers import ParentAccountCreationSerializer
+from accounts.serializers.parents.serializers import ParentAccountCreationSerializer
 
 # utility functions 
 from accounts import utils as accounts_utilities

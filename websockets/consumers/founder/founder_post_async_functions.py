@@ -13,7 +13,7 @@ from grades.models import Grade
 from classrooms.models import Classroom
 
 # serializers
-from accounts.serializers.principals.principals_serializers import PrincipalAccountCreationSerializer
+from accounts.serializers.principals.serializers import PrincipalAccountCreationSerializer
 from schools.serializers import SchoolCreationSerializer
 
 

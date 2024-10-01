@@ -5,7 +5,7 @@ from rest_framework import serializers
 from .models import TermSubjectPerformance
 
 # serializers
-from accounts.serializers.students.students_serializers import LeastAccountDetailsSerializer
+from accounts.serializers.students.serializers import LeastAccountDetailsSerializer
 
 
 class TermSubjectPerformanceSerializer(serializers.ModelSerializer):

@@ -1,5 +1,3 @@
-# python 
-
 # rest framework
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -17,7 +15,7 @@ from chat_rooms.models import PrivateChatRoom
 from school_announcements.models import Announcement
 
 # serilializers
-from accounts.serializers.founders.founders_serializers import FounderAccountDetailsSerializer
+from accounts.serializers.founders.serializers import FounderAccountDetailsSerializer
 
 # mappings
 from accounts.mappings import serializer_mappings

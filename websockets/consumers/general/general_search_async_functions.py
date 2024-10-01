@@ -19,8 +19,8 @@ from student_activities.models import StudentActivity
 
 # serializers
 from accounts.serializers.general_serializers import DisplayAccountDetailsSerializer, SourceAccountSerializer
-from accounts.serializers.students.students_serializers import  StudentSourceAccountSerializer
-from accounts.serializers.parents.parents_serializers import ParentAccountSerializer
+from accounts.serializers.students.serializers import  StudentSourceAccountSerializer
+from accounts.serializers.parents.serializers import ParentAccountSerializer
 from classrooms.serializers import ClassSerializer
 from email_address_bans.serializers import EmailBanSerializer
 from student_group_timetables.serializers import StudentGroupScheduleSerializer

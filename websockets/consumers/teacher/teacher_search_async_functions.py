@@ -11,7 +11,7 @@ from classrooms.models import Classroom
 from school_attendances.models import SchoolAttendance
 
 # serilializers
-from accounts.serializers.students.students_serializers import StudentSourceAccountSerializer, LeastAccountDetailsSerializer
+from accounts.serializers.students.serializers import StudentSourceAccountSerializer, LeastAccountDetailsSerializer
 from classrooms.serializers import TeacherClassesSerializer
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer
 from student_activities.serializers import ActivitiesSerializer

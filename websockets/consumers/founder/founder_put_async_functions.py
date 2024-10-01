@@ -11,7 +11,7 @@ from schools.models import School
 from bug_reports.models import BugReport
 
 # serializers
-from accounts.serializers.principals.principals_serializers import UpdatePrincipalAccountSerializer, PrincipalAccountDetailsSerializer
+from accounts.serializers.principals.serializers import UpdatePrincipalAccountSerializer, PrincipalAccountDetailsSerializer
 from schools.serializers import UpdateSchoolAccountSerializer, SchoolDetailsSerializer
 from bug_reports.serializers import UpdateBugReportStatusSerializer
 

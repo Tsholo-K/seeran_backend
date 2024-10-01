@@ -2,7 +2,7 @@
 from accounts.models import Principal, Admin, Teacher, Student, Parent
 
 # queries
-from accounts.complex_queries import queries
+from seeran_backend.complex_queries import queries
 
 # mappings
 from accounts.mappings import model_mapping, serializer_mappings, attr_mappings

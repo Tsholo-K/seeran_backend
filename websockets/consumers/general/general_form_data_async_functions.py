@@ -11,7 +11,7 @@ from classrooms.models import Classroom
 from school_attendances.models import SchoolAttendance
 
 # serializers
-from accounts.serializers.students.students_serializers import StudentSourceAccountSerializer
+from accounts.serializers.students.serializers import StudentSourceAccountSerializer
 
 # mappings
 from accounts.mappings import model_mapping

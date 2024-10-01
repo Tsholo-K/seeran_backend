@@ -8,7 +8,7 @@ from invoices.models import Invoice
 from bug_reports.models import BugReport
 
 # serializers
-from accounts.serializers.principals.principals_serializers import PrincipalAccountSerializer, PrincipalAccountDetailsSerializer
+from accounts.serializers.principals.serializers import PrincipalAccountSerializer, PrincipalAccountDetailsSerializer
 from schools.serializers import SchoolSerializer, SchoolDetailsSerializer
 from invoices.serializers import InvoiceSerializer, InvoicesSerializer
 from bug_reports.serializers import BugReportsSerializer, BugReportSerializer

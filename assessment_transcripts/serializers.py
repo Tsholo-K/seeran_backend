@@ -6,7 +6,7 @@ from rest_framework.validators import UniqueTogetherValidator
 from .models import AssessmentTranscript
 
 # serializers
-from accounts.serializers.students.students_serializers import StudentSourceAccountSerializer, LeastAccountDetailsSerializer, StudentBasicAccountDetailsEmailSerializer
+from accounts.serializers.students.serializers import StudentSourceAccountSerializer, LeastAccountDetailsSerializer, StudentBasicAccountDetailsEmailSerializer
 
 
 class TranscriptCreationSerializer(serializers.ModelSerializer):

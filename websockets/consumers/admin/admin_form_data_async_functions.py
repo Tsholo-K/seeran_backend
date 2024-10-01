@@ -20,8 +20,8 @@ from student_group_timetables.models import StudentGroupTimetable
 
 # serilializers
 from accounts.serializers.general_serializers import SourceAccountSerializer
-from accounts.serializers.teachers.teachers_serializers import TeacherAccountSerializer
-from accounts.serializers.students.students_serializers import StudentSourceAccountSerializer
+from accounts.serializers.teachers.serializers import TeacherAccountSerializer
+from accounts.serializers.students.serializers import StudentSourceAccountSerializer
 from terms.serializers import FormTermsSerializer
 from assessments.serializers import AssessmentUpdateFormDataSerializer
 from assessment_transcripts.serializers import TranscriptFormSerializer

@@ -12,7 +12,7 @@ from assessments.models import Assessment
 from school_attendances.models import SchoolAttendance
 
 # serializers
-from accounts.serializers.students.students_serializers import StudentSourceAccountSerializer
+from accounts.serializers.students.serializers import StudentSourceAccountSerializer
 from terms.serializers import FormTermsSerializer
 from assessments.serializers import AssessmentUpdateFormDataSerializer
 

@@ -8,7 +8,7 @@ from .models import School
 from accounts.models import Principal
 
 # serializers
-from accounts.serializers.principals.principals_serializers import PrincipalAccountSerializer
+from accounts.serializers.principals.serializers import PrincipalAccountSerializer
 from balances.serializers import BalanceSerializer
 
 
