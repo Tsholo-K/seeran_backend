@@ -69,7 +69,7 @@ class TokenAuthMiddleware:
         # Default to None for unauthenticated users
         scope['account'] = None
         scope['role'] = None
-        scope['auth_error'] = None
+        scope['authentication_error'] = None
 
         # Check if the 'cookie' header is present
         if b'cookie' in headers:
@@ -82,11 +82,11 @@ class TokenAuthMiddleware:
 
                 # Check if the access token is in cache (indicating it might be invalid/blacklisted)
                 if not access_token:
-                    scope['auth_error'] = 'Could not process your request, no access token was provided.'
+                    scope['authentication_error'] = 'Could not process your request, no access token was provided.'
                     return await self.app(scope, receive, send)
                 
                 elif cache.get(access_token):
-                    scope['auth_error'] = 'Could not process your request, your access token has been blacklisted and cannot be used to access the system.'
+                    scope['authentication_error'] = 'Could not process your request, your access token has been blacklisted and cannot be used to access the system.'
                     return await self.app(scope, receive, send)
 
                 # Validate the access token
@@ -94,7 +94,7 @@ class TokenAuthMiddleware:
 
                 # If the token is not valid, send an error message
                 if authorized is None:
-                    scope['auth_error'] = 'Could not process your request, your access token has expired.'
+                    scope['authentication_error'] = 'Could not process your request, your access token has expired.'
                     return await self.app(scope, receive, send)
 
                 # Decode the access token to get the user ID
@@ -108,15 +108,15 @@ class TokenAuthMiddleware:
 
             except BaseAccount.DoesNotExist:
                 # If the user does not exist, close the connection
-                scope['auth_error'] = 'An account with the provided credentials does not exists. Please review you account details and try again.'
+                scope['authentication_error'] = 'An account with the provided credentials does not exists. Please review you account details and try again.'
                 return await self.app(scope, receive, send)
 
             # If any other exception occurs, close the connection and send the error message
             except Exception as e:
-                scope['auth_error'] = str(e)
+                scope['authentication_error'] = str(e)
                 return await self.app(scope, receive, send)
 
-        scope['auth_error'] = 'Could not process your request, no access token was provided.'
+        scope['authentication_error'] = 'Could not process your request, no access token was provided.'
         # Call the next application/middleware in the stack
         return await self.app(scope, receive, send)
 
