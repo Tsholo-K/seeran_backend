@@ -64,6 +64,8 @@ class WebsocketHandler(AsyncWebsocketConsumer):
         consumer_class = role_specific_consumer_mapping.get(self.role)
         if consumer_class:
             try:
+                if self.scope is None or self.receive is None or self.send is None:
+                    print("Error: One of the required parameters (scope, receive, send) is None.")
                 await consumer_class(self.scope, self.receive, self.send)
             except TypeError as te:
                 print(f"Type error in WebsocketHandler delegation: {te}")
