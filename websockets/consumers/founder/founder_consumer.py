@@ -75,6 +75,9 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
         if not action or not description:
             return await self.send(text_data=json.dumps({'error': 'Could not process your request, invalid request..'}))
+        
+        if action == 'PRODE' and description == 'socket_communication_check':
+            return await self.send(text_data=json.dumps({'socket_communication_successful': True}))
 
         response = await self.handle_request(action, description, details, account, role, access_token)
         
