@@ -10,7 +10,7 @@ class EmailBansSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EmailAddressBan
-        fields = ['can_appeal', 'ban_id', 'banned_at', 'status']
+        fields = ['is_ban_appealable', 'appeal_status', 'timestamp', 'email_address_ban_id']
 
 
 # users email ban
@@ -18,7 +18,7 @@ class EmailBanSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EmailAddressBan
-        fields = ['can_appeal', 'email', 'banned_at', 'reason', 'ban_id', 'status', 'otp_send']
+        fields = ['is_ban_appealable', 'banned_email_address', 'reason_for_ban', 'appeal_status', 'otp_send', 'timestamp', 'email_address_ban_id']
  
 
 # users email ban

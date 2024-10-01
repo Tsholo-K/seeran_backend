@@ -55,7 +55,7 @@ def view_my_email_address_status_information(account):
         requesting_account = BaseAccount.objects.values('email_address', 'email_ban_amount', 'email_banned').get(account_id=account)
         
         # Step 2: Fetch email ban records associated with the user's email, ordered by the most recent ban
-        email_bans = EmailAddressBan.objects.filter(email=requesting_account['email_address']).order_by('-banned_at')
+        email_bans = EmailAddressBan.objects.filter(banned_email_address=requesting_account['email_address']).order_by('-timestamp')
         
         # Step 3: Serialize the email ban records for structured API response or frontend consumption
         serialized_email_bans = EmailBansSerializer(email_bans, many=True).data
