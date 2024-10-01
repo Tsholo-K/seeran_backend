@@ -49,7 +49,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         await self.accept()
 
-        response = await admin_connect_async_functions.account_details(account)
+        response = await admin_connect_async_functions.account_details(account, role)
         if 'error' in response or 'denied' in response:
             await self.send(text_data=json.dumps(response))
             return await self.close()
