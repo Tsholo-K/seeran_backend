@@ -6,6 +6,7 @@ from django.db import models
 
 # models
 from chat_rooms.models import PrivateChatRoom
+from chat_room_messages.models import PrivateMessage
 
 # utility functions 
 from accounts import utils as accounts_utilities
@@ -27,7 +28,7 @@ def account_details(user, role):
         unread_announcements_count = requesting_account.school.announcements.exclude(accounts_reached=requesting_account).count()
 
         # Fetch unread messages for the user
-        unread_messages_count = PrivateChatRoom.objects.filter(models.Q(participant_one=requesting_account) | models.Q(participant_two=requesting_account), read_receipt=False).exclude(author=requesting_account).count()
+        unread_messages_count = PrivateMessage.objects.filter(read_receipt=False).exclude(author=requesting_account).count()
         
         Serializer = serializer_mappings.account_details[role]
         # Serialize the user
