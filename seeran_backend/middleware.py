@@ -52,8 +52,8 @@ class TokenAuthMiddleware:
         Raises:
             CustomUser.DoesNotExist: If the user does not exist.
         """
-        user = BaseAccount.objects.values('account_id', 'role').get(pk=account_id)
-        return (str(user['account_id']), user['role'])
+        account = BaseAccount.objects.values('account_id', 'role').get(id=account_id)
+        return (str(account['account_id']), account['role'])
 
     async def __call__(self, scope, receive, send):
         """
@@ -105,11 +105,11 @@ class TokenAuthMiddleware:
 
             except BaseAccount.DoesNotExist:
                 # If the user does not exist, close the connection
-                    scope['auth_error'] = 'An account with the provided credentials does not exists. Please review you account details and try again.'
+                scope['auth_error'] = 'An account with the provided credentials does not exists. Please review you account details and try again.'
 
             # If any other exception occurs, close the connection and send the error message
             except Exception as e:
-                    scope['auth_error'] = str(e)
+                scope['auth_error'] = str(e)
 
         # Call the next application/middleware in the stack
         return await self.app(scope, receive, send)
