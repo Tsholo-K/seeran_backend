@@ -59,6 +59,7 @@ class WebsocketHandler(AsyncWebsocketConsumer):
             'STUDENT': StudentConsumer,
             'PARENT': ParentConsumer,
         }
+        print(self.role)
 
         consumer_class = role_specific_consumer_mapping.get(self.role)
         if consumer_class:
