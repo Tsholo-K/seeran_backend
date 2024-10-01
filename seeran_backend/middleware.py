@@ -67,7 +67,7 @@ class TokenAuthMiddleware:
         headers = dict(scope['headers'])
 
         # Default to None for unauthenticated users
-        scope['user'] = None
+        scope['account'] = None
         scope['role'] = None
         scope['auth_error'] = None
 
@@ -83,23 +83,24 @@ class TokenAuthMiddleware:
                 # Check if the access token is in cache (indicating it might be invalid/blacklisted)
                 if not access_token:
                     scope['auth_error'] = 'Could not process your request, no access token was provided.'
-                    return
+                    return await self.app(scope, receive, send)
                 
                 elif cache.get(access_token):
                     scope['auth_error'] = 'Could not process your request, your access token has been blacklisted and cannot be used to access the system.'
-                    return 
+                    return await self.app(scope, receive, send)
 
                 # Validate the access token
                 authorized = validate_access_token(access_token)
 
                 # If the token is not valid, send an error message
                 if authorized is None:
-                    return await self.send_error_message(send, 'Could not process your request, your access token has expired.')
+                    scope['auth_error'] = 'Could not process your request, your access token has expired.'
+                    return await self.app(scope, receive, send)
 
                 # Decode the access token to get the user ID
                 decoded_token = AccessToken(access_token)
                 # Fetch the user and their role from the database
-                scope['user'], scope['role'] = await self.get_account(decoded_token['user_id'])
+                scope['account'], scope['role'] = await self.get_account(decoded_token['user_id'])
                 scope['access_token'] = access_token
 
             except BaseAccount.DoesNotExist:

@@ -51,15 +51,15 @@ class FounderConsumer(AsyncWebsocketConsumer):
         if role != 'FOUNDER':
             return await self.close()
                         
-        account_id = self.scope['user']
-        await connection_manager.connect(account_id, self)
+        account = self.scope['account']
+        await connection_manager.connect(account, self)
 
         await self.accept()
 
-        response = await founder_connect_async_functions.account_details(account_id, role)
+        response = await founder_connect_async_functions.account_details(account, role)
         if 'error' in response:
             await self.send(text_data=json.dumps(response))
-            await connection_manager.disconnect(account_id, self)
+            await connection_manager.disconnect(account, self)
             return await self.close()
 
 # DISCONNECT
