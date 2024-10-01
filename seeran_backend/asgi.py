@@ -24,7 +24,7 @@ from django.urls import path
 from channels.routing import ProtocolTypeRouter, URLRouter
 
 # consumers
-from websockets.consumers.authentication.authentication_consumer import WebsocketHandler
+from websockets.consumers.authentication.authentication_consumer import AccountsWebsocketHandler
 
 
 # middleware
@@ -38,7 +38,7 @@ application = ProtocolTypeRouter({
     "http": get_asgi_application(),
     "websocket": TokenAuthMiddleware(
         URLRouter([
-            path('ws/accounts/', WebsocketHandler.as_asgi()),
+            path('ws/accounts/', AccountsWebsocketHandler.as_asgi()),
         ])
     ),
 })
