@@ -1,11 +1,7 @@
 # channels
 from channels.db import database_sync_to_async
 
-# django
-from django.db import models
-
 # models
-from chat_rooms.models import PrivateChatRoom
 from chat_room_messages.models import PrivateMessage
 
 # utility functions 
