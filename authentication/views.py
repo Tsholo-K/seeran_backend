@@ -329,11 +329,11 @@ def activate_account(request):
         
         # activate users account
         with transaction.atomic():
-            account = BaseAccount.objects.activate(email_address, password)
+            account = BaseAccount.objects.activate(email_address=email_address, password=password)
 
             # generate an access and refresh token for the user 
-            account_access_token = generate_token(account)
-            AccountAccessToken.objects.create(user=account, token=account_access_token['access'])
+            account_access_token = generate_token(account=account)
+            AccountAccessToken.objects.create(account=account, access_token_string=account_access_token['access'])
 
         response = Response({"message": "You have successully activated your account. Welcome to seeran grades.", "role": account.role}, status=status.HTTP_200_OK)
         # set access/refresh token cookies

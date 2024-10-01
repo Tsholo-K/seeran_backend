@@ -69,7 +69,7 @@ class BaseAccountManager(BaseUserManager):
 
         try:
             user = self.get(email_address=email_address)
-            validate_password(password)  # Ensure the password meets the validation criteria
+            validate_password(password=password)  # Ensure the password meets the validation criteria
 
             user.set_password(password)  # Set the password
             user.activated = True  # Mark as activated
