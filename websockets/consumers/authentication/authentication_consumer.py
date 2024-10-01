@@ -63,7 +63,7 @@ class AccountsWebsocketHandler(AsyncWebsocketConsumer):
         if consumer_class:
             try:
                 # Instantiate the consumer class and pass the scope, receive, and send methods
-                consumer_instance = consumer_class(self.scope, self.channel_layer)
+                consumer_instance = consumer_class(self.scope, self.receive, self.send, self.channel_layer)
                 await consumer_instance.connect()  # Call connect method of the specific consumer
             except TypeError as te:
                 print(f"Type error in WebsocketHandler delegation: {str(te)}")
