@@ -21,7 +21,7 @@ from terms.models import Term
 from subjects.models import Subject
 from classrooms.models import Classroom
 from assessments.models import Assessment
-from assessment_transcripts.models import Transcript
+from assessment_transcripts.models import AssessmentTranscript
 from student_activities.models import StudentActivity
 from timetables.models import Timetable
 from student_group_timetables.models import StudentGroupTimetable
@@ -953,7 +953,7 @@ def search_transcript(user, role, details):
 
         return {"transcript": serialized_transcript}
         
-    except Transcript.DoesNotExist:
+    except AssessmentTranscript.DoesNotExist:
         # Handle the case where the provided assessment ID does not exist
         return { 'error': 'Could not process your request, a transcript in your school with the provided credentials does not exist, please review the transcript details and try again.'}
         

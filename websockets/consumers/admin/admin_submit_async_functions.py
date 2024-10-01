@@ -12,7 +12,7 @@ from classrooms.models import Classroom
 from school_attendances.models import SchoolAttendance
 from assessments.models import Assessment
 from assessment_submissions.models import AssessmentSubmission
-from assessment_transcripts.models import Transcript
+from assessment_transcripts.models import AssessmentTranscript
 
 # serilializers
 from assessment_transcripts.serializers import TranscriptCreationSerializer
@@ -117,7 +117,7 @@ def submit_student_transcript_score(user, role, details):
         serializer = TranscriptCreationSerializer(data=details)
         if serializer.is_valid():
             with transaction.atomic():
-                Transcript.objects.create(**serializer.validated_data)
+                AssessmentTranscript.objects.create(**serializer.validated_data)
 
                 response = f"student graded for assessment {assessment.title}."
                 audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='GRADED', response=response, school=assessment.school)

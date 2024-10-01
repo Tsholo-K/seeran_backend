@@ -27,7 +27,7 @@ from student_group_timetables.serializers import StudentGroupScheduleSerializer
 from timetables.serializers import TimetableSerializer
 from timetable_sessions.serializers import SessoinsSerializer
 from school_announcements.serializers import AnnouncementSerializer
-from chat_rooms.serializers import PrivateChatRoomMessageSerializer
+from chat_room_messages.serializers import PrivateChatRoomMessageSerializer
 from student_activities.serializers import ActivitySerializer
 
 # checks
@@ -37,7 +37,7 @@ from accounts.checks import permission_checks
 from accounts.mappings import model_mapping
 
 # queries
-from accounts.complex_queries import queries
+from seeran_backend.complex_queries import queries
 
 # utility functions 
 from accounts import utils as users_utilities
