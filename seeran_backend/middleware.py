@@ -1,6 +1,3 @@
-# python 
-import json
-
 # simlpe jwt
 from rest_framework_simplejwt.tokens import AccessToken
 
@@ -8,7 +5,6 @@ from rest_framework_simplejwt.tokens import AccessToken
 from channels.db import database_sync_to_async
 
 # djnago
-from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
 
 # models
