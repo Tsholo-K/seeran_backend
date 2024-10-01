@@ -65,8 +65,7 @@ class WebsocketHandler(AsyncWebsocketConsumer):
         if consumer_class:
             try:
                 # Pass the necessary context to the child consumer
-                consumer_instance = consumer_class(self.scope, self.receive, self.send)
-                await consumer_instance.connect()  # Call connect method of the specific consumer
+                await consumer_class(self.scope, self.receive, self.send)
             except TypeError as te:
                 print(f"Type error in WebsocketHandler delegation: {te}")
                 await self.close()
