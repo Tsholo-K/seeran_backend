@@ -308,7 +308,7 @@ def activate_account(request):
 
         # get authorization otp 
         otp = request.COOKIES.get('signin_authorization_otp')
-        hashed_authorization_otp_and_salt = cache.get(email_address + 'signin_authorization_otp')
+        stored_hashed_otp_and_salt = cache.get(email_address + 'signin_authorization_otp')
 
         if not hashed_authorization_otp_and_salt:
             response = Response({"denied": "there is no authorization OTP for your account on record.. process forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
@@ -320,7 +320,7 @@ def activate_account(request):
             cache.delete(email_address + 'signin_authorization_otp')
             return Response({"denied": "Your request does not contain an authorization OTP.. request forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not verify_user_otp(otp, hashed_authorization_otp_and_salt):
+        if not verify_user_otp(account_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
             response = Response({"denied": "Your requests authorization OTP is invalid.. request forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
 
             cache.delete(email_address + 'signin_authorization_otp')

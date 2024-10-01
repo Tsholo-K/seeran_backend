@@ -75,16 +75,16 @@ def generate_otp():
 
 
 # otp verification function
-def verify_user_otp(user_otp, stored_hashed_otp_and_salt):
+def verify_user_otp(account_otp, stored_hashed_otp_and_salt):
     stored_hashed_otp, salt_hex = stored_hashed_otp_and_salt
-    hashed_user_otp = hashlib.sha256((user_otp + salt_hex).encode()).hexdigest()
+    hashed_user_otp = hashlib.sha256((account_otp + salt_hex).encode()).hexdigest()
 
     return hashed_user_otp == stored_hashed_otp
 
 
 def generate_token(account):
     # Create a refresh token
-    refresh = RefreshToken.for_user(user)
+    refresh = RefreshToken.for_user(account)
     # Optionally, access the access token and its payload
     access_token = refresh.access_token
 
