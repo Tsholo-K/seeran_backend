@@ -28,6 +28,10 @@ from websockets.consumers.general import general_email_async_functions
 
 class FounderConsumer(AsyncWebsocketConsumer):
 
+    @classmethod
+    def as_asgi(cls):
+        return super().as_asgi()
+
 # CONNECT
 
     async def connect(self):

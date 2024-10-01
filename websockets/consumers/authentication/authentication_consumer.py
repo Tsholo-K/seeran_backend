@@ -67,6 +67,7 @@ class WebsocketHandler(AsyncWebsocketConsumer):
                 print(f"scope or communication methods: scope={self.scope}, receive={self.receive}, send={self.send}")
                 # Delegate the connection to the new consumer
                 asgi_instance = consumer_class.as_asgi()
+                print(f"ASGI instance is {asgi_instance}")
                 await asgi_instance(self.scope, self.receive, self.send)
             except Exception as e:
                 print(f"Error in WebsocketHandler delegation: {e}")
