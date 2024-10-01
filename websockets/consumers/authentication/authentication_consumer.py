@@ -70,15 +70,15 @@ class WebsocketHandler(AsyncWebsocketConsumer):
 
                 if self.scope is None or self.receive is None or self.send is None:
                     print("Error: One of the required parameters (scope, receive, send) is None.")
-                await consumer_class(scope=self.scope, receive=self.receive, send=self.send)
+                await consumer_class(self.scope, self.receive, self.send)
             except TypeError as te:
-                print(f"Type error in WebsocketHandler delegation: {te}")
+                print(f"Type error in WebsocketHandler delegation: {str(e)}")
                 await self.close()
             except AttributeError as ae:
-                print(f"Attribute error in WebsocketHandler delegation: {ae}")
+                print(f"Attribute error in WebsocketHandler delegation: {str(e)}")
                 await self.close()
             except Exception as e:
-                print(f"General error in WebsocketHandler delegation: {e}")
+                print(f"General error in WebsocketHandler delegation: {str(e)}")
                 await self.close()
         else:
             print("Unknown role, closing connection.")
