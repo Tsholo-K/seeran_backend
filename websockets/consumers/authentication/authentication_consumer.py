@@ -45,8 +45,6 @@ class AccountsWebsocketHandler(AsyncWebsocketConsumer):
                 'Authentication failed, your access token is missing. Please log in again to obtain the correct permissions.'
             )
         
-        await self.accept()
-        
         role_specific_consumer_mapping = {
             'FOUNDER': FounderConsumer.as_asgi(),
             'PRINCIPAL': AdminConsumer.as_asgi(),
@@ -59,7 +57,7 @@ class AccountsWebsocketHandler(AsyncWebsocketConsumer):
         consumer_class = role_specific_consumer_mapping.get(self.role)
         if consumer_class:
             try:
-                await consumer_class
+                await consumer_class(self.scope, self.receive, self.send)
             except TypeError as te:
                 print(f"Type error in WebsocketHandler delegation: {str(te)}")
                 await self.close()
