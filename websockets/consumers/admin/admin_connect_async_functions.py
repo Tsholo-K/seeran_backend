@@ -34,7 +34,7 @@ def account_details(user, role):
         serialized_account = Serializer(instance=requesting_account).data
 
         # Return the serialized account details along with unread counts
-        return {'account': serialized_account, 'messages': unread_messages_count, 'announcements': unread_announcements_count}
+        return {'websocket_authenticated' : {'account': serialized_account, 'messages': unread_messages_count, 'announcements': unread_announcements_count}}
     
     except Exception as e:
         return {'error': str(e)}

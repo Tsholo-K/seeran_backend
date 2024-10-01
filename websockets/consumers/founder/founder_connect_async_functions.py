@@ -14,7 +14,7 @@ def account_details(user):
         founder = Founder.objects.get(account_id=user)
         serialized_founder = FounderAccountDetailsSerializer(instance=founder).data
         
-        return {'account': serialized_founder}
+        return {'websocket_authenticated': {'account': serialized_founder}}
     
     except Exception as e:
         return {'error': str(e)}
