@@ -83,11 +83,11 @@ class TokenAuthMiddleware:
                 # Check if the access token is in cache (indicating it might be invalid/blacklisted)
                 if not access_token:
                     scope['auth_error'] = 'Could not process your request, no access token was provided.'
-                    return await self.app(scope, receive, send)
+                    return
                 
                 elif cache.get(access_token):
                     scope['auth_error'] = 'Could not process your request, your access token has been blacklisted and cannot be used to access the system.'
-                    return await self.app(scope, receive, send)
+                    return 
 
                 # Validate the access token
                 authorized = validate_access_token(access_token)
