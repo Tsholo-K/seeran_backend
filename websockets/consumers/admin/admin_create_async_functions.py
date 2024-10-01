@@ -73,7 +73,6 @@ def create_account(user, role, details):
         # Get the appropriate model and related fields (select_related and prefetch_related)
         # for the requesting user's role from the mapping.
         Model, Serializer = accounts_utilities.get_account_and_creation_serializer[details['role']]
-
         serializer = Serializer(data=details)
         if serializer.is_valid():
             with transaction.atomic():

@@ -112,9 +112,15 @@ class TeacherAccountPermission(models.Model):
 
     # Defining the possible target models that can be affected by actions
     TARGET_MODEL_CHOICES = [
+        ('ACCOUNT', 'Account'),         # User accounts
+        ('PROGRESS_REPORT', 'Progress Report'),     # Student progress reports
+        ('CLASSROOM', 'Classroom'),                 # Classroom settings
+        ('ATTENDANCE', 'Attendance'),   # Related to attendance records
         ('ASSESSMENT', 'Assessment'),  # Related to assessments given to students
         ('TRANSCRIPT', 'Transcript'),   # Related to student transcripts
-        ('ATTENDANCE', 'Attendance'),   # Related to attendance records
+        ('ACTIVITY', 'Activity'),       # Student Activity
+        ('DAILY_SCHEDULE', 'Daily Schedule'),       # Daily schedules for classes
+        ('GROUP_TIMETABLE', 'Group Timetable'),     # Timetables for groups of students
     ]
 
     # Foreign key linking to the teacher permission group
