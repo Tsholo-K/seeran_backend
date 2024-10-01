@@ -33,6 +33,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         try:
             print('connection successfully delegated')
+            print(self)
             # Get the user's role from the scope
             role = self.scope['role']
             if role != 'FOUNDER':
