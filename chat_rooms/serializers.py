@@ -19,7 +19,7 @@ class PrivateChatRoomsSerializer(serializers.ModelSerializer):
     
     def get_participant(self, obj):
         # Access the user from the context and determine the sender
-        requesting_account = self.context['user']
+        requesting_account = self.context['account']
         return BasicAccountDetailsSerializer(obj.participant_two).data if str(obj.participant_one.account_id) == requesting_account else BasicAccountDetailsSerializer(obj.participant_one).data
 
     def get_last_message(self, obj):

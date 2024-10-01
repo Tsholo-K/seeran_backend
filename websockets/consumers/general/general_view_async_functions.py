@@ -15,12 +15,12 @@ from chat_rooms.serializers import PrivateChatRoomsSerializer
 from email_address_bans.serializers import EmailBansSerializer
 
 # utility functions 
-from accounts import utils as users_utilities
+from accounts import utils as accounts_utilities
 
 
 # Function to retrieve and return the security information of a user's account
 @database_sync_to_async
-def view_my_security_information(user, role):
+def view_my_security_information(account, role):
     """
     Retrieves the security information for a specific user based on their role.
 
@@ -32,7 +32,7 @@ def view_my_security_information(user, role):
         dict: A dictionary containing the serialized user account and security details, or an error message.
     """
     # Call a utility function to fetch the account and security details for the user
-    serialized_security_information = users_utilities.get_account_and_security_details(user, role)
+    serialized_security_information = accounts_utilities.get_account_and_security_information(account, role)
     
     # Return the serialized data as part of the response
     return {'information': serialized_security_information}
@@ -40,7 +40,7 @@ def view_my_security_information(user, role):
 
 # Function to retrieve and return the email address and ban status information for a user
 @database_sync_to_async
-def view_my_email_address_status_information(user):
+def view_my_email_address_status_information(account):
     """
     Retrieves the email address, email ban amount, ban status, and historical ban details for a user.
 
@@ -52,7 +52,7 @@ def view_my_email_address_status_information(user):
     """
     try:
         # Step 1: Retrieve the user's account, including email-related fields (email address, ban amount, and ban status)
-        requesting_account = BaseAccount.objects.values('email_address', 'email_ban_amount', 'email_banned').get(account_id=user)
+        requesting_account = BaseAccount.objects.values('email_address', 'email_ban_amount', 'email_banned').get(account_id=account)
         
         # Step 2: Fetch email ban records associated with the user's email, ordered by the most recent ban
         email_bans = EmailAddressBan.objects.filter(email=requesting_account['email_address']).order_by('-banned_at')
@@ -80,7 +80,7 @@ def view_my_email_address_status_information(user):
 
 # Function to retrieve and return chat rooms where the user is a participant, ordered by latest activity
 @database_sync_to_async
-def view_chat_rooms(user):
+def view_chat_rooms(account):
     """
     Retrieves all chat rooms where the user is involved, ordered by the latest message timestamp.
 
@@ -92,7 +92,7 @@ def view_chat_rooms(user):
     """
     try:
         # Step 1: Retrieve the requesting user's account details using their account ID
-        requesting_account = BaseAccount.objects.get(account_id=user)
+        requesting_account = BaseAccount.objects.get(account_id=account)
         
         # Step 2: Fetch chat rooms where the user is involved either as participant_one or participant_two.
         # Order the results by the latest message timestamp (if available), otherwise by the room's creation timestamp.
@@ -101,7 +101,7 @@ def view_chat_rooms(user):
         ).order_by(models.functions.Coalesce('latest_message_timestamp', 'timestamp').desc())
 
         # Step 3: Serialize the chat rooms using a serializer to prepare the data for the API or frontend
-        serialized_chat_rooms = PrivateChatRoomsSerializer(chat_rooms, many=True, context={'user': user}).data
+        serialized_chat_rooms = PrivateChatRoomsSerializer(chat_rooms, many=True, context={'account': account}).data
         
         # Step 4: Return the serialized chat rooms as part of the response
         return {'chat_rooms': serialized_chat_rooms}
