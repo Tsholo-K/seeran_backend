@@ -4,7 +4,7 @@ from rest_framework.validators import UniqueTogetherValidator
 
 # models
 from .models import Assessment
-from accounts.models import BaseUser
+from accounts.models import BaseAccount
 from classrooms.models import Classroom
 
 # serializers
@@ -16,8 +16,8 @@ from topics.serializers import TopicSerializer
 class AssessmentCreationSerializer(serializers.ModelSerializer):
 
     classroom = serializers.PrimaryKeyRelatedField(queryset=Classroom.objects.all(), required=False, allow_null=True)
-    assessor = serializers.PrimaryKeyRelatedField(queryset=BaseUser.objects.all(), required=False, allow_null=True),
-    moderator = serializers.PrimaryKeyRelatedField(queryset=BaseUser.objects.all(), required=False, allow_null=True),
+    assessor = serializers.PrimaryKeyRelatedField(queryset=BaseAccount.objects.all(), required=False, allow_null=True),
+    moderator = serializers.PrimaryKeyRelatedField(queryset=BaseAccount.objects.all(), required=False, allow_null=True),
     percentage_towards_term_mark = serializers.DecimalField(required=False, max_digits=5, decimal_places=2)
 
     class Meta:
