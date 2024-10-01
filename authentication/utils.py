@@ -109,7 +109,7 @@ def validate_names(names):
     parts = names.split(' ')
     if len(parts) == 2:
         return True
- 
+
     else:
         return False
 

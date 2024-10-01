@@ -215,7 +215,7 @@ def multi_factor_authentication_login(request):
 @throttle_classes([CustomRateThrottle])
 def signin(request):
     try:
-        full_names = request.data.get('fullname')
+        full_names = request.data.get('full_names')
         email_address = request.data.get('email_address')
 
         # if there's a missing credential return an error
@@ -230,7 +230,7 @@ def signin(request):
             return Response({"error": "please enter only your first name and surname"}, status=status.HTTP_400_BAD_REQUEST)
 
         # try to validate the credentials by getting a user with the provided credentials 
-        requesting_user = BaseAccount.objects.get(email_address)
+        requesting_user = BaseAccount.objects.get(email_address=email_address)
             
         # check if the provided name and surname are correct
         name, surname = full_names.split(' ', 1)
@@ -247,7 +247,7 @@ def signin(request):
                 return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
         
         # if there is a user with the provided credentials check if their account has already been activated 
-        if requesting_user.activated == True:
+        if requesting_user.activated:
             return Response({"error": "your request could not be processed. access has been denied due to invalid or incomplete information"}, status=status.HTTP_403_FORBIDDEN)
         
         # if the users account has'nt been activated yet check if their email address is banned
