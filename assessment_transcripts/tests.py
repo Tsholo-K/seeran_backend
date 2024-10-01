@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 # models
-from .models import Transcript
+from .models import AssessmentTranscript
 from schools.models import School
 from accounts.models import Teacher, Student
 from grades.models import Grade
@@ -16,7 +16,7 @@ from terms.models import Term
 from subjects.models import Subject
 from classrooms.models import Classroom
 from assessments.models import Assessment
-from assessment_submissions.models import Submission
+from assessment_submissions.models import AssessmentSubmission
 
 
 class TranscriptModelTest(TestCase):
@@ -133,7 +133,7 @@ class TranscriptModelTest(TestCase):
         )
 
         # Create a submission for the student and the assessment
-        self.submission = Submission.objects.create(
+        self.submission = AssessmentSubmission.objects.create(
             student=self.student,
             assessment=self.assessment,
             status='ONTIME',
@@ -143,7 +143,7 @@ class TranscriptModelTest(TestCase):
         """
         Test that a transcript can be created with a valid score, and weighted score is calculated correctly.
         """
-        transcript = Transcript.objects.create(student=self.student, assessment=self.assessment, score=Decimal('80.00'))
+        transcript = AssessmentTranscript.objects.create(student=self.student, assessment=self.assessment, score=Decimal('80.00'))
         # Check if weighted score is correctly calculated
         self.assertEqual(transcript.weighted_score, (transcript.score / self.assessment.total) * 100)
     
@@ -152,14 +152,14 @@ class TranscriptModelTest(TestCase):
         Test that a score above the assessment's total raises a validation error.
         """
         with self.assertRaises(ValidationError) as e:
-            Transcript.objects.create(student=self.student, assessment=self.assessment, score=Decimal('110.00'))
+            AssessmentTranscript.objects.create(student=self.student, assessment=self.assessment, score=Decimal('110.00'))
 
     def test_moderated_score_above_total(self):
         """
         Test that a moderated score above the assessment's total raises a validation error.
         """
         with self.assertRaises(ValidationError) as e:
-            Transcript.objects.create(student=self.student, assessment=self.assessment, moderated_score=Decimal('110.00'))
+            AssessmentTranscript.objects.create(student=self.student, assessment=self.assessment, moderated_score=Decimal('110.00'))
 
     def test_no_submission(self):
         """
@@ -169,7 +169,7 @@ class TranscriptModelTest(TestCase):
         self.submission.delete()
 
         with self.assertRaises(ValidationError) as e:
-            Transcript.objects.create(student=self.student, assessment=self.assessment, score=Decimal('85.00'))
+            AssessmentTranscript.objects.create(student=self.student, assessment=self.assessment, score=Decimal('85.00'))
 
     def test_assessment_not_collected(self):
         """
@@ -180,23 +180,23 @@ class TranscriptModelTest(TestCase):
         self.assessment.save()
 
         with self.assertRaises(ValidationError) as e:
-            Transcript.objects.create(student=self.student, assessment=self.assessment, score=Decimal('75.00'))
+            AssessmentTranscript.objects.create(student=self.student, assessment=self.assessment, score=Decimal('75.00'))
 
     def test_unique_constraint(self):
         """
         Test that the unique constraint on the student-assessment pair is enforced.
         """
         # Create a first transcript
-        Transcript.objects.create(student=self.student, assessment=self.assessment, score=Decimal('80.00'))
+        AssessmentTranscript.objects.create(student=self.student, assessment=self.assessment, score=Decimal('80.00'))
 
         # Try to create a second transcript for the same student and assessment, which should fail
         with self.assertRaises(ValidationError) as e:
-            Transcript.objects.create(student=self.student, assessment=self.assessment, score=Decimal('90.00'))
+            AssessmentTranscript.objects.create(student=self.student, assessment=self.assessment, score=Decimal('90.00'))
 
     def test_weighted_score_with_moderation(self):
         """
         Test that the weighted score is correctly calculated when a moderated score is provided.
         """
-        transcript = Transcript.objects.create(student=self.student, assessment=self.assessment, score=Decimal('75.00'), moderated_score=Decimal('90.00'))
+        transcript = AssessmentTranscript.objects.create(student=self.student, assessment=self.assessment, score=Decimal('75.00'), moderated_score=Decimal('90.00'))
         # Check if weighted score is calculated based on moderated score
         self.assertEqual(transcript.weighted_score, (transcript.moderated_score / self.assessment.total) * 100)
