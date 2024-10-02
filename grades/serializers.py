@@ -46,10 +46,15 @@ class UpdateGradeSerializer(serializers.ModelSerializer):
 
 
 class GradesSerializer(serializers.ModelSerializer):
-    
+
+    last_updated = serializers.SerializerMethodField()
+
     class Meta:
         model = Grade
         fields = ['grade', 'grade_id', 'student_count', 'last_updated']
+
+    def get_last_updated(self, obj):
+        return obj.timestamp.isoformat()
 
 
 class GradeSerializer(serializers.ModelSerializer):
