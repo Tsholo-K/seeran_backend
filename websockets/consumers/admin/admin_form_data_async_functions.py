@@ -55,12 +55,12 @@ def form_data_for_subscribing_accounts_to_permission_group(user, role, details):
         
         # Determine the group type based on the role
         if details['group'] == 'admins':
-            permission_group = requesting_account.school.admin_permission_groups.prefetch_related('subscribers').get(permission_group_id=details['permission_group']).values_list('subscribers__id', flat=True)
-            accounts = requesting_account.school.admins.exclude(id__in=permission_group.subscribers_id)
+            permission_group = requesting_account.school.admin_permission_groups.prefetch_related('subscribers').get(permission_group_id=details['permission_group'])
+            accounts = requesting_account.school.admins.exclude(id__in=permission_group.subscribers.values_list('id', flat=True))
       
         elif details['group'] == 'teachers':
-            permission_group = requesting_account.school.teacher_permission_groups.prefetch_related('subscribers').get(permission_group_id=details['permission_group']).values_list('subscribers__id', flat=True)
-            accounts = requesting_account.school.teachers.exclude(id__in=permission_group.subscribers_id)
+            permission_group = requesting_account.school.teacher_permission_groups.prefetch_related('subscribers').get(permission_group_id=details['permission_group'])
+            accounts = requesting_account.school.teachers.exclude(id__in=permission_group.subscribers.values_list('id', flat=True))
 
         serialized_users = SourceAccountSerializer(accounts, many=True).data
 
