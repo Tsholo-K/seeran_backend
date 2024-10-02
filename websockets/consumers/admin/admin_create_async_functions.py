@@ -53,14 +53,14 @@ def create_account(user, role, details):
         if details['role'] == 'ADMIN' and role == 'ADMIN':
             response = f'could not proccess your request, your accounts role does not have enough permissions to perform this action.'
 
-            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', outcome='DENIED', server_response=response, school=requesting_account.school)
 
             return {'error': response}
 
         # Check if the user has permission to create a grade
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'ACCOUNT'):
             response = f'could not proccess your request, you do not have the necessary permissions to delete a classroom'
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', outcome='DENIED', server_response=response, school=requesting_account.school)
 
             return {'error': response}
 
@@ -95,7 +95,7 @@ def create_account(user, role, details):
                 else:
                     response = f"A new {details['role'].lower()} account has been successfully created for your school. Depending on the validity of the provided email address (if applicable), a confirmation email has been sent to their inbox, the account holder can now sign-in and activate their account."
 
-                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id), outcome='CREATED', response=response, school=requesting_account.school,)
+                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id), outcome='CREATED', server_response=response, school=requesting_account.school)
 
             if details['role'] == 'STUDENT' and not details.get('email_address'):
                 return {'message' : 'A new student account has been successfully created, unfortunately accounts with no linked email addresses cannot access the system. You can always update hteir email address later per their consent'}
@@ -104,7 +104,7 @@ def create_account(user, role, details):
             
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id), outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id), outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
 
         return {"error": error_response}
         
@@ -114,13 +114,13 @@ def create_account(user, role, details):
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id), outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
 
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id), outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
 
         return {'error': error_message}
 
