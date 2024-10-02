@@ -173,7 +173,7 @@ def search_permission_group(user, role, details):
         # Determine the group type based on the role
         if details['group'] == 'admins':
             group = requesting_account.school.admin_permission_groups.only(
-                'group_name', 'permissions_count', 'description', 'created_at'
+                'group_name', 'permissions_count', 'description', 'timestamp'
             ).prefetch_related(
                 models.Prefetch('permissions', queryset=AdminAccountPermission.objects.only('action', 'target_model'))
             ).get(permission_group_id=details['permission_group'])
@@ -181,7 +181,7 @@ def search_permission_group(user, role, details):
       
         else:
             group = requesting_account.school.teacher_permission_groups.only(
-                'group_name', 'permissions_count', 'description', 'created_at'
+                'group_name', 'permissions_count', 'description', 'timestamp'
             ).prefetch_related(
                 models.Prefetch('permissions', queryset=TeacherAccountPermission.objects.only('action', 'target_model'))
             ).get(permission_group_id=details['permission_group'])
