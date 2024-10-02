@@ -65,9 +65,11 @@ class AdminPermissionGroup(models.Model):
         
         if len(self.group_name) > 64:  # Ensure group name length is valid
             raise ValidationError(_('Could not process your request, the maximum group name length is 64 characters. Please update the name of the group to fall under this length and try again.'))
-        
+
+    def update_counts(self):
         self.subscribers_count = self.subscribers.count()
         self.permissions_count = self.permissions.count()
+        self.save()
 
 
 class TeacherPermissionGroup(models.Model):
@@ -128,6 +130,8 @@ class TeacherPermissionGroup(models.Model):
         
         if len(self.group_name) > 64:  # Ensure group name length is valid
             raise ValidationError(_('Could not process your request, the maximum group name length is 64 characters. Please update the name of the group to fall under this length and try again.'))
-        
+
+    def update_counts(self):
         self.subscribers_count = self.subscribers.count()
         self.permissions_count = self.permissions.count()
+        self.save()
