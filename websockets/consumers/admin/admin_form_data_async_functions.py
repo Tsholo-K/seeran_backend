@@ -62,15 +62,15 @@ def form_data_for_subscribing_accounts_to_permission_group(user, role, details):
             permission_group = requesting_account.school.teacher_permission_groups.prefetch_related('subscribers').get(permission_group_id=details['permission_group'])
             accounts = requesting_account.school.teachers.exclude(id__in=permission_group.subscribers.values_list('id', flat=True))
 
-        serialized_users = SourceAccountSerializer(accounts, many=True).data
+        serialized_accounts = SourceAccountSerializer(accounts, many=True).data
 
         # Compress the serialized data
-        compressed_users = zlib.compress(json.dumps(serialized_users).encode('utf-8'))
+        compressed_accounts = zlib.compress(json.dumps(serialized_accounts).encode('utf-8'))
 
         # Encode compressed data as base64 for safe transport
-        encoded_users = base64.b64encode(compressed_users).decode('utf-8')
+        encoded_accounts = base64.b64encode(compressed_accounts).decode('utf-8')
 
-        return {"users": encoded_users}
+        return {"accounts": encoded_accounts}
     
     except AdminPermissionGroup.DoesNotExist:
         # Handle the case where the provided grade ID does not exist
