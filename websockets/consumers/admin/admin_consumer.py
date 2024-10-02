@@ -82,9 +82,6 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         if not action or not description:
             return await self.send(text_data=json.dumps({'error': 'invalid request..'}))
-        
-        if action == 'INSPECT' and description == 'socket_communication_check':
-            return await self.send(text_data=json.dumps({'socket_communication_successful': True}))
 
         response = await self.handle_request(action, description, details, account, role, access_token)
         
