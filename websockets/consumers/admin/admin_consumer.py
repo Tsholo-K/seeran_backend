@@ -392,6 +392,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
         delete_map = {
             'delete_school_account': admin_delete_async_functions.delete_school_account,
 
+            'delete_permission_group': admin_delete_async_functions.delete_permission_group,
+
             'delete_account': admin_delete_async_functions.delete_account,
 
             'delete_grade': admin_delete_async_functions.delete_grade,
