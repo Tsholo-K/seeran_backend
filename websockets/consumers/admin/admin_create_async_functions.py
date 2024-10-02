@@ -50,6 +50,7 @@ def create_account(account, role, details):
         created_account = None  # Initialize school as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+        print('retrieved the requesting users account')
 
         if details['role'] == 'ADMIN' and role == 'ADMIN':
             response = f'could not proccess your request, your accounts role does not have enough permissions to perform this action.'
@@ -61,16 +62,19 @@ def create_account(account, role, details):
             response = f'could not proccess your request, you do not have the necessary permissions to delete a classroom'
             audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
+        
+        print('passed all checks')
 
         if details['role'] == 'STUDENT':
             grade = requesting_account.school.grades.get(grade_id=details.get('grade'))
             details['grade'] = grade.id
+        print('passed all checks')
 
         details['school'] = requesting_account.school.id
 
         # Get the appropriate model and related fields (select_related and prefetch_related)
         # for the requesting user's role from the mapping.
-        Model, Serializer = accounts_utilities.get_account_and_creation_serializer[details['role']]
+        Model, Serializer = accounts_utilities.get_account_and_creation_serializer(details['role'])
         serializer = Serializer(data=details)
         if serializer.is_valid():
             with transaction.atomic():
