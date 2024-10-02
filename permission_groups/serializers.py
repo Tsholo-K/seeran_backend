@@ -22,6 +22,20 @@ class AdminPermissionGroupCreationSerializer(serializers.ModelSerializer):
         self.fields['description'].required = False
 
 
+class AdminPermissionGroupUpdatenSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = AdminPermissionGroup
+        fields = ['group_name', 'description']
+
+    def __init__(self, *args, **kwargs):
+        super(AdminPermissionGroupCreationSerializer, self).__init__(*args, **kwargs)
+        # Remove the unique together validator that's added by DRF
+        self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
+        for field in self.fields:
+            field.required = False
+
+
 class TeacherPermissionGroupCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -33,6 +47,20 @@ class TeacherPermissionGroupCreationSerializer(serializers.ModelSerializer):
         # Remove the unique together validator that's added by DRF
         self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
         self.fields['description'].required = False
+
+
+class TeacherPermissionGroupUpdateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = TeacherPermissionGroup
+        fields = ['group_name', 'description']
+
+    def __init__(self, *args, **kwargs):
+        super(TeacherPermissionGroupCreationSerializer, self).__init__(*args, **kwargs)
+        # Remove the unique together validator that's added by DRF
+        self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
+        for field in self.fields:
+            field.required = False
 
 
 class AdminPermissionGroupsSerializer(serializers.ModelSerializer):

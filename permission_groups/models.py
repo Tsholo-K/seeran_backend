@@ -31,7 +31,7 @@ class AdminPermissionGroup(models.Model):
 
     last_updated = models.DateTimeField(auto_now=True)  # Automatically set to now when the object is updated
     
-    created_at = models.DateTimeField(auto_now_add=True)  # Automatically set to now when the object is created
+    timestamp = models.DateTimeField(auto_now_add=True)
     permission_group_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)  # Unique identifier for the permission group
 
     class Meta:
@@ -71,6 +71,38 @@ class AdminPermissionGroup(models.Model):
         self.permissions_count = self.permissions.count()
         self.save()
 
+    def update_subscribers(self, subscribers_list=None, subscribe=False):
+        if subscribers_list:
+
+            if not subscribers.exists():
+                raise ValidationError("Could not process your request, no valid admins for your school were found in the provided list of admins.")
+            
+            elif subscribe:
+                # Check if subscribers are already in the group
+                if self.subscribers.exists():
+                    subscribers_in_the_group = self.subscribers.filter(account_id__in=subscribers_list).values_list('surname', 'name')
+                    if subscribers_in_the_group.exists():
+                        subscriber_names = [f"{surname} {name}" for surname, name in subscribers_in_the_group]
+                        raise ValidationError(f'Could not process your request, the following admins are already assigned to this permission group: {", ".join(subscriber_names)}.')
+                    
+                # Retrieve CustomUser instances corresponding to the account_ids
+                subscribers = self.school.admins.filter(account_id__in=subscribers_list)
+                self.subscribers.add(*subscribers)
+
+            else:
+                # Check if students to be removed are actually in the class
+                subscribers = self.subscribers.filter(account_id__in=subscribers_list).values_list('account_id', flat=True)
+                if not subscribers:
+                    raise ValidationError("could not proccess your request, cannot remove accounts from the group. None of the provided admins are part of this permission group.")
+
+                self.subscribers.remove(*subscribers)
+
+            # Save the classroom instance first to ensure student changes are persisted
+            self.save()
+            
+        else:
+            raise ValidationError("Could not proccess your request, no admins were provided to be added or removed from the permission group. Please provide a valid list of admins and try again")
+
 
 class TeacherPermissionGroup(models.Model):
     """
@@ -96,7 +128,7 @@ class TeacherPermissionGroup(models.Model):
     
     last_updated = models.DateTimeField(auto_now=True)  # Automatically set to now when the object is updated
 
-    created_at = models.DateTimeField(auto_now_add=True)  # Automatically set to now when the object is created
+    timestamp = models.DateTimeField(auto_now_add=True)
     permission_group_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)  # Unique identifier for the permission group
 
     class Meta:
@@ -135,3 +167,35 @@ class TeacherPermissionGroup(models.Model):
         self.subscribers_count = self.subscribers.count()
         self.permissions_count = self.permissions.count()
         self.save()
+
+    def update_subscribers(self, subscribers_list=None, subscribe=False):
+        if subscribers_list:
+
+            if not subscribers.exists():
+                raise ValidationError("Could not process your request, no valid teachers for your school were found in the provided list of teachers.")
+            
+            elif subscribe:
+                # Check if subscribers are already in the group
+                if self.subscribers.exists():
+                    subscribers_in_the_group = self.subscribers.filter(account_id__in=subscribers_list).values_list('surname', 'name')
+                    if subscribers_in_the_group.exists():
+                        subscriber_names = [f"{surname} {name}" for surname, name in subscribers_in_the_group]
+                        raise ValidationError(f'Could not process your request, the following teachers are already assigned to this permission group: {", ".join(subscriber_names)}.')
+                    
+                # Retrieve CustomUser instances corresponding to the account_ids
+                subscribers = self.school.teachers.filter(account_id__in=subscribers_list)
+                self.subscribers.add(*subscribers)
+
+            else:
+                # Check if students to be removed are actually in the class
+                subscribers = self.subscribers.filter(account_id__in=subscribers_list).values_list('account_id', flat=True)
+                if not subscribers:
+                    raise ValidationError("could not proccess your request, cannot remove accounts from the group. None of the provided teachers are part of this permission group.")
+
+                self.subscribers.remove(*subscribers)
+
+            # Save the classroom instance first to ensure student changes are persisted
+            self.save()
+            
+        else:
+            raise ValidationError("Could not proccess your request, no teacchers were provided to be added or removed from the permission group. Please provide a valid list of teachers and try again")

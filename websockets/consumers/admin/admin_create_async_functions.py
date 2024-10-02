@@ -77,34 +77,41 @@ def create_account(user, role, details):
         if serializer.is_valid():
             with transaction.atomic():
                 created_account = Model.objects.create(**serializer.validated_data)
-                
-                response = f"{details['role']} account successfully created. the {details['role']} can now sign-in and activate the account".lower()
-                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id) if created_account else 'N/A', outcome='CREATED', response=response, school=requesting_account.school,)
+
+                if details['role'] == 'TEACHER' and details.get('grant_full_access'):
+                    permission_group, created = requesting_account.school.teacher_permission_groups.get_or_create(group_name='Full Access', description='Grants teachers full access to manage their assigned classrooms, including student records, assessments, grading, and attendance. This permission allows teachers to maintain control over all aspects of their classroom operations, ensuring they can effectively support student learning and classroom management.')
+                    permission_group.update_subscribers(subscribers_list=[created_account.account_id], subscribe=True)
+                    response = f"A new teacher account has been successfully created for your school. The account has also been added to the full access teacher permission group as per your request to grant the account full access to manage it's own classrooms. Depending on the validity of the provided email address, a confirmation email has been sent to them, the account holder can now sign-in and activate their account."
+
+                else:
+                    response = f"A new {details['role'].lower()} account has been successfully created for your school. Depending on the validity of the provided email address (if applicable), a confirmation email has been sent to their inbox, the account holder can now sign-in and activate their account."
+
+                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id), outcome='CREATED', response=response, school=requesting_account.school,)
 
             if details['role'] == 'STUDENT' and not details.get('email_address'):
-                return {'message' : 'the students account has been successfully created, accounts with no email addresses can not '}
+                return {'message' : 'A new student account has been successfully created, unfortunately accounts with no linked email addresses cannot access the system. You can always update hteir email address later per their consent'}
             
             return {'user' : created_account}
             
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id) if created_account else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id), outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
 
         return {"error": error_response}
         
     except Grade.DoesNotExist:
         # Handle the case where the provided grade ID does not exist
-        return {'error': 'a grade in your school with the provided credentials does not exist. please check the grade details and try again.'}
+        return {'error': 'Could not process your request, a grade in your school with the provided credentials does not exist. Please check the grade details and try again.'}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id) if created_account else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id), outcome='ERROR', response=error_message, school=requesting_account.school)
 
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id) if created_account else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id), outcome='ERROR', response=error_message, school=requesting_account.school)
 
         return {'error': error_message}
 

@@ -24,7 +24,6 @@ class BaseAccountManager(BaseUserManager):
     - activate: Activates an existing user account by setting a password and marking the account as activated.
     """
     
-    @transaction.atomic
     def create(self, email_address=None, name=None, surname=None, role=None, **extra_fields):
         """
         Create and return a new user with the given email, name, surname, and role.
@@ -53,7 +52,6 @@ class BaseAccountManager(BaseUserManager):
         
         return user
 
-    @transaction.atomic
     def activate(self, email_address, password):
         """
         Activate a user account by setting a password and marking it as activated.

@@ -76,7 +76,6 @@ class AuditLog(models.Model):
                 
     def save(self, *args, **kwargs):
         self.clean()
-        
         try:
             super().save(*args, **kwargs)
         except Exception as e:

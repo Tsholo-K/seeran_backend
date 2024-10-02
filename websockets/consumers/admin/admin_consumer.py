@@ -18,7 +18,7 @@ from . import admin_update_async_functions
 from . import admin_delete_async_functions
 from . import admin_search_async_functions
 from . import admin_submit_async_functions
-from . import admin_assign_async_functions
+# from . import admin_assign_async_functions
 from . import admin_form_data_async_functions
 from . import admin_link_async_functions
 from . import admin_unlink_async_functions
@@ -224,14 +224,13 @@ class AdminConsumer(AsyncWebsocketConsumer):
 # ASSIGN
 
     async def handle_assign(self, description, details, account, role, access_token):
-        assign_map = {
-            'assign_permission_group_subscribers': admin_assign_async_functions.assign_permission_group_subscribers,
-        }
+        # assign_map = {
+        # }
 
-        func = assign_map.get(description)
-        if func:
-            response =  await func(account, role, details)
-            return response
+        # func = assign_map.get(description)
+        # if func:
+        #     response =  await func(account, role, details)
+        #     return response
 
         return {'error': 'Could not process your request, an invalid search description was provided. If this problem persist open a bug report ticket.'}
 
@@ -306,6 +305,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'update_multi_factor_authentication': general_update_async_functions.update_multi_factor_authentication,
 
             'update_school_account_details' : admin_update_async_functions.update_school_account_account,
+
+            'update_permission_group_subscribers': admin_update_async_functions.update_permission_group_subscribers,
 
             'update_account_details': admin_update_async_functions.update_account_details,
             
