@@ -475,8 +475,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
         func = create_map.get(description)
         if func:
             response = await func(account, role, details)
-            if description in ['create_account'] and response.get('user'):
-                return await general_email_async_functions.send_account_confirmation_email(response['user'])
+            if description in ['create_account'] and response.get('account'):
+                return await general_email_async_functions.send_account_confirmation_email(response['account'])
             return response
         
         return {'error': 'Could not process your request, an invalid create description was provided. If this problem persist open a bug report ticket.'}

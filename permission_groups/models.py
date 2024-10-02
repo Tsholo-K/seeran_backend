@@ -2,7 +2,7 @@
 import uuid
 
 # django imports
-from django.db import models, IntegrityError, transaction
+from django.db import models, IntegrityError
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 

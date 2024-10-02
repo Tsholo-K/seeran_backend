@@ -13,14 +13,14 @@ from django.utils.translation import gettext as _
 from authentication.utils import generate_otp
 
 
-async def send_account_confirmation_email(user):
+async def send_account_confirmation_email(account):
     
     try:
         mailgun_api_url = "https://api.eu.mailgun.net/v3/" + config('MAILGUN_DOMAIN') + "/messages"
         
         email_data = {
             "from": "seeran grades <accounts@" + config('MAILGUN_DOMAIN') + ">",
-            "to": user.surname.title() + " " + user.name.title() + "<" + user.email_address + ">",
+            "to": account.surname.title() + " " + account.name.title() + "<" + account.email_address + ">",
             "subject": "Account Creation Confirmation",
             "template": "account creation confirmation",
         }

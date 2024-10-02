@@ -71,23 +71,27 @@ def create_account(account, role, details):
         # for the requesting user's role from the mapping.
         Model, Serializer = accounts_utilities.get_account_and_creation_serializer[details['role']]
         serializer = Serializer(data=details)
-        print(serializer.is_valid())
         if serializer.is_valid():
             with transaction.atomic():
                 created_account = Model.objects.create(**serializer.validated_data)
+                print('account created')
 
                 if details['role'] == 'TEACHER' and details.get('grant_full_access'):
                     permission_group, created = requesting_account.school.teacher_permission_groups.get_or_create(group_name='Full Access', description='Grants teachers full access to manage their assigned classrooms, including student records, assessments, grading, and attendance. This permission allows teachers to maintain control over all aspects of their classroom operations, ensuring they can effectively support student learning and classroom management.')
+                    print(f'permission group created: {created}')
                     permissions = []
                     for action, targets in {"create": ["ACTIVITY","ASSESSMENT"], "update": ["ASSESSMENT"], "delete": ["ASSESSMENT"], "submit": ["ATTENDANCE"], "generate": ["PROGRESS_REPORT"]}.items():
                         for target in targets:
                             permissions.append(TeacherAccountPermission(linked_permission_group=permission_group, action=action.upper(), target_model=target.upper(), can_execute=True))
+                    print(f'permissions loaded: {len(permissions)}')
 
                     batch_size = 50
                     for i in range(0, len(permissions), batch_size):
                         TeacherAccountPermission.objects.bulk_create(permissions[i:i + batch_size])
+                    print(f'permissions batch created')
 
                     permission_group.update_subscribers(subscribers_list=[created_account.account_id], subscribe=True)
+                    print(f'permission group subscribers updated')
                     response = f"A new teacher account has been successfully created for your school. The account has also been added to the full access teacher permission group as per your request to grant the account full access to manage it's own classrooms. Depending on the validity of the provided email address, a confirmation email has been sent to them, the account holder can now sign-in and activate their account."
 
                 else:
@@ -98,7 +102,7 @@ def create_account(account, role, details):
             if details['role'] == 'STUDENT' and not details.get('email_address'):
                 return {'message' : 'A new student account has been successfully created, unfortunately accounts with no linked email addresses cannot access the system. You can always update hteir email address later per their consent'}
             
-            return {'user' : created_account}
+            return {'account' : created_account}
             
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
