@@ -130,6 +130,7 @@ def get_account_and_linked_school(user, role):
 
 def get_account_and_creation_serializer(role):
     try:
+        print('getting modela nd serializer')
         return (model_mapping.account[role], serializer_mappings.account_creation[role])
 
     except Principal.DoesNotExist:

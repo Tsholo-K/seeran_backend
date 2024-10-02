@@ -43,6 +43,7 @@ from audit_logs import utils as audits_utilities
 @database_sync_to_async
 def create_account(account, role, details):
     try:
+        print('creating account..')
         if details.get('role') not in ['ADMIN', 'TEACHER', 'STUDENT']:
             return {"error": 'could not proccess your request, the provided account role is invalid'}
         
