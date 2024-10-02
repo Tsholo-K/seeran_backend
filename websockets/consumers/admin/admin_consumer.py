@@ -396,13 +396,17 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'delete_grade': admin_delete_async_functions.delete_grade,
 
-            'delete_class': admin_delete_async_functions.delete_class,
+            'delete_subject': admin_delete_async_functions.delete_subject,
+
+            'delete_term': admin_delete_async_functions.delete_term,
+
+            'delete_class': admin_delete_async_functions.delete_classroom,
             
             'delete_assessment': admin_delete_async_functions.delete_assessment,
             
-            'delete_schedule': admin_delete_async_functions.delete_daily_schedule,
+            'delete_timetable': admin_delete_async_functions.delete_timetable,
 
-            'delete_group_schedule': admin_delete_async_functions.delete_group_schedule,
+            'delete_group_timetable': admin_delete_async_functions.delete_group_timetable,
         }
 
         func = delete_map.get(description)

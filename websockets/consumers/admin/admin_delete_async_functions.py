@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 
 # models 
 from accounts.models import Principal, Admin, Teacher, Student
+from permission_groups.models import AdminPermissionGroup, TeacherPermissionGroup
 from grades.models import Grade
 from terms.models import Term
 from subjects.models import Subject
@@ -58,13 +59,63 @@ def delete_school_account(user, role, details):
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
         audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', target_object_id=str(school.school_id) if school else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
         audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', target_object_id=str(school.school_id) if school else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        return {'error': error_message}
 
+
+@database_sync_to_async
+def delete_permission_group(user, role, details):
+    try:
+        permission_group = None
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to create an assessment
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'DELETE', 'PERMISSION'):
+            response = f'Could not proccess your request, you do not have the necessary permissions to view permission group details. Please contact your administrators to adjust you permissions for viewing permissions.'
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='PERMISSION', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+        
+        if not {'permission_group', 'group'}.issubset(details) or details['group'] not in ['admins', 'teachers']:
+            response = f'Could not proccess your request, the provided information is invalid for the action you are trying to perform. Please make sure to provide a valid group ID and group (admin or teacher) for which to filter the permission groups and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='PERMISSION', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+        
+        # Determine the group type based on the role
+        if details['group'] == 'admins':
+            permission_group = requesting_account.school.admin_permission_groups.get(permission_group_id=details['permission_group'])
+      
+        else:
+            permission_group = requesting_account.school.teacher_permission_groups.get(permission_group_id=details['permission_group'])
+
+        with transaction.atomic():
+            response = f"Permission group {permission_group.group_name}, with permission group ID: {permission_group.permission_group_id}, has been successfully deleted from you schools system. All accounts subscribed to it will lose all permissions that were attached to it, effective immediately."
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='PERMISSION', target_object_id=str(permission_group.permission_group_id), outcome='DELETED', server_response=response, school=requesting_account.school)
+            
+            permission_group.delete()
+
+        return {"message": response}
+    
+    except AdminPermissionGroup.DoesNotExist:
+        # Handle the case where the provided grade ID does not exist
+        return { 'error': 'Could not process your request, a admin permission group in your school with the provided credentials does not exist. Please review the group details and try again'}
+    
+    except TeacherPermissionGroup.DoesNotExist:
+        # Handle the case where the provided grade ID does not exist
+        return { 'error': 'Could not process your request, a teacher permission group  in your school with the provided credentials does not exist. Please review the group details and try again'}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='PERMISSION', target_object_id=str(permission_group.permission_group_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='PERMISSION', target_object_id=str(permission_group.permission_group_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {'error': error_message}
 
 
@@ -169,48 +220,6 @@ def delete_grade(user, role, details):
 
 
 @database_sync_to_async
-def delete_term(user, role, details):
-    try:
-        term = None  # Initialize term as None to prevent issues in error handling
-        # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
-
-        # Check if the user has permission to create a grade
-        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'DELETE', 'TERM'):
-            response = f'could not proccess your request, you do not have the necessary permissions to delete a grade'
-            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TERM', outcome='DENIED', response=response, school=requesting_account.school)
-
-            return {'error': response}
-
-        term = requesting_account.school.terms.get(term_id=details.get('term'))
-
-        # Create the grade within a transaction to ensure atomicity
-        with transaction.atomic():
-            response = f"a term in your school with the term ID {term.term_id} has been successfully deleted. the term and all it's associated data will no longer be assessible on the system"
-            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='DELETED', response=response, school=requesting_account.school,)
-            
-            term.delete()
-
-        return {'message' : response}
-    
-    except Term.DoesNotExist:
-        # Handle the case where the provided grade ID does not exist
-        return {'error': 'a term in your school with the provided credentials does not exist. please check the term details and try again.'}
-
-    except ValidationError as e:
-        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
-        return {"error": error_message}
-
-    except Exception as e:
-        error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
-        return {'error': error_message}
-
-
-@database_sync_to_async
 def delete_subject(user, role, details):
     try:
         subject = None  # Initialize subject as None to prevent issues in error handling
@@ -250,10 +259,52 @@ def delete_subject(user, role, details):
         audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
 
         return {'error': error_message}
+
+
+@database_sync_to_async
+def delete_term(user, role, details):
+    try:
+        term = None  # Initialize term as None to prevent issues in error handling
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to create a grade
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'DELETE', 'TERM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to delete a grade'
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TERM', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        term = requesting_account.school.terms.get(term_id=details.get('term'))
+
+        # Create the grade within a transaction to ensure atomicity
+        with transaction.atomic():
+            response = f"a term in your school with the term ID {term.term_id} has been successfully deleted. the term and all it's associated data will no longer be assessible on the system"
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='DELETED', response=response, school=requesting_account.school,)
+            
+            term.delete()
+
+        return {'message' : response}
+    
+    except Term.DoesNotExist:
+        # Handle the case where the provided grade ID does not exist
+        return {'error': 'a term in your school with the provided credentials does not exist. please check the term details and try again.'}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {'error': error_message}
     
     
 @database_sync_to_async
-def delete_class(user, role, details):
+def delete_classroom(user, role, details):
     try:
         classroom = None  # Initialize classroom as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
@@ -336,7 +387,7 @@ def delete_assessment(user, role, details):
 
 
 @database_sync_to_async
-def delete_daily_schedule(user, role, details):
+def delete_timetable(user, role, details):
     try:
         daily_schedule = None  # Initialize schedule as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
@@ -389,7 +440,7 @@ def delete_daily_schedule(user, role, details):
 
 
 @database_sync_to_async
-def delete_group_schedule(user, role, details):
+def delete_group_timetable(user, role, details):
     try:
         group_timtable = None  # Initialize group timtable as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
