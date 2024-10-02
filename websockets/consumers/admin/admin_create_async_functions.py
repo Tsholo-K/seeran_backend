@@ -110,32 +110,30 @@ def create_account(user, role, details):
 
 
 @database_sync_to_async
-def create_permission_group(user, role, details):
+def create_permission_group(account, role, details):
     try:
         permission_group = None  # Initialize school as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to create a grade
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'PERMISSION'):
             response = f'could not proccess your request, you do not have the necessary permissions to create permission groups. please contact your principal to adjust you permissions for creating permission groups.'
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='PERMISSION', outcome='DENIED', response=response, school=requesting_account.school)
-
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='PERMISSION', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
         
         # Check if the 'permissions' key is provided and not empty
         if 'permissions' not in details or not details['permissions']:
             response = ('could not process your request, no permissions have been provided. Please specify the permissions you want to assign to the group and try again.')
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='PERMISSION', outcome='ERROR', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='PERMISSION', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
         
-        if 'group' not in details or details['group'] not in ['admin', 'teacher']:
+        elif 'group' not in details or details['group'] not in ['admin', 'teacher']:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid group (admin or teacher) for which the permission group is for and try again'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='ERROR', response=response, school=requesting_account.school)
-
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        details['school'] = requesting_account.school.pk
+        details['school'] = requesting_account.school.id
 
         # Determine the group type based on the role
         if details['group'] == 'admin':
@@ -171,19 +169,19 @@ def create_permission_group(user, role, details):
             
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='PERMISSION', target_object_id=str(permission_group.permission_group_id) if permission_group else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='PERMISSION', target_object_id=str(permission_group.permission_group_id) if permission_group else 'N/A', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
 
         return {"error": error_response}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='PERMISSION', target_object_id=str(permission_group.permission_group_id) if permission_group else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='PERMISSION', target_object_id=str(permission_group.permission_group_id) if permission_group else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
 
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='PERMISSION', target_object_id=str(permission_group.permission_group_id) if permission_group else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='PERMISSION', target_object_id=str(permission_group.permission_group_id) if permission_group else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
 
         return {'error': error_message}
 

@@ -67,7 +67,6 @@ class AdminAccountPermission(models.Model):
         # String representation of the permission instance
         return f"can {self.action} on {self.target_model}"
 
-    @transaction.atomic
     def save(self, *args, **kwargs):
         """
         Overrides the default save method to implement custom validation 
@@ -143,7 +142,6 @@ class TeacherAccountPermission(models.Model):
         # String representation of the permission instance
         return f"can {self.action} on {self.target_model}"
 
-    @transaction.atomic
     def save(self, *args, **kwargs):
         """
         Overrides the default save method to implement custom validation 

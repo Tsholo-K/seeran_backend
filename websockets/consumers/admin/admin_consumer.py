@@ -88,7 +88,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         response = await self.handle_request(action, description, details, account, role, access_token)
         
-        if response is not None:
+        if response:
             return await self.send(text_data=json.dumps(response))
         
         return await self.send(text_data=json.dumps({'error': 'provided information is invalid.. request revoked'}))
