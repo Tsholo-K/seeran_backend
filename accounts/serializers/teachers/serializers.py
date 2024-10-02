@@ -9,7 +9,7 @@ class TeacherAccountCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Teacher
-        fields = ['name', 'surname', 'email_address', 'school', 'role']
+        fields = ['name', 'surname', 'email_address', 'role', 'school']
 
     def __init__(self, *args, **kwargs):
         super(TeacherAccountCreationSerializer, self).__init__(*args, **kwargs)

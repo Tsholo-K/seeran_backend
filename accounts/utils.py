@@ -128,7 +128,7 @@ def get_account_and_linked_school(user, role):
         # Handle any unexpected errors with a general error message
         return {'error': str(e)}
 
-def get_account_and_creation_serializer(user, role):
+def get_account_and_creation_serializer(role):
     try:
         return (model_mapping.account[role], serializer_mappings.account_creation[role])
 
