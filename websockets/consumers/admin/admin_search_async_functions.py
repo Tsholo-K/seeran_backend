@@ -9,7 +9,6 @@ from channels.db import database_sync_to_async
 # django
 from django.db import models, transaction
 from django.utils.translation import gettext as _
-from django.db.models import Q
 
 # models 
 from accounts.models import Teacher, Student
@@ -54,7 +53,7 @@ from accounts.checks import permission_checks
 from accounts.mappings import serializer_mappings
 
 # utility functions 
-from accounts import utils as users_utilities
+from accounts import utils as accounts_utilities
 from account_permissions import utils as permissions_utilities
 from audit_logs import utils as audits_utilities
 from school_attendances import utils as attendances_utilities
@@ -64,7 +63,7 @@ from school_attendances import utils as attendances_utilities
 def search_audit_entries(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         # Check if the user has permission to create an assessment
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'AUDIT_ENTRY'):
@@ -91,7 +90,7 @@ def search_audit_entries(user, role, details):
 def search_audit_entry(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         # Check if the user has permission to create an assessment
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'AUDIT_ENTRY'):
@@ -122,7 +121,7 @@ def search_audit_entry(user, role, details):
 def search_permission_groups(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         # Check if the user has permission to create an assessment
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'PERMISSION'):
@@ -157,7 +156,7 @@ def search_permission_groups(user, role, details):
 def search_permission_group(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         # Check if the user has permission to create an assessment
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'PERMISSION'):
@@ -206,7 +205,7 @@ def search_permission_group(user, role, details):
 def search_permission_group_subscribers(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         # Check if the user has permission to create an assessment
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'PERMISSION'):
@@ -255,7 +254,7 @@ def search_permission_group_subscribers(user, role, details):
 def search_announcement(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
         
         if not 'announcement' in details:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid announcement ID and try again'
@@ -284,7 +283,7 @@ def search_announcement(user, role, details):
 def search_accounts(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ACCOUNT'):
             response = f'could not proccess your request, you do not have the necessary permissions to view accounts. please contact your administrator to adjust you permissions for viewing accounts.'
@@ -329,7 +328,7 @@ def search_accounts(user, role, details):
 def search_account(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ACCOUNT'):
             response = f'could not proccess your request, you do not have the necessary permissions to view accounts. please contact your administrator to adjust you permissions for viewing accounts.'
@@ -342,7 +341,7 @@ def search_account(user, role, details):
             return {'error': response}
 
         # Build the queryset for the requested account with the necessary related fields.
-        requested_account = users_utilities.get_account_and_permission_check_attr(details['account'], details['role'])
+        requested_account = accounts_utilities.get_account_and_permission_check_attr(details['account'], details['role'])
 
         # Check if the requesting user has permission to view the requested user's profile or details.
         permission_error = permission_checks.view_account(requesting_account, requested_account)
@@ -375,7 +374,7 @@ def search_account(user, role, details):
 def search_students(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ACCOUNT'):
             response = f'could not proccess your request, you do not have the necessary permissions to view accounts. please contact your administrator to adjust you permissions for viewing accounts.'
@@ -410,7 +409,7 @@ def search_students(user, role, details):
 def search_parents(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ACCOUNT'):
             response = f'could not proccess your request, you do not have the necessary permissions to view accounts. please contact your administrator to adjust you permissions for viewing accounts.'
@@ -449,7 +448,7 @@ def search_parents(user, role, details):
 def search_grades(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
         
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'GRADE'):
             response = f'could not proccess your request, you do not have the necessary permissions to view school grades. please contact your administrator to adjust you permissions for viewing school grades.'
@@ -477,7 +476,7 @@ def search_grades(user, role, details):
 def search_grade(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'GRADE'):
             response = f'could not proccess your request, you do not have the necessary permissions to view grades. please contact your administrator to adjust you permissions for viewing grades.'
@@ -507,7 +506,7 @@ def search_grade(user, role, details):
 def search_grade_details(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'GRADE'):
             response = f'could not proccess your request, you do not have the necessary permissions to view grades. please contact your administrator to adjust you permissions for viewing grades.'
@@ -538,7 +537,7 @@ def search_grade_details(user, role, details):
 def search_grade_register_classrooms(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'CLASSROOM'):
             response = f'could not proccess your request, you do not have the necessary permissions to view classrooms. please contact your administrator to adjust you permissions for viewing classrooms.'
@@ -568,7 +567,7 @@ def search_grade_register_classrooms(user, role, details):
 def search_subject(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'SUBJECT'):
             response = f'could not proccess your request, you do not have the necessary permissions to view subjects. please contact your administrator to adjust you permissions for viewing subjects.'
@@ -599,7 +598,7 @@ def search_subject(user, role, details):
 def search_subject_details(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'SUBJECT'):
             response = f'Could not proccess your request, you do not have the necessary permissions to view subjects. please contact your administrator to adjust you permissions for viewing subjects.'
@@ -629,7 +628,7 @@ def search_subject_details(user, role, details):
 def search_grade_terms(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'TERM'):
             response = f'could not proccess your request, you do not have the necessary permissions to view terms. please contact your administrator to adjust you permissions for viewing terms.'
@@ -657,7 +656,7 @@ def search_grade_terms(user, role, details):
 def search_term_details(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'TERM'):
             response = f'could not proccess your request, you do not have the necessary permissions to view terms. please contact your administrator to adjust you permissions for viewing terms.'
@@ -688,7 +687,7 @@ def search_term_details(user, role, details):
 def search_term_subject_performance(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'TERM'):
             response = f'could not proccess your request, you do not have the necessary permissions to view term performances. please contact your administrator to adjust you permissions for viewing term details.'
@@ -728,7 +727,7 @@ def search_term_subject_performance(user, role, details):
 def search_classrooms(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'CLASSROOM'):
             response = f'could not proccess your request, you do not have the necessary permissions to view classrooms. please contact your administrator to adjust you permissions for viewing classroom details.'
@@ -759,7 +758,7 @@ def search_classrooms(user, role, details):
 def search_teacher_classrooms(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'CLASSROOM'):
             response = f'could not proccess your request, you do not have the necessary permissions to view classrooms. please contact your administrator to adjust you permissions for viewing classrooms.'
@@ -788,7 +787,7 @@ def search_teacher_classrooms(user, role, details):
 def search_assessments(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
         
         # Check if the user has permission to create an assessment
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ASSESSMENT'):
@@ -812,7 +811,7 @@ def search_assessments(user, role, details):
             elif status == 'collected':
                 assessments = subject.assessments.filter(collected=True, releasing_grades=False, grades_released=False)
             elif status == 'graded':
-                assessments = subject.assessments.filter(Q(releasing_grades=True) | Q(grades_released=True))
+                assessments = subject.assessments.filter(models.Q(releasing_grades=True) | models.Q(grades_released=True))
 
         elif details.get('classroom'):
             # Fetch the specific classroom based on classroom_id and school
@@ -823,7 +822,7 @@ def search_assessments(user, role, details):
             elif status == 'collected':
                 assessments = classroom.assessments.filter(collected=True, releasing_grades=False, grades_released=False)
             elif status == 'graded':
-                assessments = classroom.assessments.filter(Q(releasing_grades=True) | Q(grades_released=True))
+                assessments = classroom.assessments.filter(models.Q(releasing_grades=True) | models.Q(grades_released=True))
 
         else:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid grade and subject IDs or a valid classroom ID and try again'
@@ -864,7 +863,7 @@ def search_assessments(user, role, details):
 def search_assessment(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
         
         # Check if the user has permission to create an assessment
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ASSESSMENT'):
@@ -902,7 +901,7 @@ def search_assessment(user, role, details):
 def search_transcripts(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
         
         # Check if the user has permission to create an assessment
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ASSESSMENT'):
@@ -935,7 +934,7 @@ def search_transcripts(user, role, details):
 def search_transcript(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
         
         # Check if the user has permission to create an assessment
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ASSESSMENT'):
@@ -966,7 +965,7 @@ def search_transcript(user, role, details):
 def search_student_classroom_card(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ACCOUNT'):
             response = f'could not proccess your request, you do not have the necessary permissions to view classrooms. please contact your administrator to adjust you permissions for viewing classrooms.'
@@ -979,7 +978,7 @@ def search_student_classroom_card(user, role, details):
             return {'error': response}
 
         # Retrieve the requested users account and related school in a single query using select_related
-        requested_account = users_utilities.get_account_and_permission_check_attr(details['account'], 'STUDENT')
+        requested_account = accounts_utilities.get_account_and_permission_check_attr(details['account'], 'STUDENT')
 
         # Check permissions
         permission_error = permission_checks.view_classroom(requesting_account, requested_account)
@@ -1007,7 +1006,7 @@ def search_student_classroom_card(user, role, details):
 def search_activity(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ACTIVITY'):
             response = f'could not proccess your request, you do not have the necessary permissions to view classrooms. please contact your administrator to adjust you permissions for viewing classrooms.'
@@ -1038,7 +1037,7 @@ def search_activity(user, role, details):
 def search_teacher_timetable_schedules(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'TEACHER_TIMETABLE'):
             response = f'could not proccess your request, you do not have the necessary permissions to view teacher timetables. please contact your administrator to adjust you permissions for viewing teacher timetables.'
@@ -1073,7 +1072,7 @@ def search_teacher_timetable_schedules(user, role, details):
 def search_group_timetables(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'GROUP_TIMETABLE'):
             response = f'could not proccess your request, you do not have the necessary permissions to view group timetables. please contact your administrator to adjust you permissions for viewing group timetables.'
@@ -1123,7 +1122,7 @@ def search_group_timetables(user, role, details):
 def search_group_timetable_schedules(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'GROUP_TIMETABLE'):
             response = f'could not proccess your request, you do not have the necessary permissions to view group timetables. please contact your administrator to adjust you permissions for viewing group timetables.'
@@ -1154,7 +1153,7 @@ def search_group_timetable_schedules(user, role, details):
 def search_group_timetable_subscribers(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'GROUP_TIMETABLE'):
             response = f'could not proccess your request, you do not have the necessary permissions to view group timetable subscribers. please contact your administrators to adjust you permissions for viewing group schedules.'
@@ -1191,7 +1190,7 @@ def search_group_timetable_subscribers(user, role, details):
 def search_timetable_sessions(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'DAILY_SCHEDULE'):
             response = f'could not proccess your request, you do not have the necessary permissions to view timetable sessions. please contact your administrators to adjust you permissions for viewing group schedules.'
@@ -1222,7 +1221,7 @@ def search_timetable_sessions(user, role, details):
 def search_month_attendance_records(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
  
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ATTENDANCE'):
             response = f'could not proccess your request, you do not have the necessary permissions to view classrooms. please contact your administrator to adjust you permissions for viewing classrooms.'
@@ -1241,7 +1240,7 @@ def search_month_attendance_records(user, role, details):
         start_date, end_date = attendances_utilities.get_month_dates(details['month_name'])
 
         # Query for the Absent instances where absentes is True
-        attendances = requesting_account.school.attendances.prefetch_related('absent_students').filter(Q(date__gte=start_date) & Q(date__lt=end_date) & Q(classroom=classroom) & Q(absentes=True))
+        attendances = requesting_account.school.attendances.prefetch_related('absent_students').filter(models.Q(date__gte=start_date) & models.Q(date__lt=end_date) & models.Q(classroom=classroom) & models.Q(absentes=True))
 
         # For each absent instance, get the corresponding Late instance
         attendance_records = []

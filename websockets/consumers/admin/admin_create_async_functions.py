@@ -43,14 +43,12 @@ from audit_logs import utils as audits_utilities
 @database_sync_to_async
 def create_account(account, role, details):
     try:
-        print('creating account..')
         if details.get('role') not in ['ADMIN', 'TEACHER', 'STUDENT']:
             return {"error": 'could not proccess your request, the provided account role is invalid'}
         
         created_account = None  # Initialize school as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
-        print('retrieved the requesting users account')
 
         if details['role'] == 'ADMIN' and role == 'ADMIN':
             response = f'could not proccess your request, your accounts role does not have enough permissions to perform this action.'
@@ -63,12 +61,9 @@ def create_account(account, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
         
-        print('passed all checks')
-
         if details['role'] == 'STUDENT':
             grade = requesting_account.school.grades.get(grade_id=details.get('grade'))
             details['grade'] = grade.id
-        print('passed all checks')
 
         details['school'] = requesting_account.school.id
 
@@ -79,24 +74,19 @@ def create_account(account, role, details):
         if serializer.is_valid():
             with transaction.atomic():
                 created_account = Model.objects.create(**serializer.validated_data)
-                print('account created')
 
                 if details['role'] == 'TEACHER' and details.get('grant_full_access'):
                     permission_group, created = requesting_account.school.teacher_permission_groups.get_or_create(group_name='Full Access', description='Grants teachers full access to manage their assigned classrooms, including student records, assessments, grading, and attendance. This permission allows teachers to maintain control over all aspects of their classroom operations, ensuring they can effectively support student learning and classroom management.')
-                    print(f'permission group created: {created}')
                     permissions = []
                     for action, targets in {"create": ["ACTIVITY","ASSESSMENT"], "update": ["ASSESSMENT"], "delete": ["ASSESSMENT"], "submit": ["ATTENDANCE"], "generate": ["PROGRESS_REPORT"]}.items():
                         for target in targets:
                             permissions.append(TeacherAccountPermission(linked_permission_group=permission_group, action=action.upper(), target_model=target.upper(), can_execute=True))
-                    print(f'permissions loaded: {len(permissions)}')
 
                     batch_size = 50
                     for i in range(0, len(permissions), batch_size):
                         TeacherAccountPermission.objects.bulk_create(permissions[i:i + batch_size])
-                    print(f'permissions batch created')
 
                     permission_group.update_subscribers(subscribers_list=[created_account.account_id], subscribe=True)
-                    print(f'permission group subscribers updated')
                     response = f"A new teacher account has been successfully created for your school. The account has also been added to the full access teacher permission group as per your request to grant the account full access to manage it's own classrooms. Depending on the validity of the provided email address, a confirmation email has been sent to them, the account holder can now sign-in and activate their account."
 
                 else:
@@ -111,7 +101,6 @@ def create_account(account, role, details):
             
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        print(error_message)
         audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id), outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
         return {"error": error_response}
         
@@ -121,13 +110,11 @@ def create_account(account, role, details):
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        print(error_message)
         audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        print(error_message)
         audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {'error': error_message}
 
