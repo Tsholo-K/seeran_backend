@@ -63,7 +63,7 @@ class AuditLog(models.Model):
     school = models.ForeignKey('schools.School', on_delete=models.CASCADE, related_name='audit_logs')
 
     timestamp = models.DateTimeField(auto_now_add=True)
-    audit_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    audit_entry_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
         ordering = ['-timestamp']
@@ -71,8 +71,8 @@ class AuditLog(models.Model):
     def __str__(self):
         return f"{self.actor.surname} {self.actor.name} performed {self.action} on {self.timestamp}"
     
-    def clean(self):
-        ...
+    # def clean(self):
+    #     ...
                 
     def save(self, *args, **kwargs):
         # self.clean()

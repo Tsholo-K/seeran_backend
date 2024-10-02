@@ -115,7 +115,6 @@ def create_account(user, role, details):
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
         audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
-
         return {"error": error_message}
 
     except Exception as e:

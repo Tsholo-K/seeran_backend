@@ -17,7 +17,7 @@ class AuditEntriesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AuditLog
-        fields = ['actor', 'outcome', 'target_model', 'timestamp', 'audit_id']
+        fields = ['actor', 'outcome', 'target_model', 'timestamp', 'audit_entry_id']
 
     def get_actor(self, obj):
         return f'{obj.actor.surname} {obj.actor.name}'
