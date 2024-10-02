@@ -125,7 +125,7 @@ def update_permission_group_details(account, role, details):
             with transaction.atomic():
                 serializer.save()
                 
-                response = f'Accounts successfully {"unsubscribed from" if details.get("subscribe") else "subscribed to"} the permission group'
+                response = f'Accounts successfully {'unsubscribed from' if details.get("subscribe") else 'subscribed to'} the permission group'
                 audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='PERMISSION', target_object_id=str(permission_group.permission_group_id), outcome='UPDATED', server_response=response, school=requesting_account.school,)
 
             return {"message": response}
@@ -192,7 +192,7 @@ def update_permission_group_subscribers(account, role, details):
             # Check for validation errors and perform student updates
             permission_group.update_subscribers(subscribers_list=subscribers_list, subscribe=details.get('subscribe'))
             
-            response = f'the provided {"teacher" if details['group'] == 'admins' else "admin"} {'accounts have' if len(subscribers_list) > 1 else 'account has'} been successfully {"subscribed to" if details.get("subscribe") else "unsubscribed from"} the permission group. {'Accounts' if len(subscribers_list) > 1 else 'Account'} with the following accound {'IDs' if len(subscribers_list) > 1 else 'ID'}: {", ".join(subscribers_list)} will {"gain" if details.get("subscribe") else "lose"} all permissions attached to this permission group, effactive immediately.'
+            response = f"The provided {'teacher' if details['group'] == 'admins' else 'admin'} {'accounts have' if len(subscribers_list) > 1 else 'account has'} been successfully {'subscribed to' if details.get("subscribe") else 'unsubscribed from'} the permission group. {'Accounts' if len(subscribers_list) > 1 else 'Account'} with the following accound {'IDs' if len(subscribers_list) > 1 else 'ID'}: {', '.join(subscribers_list)} will {'gain' if details.get("subscribe") else 'lose'} all permissions attached to this permission group, effactive immediately."
             audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='PERMISSION', target_object_id=str(permission_group.permission_group_id) if permission_group else 'N/A', outcome='UPDATED', server_response=response, school=requesting_account.school,)
 
         return {"message": response}
