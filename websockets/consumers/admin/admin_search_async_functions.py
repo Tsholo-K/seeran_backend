@@ -221,11 +221,11 @@ def search_permission_group_subscribers(user, role, details):
         
         # Determine the group type based on the role
         if details['group'] == 'admins':
-            group = requesting_account.school.admin_permission_groups.select_related('subscribers').get(permission_group_id=details['permission_group'])
+            group = requesting_account.school.admin_permission_groups.prefetch_related('subscribers').get(permission_group_id=details['permission_group'])
             subscribers = group.subscribers.only('name', 'surname', 'email_address', 'profile_picture')
       
         elif details['group'] == 'teachers':
-            group = requesting_account.school.teacher_permission_groups.select_related('subscribers').get(permission_group_id=details['permission_group'])
+            group = requesting_account.school.teacher_permission_groups.prefetch_related('subscribers').get(permission_group_id=details['permission_group'])
             subscribers = group.subscribers.only('name', 'surname', 'email_address', 'profile_picture')
 
         serialized_subscribers = BasicAccountDetailsEmailSerializer(subscribers, many=True).data
