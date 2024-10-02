@@ -107,6 +107,7 @@ class TeacherAccountPermission(models.Model):
         ('VIEW', 'View'),      # Permission to view assessments or records
         ('DELETE', 'Delete'),  # Permission to remove assessments or records
         ('SUBMIT', 'Submit'),  # Permission to finalize and submit records
+        ('GENERATE', 'Generate'),   # Permission to create reports or documents
     ]
 
     # Defining the possible target models that can be affected by actions
