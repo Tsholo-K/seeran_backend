@@ -271,6 +271,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
     async def handle_form_data(self, description, details, account, role, access_token):
         form_data_map = {
+            'form_data_for_subscribing_accounts_to_permission_group': admin_form_data_async_functions.form_data_for_subscribing_accounts_to_permission_group,
+
             'form_data_for_creating_classroom': admin_form_data_async_functions.form_data_for_creating_classroom,
             'form_data_for_updating_classroom': admin_form_data_async_functions.form_data_for_updating_classroom,
 

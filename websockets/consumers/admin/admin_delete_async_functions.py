@@ -93,7 +93,7 @@ def delete_permission_group(user, role, details):
             permission_group = requesting_account.school.teacher_permission_groups.get(permission_group_id=details['permission_group'])
 
         with transaction.atomic():
-            response = f"Permission group {permission_group.group_name}, with permission group ID: {permission_group.permission_group_id}, has been successfully deleted from you schools system. All accounts subscribed to it will lose all permissions that were attached to it, effective immediately."
+            response = f"Permission group, {permission_group.group_name}, with permission group ID: {permission_group.permission_group_id}, has been successfully deleted from you schools system. All accounts subscribed to it will lose all permissions that were attached to it, effective immediately."
             audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='PERMISSION', target_object_id=str(permission_group.permission_group_id), outcome='DELETED', server_response=response, school=requesting_account.school)
             
             permission_group.delete()

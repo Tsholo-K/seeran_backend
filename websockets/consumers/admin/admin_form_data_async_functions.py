@@ -43,26 +43,26 @@ def form_data_for_subscribing_accounts_to_permission_group(user, role, details):
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
         # Check if the user has permission to create an assessment
-        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'ASSIGN', 'PERMISSION'):
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'PERMISSION'):
             response = f'could not proccess your request, you do not have the necessary permissions to view permission group subscribers. please contact your principal to adjust you permissions for viewing permissions.'
-            audits_utilities.log_audit(actor=requesting_account, action='ASSIGN', target_model='PERMISSION', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='PERMISSION', outcome='DENIED', response=response, school=requesting_account.school)
             return {'error': response}
         
         if not {'permission_group', 'group'}.issubset(details) or details['group'] not in ['admins', 'teachers']:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid group ID and group (admin or teacher) for which to filter the permission groups and try again'
-            audits_utilities.log_audit(actor=requesting_account, action='ASSIGN', target_model='PERMISSION', outcome='ERROR', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='PERMISSION', outcome='ERROR', response=response, school=requesting_account.school)
             return {'error': response}
         
         # Determine the group type based on the role
         if details['group'] == 'admins':
             group = requesting_account.school.admin_permission_groups.select_related('subscribers').get(permission_group_id=details['permission_group'])
-            users = requesting_account.school.admins.exclude(id__in=group.subscribers_id)
+            accounts = requesting_account.school.admins.exclude(id__in=group.subscribers_id)
       
         elif details['group'] == 'teachers':
             group = requesting_account.school.teacher_permission_groups.select_related('subscribers').get(permission_group_id=details['permission_group'])
-            users = requesting_account.school.teachers.exclude(id__in=group.subscribers_id)
+            accounts = requesting_account.school.teachers.exclude(id__in=group.subscribers_id)
 
-        serialized_users = SourceAccountSerializer(users, many=True).data
+        serialized_users = SourceAccountSerializer(accounts, many=True).data
 
         # Compress the serialized data
         compressed_users = zlib.compress(json.dumps(serialized_users).encode('utf-8'))
