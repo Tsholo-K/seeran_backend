@@ -196,21 +196,20 @@ def create_permission_group(account, role, details):
 
 
 @database_sync_to_async
-def create_grade(user, role, details):
+def create_grade(account, role, details):
     try:
         grade = None  # Initialize grade as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to create a grade
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'GRADE'):
             response = f'could not proccess your request, you do not have the necessary permissions to create a grade'
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GRADE', outcome='DENIED', response=response, school=requesting_account.school)
-
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GRADE', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         # Set the school field in the details to the user's school ID
-        details['school'] = requesting_account.school.pk
+        details['school'] = requesting_account.school.id
 
         # Serialize the details for grade creation
         serializer = GradeCreationSerializer(data=details)
@@ -220,25 +219,25 @@ def create_grade(user, role, details):
                 grade = Grade.objects.create(**serializer.validated_data)
 
                 response = f'grade {grade.grade} has been successfully created for your school. you can now add students, subjects, classes and start tracking attendance and performnace'
-                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='CREATED', response=response, school=requesting_account.school,)
+                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GRADE', target_object_id=str(grade.grade_id), outcome='CREATED', server_response=response, school=requesting_account.school,)
 
             return {'message' : response}
                 
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GRADE', target_object_id=str(grade.grade_id), outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
 
         return {"error": error_response}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GRADE', target_object_id=str(grade.grade_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
 
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GRADE', target_object_id=str(grade.grade_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
 
         return {'error': error_message}
 

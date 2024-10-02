@@ -103,7 +103,7 @@ def login(request):
             if session_response:  # If the function returns a response, it indicates an error
                 return session_response
             
-            response = Response({"message": "You will have access to your dashboard for the next 24 hours, until your session ends", "role" : requesting_user.role.title()}, status=status.HTTP_200_OK)
+            response = Response({"message": "You will have access to your dashboard for the next 24 hours, until your session ends", "role" : requesting_user.role}, status=status.HTTP_200_OK)
         
             # Set access token cookie with custom expiration (24 hours)
             response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)

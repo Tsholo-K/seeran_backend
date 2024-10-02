@@ -5,7 +5,6 @@ from django.db import transaction
 from audit_logs.models import AuditLog
 
 
-@transaction.atomic()
 def log_audit(actor, action, target_model, outcome, server_response, school, target_object_id='N/A'):
     """Helper function to create an audit log entry."""
     AuditLog.objects.create(
