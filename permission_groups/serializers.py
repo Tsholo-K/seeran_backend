@@ -83,7 +83,7 @@ class AdminPermissionGroupSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AdminPermissionGroup
-        fields = ['group_name', 'permissions_count', 'description', 'created_at', 'permissions']
+        fields = ['group_name', 'permissions_count', 'description', 'timestamp', 'permissions']
 
     def get_permissions(self, obj):
         return AdminPermissionsSerializer(obj.permissions.all(), many=True).data
@@ -95,7 +95,7 @@ class TeacherPermissionGroupSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TeacherPermissionGroup
-        fields = ['group_name', 'permissions_count', 'description', 'created_at', 'permissions']
+        fields = ['group_name', 'permissions_count', 'description', 'timestamp', 'permissions']
 
     def get_permissions(self, obj):
         return TeacherPermissionsSerializer(obj.permissions.all(), many=True).data
