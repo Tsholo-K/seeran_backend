@@ -125,7 +125,7 @@ def update_permission_group_details(account, role, details):
             with transaction.atomic():
                 serializer.save()
                 
-                response = f"Accounts successfully {'unsubscribed from' if details.get("subscribe") else 'subscribed to'} the permission group"
+                response = f"Accounts successfully {'unsubscribed from' if details.get('subscribe') else 'subscribed to'} the permission group"
                 audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='PERMISSION', target_object_id=str(permission_group.permission_group_id), outcome='UPDATED', server_response=response, school=requesting_account.school,)
 
             return {"message": response}
