@@ -688,7 +688,7 @@ def create_timetable(account, role, details):
             if details.get('group_timetable'):
                 group_timetable.timetables.filter(day_of_week=day_of_week).delete()
                 # Create a new timetable
-                timetable = requesting_account.school.timetables.create(day_of_week=day_of_week, day_of_week_order=Timetable.DAY_OF_THE_WEEK_ORDER[day_of_week], student_group_timetable=group_timetable)
+                timetable = requesting_account.school.timetables.create(day_of_week=day_of_week, day_of_week_order=Timetable.DAY_OF_THE_WEEK_ORDER[day_of_week], student_group_timetable=group_timetable, teacher_timetable=None)
                 
                 response = 'A new timetable has been added to the group\'s weekly schedules. All subscribed students should be able to view the sessions in the timetable when they check their timetables again.'
 
@@ -698,7 +698,7 @@ def create_timetable(account, role, details):
                     teacher_timetable.timetables.filter(day_of_week=day_of_week).delete()
 
                 # Create a new timetable
-                timetable = requesting_account.school.timetables.create(day_of_week=day_of_week, day_of_week_order=Timetable.DAY_OF_THE_WEEK_ORDER[day_of_week], teacher_timetable=teacher_timetable)
+                timetable = requesting_account.school.timetables.create(day_of_week=day_of_week, day_of_week_order=Timetable.DAY_OF_THE_WEEK_ORDER[day_of_week], teacher_timetable=teacher_timetable, student_group_timetable=None)
 
                 response = 'A new timetable has been added to the teacher\'s weekly schedules. They should be able to view the sessions in the schedule when they check their timetables again.'
 
