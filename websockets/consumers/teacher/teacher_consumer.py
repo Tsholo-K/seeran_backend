@@ -68,7 +68,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
         role = self.scope.get('role')
         access_token = self.scope.get('access_token')
 
-        if not (account and access_token and validate_access_token(access_token)):
+        if not (account or access_token or validate_access_token(access_token)):
             await self.send(text_data=json.dumps({'error': 'request not authenticated.. access denied'}))
             return await self.close()
 
@@ -82,7 +82,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
 
         response = await self.handle_request(action, description, details, account, role, access_token)
         
-        if response is not None:
+        if response:
             return await self.send(text_data=json.dumps(response))
         
         return await self.send(text_data=json.dumps({'error': 'provided information is invalid.. request revoked'}))
@@ -116,6 +116,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             'view_my_email_address_status_information': general_view_async_functions.view_my_email_address_status_information,
 
             'view_chat_rooms': general_view_async_functions.view_chat_rooms,
+
             'view_my_classrooms': teacher_view_async_functions.view_my_classrooms,
 
             'view_school_announcements': teacher_view_async_functions.view_school_announcements,
