@@ -46,7 +46,7 @@ class Timetable(models.Model):
     last_updated = models.DateTimeField(auto_now=True)
 
     timestamp = models.DateTimeField(auto_now_add=True)
-    timetables_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    timetable_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
         ordering = ['-day_of_week_order']
