@@ -21,7 +21,7 @@ from student_activities.models import StudentActivity
 from accounts.serializers.general_serializers import DisplayAccountDetailsSerializer, SourceAccountSerializer
 from accounts.serializers.students.serializers import  StudentSourceAccountSerializer
 from accounts.serializers.parents.serializers import ParentAccountSerializer
-from classrooms.serializers import ClassSerializer
+from classrooms.serializers import ClassroomSerializer
 from email_address_bans.serializers import EmailBanSerializer
 from student_group_timetables.serializers import StudentGroupScheduleSerializer
 from timetables.serializers import TimetableSerializer
@@ -312,7 +312,7 @@ def search_classrooms(user, role, details):
             return {"error": 'invalid request'}
 
         # Serialize and return the classroom data
-        serialized_class = ClassSerializer(classroom).data
+        serialized_class = ClassroomSerializer(classroom).data
 
         return {"class": serialized_class}
                
