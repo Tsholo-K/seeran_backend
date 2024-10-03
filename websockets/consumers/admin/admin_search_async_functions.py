@@ -43,7 +43,7 @@ from classrooms.serializers import TeacherClassroomsSerializer, ClassesSerialize
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, GradedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer, GradedAssessmentSerializer
 from assessment_transcripts.serializers import TranscriptsSerializer, TranscriptSerializer
 from student_activities.serializers import ActivitiesSerializer, ActivitySerializer
-from student_group_timetables.serializers import StudentGroupScheduleSerializer
+from student_group_timetables.serializers import StudentGroupTimetablesSerializer
 from timetables.serializers import TimetableSerializer
 
 # checks
@@ -1074,10 +1074,10 @@ def search_teacher_timetable(user, role, details):
     
 
 @database_sync_to_async
-def search_group_timetables(user, role, details):
+def search_group_timetables(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'GROUP_TIMETABLE'):
             response = f'could not proccess your request, you do not have the necessary permissions to view group timetables. please contact your administrator to adjust you permissions for viewing group timetables.'
@@ -1099,16 +1099,16 @@ def search_group_timetables(user, role, details):
             else:
                 return {"schedules": []}
             
-        elif details.get('grade'):
+        else:
             # Retrieve the specified grade
-            grade = requesting_account.school.grades.get(grade_id=details['grade'])
+            grade = requesting_account.school.grades.prefetch_related('group_timetables').get(grade_id=details['grade'])
             # Retrieve all group schedules associated with the specified grade
-            group_timetables = requesting_account.school.group_timetables.filter(grade=grade)
+            group_timetables = grade.group_timetables
 
         # Serialize the group schedules to return them in the response
-        serialized_schedules = StudentGroupScheduleSerializer(group_timetables, many=True).data
+        serialized_timetables = StudentGroupTimetablesSerializer(group_timetables, many=True).data
 
-        return {"schedules": serialized_schedules}
+        return {"timetables": serialized_timetables}
                        
     except Student.DoesNotExist:
         # Handle the case where the requested student account does not exist.
@@ -1124,10 +1124,10 @@ def search_group_timetables(user, role, details):
 
 
 @database_sync_to_async
-def search_group_timetable_schedules(user, role, details):
+def search_group_timetable_timetables(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'GROUP_TIMETABLE'):
             response = f'could not proccess your request, you do not have the necessary permissions to view group timetables. please contact your administrator to adjust you permissions for viewing group timetables.'
@@ -1140,8 +1140,8 @@ def search_group_timetable_schedules(user, role, details):
             return {'error': response}
 
         # Retrieve the specified group schedule
-        group_schedule = requesting_account.group_timetables.prefetch_related('subscribers', 'daily_schedules').get(group_timetable_id=details.get('group_timetable'))
-        serialized_schedules = TimetableSerializer(group_schedule.daily_schedules, many=True).data
+        group_schedule = requesting_account.group_timetables.prefetch_related('timetables').get(group_timetable_id=details['group_timetable'])
+        serialized_schedules = TimetableSerializer(group_schedule.timetables, many=True).data
 
         return {"schedules": serialized_schedules}
     

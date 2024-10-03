@@ -9,25 +9,12 @@ class StudentGroupScheduleCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StudentGroupTimetable
-        fields = ['group_name', 'grade']
+        fields = ['group_name', 'grade', 'school']
 
 
-class StudentGroupScheduleSerializer(serializers.ModelSerializer):
-    
-    group_name = serializers.SerializerMethodField()
-    students_count = serializers.SerializerMethodField()
-    schedules_count = serializers.SerializerMethodField()
+class StudentGroupTimetablesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StudentGroupTimetable
-        fields = [ 'group_name', 'students_count', 'schedules_count', 'group_timetable_id' ]
-    
-    def get_group_name(self, obj):
-        return obj.group_name.title()
-    
-    def get_students_count(self, obj):
-        return obj.subscribers.count()
-    
-    def get_schedules_count(self, obj):
-        return obj.daily_schedules.count()
+        fields = [ 'group_name', 'students_count', 'timetables_count', 'group_timetable_id' ]
 

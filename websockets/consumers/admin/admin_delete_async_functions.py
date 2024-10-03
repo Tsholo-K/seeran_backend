@@ -263,7 +263,12 @@ def delete_term(user, role, details):
 
             return {'error': response}
 
-        term = requesting_account.school.terms.get(term_id=details.get('term'))
+        if not {'term'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid term and subject IDs and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TERM', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        term = requesting_account.school.terms.get(term_id=details['term'])
 
         # Create the grade within a transaction to ensure atomicity
         with transaction.atomic():

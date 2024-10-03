@@ -191,7 +191,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'search_teacher_timetable': admin_search_async_functions.search_teacher_timetable,
 
             'search_group_timetables': admin_search_async_functions.search_group_timetables,
-            'search_group_timetable_schedules': admin_search_async_functions.search_group_timetable_schedules,
+            'search_group_timetable_timetables': admin_search_async_functions.search_group_timetable_timetables,
             'search_group_timetable_subscribers': admin_search_async_functions.search_group_timetable_subscribers,
 
             'search_timetable_sessions': admin_search_async_functions.search_timetable_sessions,
