@@ -36,8 +36,8 @@ class Timetable(models.Model):
     day_of_week  = models.CharField(_('timetable day'), max_length=10, choices=DAY_OF_THE_WEEK_CHOICES, default="MONDAY")
     day_of_week_order  = models.PositiveIntegerField(choices=[(v, k) for k, v in DAY_OF_THE_WEEK_ORDER.items()])
 
-    teacher_timetable = models.ForeignKey(TeacherTimetable, on_delete=models.CASCADE, related_name='timetables', null=True, editable=False)
-    student_group_timetable = models.ForeignKey(StudentGroupTimetable, on_delete=models.CASCADE, related_name='timetables', null=True, editable=False)
+    teacher_timetable = models.ForeignKey(TeacherTimetable, on_delete=models.CASCADE, related_name='timetables', null=True)
+    student_group_timetable = models.ForeignKey(StudentGroupTimetable, on_delete=models.CASCADE, related_name='timetables', null=True)
 
     school = models.ForeignKey('schools.School', on_delete=models.CASCADE, related_name='timetables')
 
@@ -56,12 +56,15 @@ class Timetable(models.Model):
     
     def clean(self):
         # Ensure that only one of the foreign keys is set
-        if not self.teacher_timetable and not self.student_group_timetable:
+        if not self.teacher_timetable_id and not self.student_group_timetable_id:
             raise ValidationError('Could not process your request, a daily schedule must be linked to either a teacher timetable or a student group timetable.')
 
-        if self.teacher_timetable and self.student_group_timetable:
+        if self.teacher_timetable_id and self.student_group_timetable_id:
             raise ValidationError('Could not process your request, a daily schedule can only be linked to either a teacher timetable or a student group timetable, not both.')
 
     def save(self, *args, **kwargs):
-        self.clean()
-        super().save(*args, **kwargs)
+        try:
+            self.clean()
+            super().save(*args, **kwargs)
+        except Exception as e:
+            raise ValidationError(_(str(e)))
