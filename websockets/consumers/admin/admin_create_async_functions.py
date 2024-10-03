@@ -211,6 +211,52 @@ def create_permission_group(account, role, details):
 
 
 @database_sync_to_async
+def create_announcement(user, role, details):
+    try:
+        announcement = None  # Initialize requested_account as None to prevent issues in error handling
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to create a group schedule
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'ANNOUNCEMENT'):
+            response = 'could not process your request, you do not have the necessary permissions to create announcements.'
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        # Add user and school information to the announcement details
+        details.update({'announcer': requesting_account.pk, 'school': requesting_account.school.pk})
+
+        # Serialize the announcement data
+        serializer = AnnouncementCreationSerializer(data=details)
+        if serializer.is_valid():
+            with transaction.atomic():
+                announcement = Announcement.objects.create(**serializer.validated_data)
+
+                response = 'the announcement is now available to all users in the school and the parents linked to them.'
+                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', target_object_id=str(announcement.announcement_id), outcome='DELETED', response=response, school=requesting_account.school)
+
+            return {'message': response}
+
+        error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
+
+        return {"error": error_response}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', target_object_id=str(announcement.announcement_id) if announcement else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', target_object_id=str(announcement.announcement_id) if announcement else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {'error': error_message}
+
+
+@database_sync_to_async
 def create_grade(account, role, details):
     try:
         grade = None  # Initialize grade as None to prevent issues in error handling
@@ -555,6 +601,140 @@ def create_assessment(user, role, details):
 
         return {'error': error_message}
 
+
+@database_sync_to_async
+def create_group_timetable(account, role, details):
+    try:
+        group_timetable = None  # Initialize group timetable as None to prevent issues in error handling
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+
+        # Check if the user has permission to create a group schedule
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'GROUP_TIMETABLE'):
+            response = 'Could not process your request, you do not have the necessary permissions to create group timetables.'
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+        
+        # Check if the 'grade' key is provided and not empty
+        if 'grade' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid grade ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        grade = requesting_account.school.grades.get(grade_id=details['grade'])
+        details['grade'] = grade.id
+        details['school'] = requesting_account.school.id
+
+        serializer = StudentGroupTimetableCreationSerializer(data=details)
+        if serializer.is_valid():
+            with transaction.atomic():
+                group_timetable = StudentGroupTimetable.objects.create(**serializer.validated_data)
+                response = f'A new group timetable for your schools grade {grade.grade} has been successfully created. You can now add individual daily timetables and subscribe students in the grade to the group timetable for a shared weekly schedule.'
+            
+                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='CREATED', server_response=response, school=requesting_account.school)
+
+            return {'message': response}
+
+        error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
+        return {"error": error_response}
+
+    except Grade.DoesNotExist:
+        # Handle the case where the requested grade does not exist.
+        return {'error': 'A grade in your school with the provided credentials does not exist. Please check the grade details and try again.'}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
+        return {'error': error_message}
+
+
+@database_sync_to_async
+def create_timetable(account, role, details):
+    try:
+        # Validate the day
+        day_of_week = details.get('day_of_week', '').upper()
+        if day_of_week not in Timetable.DAY_OF_THE_WEEK_CHOICES:
+            return {"error": 'Could not process your request, the provided day for the timetable is invalid. Please review the provided day of the week for the timetable and then try again.'}
+
+        timetable = None  # Initialize daily schedule as None to prevent issues in error handling
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+
+        # Check if the user has permission to create a schedule
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'TIMETABLE'):
+            response = 'Could not process your request, you do not have the necessary permissions to create schedules.'
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TIMETABLE', outcome='DENIED', server_response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        if not 'group_timetable' in details and not 'teacher' in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid group timetable or teacher ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TIMETABLE', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        if details.get('group_timetable'):
+            group_timetable = requesting_account.group_timetables.get(group_timetable_id=details['group_timetable'])
+        
+        else:
+            teacher = requesting_account.teachers.get(account_id=details['teacher'])
+
+        with transaction.atomic():
+            # Create a new daily schedule
+            timetable = requesting_account.school.timetables.create(day_of_week=day_of_week, day_of_week_order=Timetable.DAY_OF_THE_WEEK_ORDER[day_of_week])
+
+            sessions = [
+                TimetableSession(
+                    session_type=session['class'],
+                    classroom=session.get('classroom'),
+                    start_time=parse_time(session['start_time']),
+                    end_time=parse_time(session['end_time']),
+                    timetable=timetable
+                ) for session in details.get('sessions', [])
+            ]
+
+            TimetableSession.objects.bulk_create(sessions)
+            
+            if details.get('group_timetable'):
+                group_timetable.timetables.filter(day_of_week=day_of_week).delete()
+                group_timetable.timetables.add(timetable)
+                
+                response = 'A new timetable has been added to the group\'s weekly schedules. All subscribed students should be able to view the sessions in the timetable when they check their timetables again.'
+
+            elif details.get('teacher'):
+                teacher_timetable, created = teacher.teacher_timetable.prefetch_related('timetables').get_or_create()
+                if not created:
+                    teacher_timetable.timetables.filter(day_of_week=day_of_week).delete()
+                teacher_timetable.timetables.add(timetable)
+
+                response = 'A new timetable has been added to the teacher\'s weekly schedules. They should be able to view the sessions in the schedule when they check their timetables again.'
+                    
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TIMETABLE', target_object_id=str(timetable.timetable_id) if timetable else 'N/A', outcome='CREATED', server_response=response, school=requesting_account.school,)
+
+        return {'message' : response}
+
+    except Teacher.DoesNotExist:
+        # Handle the case where the requested teacher account does not exist.
+        return {'error': 'Could not process your request, a teacher account with the provided credentials does not exist, please check the account details and try again'}
+
+    except StudentGroupTimetable.DoesNotExist:
+        # Handle the case where the requested student account does not exist.
+        return {'error': 'Could not process your request, a group timetable in your school with the provided credentials does not exist. please check the group details and try again.'}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TIMETABLE', target_object_id=str(timetable.timetable_id) if timetable else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TIMETABLE', target_object_id=str(timetable.timetable_id) if timetable else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
+        return {'error': error_message}
     
 
 @database_sync_to_async
@@ -611,191 +791,6 @@ def create_student_activity(user, role, details):
     except Exception as e:
         error_message = str(e)
         audits_utilities.log_audit(actor=requesting_account, action='LOG', target_model='ACTIVITY', target_object_id=str(activity.activity_id) if activity else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
-        return {'error': error_message}
-
-
-@database_sync_to_async
-def create_timetable(user, role, details):
-    try:
-        daily_schedule = None  # Initialize daily schedule as None to prevent issues in error handling
-        # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_attr(user, role)
-
-        # Check if the user has permission to create a schedule
-        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'DAILY_SCHEDULE'):
-            response = 'Could not process your request, you do not have the necessary permissions to create schedules.'
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='DAILY_SCHEDULE', outcome='DENIED', response=response, school=requesting_account.school)
-
-            return {'error': response}
-
-        if details.get('group_timetable'):
-            group_timetable = StudentGroupTimetable.objects.get(group_timetable_id=details['group_timetable'], grade__school=requesting_account.school)
-        
-        elif details.get('teacher'):
-            teacher = Teacher.objects.get(account_id=details['teacher'], school=requesting_account.school)
-
-        else:
-            response = 'Could not process your request, invalid information provided.'
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='DAILY_SCHEDULE', outcome='ERROR', response=response, school=requesting_account.school)
-
-            return {"error": response}
-
-        # Validate the day
-        day = details.get('day_of_week', '').upper()
-        if day not in Timetable.DAY_OF_THE_WEEK_ORDER:
-            return {"error": 'the provided day for the schedule is invalid. Please check that the day is valid.'}
-
-        with transaction.atomic():
-            # Create a new daily schedule
-            daily_schedule = Timetable.objects.create(day_of_week=day, day_of_week_order=Timetable.DAY_OF_THE_WEEK_ORDER[day])
-
-            sessions = [
-                TimetableSession(
-                    session_type=session_info['class'],
-                    classroom=session_info.get('classroom'),
-                    start_time=parse_time(session_info['start_time']),
-                    end_time=parse_time(session_info['end_time'])) for session_info in details.get('sessions', []
-                )
-            ]
-
-            TimetableSession.objects.bulk_create(sessions)
-            daily_schedule.sessions.add(*sessions)
-            
-            if details.get('group'):
-                group_timetable.daily_schedules.filter(day_of_week=day).delete()
-                group_timetable.daily_schedules.add(daily_schedule)
-                
-                response = 'A new schedule has been added to the group\'s weekly schedules. All subscribed students should be able to view the sessions in the schedule when they check their timetables.'
-
-            elif details.get('teacher'):
-                teacher_timetable, created = TeacherTimetable.objects.get_or_create(teacher=teacher)
-                if not created:
-                    teacher_timetable.daily_schedules.filter(day_of_week=day).delete()
-                teacher_timetable.daily_schedules.add(daily_schedule)
-
-                response = 'A new schedule has been added to the teacher\'s weekly schedules. They should be able to view the sessions in the schedule when they check their timetable.'
-                    
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='DAILY_SCHEDULE', target_object_id=str(daily_schedule.daily_schedule_id) if daily_schedule else 'N/A', outcome='CREATED', response=response, school=requesting_account.school,)
-
-        return {'message' : response}
-
-    except Teacher.DoesNotExist:
-        # Handle the case where the requested teacher account does not exist.
-        return {'error': 'a teacher account with the provided credentials does not exist, please check the account details and try again'}
-
-    except StudentGroupTimetable.DoesNotExist:
-        # Handle the case where the requested student account does not exist.
-        return {'error': 'a group timetable in your school with the provided credentials does not exist. please check the group details and try again.'}
-
-    except ValidationError as e:
-        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='DAILY_SCHEDULE', target_object_id=str(daily_schedule.daily_schedule_id) if daily_schedule else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
-        return {"error": error_message}
-
-    except Exception as e:
-        error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='DAILY_SCHEDULE', target_object_id=str(daily_schedule.daily_schedule_id) if daily_schedule else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
-        return {'error': error_message}
-
-
-
-@database_sync_to_async
-def create_group_timetable(account, role, details):
-    try:
-        group_timetable = None  # Initialize group timetable as None to prevent issues in error handling
-        # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
-
-        # Check if the user has permission to create a group schedule
-        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'GROUP_TIMETABLE'):
-            response = 'Could not process your request, you do not have the necessary permissions to create group timetables.'
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', outcome='DENIED', server_response=response, school=requesting_account.school)
-            return {'error': response}
-        
-        # Check if the 'grade' key is provided and not empty
-        if 'grade' not in details:
-            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid grade ID and try again'
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', outcome='ERROR', server_response=response, school=requesting_account.school)
-            return {'error': response}
-
-        grade = requesting_account.school.grades.get(grade_id=details['grade'])
-        details['grade'] = grade.id
-        details['school'] = requesting_account.school.id
-
-        serializer = StudentGroupTimetableCreationSerializer(data=details)
-        if serializer.is_valid():
-            with transaction.atomic():
-                group_timetable = StudentGroupTimetable.objects.create(**serializer.validated_data)
-                response = f'A new group timetable for your schools grade {grade.grade} has been successfully created. You can now add individual daily timetables and subscribe students in the grade to the group timetable for a shared weekly schedule.'
-            
-                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='CREATED', server_response=response, school=requesting_account.school)
-
-            return {'message': response}
-
-        error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
-        return {"error": error_response}
-
-    except Grade.DoesNotExist:
-        # Handle the case where the requested grade does not exist.
-        return {'error': 'A grade in your school with the provided credentials does not exist. Please check the grade details and try again.'}
-
-    except ValidationError as e:
-        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
-        return {"error": error_message}
-
-    except Exception as e:
-        error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
-        return {'error': error_message}
-
-
-@database_sync_to_async
-def create_announcement(user, role, details):
-    try:
-        announcement = None  # Initialize requested_account as None to prevent issues in error handling
-        # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
-
-        # Check if the user has permission to create a group schedule
-        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'ANNOUNCEMENT'):
-            response = 'could not process your request, you do not have the necessary permissions to create announcements.'
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', outcome='DENIED', response=response, school=requesting_account.school)
-
-            return {'error': response}
-
-        # Add user and school information to the announcement details
-        details.update({'announcer': requesting_account.pk, 'school': requesting_account.school.pk})
-
-        # Serialize the announcement data
-        serializer = AnnouncementCreationSerializer(data=details)
-        if serializer.is_valid():
-            with transaction.atomic():
-                announcement = Announcement.objects.create(**serializer.validated_data)
-
-                response = 'the announcement is now available to all users in the school and the parents linked to them.'
-                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', target_object_id=str(announcement.announcement_id), outcome='DELETED', response=response, school=requesting_account.school)
-
-            return {'message': response}
-
-        error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
-
-        return {"error": error_response}
-
-    except ValidationError as e:
-        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', target_object_id=str(announcement.announcement_id) if announcement else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
-        return {"error": error_message}
-
-    except Exception as e:
-        error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', target_object_id=str(announcement.announcement_id) if announcement else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
 
         return {'error': error_message}
     

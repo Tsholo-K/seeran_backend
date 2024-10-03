@@ -42,7 +42,7 @@ class AdminAccountPermission(models.Model):
         ('ACTIVITY', 'Activity'),                   # Student Activity
         ('ASSESSMENT', 'Assessment'),               # Assessments and tests
         ('TRANSCRIPT', 'Transcript'),               # Student transcripts
-        ('DAILY_SCHEDULE', 'Daily Schedule'),       # Daily schedules for classes
+        ('TIMETABLE', 'Timetable'),                 # Timetable
         ('GROUP_TIMETABLE', 'Group Timetable'),     # Timetables for groups of students
         ('TEACHER_TIMETABLE', 'Teacher Timetable'), # Individual teacher schedules
     ]
@@ -119,7 +119,7 @@ class TeacherAccountPermission(models.Model):
         ('ASSESSMENT', 'Assessment'),  # Related to assessments given to students
         ('TRANSCRIPT', 'Transcript'),   # Related to student transcripts
         ('ACTIVITY', 'Activity'),       # Student Activity
-        ('DAILY_SCHEDULE', 'Daily Schedule'),       # Daily schedules for classes
+        ('TIMETABLE', 'Timetable'),       # Timetable
         ('GROUP_TIMETABLE', 'Group Timetable'),     # Timetables for groups of students
     ]
 

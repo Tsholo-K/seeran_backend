@@ -377,54 +377,42 @@ def delete_assessment(user, role, details):
 
 
 @database_sync_to_async
-def delete_timetable(user, role, details):
+def delete_timetable(account, role, details):
     try:
-        daily_schedule = None  # Initialize schedule as None to prevent issues in error handling
+        timetable = None  # Initialize schedule as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to create a group schedule
-        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'DELETE', 'DAILY_SCHEDULE'):
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'DELETE', 'TIMETABLE'):
             response = 'Could not process your request, you do not have the necessary permissions to delete daily schedules.'
-            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='DAILY_SCHEDULE', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TIMETABLE', outcome='DENIED', server_response=response, school=requesting_account.school)
 
             return {'error': response}
 
-        if details.get('group'):
-            daily_schedule = Timetable.objects.get(daily_schedule_id=details.get('schedule'), student_group_timetable__grade__school=requesting_account.school)
-            response = 'the schedule has been successfully deleted from the group schedule and will be removed from schedules of all students subscribed to the group schedule'
-            
-        if details.get('teacher'):
-            daily_schedule = Timetable.objects.get(daily_schedule_id=details.get('schedule'), teacher_timetable__teacher__school=requesting_account.school)
-            response = 'the schedule has been successfully deleted from the teachers schedule and will no longer be available to the teacher'
-            
-        else:
-            response = 'could not process your request, the provided type is invalid'
-
-            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='DAILY_SCHEDULE', outcome='DENIED', response=response, school=requesting_account.school)
-
-            return {"error": response}
+        timetable = requesting_account.school.timetables.get(timetable_id=details.get('timetable'))
         
         with transaction.atomic():
-            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='DAILY_SCHEDULE', target_object_id=str(daily_schedule.daily_schedule_id), outcome='DELETED', response=response, school=requesting_account.school)
+            response = f"A timetable with a timetable ID: {timetable.timetable_id}, has been successfully deleted from your schools system. All sessions linked to the timetable will also be purged from the system, effective immediately."
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TIMETABLE', target_object_id=str(timetable.timetable_id), outcome='DELETED', server_response=response, school=requesting_account.school)
 
-            daily_schedule.delete()
+            timetable.delete()
 
         return {'message': response}
 
     except Timetable.DoesNotExist:
         # Handle the case where the provided schedule_id does not exist
-        return {'error': 'a schedule for your school with the provided credentials does not exist. please verify the details and try again.'}
+        return {'error': 'Could not process your request, a timetable for your school with the provided credentials does not exist. please verify the details and try again.'}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='DAILY_SCHEDULE', target_object_id=str(daily_schedule.daily_schedule_id) if daily_schedule else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TIMETABLE', target_object_id=str(timetable.timetable_id) if timetable else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
 
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='DAILY_SCHEDULE', target_object_id=str(daily_schedule.daily_schedule_id) if daily_schedule else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TIMETABLE', target_object_id=str(timetable.timetable_id) if timetable else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
 
         return {'error': error_message}
 
