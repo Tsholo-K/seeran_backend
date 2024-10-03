@@ -659,7 +659,7 @@ def create_timetable(account, role, details):
     try:
         # Validate the day
         day_of_week = details.get('day_of_week', '').upper()
-        if day_of_week not in Timetable.DAY_OF_THE_WEEK_CHOICES:
+        if day_of_week not in [day[0] for day in Timetable.DAY_OF_THE_WEEK_CHOICES]:
             return {"error": 'Could not process your request, the provided day for the timetable is invalid. Please review the provided day of the week for the timetable and then try again.'}
 
         timetable = None  # Initialize daily schedule as None to prevent issues in error handling
