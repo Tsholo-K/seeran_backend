@@ -23,7 +23,7 @@ from accounts.serializers.students.serializers import  StudentSourceAccountSeria
 from accounts.serializers.parents.serializers import ParentAccountSerializer
 from classrooms.serializers import ClassroomSerializer
 from email_address_bans.serializers import EmailBanSerializer
-from student_group_timetables.serializers import StudentGroupScheduleSerializer
+from student_group_timetables.serializers import StudentGroupTimetablesSerializer
 from timetables.serializers import TimetableSerializer
 from timetable_sessions.serializers import SessoinsSerializer
 from school_announcements.serializers import AnnouncementSerializer
@@ -471,7 +471,7 @@ def search_group_schedules(user, role, details):
                 return {"schedules": []}
 
         # Serialize the group schedules to return them in the response
-        serialized_schedules = StudentGroupScheduleSerializer(group_schedules, many=True).data
+        serialized_schedules = StudentGroupTimetablesSerializer(group_schedules, many=True).data
 
         return {"schedules": serialized_schedules}
                
