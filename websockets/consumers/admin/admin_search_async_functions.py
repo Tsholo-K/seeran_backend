@@ -1140,7 +1140,7 @@ def search_group_timetable_timetables(account, role, details):
             return {'error': response}
 
         # Retrieve the specified group schedule
-        group_schedule = requesting_account.group_timetables.prefetch_related('timetables').get(group_timetable_id=details['group_timetable'])
+        group_schedule = requesting_account.school.group_timetables.prefetch_related('timetables').get(group_timetable_id=details['group_timetable'])
         serialized_schedules = TimetableSerializer(group_schedule.timetables, many=True).data
 
         return {"schedules": serialized_schedules}
