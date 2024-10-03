@@ -28,7 +28,7 @@ class AnnouncementsSerializer(serializers.ModelSerializer):
         return obj.title.title()
     
     def get_seen(self, obj):
-        user = self.context.get('user')
+        user = self.context.get('account')
         if user:
             return obj.reached.filter(account_id=user).exists()
         return False

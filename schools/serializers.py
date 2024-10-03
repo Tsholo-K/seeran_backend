@@ -1,8 +1,6 @@
 # rest framework
 from rest_framework import serializers
 
-# django
-
 # models
 from .models import School
 from accounts.models import Principal
@@ -42,25 +40,19 @@ class UpdateSchoolAccountSerializer(serializers.ModelSerializer):
 
 class SchoolsSerializer(serializers.ModelSerializer):
     
-    name = serializers.SerializerMethodField()
-    
     class Meta:
         model = School
         fields = ['name', 'student_count', 'teacher_count', 'admin_count', "school_id"]
-        
-    def get_name(self, obj):
-        return obj.name.title()
     
 
 class SchoolSerializer(serializers.ModelSerializer):
         
     principal = serializers.SerializerMethodField()
     balance = serializers.SerializerMethodField()
-    name = serializers.SerializerMethodField()
 
     class Meta:
         model = School
-        fields = ['principal', 'balance', 'name' ]
+        fields = ['name', 'principal', 'balance']
                 
     def get_principal(self, obj):
         try:
@@ -76,31 +68,11 @@ class SchoolSerializer(serializers.ModelSerializer):
             return BalanceSerializer(balance).data
         except Principal.DoesNotExist:
             return None
-    
-    def get_name(self, obj):
-        return obj.name.title()
 
 
 class SchoolDetailsSerializer(serializers.ModelSerializer):
-        
-    name = serializers.SerializerMethodField()
-    type = serializers.SerializerMethodField()
-    district = serializers.SerializerMethodField()
-    province = serializers.SerializerMethodField()
     
     class Meta:
         model = School
-        fields = ['name', 'email_address', 'contact_number', 'in_arrears', 'type', 'province', 'district', 'operating_hours', 'location', 'website', 'student_count', 'teacher_count', 'admin_count', 'school_id' ]
-        
-    def get_name(self, obj):
-        return obj.name.title()
-    
-    def get_type(self, obj):
-        return obj.type.title()
-
-    def get_district(self, obj):
-        return obj.district.title()
-
-    def get_province(self, obj):
-        return obj.province.title()
+        fields = ['name', 'email_address', 'contact_number', 'type', 'province', 'district', 'operating_hours', 'location', 'website', 'student_count', 'teacher_count', 'admin_count', 'in_arrears', 'school_id' ]
 

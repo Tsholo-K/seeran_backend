@@ -11,7 +11,7 @@ from accounts import utils as users_utilities
     
 # Asynchronous database call to retrieve and return school details based on the requesting user's account and role
 @database_sync_to_async
-def view_school_details(user, role):
+def view_school_details(account, role):
     """
     Retrieves the school details for a user based on their account and role within the system.
 
@@ -25,7 +25,7 @@ def view_school_details(user, role):
     try:
         # Step 1: Retrieve the requesting user's account and the associated school in a single database query
         # This uses a utility function (get_account_and_linked_school) to fetch the user's account and linked school.
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = users_utilities.get_account_and_linked_school(account, role)
 
         # Step 2: Serialize the school object into a structured dictionary format for easy consumption by the API or frontend
         serialized_school = SchoolDetailsSerializer(requesting_account.school).data
@@ -40,7 +40,7 @@ def view_school_details(user, role):
 
 # Asynchronous database call to retrieve and return announcements for a user's school
 @database_sync_to_async
-def view_school_announcements(user, role):
+def view_school_announcements(account, role):
     """
     Retrieves school announcements related to the user's account and role.
 
@@ -53,14 +53,14 @@ def view_school_announcements(user, role):
     """
     try:
         # Step 1: Retrieve the requesting user's account and the associated school in a single database query
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = users_utilities.get_account_and_linked_school(account, role)
 
         # Step 2: Fetch announcements related to the school of the requesting user.
         # Assume that 'announcements' is a related manager, e.g., through a ForeignKey or ManyToManyField on the School model.
         announcements = requesting_account.school.announcements
 
         # Step 3: Serialize the fetched announcements into a structured format using a serializer.
-        serialized_announcements = AnnouncementsSerializer(announcements, many=True, context={'user': user}).data
+        serialized_announcements = AnnouncementsSerializer(announcements, many=True, context={'user': account}).data
 
         # Step 4: Return the serialized announcements as part of the response
         return {'announcements': serialized_announcements}

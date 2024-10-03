@@ -77,14 +77,15 @@ def create_account(account, role, details):
 
                 if details['role'] == 'TEACHER' and details.get('grant_full_access'):
                     permission_group, created = requesting_account.school.teacher_permission_groups.get_or_create(group_name='Full Access', description='Grants teachers full access to manage their assigned classrooms, including student records, assessments, grading, and attendance. This permission allows teachers to maintain control over all aspects of their classroom operations, ensuring they can effectively support student learning and classroom management.')
-                    permissions = []
-                    for action, targets in {"create": ["ACTIVITY","ASSESSMENT"], "update": ["ASSESSMENT"], "view": ["ACCOUNT","PROGRESS_REPORT","CLASSROOM","ATTENDANCE","ACTIVITY","ASSESSMENT","TRANSCRIPT","DAILY_SCHEDULE","GROUP_TIMETABLE"], "delete": ["ASSESSMENT"], "submit": ["ATTENDANCE"], "generate": ["PROGRESS_REPORT"]}.items():
-                        for target in targets:
-                            permissions.append(TeacherAccountPermission(linked_permission_group=permission_group, action=action.upper(), target_model=target.upper(), can_execute=True))
+                    if created:
+                        permissions = []
+                        for action, targets in {"create": ["ACTIVITY","ASSESSMENT"], "update": ["ASSESSMENT"], "view": ["ACCOUNT","PROGRESS_REPORT","CLASSROOM","ATTENDANCE","ACTIVITY","ASSESSMENT","TRANSCRIPT","DAILY_SCHEDULE","GROUP_TIMETABLE"], "delete": ["ASSESSMENT"], "submit": ["ATTENDANCE"], "generate": ["PROGRESS_REPORT"]}.items():
+                            for target in targets:
+                                permissions.append(TeacherAccountPermission(linked_permission_group=permission_group, action=action.upper(), target_model=target.upper(), can_execute=True))
 
-                    batch_size = 50
-                    for i in range(0, len(permissions), batch_size):
-                        TeacherAccountPermission.objects.bulk_create(permissions[i:i + batch_size])
+                        batch_size = 50
+                        for i in range(0, len(permissions), batch_size):
+                            TeacherAccountPermission.objects.bulk_create(permissions[i:i + batch_size])
 
                     permission_group.update_subscribers(subscribers_list=[created_account.account_id], subscribe=True)
                     response = f"A new teacher account has been successfully created for your school. The account has also been added to the full access teacher permission group as per your request to grant the account full access to manage it's own classrooms. Depending on the validity of the provided email address, a confirmation email has been sent to them, the account holder can now sign-in and activate their account."

@@ -76,7 +76,7 @@ def search_audit_entries(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='AUDIT_ENTRY', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        entries = requesting_account.school.audit_logs.only('actor__name', 'actor__surname', 'outcome', 'target_model', 'timestamp', 'audit_id').filter(action=details['action'])
+        entries = requesting_account.school.audit_logs.only('actor__name', 'actor__surname', 'outcome', 'target_model', 'timestamp', 'audit_entry_id').filter(action=details['action'])
         serialized_entries = AuditEntriesSerializer(entries, many=True).data
 
         return {"entries": serialized_entries}
