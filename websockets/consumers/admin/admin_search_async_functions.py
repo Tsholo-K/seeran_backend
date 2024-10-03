@@ -43,7 +43,7 @@ from classrooms.serializers import TeacherClassroomsSerializer, ClassesSerialize
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, GradedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer, GradedAssessmentSerializer
 from assessment_transcripts.serializers import TranscriptsSerializer, TranscriptSerializer
 from student_activities.serializers import ActivitiesSerializer, ActivitySerializer
-from student_group_timetables.serializers import StudentGroupTimetablesSerializer
+from student_group_timetables.serializers import StudentGroupTimetablesSerializer, StudentGroupTimetableDetailsSerializer
 from timetables.serializers import TimetableSerializer
 
 # checks
@@ -1124,6 +1124,37 @@ def search_group_timetables(account, role, details):
 
 
 @database_sync_to_async
+def search_group_timetable_details(account, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'GROUP_TIMETABLE'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view group timetables. please contact your administrator to adjust you permissions for viewing group timetables.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='GROUP_TIMETABLE', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        elif 'group_timetable' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid group timetable ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='GROUP_TIMETABLE', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        # Retrieve the specified group schedule
+        group_timetable = requesting_account.school.group_timetables.get(group_timetable_id=details['group_timetable'])
+        serialized_group_timetable = StudentGroupTimetableDetailsSerializer(group_timetable).data
+
+        return {"group_timetable": serialized_group_timetable}
+    
+    except StudentGroupTimetable.DoesNotExist:
+        # Handle case where the group schedule does not exist
+        return {'error': 'Could not process your request, a group schedule with the provided credentials does not exist. Please check the group schedule details and try again.'}
+    
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
+
+@database_sync_to_async
 def search_group_timetable_timetables(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
@@ -1140,10 +1171,10 @@ def search_group_timetable_timetables(account, role, details):
             return {'error': response}
 
         # Retrieve the specified group schedule
-        group_schedule = requesting_account.school.group_timetables.prefetch_related('timetables').get(group_timetable_id=details['group_timetable'])
-        serialized_schedules = TimetableSerializer(group_schedule.timetables, many=True).data
+        group_timetable = requesting_account.school.group_timetables.prefetch_related('timetables').get(group_timetable_id=details['group_timetable'])
+        serialized_timetables = TimetableSerializer(group_timetable.timetables, many=True).data
 
-        return {"schedules": serialized_schedules}
+        return {"timetables": serialized_timetables}
     
     except StudentGroupTimetable.DoesNotExist:
         # Handle case where the group schedule does not exist

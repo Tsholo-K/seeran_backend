@@ -12,3 +12,10 @@ class TimetableSerializer(serializers.ModelSerializer):
         model = Timetable
         fields = [ 'day_of_week', 'timetables_id' ]
 
+
+# schedule days
+class TimetableSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Timetable
+        fields = [ 'day_of_week', 'timetables_id' ]

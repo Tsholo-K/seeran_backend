@@ -20,5 +20,11 @@ class StudentGroupTimetablesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StudentGroupTimetable
-        fields = [ 'group_name', 'students_count', 'timetables_count', 'group_timetable_id' ]
+        fields = ['group_name', 'students_count', 'timetables_count', 'group_timetable_id']
 
+
+class StudentGroupTimetableDetailsSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = StudentGroupTimetable
+        fields = ['group_name', 'descrpition', 'students_count', 'timetables_count']
