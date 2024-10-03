@@ -447,7 +447,7 @@ def delete_group_timetable(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='GROUP_TIMETABLE', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        group_timetable = requesting_account.group_timetables.get(group_timetable_id=details['group_timetable'])
+        group_timetable = requesting_account.school.group_timetables.get(group_timetable_id=details['group_timetable'])
         
         with transaction.atomic():
             response = f'Group timetable with group timetable ID : {group_timetable.group_timetable_id}, has been deleted from your schools system. All data related to the group will be purged from the system effective immediately.'
