@@ -685,8 +685,22 @@ def create_timetable(account, role, details):
             teacher = requesting_account.teachers.get(account_id=details['teacher'])
 
         with transaction.atomic():
-            # Create a new daily schedule
-            timetable = requesting_account.school.timetables.create(day_of_week=day_of_week, day_of_week_order=Timetable.DAY_OF_THE_WEEK_ORDER[day_of_week])
+            if details.get('group_timetable'):
+                group_timetable.timetables.filter(day_of_week=day_of_week).delete()
+                # Create a new timetable
+                timetable = requesting_account.school.timetables.create(day_of_week=day_of_week, day_of_week_order=Timetable.DAY_OF_THE_WEEK_ORDER[day_of_week], student_group_timetable=group_timetable)
+                
+                response = 'A new timetable has been added to the group\'s weekly schedules. All subscribed students should be able to view the sessions in the timetable when they check their timetables again.'
+
+            else:
+                teacher_timetable, created = teacher.teacher_timetable.prefetch_related('timetables').get_or_create()
+                if not created:
+                    teacher_timetable.timetables.filter(day_of_week=day_of_week).delete()
+
+                # Create a new timetable
+                timetable = requesting_account.school.timetables.create(day_of_week=day_of_week, day_of_week_order=Timetable.DAY_OF_THE_WEEK_ORDER[day_of_week], teacher_timetable=teacher_timetable)
+
+                response = 'A new timetable has been added to the teacher\'s weekly schedules. They should be able to view the sessions in the schedule when they check their timetables again.'
 
             sessions = [
                 TimetableSession(
@@ -699,20 +713,6 @@ def create_timetable(account, role, details):
             ]
 
             TimetableSession.objects.bulk_create(sessions)
-            
-            if details.get('group_timetable'):
-                group_timetable.timetables.filter(day_of_week=day_of_week).delete()
-                group_timetable.timetables.add(timetable)
-                
-                response = 'A new timetable has been added to the group\'s weekly schedules. All subscribed students should be able to view the sessions in the timetable when they check their timetables again.'
-
-            elif details.get('teacher'):
-                teacher_timetable, created = teacher.teacher_timetable.prefetch_related('timetables').get_or_create()
-                if not created:
-                    teacher_timetable.timetables.filter(day_of_week=day_of_week).delete()
-                teacher_timetable.timetables.add(timetable)
-
-                response = 'A new timetable has been added to the teacher\'s weekly schedules. They should be able to view the sessions in the schedule when they check their timetables again.'
                     
             audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TIMETABLE', target_object_id=str(timetable.timetable_id) if timetable else 'N/A', outcome='CREATED', server_response=response, school=requesting_account.school,)
 
