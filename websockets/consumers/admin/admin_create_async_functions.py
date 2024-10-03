@@ -88,6 +88,7 @@ def create_account(account, role, details):
                             TeacherAccountPermission.objects.bulk_create(permissions[i:i + batch_size])
 
                     permission_group.update_subscribers(subscribers_list=[created_account.account_id], subscribe=True)
+                    permission_group.update_counts()
                     response = f"A new teacher account has been successfully created for your school. The account has also been added to the full access teacher permission group as per your request to grant the account full access to manage it's own classrooms. Depending on the validity of the provided email address, a confirmation email has been sent to them, the account holder can now sign-in and activate their account."
 
                 else:

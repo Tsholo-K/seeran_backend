@@ -11,7 +11,7 @@ from accounts.models import Teacher
 
 
 class TeacherTimetable(models.Model):
-    teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE, related_name='teacher_schedule')
+    teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE, related_name='teacher_timetable')
     
     last_updated = models.DateTimeField(auto_now=True)
 

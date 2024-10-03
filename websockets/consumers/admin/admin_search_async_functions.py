@@ -1039,7 +1039,7 @@ def search_activity(user, role, details):
 
 
 @database_sync_to_async
-def search_teacher_timetable_schedules(user, role, details):
+def search_teacher_timetable(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
@@ -1054,15 +1054,15 @@ def search_teacher_timetable_schedules(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TEACHER_TIMETABLE', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        teacher = requesting_account.school.teachers.prefetch_related('teacher_schedule__schedules').get(account_id=details['account'])
+        teacher = requesting_account.school.teachers.prefetch_related('teacher_timetable__timetables').get(account_id=details['account'])
 
         # Check if the teacher has a schedule
-        if hasattr(teacher, 'teacher_schedule'):
-            serialized_schedules = TimetableSerializer(teacher.teacher_schedule.schedules, many=True).data
+        if hasattr(teacher, 'teacher_timetable'):
+            serialized_timetables = TimetableSerializer(teacher.teacher_timetable.timetables, many=True).data
         else:
-            serialized_schedules = []
+            serialized_timetables = []
 
-        return {"schedules": serialized_schedules}
+        return {"timetables": serialized_timetables}
                
     except Teacher.DoesNotExist:
         # Handle the case where the requested teacher account does not exist.

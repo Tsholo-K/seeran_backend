@@ -33,7 +33,7 @@ class Timetable(models.Model):
         'SUNDAY': 7
     }
 
-    day_of_week  = models.CharField(_('schedule day'), max_length=10, choices=DAY_OF_THE_WEEK_CHOICES, default="MONDAY")
+    day_of_week  = models.CharField(_('timetable day'), max_length=10, choices=DAY_OF_THE_WEEK_CHOICES, default="MONDAY")
     day_of_week_order  = models.PositiveIntegerField(choices=[(v, k) for k, v in DAY_OF_THE_WEEK_ORDER.items()])
 
     teacher_timetable = models.ForeignKey(TeacherTimetable, on_delete=models.CASCADE, related_name='timetables')

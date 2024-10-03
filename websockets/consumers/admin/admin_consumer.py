@@ -188,13 +188,13 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'search_student_classroom_card': admin_search_async_functions.search_student_classroom_card,
             'search_activity': admin_search_async_functions.search_activity,
 
-            'search_teacher_schedule_schedules': admin_search_async_functions.search_teacher_timetable_schedules,
+            'search_teacher_timetable': admin_search_async_functions.search_teacher_timetable,
 
             'search_group_timetables': admin_search_async_functions.search_group_timetables,
             'search_group_timetable_schedules': admin_search_async_functions.search_group_timetable_schedules,
             'search_group_timetable_subscribers': admin_search_async_functions.search_group_timetable_subscribers,
 
-            'search_schedule_sessions': admin_search_async_functions.search_timetable_sessions,
+            'search_timetable_sessions': admin_search_async_functions.search_timetable_sessions,
         }
 
         func = search_map.get(description)
