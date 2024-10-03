@@ -8,11 +8,11 @@ from seeran_backend.complex_queries import queries
 from accounts.mappings import model_mapping, serializer_mappings, attr_mappings
 
 
-def get_account(user, role):
+def get_account(account, role):
     try:
         Model = model_mapping.account[role]
 
-        return Model.objects.get(account_id=user)
+        return Model.objects.get(account_id=account)
 
     except Principal.DoesNotExist:
         # Handle the case where the provided account ID does not exist
@@ -38,12 +38,12 @@ def get_account(user, role):
         # Handle any unexpected errors with a general error message
         return {'error': str(e)}
 
-def get_account_and_security_information(user, role):
+def get_account_and_security_information(account, role):
     try:
         Model = model_mapping.account[role]
         Serializer = serializer_mappings.account_security_information[role]
 
-        requesting_account = Model.objects.get(account_id=user)
+        requesting_account = Model.objects.get(account_id=account)
 
         return Serializer(requesting_account).data
 
@@ -71,12 +71,12 @@ def get_account_and_security_information(user, role):
         # Handle any unexpected errors with a general error message
         return {'error': str(e)}
 
-def get_account_and_permission_check_attr(user, role):
+def get_account_and_permission_check_attr(account, role):
     try:
         Model = model_mapping.account[role]
         select_related, prefetch_related = attr_mappings.permission_check[role]
 
-        return queries.join_queries(Model, select_related, prefetch_related).get(account_id=user)
+        return queries.join_queries(Model, select_related, prefetch_related).get(account_id=account)
 
     except Principal.DoesNotExist:
         # Handle the case where the provided account ID does not exist
@@ -102,11 +102,11 @@ def get_account_and_permission_check_attr(user, role):
         # Handle any unexpected errors with a general error message
         return {'error': str(e)}
 
-def get_account_and_linked_school(user, role):
+def get_account_and_linked_school(account, role):
     try:
         Model = model_mapping.account[role]
 
-        return Model.objects.select_related('school').get(account_id=user)
+        return Model.objects.select_related('school').get(account_id=account)
 
     except Principal.DoesNotExist:
         # Handle the case where the provided account ID does not exist

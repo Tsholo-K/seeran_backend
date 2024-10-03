@@ -19,7 +19,7 @@ from school_attendances.models import SchoolAttendance
 from accounts.serializers.students.serializers import StudentSourceAccountSerializer, LeastAccountDetailsSerializer
 from accounts.serializers.parents.serializers import ParentAccountSerializer
 from school_announcements.serializers import AnnouncementSerializer
-from classrooms.serializers import TeacherClassesSerializer
+from classrooms.serializers import TeacherClassroomsSerializer, ClassroomSerializer
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer
 from student_activities.serializers import ActivitiesSerializer
 from timetables.serializers import TimetableSerializer
@@ -53,7 +53,7 @@ def search_parents(account, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ACCOUNT', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        requested_account = requesting_account.students.prefetch_related('parents').get(account_id=details['account'])
+        requested_account = requesting_account.school.students.select_related('school').prefetch_related('parents').get(account_id=details['account'])
     
         # Check if the requesting user has permission to view the requested user's profile or details.
         permission_error = permission_checks.view_account(requesting_account, requested_account)
@@ -108,20 +108,25 @@ def search_account(account, role, details):
             return permission_error
 
         # Handle the request based on the reason provided (either 'details' or 'profile').
-        if details.get('reason') == 'details':
-            # Get the appropriate serializer for the requested user's role.
-            Serializer = serializer_mappings.account_details[details['role']]
-            # Serialize the requested user's details and return the serialized data.
-            serialized_account = Serializer(instance=requested_account).data
-
-        elif details.get('reason') == 'profile':
+        if details['reason'] == 'profile':
             # Get the appropriate serializer for the requested user's role.
             Serializer = serializer_mappings.account_profile[details['role']]
             # Serialize the requested user's details and return the serialized data.
             serialized_account = Serializer(instance=requested_account).data
 
+        else:
+            # Get the appropriate serializer for the requested user's role.
+            Serializer = serializer_mappings.account_details[details['role']]
+            # Serialize the requested user's details and return the serialized data.
+            serialized_account = Serializer(instance=requested_account).data
+
+        # Compress the serialized data
+        compressed_account = zlib.compress(json.dumps(serialized_account).encode('utf-8'))
+        # Encode compressed data as base64 for safe transport
+        encoded_account = base64.b64encode(compressed_account).decode('utf-8')
+
         # Return the serialized user data if everything is successful.
-        return {"account": serialized_account}
+        return {"account": encoded_account}
     
     except Exception as e:
         # Handle any other unexpected errors and return the error message.
@@ -129,7 +134,7 @@ def search_account(account, role, details):
 
 
 @database_sync_to_async
-def search_announcement(account, role, details):
+def search_school_announcement(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
@@ -143,7 +148,7 @@ def search_announcement(account, role, details):
         announcement = requesting_account.announcements.get(announcement_id=details.get('announcement'))
 
         # Check if the user is already in the reached list and add if not
-        if not announcement.accounts_reached.filter(pk=requesting_account.pk).exists():
+        if not announcement.accounts_reached.filter(id=requesting_account.id).exists():
             with transaction.atomic():
                 announcement.reached(account)
 
@@ -155,6 +160,87 @@ def search_announcement(account, role, details):
     except Exception as e:
         # Handle any other unexpected errors
         return {'error': str(e)}
+
+
+@database_sync_to_async
+def search_classroom(account, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+
+        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'CLASSROOM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view classrooms. please contact your administrator to adjust you permissions for viewing classroom details.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        if not 'classroom' in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid classroom ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        # Fetch the specific classroom based on class_id and school
+        classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'])
+        serialized_classroom = ClassroomSerializer(classroom).data
+
+        return {"classroom": serialized_classroom}
+    
+    except Classroom.DoesNotExist:
+        # Handle case where the classroom does not exist
+        return {'error': _('Could not process your request, a classroom you are teaching with the provided credentials does not exist. Please review the classroom details, make sure you\'re the classroom teacher and try again.')}
+    
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def search_month_attendance_records(account, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+
+        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ATTENDANCE'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view attendances. please contact your administrator to adjust you permissions for viewing attendance details.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ATTENDANCE', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        if not 'classroom' in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid classroom ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ATTENDANCE', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        # Fetch the specific classroom based on class_id and school
+        classroom = requesting_account.taught_classrooms.filter(register_class=True).first()
+        if not classroom:
+            return {"error": _("could not proccess your request, you don\'t seem to be assigned a register classroom")}
+        
+        start_date, end_date = attendances_utilities.get_month_dates(details.get('month_name'))
+
+        # Query for the Absent instances where absentes is True
+        absents = SchoolAttendance.objects.prefetch_related('absent_students').filter(models.Q(date__gte=start_date) & models.Q(date__lt=end_date) & models.Q(classroom=classroom) & models.Q(absentes=True))
+
+        # For each absent instance, get the corresponding Late instance
+        attendance_records = []
+        for absent in absents:
+            late = SchoolAttendance.objects.prefetch_related('late_students').filter(date__date=absent.date.date(), classroom=classroom).first()
+            record = {
+                'date': absent.date.isoformat(),
+                'absent_students': LeastAccountDetailsSerializer(absent.absent_students.all(), many=True).data,
+                'late_students': LeastAccountDetailsSerializer(late.late_students.all(), many=True).data if late else [],
+            }
+            attendance_records.append(record)
+
+        return {'records': attendance_records}
+               
+    except Teacher.DoesNotExist:
+        # Handle the case where the requested teacher account does not exist.
+        return {'error': 'A teacher account with the provided credentials does not exist, please check the account details and try again'}
+    
+    except Classroom.DoesNotExist:
+        return { 'error': 'a classroom in your school with the provided credentials does not exist' }
+
+    except Exception as e:
+        return { 'error': str(e) }
 
 
 @database_sync_to_async
@@ -191,44 +277,6 @@ def search_assessments(account, details):
         return {'error': str(e)}
 
 
-@database_sync_to_async
-def search_month_attendance_records(user, details):
-    try:
-        # Build the queryset for the requesting account with the necessary related fields.
-        requesting_account = Teacher.objects.select_related('school').get(account_id=user)
-
-        classroom = requesting_account.taught_classes.filter(register_class=True).first()
-        if not classroom:
-            return {"error": _("could not proccess your request. the account making the request has no register class assigned to it")}
-        
-        start_date, end_date = attendances_utilities.get_month_dates(details.get('month_name'))
-
-        # Query for the Absent instances where absentes is True
-        absents = SchoolAttendance.objects.prefetch_related('absent_students').filter(models.Q(date__gte=start_date) & models.Q(date__lt=end_date) & models.Q(classroom=classroom) & models.Q(absentes=True))
-
-        # For each absent instance, get the corresponding Late instance
-        attendance_records = []
-        for absent in absents:
-            late = SchoolAttendance.objects.prefetch_related('late_students').filter(date__date=absent.date.date(), classroom=classroom).first()
-            record = {
-                'date': absent.date.isoformat(),
-                'absent_students': LeastAccountDetailsSerializer(absent.absent_students.all(), many=True).data,
-                'late_students': LeastAccountDetailsSerializer(late.late_students.all(), many=True).data if late else [],
-            }
-            attendance_records.append(record)
-
-        return {'records': attendance_records}
-               
-    except Teacher.DoesNotExist:
-        # Handle the case where the requested teacher account does not exist.
-        return {'error': 'A teacher account with the provided credentials does not exist, please check the account details and try again'}
-    
-    except Classroom.DoesNotExist:
-        return { 'error': 'a classroom in your school with the provided credentials does not exist' }
-
-    except Exception as e:
-        return { 'error': str(e) }
-
 
 @database_sync_to_async
 def search_teacher_classes(user):
@@ -236,7 +284,7 @@ def search_teacher_classes(user):
         requesting_account = Teacher.objects.prefetch_related('taught_classes').get(account_id=user)
         classes = requesting_account.taught_classes.exclude(register_class=True)
 
-        serializer = TeacherClassesSerializer(classes, many=True)
+        serializer = TeacherClassroomsSerializer(classes, many=True)
 
         return {"classes": serializer.data}
                

@@ -54,7 +54,7 @@ class UpdateClassSerializer(serializers.ModelSerializer):
         self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
 
 
-class ClassSerializer(serializers.ModelSerializer):
+class ClassroomSerializer(serializers.ModelSerializer):
 
     teacher = serializers.SerializerMethodField()
     students = StudentSourceAccountSerializer(many=True)
@@ -97,7 +97,7 @@ class ClassesSerializer(serializers.ModelSerializer):
             return None
 
 
-class TeacherClassesSerializer(serializers.ModelSerializer):
+class TeacherClassroomsSerializer(serializers.ModelSerializer):
 
     subject = serializers.SerializerMethodField()
     grade = serializers.SerializerMethodField()

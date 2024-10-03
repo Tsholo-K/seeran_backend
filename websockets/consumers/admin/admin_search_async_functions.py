@@ -39,7 +39,7 @@ from grades.serializers import GradeSerializer, GradesSerializer, GradeDetailsSe
 from terms.serializers import  TermsSerializer, TermSerializer
 from term_subject_performances.serializers import TermSubjectPerformanceSerializer
 from subjects.serializers import SubjectSerializer, SubjectDetailsSerializer
-from classrooms.serializers import TeacherClassesSerializer, ClassesSerializer, ClassSerializer
+from classrooms.serializers import TeacherClassroomsSerializer, ClassesSerializer, ClassroomSerializer
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, GradedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer, GradedAssessmentSerializer
 from assessment_transcripts.serializers import TranscriptsSerializer, TranscriptSerializer
 from student_activities.serializers import ActivitiesSerializer, ActivitySerializer
@@ -251,7 +251,7 @@ def search_permission_group_subscribers(user, role, details):
 
 
 @database_sync_to_async
-def search_announcement(user, role, details):
+def search_school_announcement(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
@@ -362,8 +362,13 @@ def search_account(user, role, details):
             # Serialize the requested user's details and return the serialized data.
             serialized_account = Serializer(instance=requested_account).data
 
+        # Compress the serialized data
+        compressed_account = zlib.compress(json.dumps(serialized_account).encode('utf-8'))
+        # Encode compressed data as base64 for safe transport
+        encoded_account = base64.b64encode(compressed_account).decode('utf-8')
+
         # Return the serialized user data if everything is successful.
-        return {"account": serialized_account}
+        return {"account": encoded_account}
     
     except Exception as e:
         # Handle any other unexpected errors and return the error message.
@@ -421,7 +426,7 @@ def search_parents(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ACCOUNT', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        requested_account = requesting_account.students.prefetch_related('parents').get(account_id=details['account'])
+        requested_account = requesting_account.school.students.prefetch_related('parents').get(account_id=details['account'])
     
         parents = requested_account.parents
 
@@ -741,7 +746,7 @@ def search_classrooms(user, role, details):
 
         # Fetch the specific classroom based on class_id and school
         classroom = requesting_account.classrooms.get(classroom_id=details.get('classroom'))
-        serialized_classroom = ClassSerializer(classroom).data
+        serialized_classroom = ClassroomSerializer(classroom).data
 
         return {"classroom": serialized_classroom}
     
@@ -771,7 +776,7 @@ def search_teacher_classrooms(user, role, details):
             return {'error': response}
 
         teacher = requesting_account.school.teachers.prefetch_related('taught_classrooms').get(account_id=details['account'])
-        serializer = TeacherClassesSerializer(teacher.taught_classrooms, many=True)
+        serializer = TeacherClassroomsSerializer(teacher.taught_classrooms, many=True)
 
         return {"classrooms": serializer.data}
                

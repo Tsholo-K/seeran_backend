@@ -116,6 +116,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             'view_my_email_address_status_information': general_view_async_functions.view_my_email_address_status_information,
 
             'view_chat_rooms': general_view_async_functions.view_chat_rooms,
+            'view_my_classrooms': teacher_view_async_functions.view_my_classrooms,
 
             'view_school_announcements': teacher_view_async_functions.view_school_announcements,
         }
@@ -142,28 +143,27 @@ class TeacherConsumer(AsyncWebsocketConsumer):
 
             'search_account': teacher_search_async_functions.search_account,
 
-            'search_announcement': teacher_search_async_functions.search_announcement,
+            'search_school_announcement': teacher_search_async_functions.search_school_announcement,
 
-            # 'search_classrooms': teacher_search_async_functions.search_classrooms,
-            # 'search_teacher_classrooms': teacher_search_async_functions.search_teacher_classrooms,
+            'search_classroom': teacher_search_async_functions.search_classroom,
 
             'search_month_attendance_records': teacher_search_async_functions.search_month_attendance_records,
 
             'search_assessments': teacher_search_async_functions.search_assessments,
-            # 'search_assessment': teacher_search_async_functions.search_assessment,
+            'search_assessment': teacher_search_async_functions.search_assessment,
 
-            # 'search_transcripts': teacher_search_async_functions.search_transcripts,
-            # 'search_transcript': teacher_search_async_functions.search_transcript,
+            'search_transcripts': teacher_search_async_functions.search_transcripts,
+            'search_transcript': teacher_search_async_functions.search_transcript,
 
-            # 'search_student_classroom_card': teacher_search_async_functions.search_student_classroom_card,
-            # 'search_activity': teacher_search_async_functions.search_activity,
+            'search_student_classroom_card': teacher_search_async_functions.search_student_classroom_card,
+            'search_activity': teacher_search_async_functions.search_activity,
 
-            # 'search_teacher_timetable_timetables': teacher_search_async_functions.search_teacher_timetable_schedules,
+            'search_teacher_timetable_timetables': teacher_search_async_functions.search_teacher_timetable_schedules,
 
-            # 'search_group_timetables': teacher_search_async_functions.search_group_timetables,
-            # 'search_group_timetable_timetables': teacher_search_async_functions.search_group_timetable_schedules,
+            'search_group_timetables': teacher_search_async_functions.search_group_timetables,
+            'search_group_timetable_timetables': teacher_search_async_functions.search_group_timetable_schedules,
 
-            # 'search_schedule_sessions': teacher_search_async_functions.search_timetable_sessions,
+            'search_schedule_sessions': teacher_search_async_functions.search_timetable_sessions,
         }
 
         func = search_map.get(description)

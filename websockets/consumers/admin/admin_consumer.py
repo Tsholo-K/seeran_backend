@@ -160,7 +160,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'search_account': admin_search_async_functions.search_account,
 
-            'search_announcement': admin_search_async_functions.search_announcement,
+            'search_school_announcement': admin_search_async_functions.search_school_announcement,
 
             'search_grades': admin_search_async_functions.search_grades,
             'search_grade': admin_search_async_functions.search_grade,
