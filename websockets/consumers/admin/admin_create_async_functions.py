@@ -679,10 +679,10 @@ def create_timetable(account, role, details):
             return {'error': response}
 
         if details.get('group_timetable'):
-            group_timetable = requesting_account.group_timetables.get(group_timetable_id=details['group_timetable'])
+            group_timetable = requesting_account.school.group_timetables.get(group_timetable_id=details['group_timetable'])
         
         else:
-            teacher = requesting_account.teachers.get(account_id=details['teacher'])
+            teacher = requesting_account.school.teachers.get(account_id=details['teacher'])
 
         with transaction.atomic():
             if details.get('group_timetable'):
