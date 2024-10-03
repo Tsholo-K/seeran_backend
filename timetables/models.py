@@ -36,8 +36,8 @@ class Timetable(models.Model):
     day_of_week  = models.CharField(_('timetable day'), max_length=10, choices=DAY_OF_THE_WEEK_CHOICES, default="MONDAY")
     day_of_week_order  = models.PositiveIntegerField(choices=[(v, k) for k, v in DAY_OF_THE_WEEK_ORDER.items()])
 
-    teacher_timetable = models.ForeignKey(TeacherTimetable, on_delete=models.CASCADE, related_name='timetables', null=True)
-    student_group_timetable = models.ForeignKey(StudentGroupTimetable, on_delete=models.CASCADE, related_name='timetables', null=True)
+    teacher_timetable = models.ForeignKey(TeacherTimetable, on_delete=models.CASCADE, related_name='timetables', null=True, editable=False)
+    student_group_timetable = models.ForeignKey(StudentGroupTimetable, on_delete=models.CASCADE, related_name='timetables', null=True, editable=False)
 
     school = models.ForeignKey('schools.School', on_delete=models.CASCADE, related_name='timetables')
 
