@@ -8,6 +8,8 @@ from django.utils.translation import gettext_lazy as _
 
 class StudentGroupTimetable(models.Model):
     group_name = models.CharField(max_length=64)
+    description = models.TextField(max_length=1024, null=True, blank=True)
+
     subscribers = models.ManyToManyField('accounts.Student', related_name='timetables')
     
     students_count = models.PositiveIntegerField(default=0)

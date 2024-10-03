@@ -31,7 +31,7 @@ from subjects.serializers import  SubjectCreationSerializer
 from classrooms.serializers import ClassCreationSerializer
 from assessments.serializers import AssessmentCreationSerializer
 from student_activities.serializers import ActivityCreationSerializer
-from student_group_timetables.serializers import StudentGroupScheduleCreationSerializer
+from student_group_timetables.serializers import StudentGroupTimetableCreationSerializer
 from school_announcements.serializers import AnnouncementCreationSerializer
 
 # utility functions 
@@ -712,26 +712,31 @@ def create_group_timetable(user, role, details):
         # Check if the user has permission to create a group schedule
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'GROUP_TIMETABLE'):
             response = 'Could not process your request, you do not have the necessary permissions to create group timetables.'
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', outcome='DENIED', server_response=response, school=requesting_account.school)
 
             return {'error': response}
+        
+        # Check if the 'grade' key is provided and not empty
+        if 'grade' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid grade ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
 
-        grade = Grade.objects.get(grade_id=details.get('grade'), school=requesting_account.school)
-        details['grade'] = grade.pk
+        grade = requesting_account.school.grades.get(grade_id=details['grade'])
+        details['grade'] = grade.id
 
-        serializer = StudentGroupScheduleCreationSerializer(data=details)
+        serializer = StudentGroupTimetableCreationSerializer(data=details)
         if serializer.is_valid():
             with transaction.atomic():
                 group_timetable = StudentGroupTimetable.objects.create(**serializer.validated_data)
-                response = 'You can now add individual daily schedules and subscribe students in the grade to the group timetable for a shared weekly schedule.'
+                response = f'A new group timetable for your schools grade {grade.grade} has been successfully created. You can now add individual daily timetables and subscribe students in the grade to the group timetable for a shared weekly schedule.'
             
-                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id), outcome='CREATED', response=response, school=requesting_account.school,)
+                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id), outcome='CREATED', server_response=response, school=requesting_account.school,)
 
             return {'message': response}
 
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id), outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
         return {"error": error_response}
 
     except Grade.DoesNotExist:
@@ -740,14 +745,12 @@ def create_group_timetable(user, role, details):
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {'error': error_message}
 
 

@@ -5,11 +5,15 @@ from rest_framework import serializers
 from .models import StudentGroupTimetable
 
 
-class StudentGroupScheduleCreationSerializer(serializers.ModelSerializer):
+class StudentGroupTimetableCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StudentGroupTimetable
-        fields = ['group_name', 'grade', 'school']
+        fields = ['group_name', 'description', 'grade', 'school']
+
+    def __init__(self, *args, **kwargs):
+        super(StudentGroupTimetableCreationSerializer, self).__init__(*args, **kwargs)
+        self.fields['description'].required = False
 
 
 class StudentGroupTimetablesSerializer(serializers.ModelSerializer):
