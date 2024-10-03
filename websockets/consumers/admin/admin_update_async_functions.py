@@ -808,7 +808,7 @@ def update_group_timetable_details(account, role, details):
 
             serialized_group_timetable = StudentGroupTimetableDetailsSerializer(group_timetable).data
 
-            return {"group_timetable": serialized_group_timetable}
+            return {'message' : response, "group_timetable": serialized_group_timetable}
 
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
         audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_schedule_id) if group_timetable else 'N/A', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
@@ -859,7 +859,7 @@ def update_group_timetable_subscribers(user, role, details):
             # Check for validation errors and perform student updates
             group_timetable.update_subscribers(students_list=students_list, subscribe=details.get('subscribe'))
             
-        return {'message': f''}
+        return {'message': f"The provided list of student accounts has been {'subscribed to' if details.get('subscribe') else 'unsubscribed from'} the group timetable with the group timetable ID: {group_timetable.group_schedule_id}."}
     
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
