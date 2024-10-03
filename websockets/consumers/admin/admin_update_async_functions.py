@@ -804,14 +804,14 @@ def update_group_timetable_details(account, role, details):
                 serializer.save()
 
                 response = f"Group timetable with group timetable ID: {group_timetable.group_timetable_id}, has been successfully updated."
-                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_schedule_id) if group_timetable else 'N/A', outcome='UPDATED', server_response=response, school=requesting_account.school)
+                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='UPDATED', server_response=response, school=requesting_account.school)
 
             serialized_group_timetable = StudentGroupTimetableDetailsSerializer(group_timetable).data
 
             return {'message' : response, "group_timetable": serialized_group_timetable}
 
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_schedule_id) if group_timetable else 'N/A', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
         return {"error": error_response}
 
     
@@ -821,12 +821,12 @@ def update_group_timetable_details(account, role, details):
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_schedule_id) if group_timetable else 'N/A', outcome='ERROR', server_response=response, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_sgroup_timetable_idchedule_id) if group_timetable else 'N/A', outcome='ERROR', server_response=response, school=requesting_account.school)
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_schedule_id) if group_timetable else 'N/A', outcome='ERROR', server_response=response, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='ERROR', server_response=response, school=requesting_account.school)
         return {'error': error_message}
 
 
@@ -858,8 +858,11 @@ def update_group_timetable_subscribers(user, role, details):
         with transaction.atomic():
             # Check for validation errors and perform student updates
             group_timetable.update_subscribers(students_list=students_list, subscribe=details.get('subscribe'))
-            
-        return {'message': f"The provided list of student accounts has been {'subscribed to' if details.get('subscribe') else 'unsubscribed from'} the group timetable with the group timetable ID: {group_timetable.group_schedule_id}."}
+
+            response = f"The provided list of student accounts has been {'subscribed to' if details.get('subscribe') else 'unsubscribed from'} the group timetable with the group timetable ID: {group_timetable.group_schedule_id}."
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='UPDATED', server_response=response, school=requesting_account.school)
+
+        return {'message': response}
     
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
@@ -867,11 +870,11 @@ def update_group_timetable_subscribers(user, role, details):
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_schedule_id) if group_timetable else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_schedule_id) if group_timetable else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {'error': error_message}
 
