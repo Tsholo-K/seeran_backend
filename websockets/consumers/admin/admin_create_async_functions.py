@@ -703,17 +703,16 @@ def create_timetable(user, role, details):
 
 
 @database_sync_to_async
-def create_group_timetable(user, role, details):
+def create_group_timetable(account, role, details):
     try:
         group_timetable = None  # Initialize group timetable as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to create a group schedule
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'GROUP_TIMETABLE'):
             response = 'Could not process your request, you do not have the necessary permissions to create group timetables.'
             audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', outcome='DENIED', server_response=response, school=requesting_account.school)
-
             return {'error': response}
         
         # Check if the 'grade' key is provided and not empty
@@ -724,6 +723,7 @@ def create_group_timetable(user, role, details):
 
         grade = requesting_account.school.grades.get(grade_id=details['grade'])
         details['grade'] = grade.id
+        details['school'] = requesting_account.school.id
 
         serializer = StudentGroupTimetableCreationSerializer(data=details)
         if serializer.is_valid():
@@ -731,12 +731,12 @@ def create_group_timetable(user, role, details):
                 group_timetable = StudentGroupTimetable.objects.create(**serializer.validated_data)
                 response = f'A new group timetable for your schools grade {grade.grade} has been successfully created. You can now add individual daily timetables and subscribe students in the grade to the group timetable for a shared weekly schedule.'
             
-                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id), outcome='CREATED', server_response=response, school=requesting_account.school,)
+                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='CREATED', server_response=response, school=requesting_account.school)
 
             return {'message': response}
 
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id), outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
         return {"error": error_response}
 
     except Grade.DoesNotExist:
@@ -745,12 +745,12 @@ def create_group_timetable(user, role, details):
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {'error': error_message}
 
 

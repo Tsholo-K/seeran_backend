@@ -432,7 +432,7 @@ def delete_timetable(user, role, details):
 @database_sync_to_async
 def delete_group_timetable(user, role, details):
     try:
-        group_timtable = None  # Initialize group timtable as None to prevent issues in error handling
+        group_timetable = None  # Initialize group timtable as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
@@ -447,13 +447,13 @@ def delete_group_timetable(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='GROUP_TIMETABLE', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        group_timtable = requesting_account.group_timetables.get(group_timetable_id=details['group_timetable'])
+        group_timetable = requesting_account.group_timetables.get(group_timetable_id=details['group_timetable'])
         
         with transaction.atomic():
-            response = f'Group timetable with group timetable ID : {group_timtable.group_timetable_id}, has been deleted from your schools system. All data related to the group will be purged from the system effective immediately.'
-            audits_utilities.log_audit(actor=requesting_account,action='DELETE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timtable.group_timetable_id), outcome='DELETED', server_response=response, school=requesting_account.school)
+            response = f'Group timetable with group timetable ID : {group_timetable.group_timetable_id}, has been deleted from your schools system. All data related to the group will be purged from the system effective immediately.'
+            audits_utilities.log_audit(actor=requesting_account,action='DELETE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='DELETED', server_response=response, school=requesting_account.school)
 
-            group_timtable.delete()
+            group_timetable.delete()
 
         return {'message': response}
 
@@ -463,12 +463,28 @@ def delete_group_timetable(user, role, details):
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timtable.group_timetable_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(
+            actor=requesting_account, 
+            action='DELETE', 
+            target_model='GROUP_TIMETABLE', 
+            target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', 
+            outcome='ERROR', 
+            server_response=error_message, 
+            school=requesting_account.school
+        )
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timtable.group_timetable_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(
+            actor=requesting_account, 
+            action='DELETE', 
+            target_model='GROUP_TIMETABLE', 
+            target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', 
+            outcome='ERROR', 
+            server_response=error_message, 
+            school=requesting_account.school
+        )
         return {'error': error_message}
 
 
