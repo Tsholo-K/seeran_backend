@@ -127,52 +127,48 @@ def delete_account(user, role, details):
 
         requested_account = None  # Initialize requested_account as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_attr(user, role)
+        requesting_account = accounts_utilities.get_account_and_permission_check_attr(user, role)
 
         if details['role'] == 'ADMIN' and role == 'ADMIN':
             response = f'could not proccess your request, your accounts role does not have enough permissions to perform this action.'
-            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', outcome='DENIED', response=response, school=requesting_account.school)
-
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         # Check if the user has permission to create a grade
-        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'DELETE', 'ACCOUNT'):
+        elif role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'DELETE', 'ACCOUNT'):
             response = f'could not proccess your request, you do not have the necessary permissions to delete accounts'
-            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', outcome='DENIED', response=response, school=requesting_account.school)
-
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         elif details['role'] in ['ADMIN', 'TEACHER', 'STUDENT']:
             # Retrieve the requesting users account and related school in a single query using select_related
-            requested_account = accounts_utilities.get_account_and_attr(details.get('account'), details['role'])
+            requested_account = accounts_utilities.get_account_and_permission_check_attr(details.get('account'), details['role'])
 
             # Check if the requesting user has permission to update the requested user's account.
-            permission_error = permission_checks.check_update_details_permissions(requesting_account, requested_account)
+            permission_error = permission_checks.view_account(requesting_account, requested_account)
             if permission_error:
                 return permission_error
 
             with transaction.atomic():
-                response = f"{details['role']} account successfully deleted.".lower()
-                audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', target_object_id=str(requested_account.grade_id) if requested_account else 'N/A', outcome='DELETED', response=response, school=requesting_account.school)
-
+                response = f"Account with account ID: {requested_account.account_id} and role, {details['role'].lower()}, has been successfully deleted and removed from your schools system. The account and all it's related related data will be purged from the system, effective immediately."
+                audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', target_object_id=str(requested_account.account_id), outcome='DELETED', server_response=response, school=requesting_account.school)
                 requested_account.delete()
 
             return {"message" : response}
 
         response = 'could not proccess your request, the provided account role is invalid'
-        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', outcome='DENIED', response=response, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', target_object_id=str(requested_account.account_id), outcome='DENIED', server_response=response, school=requesting_account.school)
         return {'error': response}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', target_object_id=str(requested_account.grade_id) if requested_account else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', target_object_id=str(requested_account.account_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
 
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', target_object_id=str(requested_account.grade_id) if requested_account else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', target_object_id=str(requested_account.account_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
 
         return {'error': error_message}
 
