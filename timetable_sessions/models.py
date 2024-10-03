@@ -4,6 +4,8 @@ import uuid
 # django 
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.core.exceptions import ValidationError
+
 
 
 class TimetableSession(models.Model):
@@ -20,3 +22,8 @@ class TimetableSession(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     session_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
+    def save(self, *args, **kwargs):
+        try:
+            super().save(*args, **kwargs)
+        except Exception as e:
+            raise ValidationError(_(str(e)))

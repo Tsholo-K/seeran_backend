@@ -705,10 +705,11 @@ def create_timetable(account, role, details):
             sessions = [
                 TimetableSession(
                     session_type=session['class'],
-                    classroom=session.get('classroom'),
-                    start_time=parse_time(session['start_time']),
-                    end_time=parse_time(session['end_time']),
-                    timetable=timetable
+                    session_location=session.get('classroom'),
+                    seesion_start_time=parse_time(session['startTime']),
+                    seesion_end_time=parse_time(session['endTime']),
+                    timetable=timetable,
+                    school=requesting_account.school
                 ) for session in details.get('sessions', [])
             ]
 
