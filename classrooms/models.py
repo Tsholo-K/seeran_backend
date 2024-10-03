@@ -40,7 +40,7 @@ class Classroom(models.Model):
 
     student_count = models.PositiveIntegerField(default=0)
 
-    register_class = models.BooleanField(_('is the class a register class'), editable=False, default=False, help_text='Ensure only one register class per teacher.')
+    register_classroom = models.BooleanField(_('is the class a register class'), editable=False, default=False, help_text='Ensure only one register class per teacher.')
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, editable=False, related_name='classrooms', null=True, blank=True, help_text='Subject taught in the classroom.')
 
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='classrooms', help_text='Grade level associated with the classroom.')
@@ -76,7 +76,7 @@ class Classroom(models.Model):
             if 'unique constraint' in error_message:
                 if 'classrooms_classroom.subject' in error_message:
                     raise ValidationError(_('A classroom with the provided group, grade, and subject already exists. Please choose a different classroom group and try again.'))
-                elif 'classrooms_classroom.register_class' in error_message:
+                elif 'classrooms_classroom.register_classroom' in error_message:
                     raise ValidationError(_('A register class with the provided group and grade already exists. Each grade can only have one register class per group. Please choose a different group.'))
             # Re-raise the original exception if it's not related to unique constraints
             raise
@@ -84,7 +84,7 @@ class Classroom(models.Model):
             raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
 
     def clean(self):
-        if not self.subject_id and not self.register_class:
+        if not self.subject_id and not self.register_classroom:
             raise ValidationError('A classroom must either be a register class or be associated with a subject. Please review the provided information and try again.')
 
         if self.subject_id and self.subject.grade != self.grade:
@@ -114,7 +114,7 @@ class Classroom(models.Model):
 
                 # Check if students are already in any register class
                 elif self.register_class:
-                    students_in_register_classrooms = self.grade.students.filter(account_id__in=student_ids, enrolled_classrooms__register_class=True).values_list('surname', 'name')
+                    students_in_register_classrooms = self.grade.students.filter(account_id__in=student_ids, enrolled_classrooms__register_classroom=True).values_list('surname', 'name')
                     if students_in_register_classrooms:
                         student_names = [f"{surname} {name}" for surname, name in students_in_register_classrooms]
                         raise ValidationError(f'the following students are already assigned to a register classroom: {", ".join(student_names)}')
@@ -153,7 +153,7 @@ class Classroom(models.Model):
                 teacher = Teacher.objects.get(account_id=teacher, school=self.school)
             
                 # Check if the teacher is already assigned to another register class in the school
-                if self.register_class and teacher.taught_classrooms.filter(register_class=True).exclude(pk=self.pk).exists():
+                if self.register_classroom and teacher.taught_classrooms.filter(register_classroom=True).exclude(pk=self.pk).exists():
                     raise ValidationError("could not proccess your request, the provided teacher is already assigned to a register classroom. teachers can only be assigned to one register classroom in a school")
                 
                 # Check if the teacher is already assigned to another class in the subject
