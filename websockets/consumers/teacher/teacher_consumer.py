@@ -150,20 +150,20 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             'search_month_attendance_records': teacher_search_async_functions.search_month_attendance_records,
 
             'search_assessments': teacher_search_async_functions.search_assessments,
-            'search_assessment': teacher_search_async_functions.search_assessment,
+            # 'search_assessment': teacher_search_async_functions.search_assessment,
 
-            'search_transcripts': teacher_search_async_functions.search_transcripts,
-            'search_transcript': teacher_search_async_functions.search_transcript,
+            # 'search_transcripts': teacher_search_async_functions.search_transcripts,
+            # 'search_transcript': teacher_search_async_functions.search_transcript,
 
-            'search_student_classroom_card': teacher_search_async_functions.search_student_classroom_card,
-            'search_activity': teacher_search_async_functions.search_activity,
+            # 'search_student_classroom_card': teacher_search_async_functions.search_student_classroom_card,
+            # 'search_activity': teacher_search_async_functions.search_activity,
 
-            'search_teacher_timetable_timetables': teacher_search_async_functions.search_teacher_timetable_schedules,
+            # 'search_teacher_timetable_timetables': teacher_search_async_functions.search_teacher_timetable_schedules,
 
-            'search_group_timetables': teacher_search_async_functions.search_group_timetables,
-            'search_group_timetable_timetables': teacher_search_async_functions.search_group_timetable_schedules,
+            # 'search_group_timetables': teacher_search_async_functions.search_group_timetables,
+            # 'search_group_timetable_timetables': teacher_search_async_functions.search_group_timetable_schedules,
 
-            'search_schedule_sessions': teacher_search_async_functions.search_timetable_sessions,
+            # 'search_schedule_sessions': teacher_search_async_functions.search_timetable_sessions,
         }
 
         func = search_map.get(description)
