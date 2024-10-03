@@ -78,7 +78,7 @@ def create_account(account, role, details):
                 if details['role'] == 'TEACHER' and details.get('grant_full_access'):
                     permission_group, created = requesting_account.school.teacher_permission_groups.get_or_create(group_name='Full Access', description='Grants teachers full access to manage their assigned classrooms, including student records, assessments, grading, and attendance. This permission allows teachers to maintain control over all aspects of their classroom operations, ensuring they can effectively support student learning and classroom management.')
                     permissions = []
-                    for action, targets in {"create": ["ACTIVITY","ASSESSMENT"], "update": ["ASSESSMENT"], "delete": ["ASSESSMENT"], "submit": ["ATTENDANCE"], "generate": ["PROGRESS_REPORT"]}.items():
+                    for action, targets in {"create": ["ACTIVITY","ASSESSMENT"], "update": ["ASSESSMENT"], "view": ["ACCOUNT","PROGRESS_REPORT","CLASSROOM","ATTENDANCE","ACTIVITY","ASSESSMENT","TRANSCRIPT","DAILY_SCHEDULE","GROUP_TIMETABLE"], "delete": ["ASSESSMENT"], "submit": ["ATTENDANCE"], "generate": ["PROGRESS_REPORT"]}.items():
                         for target in targets:
                             permissions.append(TeacherAccountPermission(linked_permission_group=permission_group, action=action.upper(), target_model=target.upper(), can_execute=True))
 
