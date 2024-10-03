@@ -16,6 +16,18 @@ class StudentGroupTimetableCreationSerializer(serializers.ModelSerializer):
         self.fields['description'].required = False
 
 
+class StudentGroupTimetableUpdateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = StudentGroupTimetable
+        fields = ['group_name', 'description']
+
+    def __init__(self, *args, **kwargs):
+        super(StudentGroupTimetableUpdateSerializer, self).__init__(*args, **kwargs)
+        for field in self.fields:
+            field.required = False
+
+
 class StudentGroupTimetablesSerializer(serializers.ModelSerializer):
 
     class Meta:

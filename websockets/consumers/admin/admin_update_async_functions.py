@@ -14,6 +14,7 @@ from subjects.models import Subject
 from classrooms.models import Classroom
 from assessments.models import Assessment
 from topics.models import Topic
+from student_group_timetables.models import StudentGroupTimetable
 
 # serilializers
 from permission_groups.serializers import AdminPermissionGroupUpdatenSerializer, TeacherPermissionGroupUpdateSerializer
@@ -24,6 +25,7 @@ from subjects.serializers import UpdateSubjectSerializer, SubjectDetailsSerializ
 from classrooms.serializers import UpdateClassSerializer
 from assessments.serializers import AssessmentUpdateSerializer
 from assessment_transcripts.serializers import TranscriptUpdateSerializer
+from student_group_timetables.serializers import StudentGroupTimetableDetailsSerializer, StudentGroupTimetableUpdateSerializer
 
 # checks
 from accounts.checks import permission_checks
@@ -667,7 +669,6 @@ def update_student_transcript_score(user, role, details):
 
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
         audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TRANSCRPIT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
-
         return {"error": error_response}
 
     except Assessment.DoesNotExist:
@@ -681,13 +682,11 @@ def update_student_transcript_score(user, role, details):
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
         audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TRANSCRPIT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
         audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TRANSCRPIT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
         return {'error': error_message}
 
 
@@ -780,33 +779,86 @@ def update_assessment_as_graded(user, role, details):
 
 
 @database_sync_to_async
-def update_group_schedule_students(user, role, details):
+def update_group_timetable_details(account, role, details):
+    try:
+        group_timetable = None
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'GROUP_TIMETABLE'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view group timetables. please contact your administrator to adjust you permissions for viewing group timetables.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='GROUP_TIMETABLE', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        elif 'group_timetable' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid group timetable ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        # Retrieve the specified group schedule
+        group_timetable = requesting_account.school.group_timetables.get(group_timetable_id=details['group_timetable'])
+
+        serializer = StudentGroupTimetableUpdateSerializer(group_timetable, data=details)
+        if serializer.is_valid():
+            with transaction.atomic():
+                serializer.save()
+
+                response = f"Group timetable with group timetable ID: {group_timetable.group_timetable_id}, has been successfully updated."
+                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_schedule_id) if group_timetable else 'N/A', outcome='UPDATED', server_response=response, school=requesting_account.school)
+
+            serialized_group_timetable = StudentGroupTimetableDetailsSerializer(group_timetable).data
+
+            return {"group_timetable": serialized_group_timetable}
+
+        error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_schedule_id) if group_timetable else 'N/A', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
+        return {"error": error_response}
+
+    
+    except StudentGroupTimetable.DoesNotExist:
+        # Handle case where the group schedule does not exist
+        return {'error': 'Could not process your request, a group schedule with the provided credentials does not exist. Please check the group schedule details and try again.'}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_schedule_id) if group_timetable else 'N/A', outcome='ERROR', server_response=response, school=requesting_account.school)
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_schedule_id) if group_timetable else 'N/A', outcome='ERROR', server_response=response, school=requesting_account.school)
+        return {'error': error_message}
+
+
+@database_sync_to_async
+def update_group_timetable_subscribers(user, role, details):
     try:
         students_list = details.get('students', '').split(', ')
         if not students_list or students_list == ['']:
             return {'error': 'your request could not be proccessed.. no students were provided'}
         
-        group_schedule = None  # Initialize assessment as None to prevent issues in error handling
+        group_timetable = None  # Initialize assessment as None to prevent issues in error handling
 
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         # Check if the user has permission to update classrooms
-        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'CLASSROOM'):
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'GROUP_TIMETABLE'):
             response = f'could not proccess your request, you do not have the necessary permissions to update classroom details.'
             audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', outcome='DENIED', response=response, school=requesting_account.school)
-
             return {'error': response}
 
-        group_schedule = Classroom.objects.select_related('grade', 'subject').get(classroom_id=details.get('class'), school=requesting_account.school)
+        elif 'group_timetable' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid group timetable ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        group_timetable = requesting_account.school.group_timetables.get(group_timetable_id=details['group_timetable'])
 
         with transaction.atomic():
             # Check for validation errors and perform student updates
-            error_message = group_schedule.update_students(students_list=students_list, remove=details.get('remove'))
+            group_timetable.update_subscribers(students_list=students_list, subscribe=details.get('subscribe'))
             
-        if error_message:
-            return {'error': error_message}
-
         return {'message': f''}
     
     except Classroom.DoesNotExist:
@@ -815,14 +867,11 @@ def update_group_schedule_students(user, role, details):
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(group_schedule.group_schedule_id) if group_schedule else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_schedule_id) if group_timetable else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(group_schedule.group_schedule_id) if group_schedule else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_schedule_id) if group_timetable else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {'error': error_message}
-
 

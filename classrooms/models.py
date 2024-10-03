@@ -91,60 +91,63 @@ class Classroom(models.Model):
             raise ValidationError('The subject associated with this classroom is assigned to a different grade. Ensure that the subject belongs to the same grade as the classroom.')
 
     def update_students(self, student_ids=None, remove=False):
-        if student_ids:
-            # Retrieve CustomUser instances corresponding to the account_ids
-            students = self.grade.students.prefetch_related('enrolled_classrooms__subject').filter(account_id__in=student_ids)
+        try:
+            if student_ids:
+                # Retrieve CustomUser instances corresponding to the account_ids
+                students = self.grade.students.prefetch_related('enrolled_classrooms__subject').filter(account_id__in=student_ids)
 
-            if not students.exists():
-                raise ValidationError("no valid students were found in the grade with the provided account IDs.")
-            
-            if remove:
-                # Check if students to be removed are actually in the class
-                existing_students = self.students.filter(account_id__in=student_ids).values_list('account_id', flat=True)
-                if not existing_students:
-                    raise ValidationError("could not proccess your request, all the provided students are not part of this classroom")
+                if not students.exists():
+                    raise ValidationError("no valid students were found in the grade with the provided account IDs.")
+                
+                if remove:
+                    # Check if students to be removed are actually in the class
+                    existing_students = self.students.filter(account_id__in=student_ids).values_list('account_id', flat=True)
+                    if not existing_students:
+                        raise ValidationError("could not proccess your request, all the provided students are not part of this classroom")
 
-            else:
-                # Check if students are already in a class of the same subject
+                else:
+                    # Check if students are already in a class of the same subject
+                    if self.subject:
+                        students_in_subject_classrooms = self.grade.students.filter(account_id__in=student_ids, enrolled_classrooms__subject=self.subject).values_list('surname', 'name')
+                        if students_in_subject_classrooms:
+                            student_names = [f"{surname} {name}" for surname, name in students_in_subject_classrooms]
+                            raise ValidationError(f'the following students are already assigned to a classroom in the provided subject and grade: {", ".join(student_names)}')
+
+                    # Check if students are already in any register class
+                    elif self.register_class:
+                        students_in_register_classrooms = self.grade.students.filter(account_id__in=student_ids, enrolled_classrooms__register_classroom=True).values_list('surname', 'name')
+                        if students_in_register_classrooms:
+                            student_names = [f"{surname} {name}" for surname, name in students_in_register_classrooms]
+                            raise ValidationError(f'the following students are already assigned to a register classroom: {", ".join(student_names)}')
+
+                    # Check if students are already in this specific class
+                    students_in_provided_classroom = self.students.filter(account_id__in=student_ids).values_list('surname', 'name')
+                    if students_in_provided_classroom:
+                        student_names = [f"{surname} {name}" for surname, name in students_in_provided_classroom]
+                        raise ValidationError(f'the following students are already in this class: {", ".join(student_names)}')
+
+                # Proceed with adding or removing students
+                if remove:
+                    self.students.remove(*students)
+                else:
+                    self.students.add(*students)
+
+                # Save the classroom instance first to ensure student changes are persisted
+                self.save()
+
+                # Update the students count in the class
+                self.student_count = self.students.count()
+                self.save()  # Save again to update students_count field
+
                 if self.subject:
-                    students_in_subject_classrooms = self.grade.students.filter(account_id__in=student_ids, enrolled_classrooms__subject=self.subject).values_list('surname', 'name')
-                    if students_in_subject_classrooms:
-                        student_names = [f"{surname} {name}" for surname, name in students_in_subject_classrooms]
-                        raise ValidationError(f'the following students are already assigned to a classroom in the provided subject and grade: {", ".join(student_names)}')
-
-                # Check if students are already in any register class
-                elif self.register_class:
-                    students_in_register_classrooms = self.grade.students.filter(account_id__in=student_ids, enrolled_classrooms__register_classroom=True).values_list('surname', 'name')
-                    if students_in_register_classrooms:
-                        student_names = [f"{surname} {name}" for surname, name in students_in_register_classrooms]
-                        raise ValidationError(f'the following students are already assigned to a register classroom: {", ".join(student_names)}')
-
-                # Check if students are already in this specific class
-                students_in_provided_classroom = self.students.filter(account_id__in=student_ids).values_list('surname', 'name')
-                if students_in_provided_classroom:
-                    student_names = [f"{surname} {name}" for surname, name in students_in_provided_classroom]
-                    raise ValidationError(f'the following students are already in this class: {", ".join(student_names)}')
-
-            # Proceed with adding or removing students
-            if remove:
-                self.students.remove(*students)
+                    # Update the subject student count
+                    self.subject.student_count = self.grade.classrooms.filter(subject=self.subject).aggregate(student_count=models.Count('students'))['student_count'] or 0
+                    self.subject.save()
             else:
-                self.students.add(*students)
+                raise ValidationError("could not proccess your request, no students were provided to be added or removed from the classroom. please provide a valid list of students and try again")
+        except Exception as e:
+            raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
 
-            # Save the classroom instance first to ensure student changes are persisted
-            self.save()
-
-            # Update the students count in the class
-            self.student_count = self.students.count()
-            self.save()  # Save again to update students_count field
-
-            if self.subject:
-                # Update the subject student count
-                self.subject.student_count = self.grade.classrooms.filter(subject=self.subject).aggregate(student_count=models.Count('students'))['student_count'] or 0
-                self.subject.save()
-            
-        else:
-            raise ValidationError("could not proccess your request, no students were provided to be added or removed from the classroom. please provide a valid list of students and try again")
 
     def update_teacher(self, teacher=None):
         try:

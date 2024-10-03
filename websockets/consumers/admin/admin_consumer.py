@@ -326,6 +326,9 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'update_classroom_details': admin_update_async_functions.update_classroom_details,
             'update_classroom_students': admin_update_async_functions.update_classroom_students,
+
+            'update_group_timetable_details': admin_update_async_functions.update_group_timetable_details,
+            'update_group_timetable_subscribers': admin_update_async_functions.update_group_timetable_subscribers,
         }
 
         func = update_map.get(description)
