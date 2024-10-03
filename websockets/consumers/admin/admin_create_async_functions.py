@@ -267,34 +267,38 @@ def create_term(user, role, details):
         # Check if the user has permission to create a grade
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'TERM'):
             response = f'could not proccess your request, you do not have the necessary permissions to create a term'
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', outcome='DENIED', server_response=response, school=requesting_account.school)
 
             return {'error': response}
+        
+        # Check if the 'permissions' key is provided and not empty
+        if 'grade' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid grade ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
 
-        grade = Grade.objects.get(grade_id=details.get('grade'), school=requesting_account.school)
+        grade = requesting_account.school.grades.get(grade_id=details['grade'])
 
         # Add the school ID to the term details
-        details['school'] = requesting_account.school.pk
-        details['grade'] = grade.pk
+        details['school'] = requesting_account.school.id
+        details['grade'] = grade.id
 
         # Initialize the serializer with the incoming data
         serializer = TermCreationSerializer(data=details)
-        
         if serializer.is_valid():
             # Using atomic transaction to ensure data integrity
             with transaction.atomic():
                 # Create the new term using the validated data
                 term = Term.objects.create(**serializer.validated_data)
 
-                response = f"term {term.term} for grade {grade.grade} has been successfully created for your schools"
-                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', target_object_id=str(term.term_id), outcome='CREATED', response=response, school=requesting_account.school,)
+                response = f"A new term, {term.term}, for grade your schools {grade.grade} has been successfully created."
+                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', target_object_id=str(term.term_id), outcome='CREATED', server_response=response, school=requesting_account.school,)
 
             return {"message": response}
         
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', target_object_id=str(term.term_id), outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
         return {"error": error_response}
 
     except Grade.DoesNotExist:
@@ -303,14 +307,12 @@ def create_term(user, role, details):
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', target_object_id=str(term.term_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', target_object_id=str(term.term_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {'error': error_message}
 
 
