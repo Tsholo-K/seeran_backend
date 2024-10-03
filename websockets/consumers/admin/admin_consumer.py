@@ -303,7 +303,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'update_multi_factor_authentication': general_update_async_functions.update_multi_factor_authentication,
 
-            'update_school_account_details' : admin_update_async_functions.update_school_account_account,
+            'update_school_account_details' : admin_update_async_functions.update_school_account_details,
 
             'update_permission_group_subscribers': admin_update_async_functions.update_permission_group_subscribers,
 
@@ -412,7 +412,10 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         func = delete_map.get(description)
         if func:
-            response = await func(account, role, details)            
+            if description in ['delete_school_account']:
+                response = await func(account, role)
+            else:
+                response = await func(account, role, details)            
             return response
         
         return {'error': 'Could not process your request, an invalid delete description was provided. If this problem persist open a bug report ticket.'}

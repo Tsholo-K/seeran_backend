@@ -27,29 +27,21 @@ from audit_logs import utils as audits_utilities
 
 
 @database_sync_to_async
-def delete_school_account(user, role, details):
+def delete_school_account(account, role):
     try:
         school = None  # Initialize school as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         if role not in ['PRINCIPAL']:
             response = f'could not proccess your request, you do not have the necessary permissions to delete your schools account. only the principal can delete the schools account from the system.'
-            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', outcome='DENIED', server_response=response, school=requesting_account.school)
 
             return {'error': response}
         
         school = requesting_account.school
 
         with transaction.atomic():
-            # Perform bulk delete operations without triggering signals
-            Principal.objects.filter(school=school).delete()
-            Admin.objects.filter(school=school).delete()
-            Teacher.objects.filter(school=school).delete()
-            Student.objects.filter(school=school).delete()
-            Classroom.objects.filter(school=school).delete()
-            Grade.objects.filter(school=school).delete()
-
             # Delete the School instance
             school.delete()
 
@@ -58,21 +50,21 @@ def delete_school_account(user, role, details):
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', target_object_id=str(school.school_id) if school else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', target_object_id=str(school.school_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', target_object_id=str(school.school_id) if school else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', target_object_id=str(school.school_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {'error': error_message}
 
 
 @database_sync_to_async
-def delete_permission_group(user, role, details):
+def delete_permission_group(account, role, details):
     try:
         permission_group = None
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to create an assessment
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'DELETE', 'PERMISSION'):
@@ -120,14 +112,14 @@ def delete_permission_group(user, role, details):
 
 
 @database_sync_to_async
-def delete_account(user, role, details):
+def delete_account(account, role, details):
     try:
         if details.get('role') not in ['ADMIN', 'TEACHER', 'STUDENT']:
             return {"error": 'could not proccess your request, the provided account role is invalid'}
 
         requested_account = None  # Initialize requested_account as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_permission_check_attr(user, role)
+        requesting_account = accounts_utilities.get_account_and_permission_check_attr(account, role)
 
         if details['role'] == 'ADMIN' and role == 'ADMIN':
             response = f'could not proccess your request, your accounts role does not have enough permissions to perform this action.'
@@ -174,11 +166,11 @@ def delete_account(user, role, details):
 
 
 @database_sync_to_async
-def delete_grade(user, role, details):
+def delete_grade(account, role, details):
     try:
         grade = None  # Initialize requested_account as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to create a grade
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'DELETE', 'GRADE'):
@@ -216,11 +208,11 @@ def delete_grade(user, role, details):
 
 
 @database_sync_to_async
-def delete_subject(user, role, details):
+def delete_subject(account, role, details):
     try:
         subject = None  # Initialize subject as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to create a grade
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'DELETE', 'SUBJECT'):

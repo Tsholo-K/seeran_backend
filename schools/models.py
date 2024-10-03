@@ -119,9 +119,9 @@ class School(models.Model):
 
     # Additional school-related information
     grading_system = models.JSONField(blank=True, null=True)         # Details about the school's grading system
-    library_details = models.TextField(blank=True, null=True)        # Information about the school's library
-    laboratory_details = models.TextField(blank=True, null=True)     # Information about the school's laboratories
-    sports_facilities = models.TextField(blank=True, null=True)      # Information about the school's sports facilities
+    library_details = models.JSONField(blank=True, null=True)        # Information about the school's library
+    laboratory_details = models.JSONField(blank=True, null=True)     # Information about the school's laboratories
+    sports_facilities = models.JSONField(blank=True, null=True)      # Information about the school's sports facilities
 
     # Operational details
     operating_hours = models.CharField(max_length=12, blank=True, null=True)  # Operating hours (e.g., "08:00 - 15:00")
@@ -134,6 +134,7 @@ class School(models.Model):
     # Timestamp when the record was last updated
     last_updated = models.DateTimeField(auto_now=True)
 
+    timestamp = models.DateTimeField(auto_now_add=True)
     # Unique ID for the school, automatically generated
     school_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 

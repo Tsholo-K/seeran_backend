@@ -41,7 +41,7 @@ from assessments.tasks import release_grades_task
 
 
 @database_sync_to_async
-def update_school_account_account(user, role, details):
+def update_school_account_details(user, role, details):
     try:
         school = None  # Initialize requested_account as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
@@ -52,7 +52,7 @@ def update_school_account_account(user, role, details):
         # Check if the user has permission to update classrooms
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'ACCOUNT'):
             response = f'could not proccess your request, you do not have the necessary permissions to update account details.'
-            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', outcome='DENIED', response=response, school=school)
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', outcome='DENIED', server_response=response, school=school)
 
             return {'error': response}
 
@@ -64,8 +64,8 @@ def update_school_account_account(user, role, details):
             with transaction.atomic():
                 serializer.save()
                     
-                response = f"school account details have been successfully updated"
-                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(school.school_id) if school else 'N/A', outcome='UPDATED', response=response, school=requesting_account.school,)
+                response = f"School account details have been successfully updated. The following information has been changed: {', '.join(details.keys())}."
+                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(school.school_id), outcome='UPDATED', server_response=response, school=school)
 
             # Serialize the grade
             serialized_school = SchoolDetailsSerializer(school).data
@@ -74,20 +74,17 @@ def update_school_account_account(user, role, details):
             
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(school.school_id) if school else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(school.school_id), outcome='ERROR', server_response=f'Validation failed: {error_response}', school=school)
         return {"error": error_response}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(school.school_id) if school else 'N/A', outcome='ERROR', response=error_message, school=school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(school.school_id), outcome='ERROR', server_response=error_message, school=school)
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(school.school_id) if school else 'N/A', outcome='ERROR', response=error_message, school=school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(school.school_id), outcome='ERROR', server_response=error_message, school=school)
         return {'error': error_message}
 
 

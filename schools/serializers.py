@@ -29,7 +29,9 @@ class UpdateSchoolAccountSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = School
-        fields = ['name', 'email_address', 'contact_number', 'type', 'district', 'operating_hours', 'location', 'website']
+        fields = [
+            'name', 'email_address', 'contact_number', 'type', 'district', 'data_retention_period', 'operating_hours', 'location', 'website', 'logo', 'grading_system', 'library_details', 'laboratory_details', 'sports_facilities'
+        ]
 
     def __init__(self, *args, **kwargs):
         super(UpdateSchoolAccountSerializer, self).__init__(*args, **kwargs)
