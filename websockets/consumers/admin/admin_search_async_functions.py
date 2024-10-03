@@ -776,9 +776,9 @@ def search_teacher_classrooms(user, role, details):
             return {'error': response}
 
         teacher = requesting_account.school.teachers.prefetch_related('taught_classrooms').get(account_id=details['account'])
-        serializer = TeacherClassroomsSerializer(teacher.taught_classrooms, many=True)
+        serialized_classrooms = TeacherClassroomsSerializer(teacher.taught_classrooms, many=True).data
 
-        return {"classrooms": serializer.data}
+        return {"classrooms": serialized_classrooms}
                
     except Teacher.DoesNotExist:
         # Handle the case where the requested teacher account does not exist.

@@ -51,7 +51,7 @@ class GradesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Grade
-        fields = ['grade', 'grade_id', 'student_count', 'last_updated']
+        fields = ['grade', 'grade_id', 'student_count', 'teacher_count', 'subject_count', 'last_updated']
 
     def get_last_updated(self, obj):
         return obj.timestamp.isoformat()
@@ -73,7 +73,7 @@ class GradeDetailsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Grade
-        fields = ['major_subjects', 'none_major_subjects', 'student_count']
+        fields = ['major_subjects', 'none_major_subjects', 'student_count', 'teacher_count', 'classroom_count', 'term_count', 'subject_count']
 
 
 

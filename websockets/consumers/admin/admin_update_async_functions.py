@@ -297,7 +297,7 @@ def update_grade_details(user, role, details):
         # Check if the user has permission to update grades
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'GRADE'):
             response = f'could not proccess your request, you do not have the necessary permissions to update grade details.'
-            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GRADE', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GRADE', outcome='DENIED', server_response=response, school=requesting_account.school)
 
             return {'error': response}
 
@@ -310,7 +310,7 @@ def update_grade_details(user, role, details):
                 serializer.save()
                     
                 response = f"grade details have been successfully updated"
-                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='UPDATED', response=response, school=requesting_account.school,)
+                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='UPDATED', server_response=response, school=requesting_account.school,)
 
             # Serialize the grade
             serialized_grade = GradeDetailsSerializer(grade).data
@@ -320,7 +320,7 @@ def update_grade_details(user, role, details):
             
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
 
         return {"error": error_response}
                        
@@ -330,13 +330,13 @@ def update_grade_details(user, role, details):
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
 
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
 
         return {'error': error_message}
     

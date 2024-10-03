@@ -70,6 +70,14 @@ class Grade(models.Model):
 
     # The number of students currently assigned to this grade in the school.
     student_count = models.PositiveBigIntegerField(default=0)
+    # The number of teachers currently assigned to this grade in the school.
+    teacher_count = models.PositiveBigIntegerField(default=0)
+    # The number of classrooms currently assigned to this grade in the school.
+    classroom_count = models.PositiveBigIntegerField(default=0)
+    # The number of terms currently assigned to this grade in the school.
+    term_count = models.PositiveBigIntegerField(default=0)
+    # The number of subjects currently assigned to this grade in the school.
+    subject_count = models.PositiveBigIntegerField(default=0)
 
     # Number of major subjects a student in this grade needs to fail in order to fail the term.
     major_subjects = models.PositiveIntegerField(default=1)
