@@ -75,20 +75,26 @@ class Classroom(models.Model):
             # Check for unique constraint violations.
             if 'unique constraint' in error_message:
                 if 'classrooms_classroom.subject' in error_message:
-                    raise ValidationError(_('A classroom with the provided group, grade, and subject already exists. Please choose a different classroom group and try again.'))
+                    raise ValidationError(_('Could not proccess your request, a classroom with the provided group, grade, and subject already exists. Please choose a different classroom group and try again.'))
                 elif 'classrooms_classroom.register_classroom' in error_message:
-                    raise ValidationError(_('A register class with the provided group and grade already exists. Each grade can only have one register class per group. Please choose a different group.'))
+                    raise ValidationError(_('Could not proccess your request, a register class with the provided group and grade already exists. Each grade can only have one register class per group. Please choose a different group.'))
             # Re-raise the original exception if it's not related to unique constraints
             raise
         except Exception as e:
             raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
 
     def clean(self):
+        if not self.school_id:
+            raise ValidationError('Could not proccess your request, a classroom must either be a register class or be associated with a subject. Please review the provided information and try again.')
+        
+        if not self.grade_id:
+            raise ValidationError('Could not proccess your request, a classroom must either be a register class or be associated with a subject. Please review the provided information and try again.')
+        
         if not self.subject_id and not self.register_classroom:
-            raise ValidationError('A classroom must either be a register class or be associated with a subject. Please review the provided information and try again.')
+            raise ValidationError('Could not proccess your request, a classroom must either be a register class or be associated with a subject. Please review the provided information and try again.')
 
         if self.subject_id and self.subject.grade != self.grade:
-            raise ValidationError('The subject associated with this classroom is assigned to a different grade. Ensure that the subject belongs to the same grade as the classroom.')
+            raise ValidationError('Could not proccess your request, the subject associated with this classroom is assigned to a different grade. Ensure that the subject belongs to the same grade as the classroom.')
 
     def update_students(self, student_ids=None, remove=False):
         try:
