@@ -441,9 +441,8 @@ def create_classroom(account, role, details):
 
         if details.get('register_classroom'):
             details['subject'] = None
-            details['register_classroom'] = True
 
-            response = f"A new register classroom, group {details['group']}, for your schools grade {grade.grade} has been successfully created. You can now {'assign a teacher to the classroom,' if details['teacher'] else None} add students and start tracking attendance."
+            response = f"A new register classroom, group {details['group']}, for your schools grade {grade.grade} has been successfully created. You can now {'assign a teacher to the classroom,' if not details.get('teacher') else None} add students and start tracking attendance."
         
         else:
             # Retrieve the subject and validate it against the grade
@@ -452,15 +451,15 @@ def create_classroom(account, role, details):
             details['register_classroom'] = False
             details['subject'] = subject.id
 
-            response = f"A new classroom, group {details['group']}, for your schools grade {grade.grade} {subject.subject.lower()} subject has been successfully created. You can now {'assign a teacher to the classroom,' if details['teacher'] else None} add students and track performance."
+            response = f"A new classroom, group {details['group']}, for your schools grade {grade.grade} {subject.subject.lower()} subject has been successfully created. You can now {'assign a teacher to the classroom,' if not details.get('teacher') else None} add students and track performance."
 
         # Set the school and grade fields
         details.update({'school': requesting_account.school.id, 'grade': grade.id})
 
         # If a teacher is specified, update the teacher for the class
         if details.get('teacher'):
-            teacker = requesting_account.school.teachers.only('id').get(account_id=details['teacher'])
-            details['teacher'] = teacker.id
+            teacher = requesting_account.school.teachers.only('id').get(account_id=details['teacher'])
+            details['teacher'] = teacher.id
 
         # Serialize and validate the data
         serializer = ClassCreationSerializer(data=details)
