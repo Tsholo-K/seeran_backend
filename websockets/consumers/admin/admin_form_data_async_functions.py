@@ -206,7 +206,7 @@ def form_data_for_adding_students_to_classroom(user, role, details):
 
         elif details.get('reason') == 'register classroom':
             # Check if the classroom is a register class
-            if not classroom.register_classroon:
+            if not classroom.register_classroom:
                 return {"error": "Could not proccess your request, the provided classroom is not a register classroom."}
 
             # Exclude students who are already enrolled in a register class in the same grade
