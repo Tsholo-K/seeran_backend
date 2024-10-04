@@ -130,42 +130,40 @@ def form_data_for_creating_classroom(user, role, details):
 
 
 @database_sync_to_async
-def form_data_for_updating_classroom(user, role, details):
+def form_data_for_updating_classroom_teacher(account, role, details):
     try:
         classroom = None  # Initialize classroom as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = users_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to update classrooms
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'CLASSROOM'):
             response = f'could not proccess your request, you do not have the necessary permissions to create assessments.'
             audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', outcome='DENIED', response=response, school=requesting_account.school)
-
             return {'error': response}
 
-        classroom = requesting_account.school.classrooms.select_related('subject', 'teacher').get(classroom_id=details.get('classroom'))
+        if not 'classroom' in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid classroom ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        classroom = requesting_account.school.classrooms.select_related('subject', 'teacher').get(classroom_id=details['classroom'])
 
         # Determine the query based on the classroom type
         if classroom.subject:
-            teachers = requesting_account.school.teachers.all().exclude(taught_classes__subject=classroom.subject)
-
-        elif classroom.register_class:
-            teachers = requesting_account.school.teachers.all().exclude(taught_classes__register_class=True)
+            teachers = requesting_account.school.teachers.all().exclude(taught_classrooms__subject=classroom.subject)
 
         else:
-            response = "could not proccesses your request, invalid classroom provided. the classroom in neither a register class or linked to a subject"
-            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=response, school=requesting_account.school)
-
-            return {'error': response}
+            teachers = requesting_account.school.teachers.all().exclude(taught_classrooms__register_classroom=True)
 
         if classroom.teacher:
             teachers = teachers.exclude(account_id=classroom.teacher.account_id)
         
         # serialize them
         serialized_teachers = TeacherAccountSerializer(teachers, many=True).data
-        class_teacher = TeacherAccountSerializer(classroom.teacher).data if classroom.teacher else None
+        classroom_teacher = TeacherAccountSerializer(classroom.teacher).data if classroom.teacher else None
 
-        return {'teacher': class_teacher, "teachers": serialized_teachers, 'group': classroom.group, 'classroom_identifier': classroom.classroom_number}
+        return {'classroom_teacher': classroom_teacher, "teachers": serialized_teachers}
     
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
@@ -185,36 +183,40 @@ def form_data_for_adding_students_to_classroom(user, role, details):
 
         # Check if the user has permission to update classrooms
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'CLASSROOM'):
-            response = f'could not proccess your request, you do not have the necessary permissions to create assessments.'
-            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', outcome='DENIED', response=response, school=requesting_account.school)
+            response = f'Could not proccess your request, you do not have the necessary permissions to create assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', outcome='DENIED', server_response=response, school=requesting_account.school)
 
             return {'error': response}
 
+        if not 'classroom' in details or not 'reason' in details and details['reason'] not in ['subject classroom', 'register classroom']:
+            response = f'Could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid classroom ID and reason and then try again'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
         # Retrieve the classroom with the provided class ID and related data using `select_related`
-        classroom = requesting_account.school.classrooms.select_related('grade', 'subject').get(classroom_id=details.get('classroom'))
+        classroom = requesting_account.school.classrooms.select_related('grade', 'subject').get(classroom_id=details['classroom'])
 
         # Determine the reason for fetching students and apply the appropriate filtering logic
-        if details.get('reason') == 'subject class':
+        if details.get('reason') == 'subject classroom':
             # Check if the classroom has a subject linked to it
             if not classroom.subject:
-                return {"error": "could not proccess your request. the provided classroom has no subject linked to it."}
+                return {"error": "Could not proccess your request, the provided classroom has no subject linked to it."}
 
             # Exclude students who are already enrolled in any class with the same subject as the classroom
-            students = requesting_account.school.students.all().filter(grade=classroom.grade).exclude(enrolled_classes__subject=classroom.subject)
+            students = requesting_account.school.students.filter(grade=classroom.grade).exclude(enrolled_classrooms__subject=classroom.subject)
 
-        elif details.get('reason') == 'register class':
+        elif details.get('reason') == 'register classroom':
             # Check if the classroom is a register class
-            if not classroom.register_class:
-                return {"error": "could not proccess your request. the provided classroom is not a register class."}
+            if not classroom.register_classroon:
+                return {"error": "Could not proccess your request, the provided classroom is not a register classroom."}
 
             # Exclude students who are already enrolled in a register class in the same grade
-            students = requesting_account.school.students.all().filter(grade=classroom.grade).exclude(enrolled_classes__register_class=True)
+            students = requesting_account.school.students.filter(grade=classroom.grade).exclude(enrolled_classrooms__register_classroom=True)
 
         else:
             # Return an error if the reason provided is not valid
-            response = "could not proccesses your request, invalid reason provided."
-            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=response, school=requesting_account.school)
-
+            response = "Could not proccesses your request, invalid reason provided."
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         # Serialize the list of students to return them in the response
@@ -224,7 +226,7 @@ def form_data_for_adding_students_to_classroom(user, role, details):
     
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
-        return {'error': 'a classroom in your school with the provided credentials does not exist. Please check the classroom details and try again.'}
+        return {'error': 'Could not proccess your request, a classroom in your school with the provided credentials does not exist. Please check the classroom details and try again.'}
     
     except Exception as e:
         # Handle any other unexpected errors

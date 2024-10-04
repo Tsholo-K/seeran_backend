@@ -417,49 +417,49 @@ def create_subject(user, role, details):
 
 
 @database_sync_to_async
-def create_classroom(user, role, details):
+def create_classroom(account, role, details):
     try:
         classroom = None  # Initialize classroom as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to create a grade
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'CLASSROOM'):
             response = f'could not proccess your request, you do not have the necessary permissions to create a classroom'
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='CLASSROOM', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='CLASSROOM', outcome='DENIED', server_response=response, school=requesting_account.school)
 
+            return {'error': response}
+        
+        # Check if the 'grade' key is provided and not empty
+        if 'grade' not in details and ('register_classroom' not in details or 'subject' not in details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid grade ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         # Retrieve the grade and validate school ownership
-        grade = Grade.objects.select_related('school').get(grade_id=details.get('grade'), school=requesting_account.school)
+        grade = requesting_account.school.grades.get(grade_id=details['grade'])
 
-        if details.get('register_class'):
+        if details.get('register_classroom'):
             details['subject'] = None
 
-            response = f'register classroom for grade {grade.grade} has been created successfully. you can now add students and track attendance.'
-        
-        elif details.get('subject'):
-            # Retrieve the subject and validate it against the grade
-            subject = Subject.objects.get(subject_id=details.get('subject'), grade=grade)
-            
-            details['subject'] = subject.pk
-            details['register_class'] = False
-
-            response = f'classroom for grade {grade.grade} {subject.subject} has been created successfully.. you can now add students and track performance.'.lower()
+            response = f'A new register classroom, group {details['group']}, for your schools grade {grade.grade} has been successfully created. You can now {'assign a teacher to the classroom,' if details['teacher'] else None} add students and start tracking attendance.'
         
         else:
-            response = "could not proccess your request, invalid classroom creation details. please provide all required information and try again."
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='CLASSROOM', outcome='ERROR', response=response, school=requesting_account.school,)
+            # Retrieve the subject and validate it against the grade
+            subject = requesting_account.school.subjects.get(subject_id=details['subject'], grade=grade)
+            
+            details['register_classroom'] = False
+            details['subject'] = subject.id
 
-            return {'error': response}
+            response = f'A new classroom, group {details['group']}, for your schools grade {grade.grade} {subject.subject.lower()} subject has been successfully created. You can now {'assign a teacher to the classroom,' if details['teacher'] else None} add students and track performance.'
 
         # Set the school and grade fields
-        details.update({'school': requesting_account.school.pk, 'grade': grade.pk})
+        details.update({'school': requesting_account.school.id, 'grade': grade.id})
 
         # If a teacher is specified, update the teacher for the class
         if details.get('teacher'):
-            teacker = Teacher.objects.only('pk').get(account_id=details['teacher'], school=requesting_account.school)
-            details['teacher'] = teacker.pk
+            teacker = requesting_account.school.teachers.only('id').get(account_id=details['teacher'])
+            details['teacher'] = teacker.id
 
         # Serialize and validate the data
         serializer = ClassCreationSerializer(data=details)
@@ -468,14 +468,13 @@ def create_classroom(user, role, details):
             with transaction.atomic():
                 classroom = Classroom.objects.create(**serializer.validated_data)
 
-                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='CREATED', response=response, school=requesting_account.school,)
+                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='CREATED', server_response=response, school=requesting_account.school,)
 
             return {'message' : response}
                 
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='SUBJECT', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='SUBJECT', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
         return {"error": error_response}
                
     except Teacher.DoesNotExist:
@@ -491,14 +490,12 @@ def create_classroom(user, role, details):
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {'error': error_message}
 
 
@@ -690,6 +687,9 @@ def create_timetable(account, role, details):
                 # Create a new timetable
                 timetable = requesting_account.school.timetables.create(day_of_week=day_of_week, day_of_week_order=Timetable.DAY_OF_THE_WEEK_ORDER[day_of_week], student_group_timetable=group_timetable)
                 
+                group_timetable.timetables_count = group_timetable.timetables.count()
+                group_timetable.save()
+
                 response = f'A new timetable has been added to the group\'s weekly schedules. All subscribed students should be able to view the sessions in the timetable when they check their timetables again.'
 
             else:
@@ -699,6 +699,9 @@ def create_timetable(account, role, details):
 
                 # Create a new timetable
                 timetable = requesting_account.school.timetables.create(day_of_week=day_of_week, day_of_week_order=Timetable.DAY_OF_THE_WEEK_ORDER[day_of_week], teacher_timetable=teacher_timetable)
+                
+                group_timetable.timetables_count = group_timetable.timetables.count()
+                group_timetable.save()
 
                 response = f'A new timetable has been added to the teacher\'s weekly schedules. They should be able to view the sessions in the schedule when they check their timetables again.'
 

@@ -729,10 +729,10 @@ def search_term_subject_performance(user, role, details):
 
 
 @database_sync_to_async
-def search_classrooms(user, role, details):
+def search_classroom(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'CLASSROOM'):
             response = f'could not proccess your request, you do not have the necessary permissions to view classrooms. please contact your administrator to adjust you permissions for viewing classroom details.'
@@ -745,7 +745,7 @@ def search_classrooms(user, role, details):
             return {'error': response}
 
         # Fetch the specific classroom based on class_id and school
-        classroom = requesting_account.classrooms.get(classroom_id=details.get('classroom'))
+        classroom = requesting_account.school.classrooms.get(classroom_id=details['classroom'])
         serialized_classroom = ClassroomSerializer(classroom).data
 
         return {"classroom": serialized_classroom}

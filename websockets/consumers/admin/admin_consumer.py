@@ -174,7 +174,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'search_term_details': admin_search_async_functions.search_term_details,
             'search_term_subject_performance': admin_search_async_functions.search_term_subject_performance,
 
-            'search_classrooms': admin_search_async_functions.search_classrooms,
+            'search_classroom': admin_search_async_functions.search_classroom,
             'search_teacher_classrooms': admin_search_async_functions.search_teacher_classrooms,
 
             'search_month_attendance_records': admin_search_async_functions.search_month_attendance_records,
@@ -272,7 +272,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'form_data_for_subscribing_accounts_to_permission_group': admin_form_data_async_functions.form_data_for_subscribing_accounts_to_permission_group,
 
             'form_data_for_creating_classroom': admin_form_data_async_functions.form_data_for_creating_classroom,
-            'form_data_for_updating_classroom': admin_form_data_async_functions.form_data_for_updating_classroom,
+            'form_data_for_updating_classroom_teacher': admin_form_data_async_functions.form_data_for_updating_classroom_teacher,
 
             'form_data_for_adding_students_to_classroom': admin_form_data_async_functions.form_data_for_adding_students_to_classroom,
 
@@ -325,6 +325,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'update_messages_as_read': general_update_async_functions.update_messages_as_read,
 
             'update_classroom_details': admin_update_async_functions.update_classroom_details,
+            'update_classroom_teacher': admin_update_async_functions.update_classroom_teacher,
             'update_classroom_students': admin_update_async_functions.update_classroom_students,
 
             'update_group_timetable_details': admin_update_async_functions.update_group_timetable_details,
@@ -405,7 +406,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'delete_term': admin_delete_async_functions.delete_term,
 
-            'delete_class': admin_delete_async_functions.delete_classroom,
+            'delete_classroom': admin_delete_async_functions.delete_classroom,
             
             'delete_assessment': admin_delete_async_functions.delete_assessment,
             

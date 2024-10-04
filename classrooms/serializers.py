@@ -17,13 +17,11 @@ class ClassCreationSerializer(serializers.ModelSerializer):
 
     teacher = serializers.PrimaryKeyRelatedField(queryset=Teacher.objects.all(), required=False, allow_null=True)
     subject = serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all(), required=False, allow_null=True)
-    register_class = serializers.BooleanField(required=False)
-    grade = serializers.PrimaryKeyRelatedField(queryset=Grade.objects.all())
-    school = serializers.PrimaryKeyRelatedField(queryset=School.objects.all())
+    register_classroom = serializers.BooleanField(required=False)
 
     class Meta:
         model = Classroom
-        fields = ['classroom_number', 'group', 'subject', 'register_class', 'teacher', 'grade', 'school']
+        fields = ['classroom_number', 'group', 'subject', 'register_classroom', 'teacher', 'grade', 'school']
     
     def __init__(self, *args, **kwargs):
         super(ClassCreationSerializer, self).__init__(*args, **kwargs)
@@ -34,7 +32,7 @@ class ClassCreationSerializer(serializers.ModelSerializer):
         """
         Ensure that the subject field is only required when register_class is False.
         """
-        if not data.get('register_class') and not data.get('subject'):
+        if not data.get('register_classroom') and not data.get('subject'):
             raise serializers.ValidationError({"error": "a classroom needs to either be a register class or be associated with one subject in your school"})
         return data
 
@@ -63,7 +61,7 @@ class ClassroomSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Classroom
-        fields = ['classroom_number', 'teacher', 'students', 'student_count', 'group', 'subject', 'grade']
+        fields = ['classroom_number', 'group', 'subject', 'student_count', 'students', 'teacher', 'grade']
 
     def get_teacher(self, obj):
         if obj.teacher:

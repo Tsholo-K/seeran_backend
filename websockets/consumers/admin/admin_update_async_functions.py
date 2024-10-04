@@ -510,6 +510,53 @@ def update_classroom_details(user, role, details):
 
 
 @database_sync_to_async
+def update_classroom_teacher(account, role, details):
+    try:
+        classroom = None  # Initialize classroom as None to prevent issues in error handling
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+
+        # Check if the user has permission to update classrooms
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'CLASSROOM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to update classroom details.'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', outcome='DENIED', server_responseserver_response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        if not 'classroom' in details or  not 'teacher' in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid classroom and teacher IDs and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        classroom = requesting_account.school.classrooms.get(classroom_id=details['classroom'])
+
+        with transaction.atomic():
+            if details['teacher'] == 'remove teacher':
+                classroom.update_teacher(teacher=None)
+            else:
+                classroom.update_teacher(teacher=['teacher'])
+                
+            response = f'Classroom teacher has been successfully updated.'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='UPDATED', server_response=response, school=requesting_account.school,)
+
+        return {"message": response}
+            
+    except Classroom.DoesNotExist:
+        # Handle case where the classroom does not exist
+        return {'error': 'a classroom in your school with the provided credentials does not exist. please check the classroom details and try again.'}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
+        return {'error': error_message}
+
+
+@database_sync_to_async
 def update_classroom_students(account, role, details):
     try:
         students_list = details.get('students', '').split(', ')
@@ -527,7 +574,12 @@ def update_classroom_students(account, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        classroom = requesting_account.school.classrooms.select_related('grade', 'subject').get(classroom_id=details.get('class'))
+        if not 'classroom' in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid classroom ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        classroom = requesting_account.school.classrooms.select_related('grade', 'subject').get(classroom_id=details['classroom'])
 
         with transaction.atomic():
             # Check for validation errors and perform student updates

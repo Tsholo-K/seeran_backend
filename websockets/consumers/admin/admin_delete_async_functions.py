@@ -294,26 +294,31 @@ def delete_term(user, role, details):
     
     
 @database_sync_to_async
-def delete_classroom(user, role, details):
+def delete_classroom(account, role, details):
     try:
         classroom = None  # Initialize classroom as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to create a grade
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'DELETE', 'CLASSROOM'):
             response = f'could not proccess your request, you do not have the necessary permissions to delete a classroom'
-            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='CLASSROOM', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='CLASSROOM', outcome='DENIED', server_response=response, school=requesting_account.school)
 
             return {'error': response}
 
-        classroom = Classroom.objects.select_related('grade').only('grade__grade').get(class_id=details.get('class'), school=requesting_account.school)
-        response = f'grade {classroom.grade.grade} classroom deleted successfully, the classroom will no longer be accessible or available in your schools data'
+        if not 'classroom' in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid classroom ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        classroom = requesting_account.school.classrooms.select_related('grade').only('grade__grade').get(classroom_id=details['classroom'])
         
         with transaction.atomic():
-            classroom.delete()
+            response = f'grade {classroom.grade.grade} classroom deleted successfully, the classroom will no longer be accessible or available in your schools data'
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='LINKED', server_response=response, school=requesting_account.school,)
 
-            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='LINKED', response=response, school=requesting_account.school,)
+            classroom.delete()
 
         return {'message': response}
 
@@ -323,13 +328,13 @@ def delete_classroom(user, role, details):
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
 
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
 
         return {'error': error_message}
 
@@ -392,11 +397,19 @@ def delete_timetable(account, role, details):
 
         timetable = requesting_account.school.timetables.get(timetable_id=details.get('timetable'))
         
+        if timetable.teacher_timetable.exists():
+            linked_timetable = timetable.teacher_timetable
+        else:
+            linked_timetable = timetable.group_timetable
+
         with transaction.atomic():
-            response = f"A timetable with a timetable ID: {timetable.timetable_id}, has been successfully deleted from your schools system. All sessions linked to the timetable will also be purged from the system, effective immediately."
+            response = f"A timetable with timetable ID: {timetable.timetable_id}, has been successfully deleted from your schools system. All sessions linked to the timetable will also be purged from the system, effective immediately."
             audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TIMETABLE', target_object_id=str(timetable.timetable_id), outcome='DELETED', server_response=response, school=requesting_account.school)
 
             timetable.delete()
+
+            linked_timetable.timetables_count = linked_timetable.timetables.count()
+            linked_timetable.save()
 
         return {'message': response}
 
