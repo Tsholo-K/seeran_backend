@@ -462,7 +462,7 @@ def search_grades(user, role, details):
 
         if details.get('timestamp'):
             # Filter grades created after the given timestamp
-            grades = requesting_account.school.grades.filter(models.Q(last_updated__gt=details['timestamp']) | models.Q(timestamp__gt=details['timestamp']))
+            grades = requesting_account.school.grades.filter(models.Q(last_updated__gt=details['timestamp']))
 
         else:
             grades = requesting_account.school.grades
