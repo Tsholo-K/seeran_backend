@@ -40,7 +40,7 @@ class Classroom(models.Model):
 
     student_count = models.PositiveIntegerField(default=0)
 
-    register_classroom = models.BooleanField(_('is the class a register class'), editable=False, default=False, help_text='Ensure only one register class per teacher.')
+    register_classroom = models.BooleanField(_('is the class a register class'), editable=False, help_text='Ensure only one register class per teacher.')
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, editable=False, related_name='classrooms', null=True, blank=True, help_text='Subject taught in the classroom.')
 
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='classrooms', help_text='Grade level associated with the classroom.')
@@ -49,6 +49,7 @@ class Classroom(models.Model):
     
     last_updated = models.DateTimeField(auto_now=True)
 
+    timestamp = models.DateTimeField(auto_now_add=True)
     classroom_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
@@ -66,8 +67,8 @@ class Classroom(models.Model):
         - Validate before saving.
         - Provide meaningful error messages on IntegrityError.
         """
-        self.clean()
         try:
+            self.clean()
             super().save(*args, **kwargs)
         except IntegrityError as e:
             # Handle any database integrity errors (such as unique or foreign key constraints).
@@ -85,13 +86,13 @@ class Classroom(models.Model):
 
     def clean(self):
         if not self.school_id:
-            raise ValidationError('Could not proccess your request, a classroom must either be a register class or be associated with a subject. Please review the provided information and try again.')
+            raise ValidationError('Could not proccess your request, a classroom must either be a register classroom or be associated with a subject. Please review the provided information and try again.')
         
         if not self.grade_id:
-            raise ValidationError('Could not proccess your request, a classroom must either be a register class or be associated with a subject. Please review the provided information and try again.')
+            raise ValidationError('Could not proccess your request, a classroom must either be a register classroom or be associated with a subject. Please review the provided information and try again.')
         
         if not self.subject_id and not self.register_classroom:
-            raise ValidationError('Could not proccess your request, a classroom must either be a register class or be associated with a subject. Please review the provided information and try again.')
+            raise ValidationError('Could not proccess your request, a classroom must either be a register classroom or be associated with a subject. Please review the provided information and try again.')
 
         if self.subject_id and self.subject.grade != self.grade:
             raise ValidationError('Could not proccess your request, the subject associated with this classroom is assigned to a different grade. Ensure that the subject belongs to the same grade as the classroom.')
