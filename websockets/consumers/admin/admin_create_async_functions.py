@@ -431,7 +431,7 @@ def create_classroom(account, role, details):
             return {'error': response}
         
         # Check if the 'grade' key is provided and not empty
-        if 'grade' not in details and ('register classroom' not in details or 'subject' not in details):
+        if 'grade' not in details and ('register_classroom' not in details or 'subject' not in details):
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid grade ID and try again'
             audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
