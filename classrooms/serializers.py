@@ -62,7 +62,6 @@ class ClassroomSerializer(serializers.ModelSerializer):
 class ClassroomDetailsSerializer(serializers.ModelSerializer):
 
     teacher = serializers.SerializerMethodField()
-    students = StudentSourceAccountSerializer(many=True)
 
     class Meta:
         model = Classroom
