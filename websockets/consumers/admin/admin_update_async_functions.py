@@ -22,7 +22,7 @@ from grades.serializers import UpdateGradeSerializer, GradeDetailsSerializer
 from schools.serializers import UpdateSchoolAccountSerializer, SchoolDetailsSerializer
 from terms.serializers import UpdateTermSerializer, TermSerializer
 from subjects.serializers import UpdateSubjectSerializer, SubjectDetailsSerializer
-from classrooms.serializers import UpdateClassSerializer
+from classrooms.serializers import UpdateClassroomSerializer
 from assessments.serializers import AssessmentUpdateSerializer
 from assessment_transcripts.serializers import TranscriptUpdateSerializer
 from student_group_timetables.serializers import StudentGroupTimetableDetailsSerializer, StudentGroupTimetableUpdateSerializer
@@ -341,61 +341,6 @@ def update_grade_details(user, role, details):
         audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
 
         return {'error': error_message}
-    
-
-@database_sync_to_async
-def update_term_details(user, role, details):
-    try:
-        term = None  # Initialize term as None to prevent issues in error handling
-        # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
-
-        # Check if the user has permission to update terms
-        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'TERM'):
-            response = f'could not proccess your request, you do not have the necessary permissions to update term details.'
-            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', outcome='DENIED', response=response, school=requesting_account.school)
-
-            return {'error': response}
-
-        term = Term.objects.get(term_id=details.get('term'), school=requesting_account.school)
-
-        # Initialize the serializer with the existing school instance and incoming data
-        serializer = UpdateTermSerializer(instance=term, data=details)
-        # Validate the incoming data
-        if serializer.is_valid():
-            # Use an atomic transaction to ensure the database is updated safely
-            with transaction.atomic():
-                serializer.save()
-                    
-                response = f"school term details have been successfully updated"
-                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='UPDATED', response=response, school=requesting_account.school,)
-
-            # Serialize the school terms
-            serialized_term = TermSerializer(term).data
-
-            return {'term': serialized_term, "message": response}
-            
-        # Return serializer errors if the data is not valid, format it as a string
-        error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
-
-        return {"error": error_response}
-                       
-    except Term.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'a term for your school with the provided credentials does not exist, please check the term details and try again'}
-
-    except ValidationError as e:
-        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
-        return {"error": error_message}
-
-    except Exception as e:
-        error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
-        return {'error': error_message}
 
 
 @database_sync_to_async
@@ -455,11 +400,66 @@ def update_subject_details(user, role, details):
 
 
 @database_sync_to_async
-def update_classroom_details(user, role, details):
+def update_term_details(user, role, details):
+    try:
+        term = None  # Initialize term as None to prevent issues in error handling
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+
+        # Check if the user has permission to update terms
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'TERM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to update term details.'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', outcome='DENIED', response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        term = Term.objects.get(term_id=details.get('term'), school=requesting_account.school)
+
+        # Initialize the serializer with the existing school instance and incoming data
+        serializer = UpdateTermSerializer(instance=term, data=details)
+        # Validate the incoming data
+        if serializer.is_valid():
+            # Use an atomic transaction to ensure the database is updated safely
+            with transaction.atomic():
+                serializer.save()
+                    
+                response = f"school term details have been successfully updated"
+                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='UPDATED', response=response, school=requesting_account.school,)
+
+            # Serialize the school terms
+            serialized_term = TermSerializer(term).data
+
+            return {'term': serialized_term, "message": response}
+            
+        # Return serializer errors if the data is not valid, format it as a string
+        error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
+
+        return {"error": error_response}
+                       
+    except Term.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a term for your school with the provided credentials does not exist, please check the term details and try again'}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+
+        return {'error': error_message}
+
+
+@database_sync_to_async
+def update_classroom_details(account, role, details):
     try:
         classroom = None  # Initialize classroom as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to update classrooms
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'CLASSROOM'):
@@ -468,20 +468,19 @@ def update_classroom_details(user, role, details):
 
             return {'error': response}
 
-        classroom = Classroom.objects.get(classroom_id=details.get('class'), school=requesting_account.school)
+        if not 'classroom' in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid classroom ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
 
-        serializer = UpdateClassSerializer(instance=classroom, data=details.get('updates'))
+        classroom = requesting_account.school.classrooms.get(classroom_id=details['classroom'])
+
+        serializer = UpdateClassroomSerializer(classroom, data=details.get('updates'))
         if serializer.is_valid():
             with transaction.atomic():
                 serializer.save()
-
-                if details['updates']['teacher']:
-                    if details['updates']['teacher'] == 'remove teacher':
-                        classroom.update_teacher(teacher=None)
-                    else:
-                        classroom.update_teacher(teacher=details['updates']['teacher'])
                     
-                response = f'classroom details have been successfully updated'
+                response = f'A classroom in your school with classroom ID: {classroom.classroom_id}, has had it\'s details successfully updated.'
                 audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='UPDATED', response=response, school=requesting_account.school,)
 
             return {"message": response}
@@ -489,7 +488,6 @@ def update_classroom_details(user, role, details):
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
         audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
-
         return {"error": error_response}
     
     except Classroom.DoesNotExist:
@@ -499,13 +497,11 @@ def update_classroom_details(user, role, details):
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
         audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
         audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
         return {'error': error_message}
 
 

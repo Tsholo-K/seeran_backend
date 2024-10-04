@@ -6,6 +6,7 @@ from rest_framework.validators import UniqueTogetherValidator
 from .models import Classroom
 
 # serilializers
+from accounts.serializers.teachers.serializers import TeacherBasicAccountDetailsEmailSerializer
 from accounts.serializers.students.serializers import StudentSourceAccountSerializer
 
 
@@ -22,31 +23,28 @@ class ClassroomCreationSerializer(serializers.ModelSerializer):
         self.fields['teacher'].required = False
         self.fields['subject'].required = False
 
-class UpdateClassSerializer(serializers.ModelSerializer):
-
-    classroom_number = serializers.CharField(required=False)
-    group = serializers.CharField(required=False)
+class UpdateClassroomSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Classroom
         fields = [ 'classroom_number', 'group']
     
     def __init__(self, *args, **kwargs):
-        super(UpdateClassSerializer, self).__init__(*args, **kwargs)
+        super(UpdateClassroomSerializer, self).__init__(*args, **kwargs)
         # Remove the unique together validator that's added by DRF
         self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
-
+        for field in self.fields:
+            self.fields[field].required = False
 
 class ClassroomSerializer(serializers.ModelSerializer):
 
     teacher = serializers.SerializerMethodField()
     students = StudentSourceAccountSerializer(many=True)
     subject = serializers.SerializerMethodField()
-    grade = serializers.SerializerMethodField()
 
     class Meta:
         model = Classroom
-        fields = ['classroom_number', 'group', 'subject', 'student_count', 'students', 'teacher', 'grade']
+        fields = ['classroom_number', 'group', 'subject', 'student_count', 'students', 'teacher']
 
     def get_teacher(self, obj):
         if obj.teacher:
@@ -59,10 +57,21 @@ class ClassroomSerializer(serializers.ModelSerializer):
         if obj.subject:
             return f'{obj.subject.subject}'.title()
         return None
-            
-    def get_grade(self, obj):
-        return obj.grade.grade
 
+
+class ClassroomDetailsSerializer(serializers.ModelSerializer):
+
+    teacher = serializers.SerializerMethodField()
+    students = StudentSourceAccountSerializer(many=True)
+
+    class Meta:
+        model = Classroom
+        fields = ['classroom_number', 'group', 'student_count', 'students', 'teacher']
+
+    def get_teacher(self, obj):
+        if obj.teacher:
+            return TeacherBasicAccountDetailsEmailSerializer(obj.teacher).data
+        return None
 
 
 class ClassesSerializer(serializers.ModelSerializer):

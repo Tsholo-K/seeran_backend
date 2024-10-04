@@ -258,13 +258,13 @@ def delete_term(user, role, details):
 
         # Check if the user has permission to create a grade
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'DELETE', 'TERM'):
-            response = f'could not proccess your request, you do not have the necessary permissions to delete a grade'
+            response = f'Could not proccess your request, you do not have the necessary permissions to delete a grade'
             audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TERM', outcome='DENIED', server_response=response, school=requesting_account.school)
 
             return {'error': response}
 
         if not {'term'}.issubset(details):
-            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid term and subject IDs and try again'
+            response = f'Could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid term and subject IDs and try again'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TERM', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
@@ -280,7 +280,7 @@ def delete_term(user, role, details):
     
     except Term.DoesNotExist:
         # Handle the case where the provided grade ID does not exist
-        return {'error': 'a term in your school with the provided credentials does not exist. please check the term details and try again.'}
+        return {'error': 'Could not proccess your request, a term in your school with the provided credentials does not exist. Please check the term details and try again.'}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
@@ -315,8 +315,8 @@ def delete_classroom(account, role, details):
         classroom = requesting_account.school.classrooms.select_related('grade').only('grade__grade').get(classroom_id=details['classroom'])
         
         with transaction.atomic():
-            response = f'grade {classroom.grade.grade} classroom deleted successfully, the classroom will no longer be accessible or available in your schools data'
-            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='LINKED', server_response=response, school=requesting_account.school,)
+            response = f"grade {classroom.grade.grade} classroom deleted successfully, the classroom will no longer be accessible or available in your schools data"
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='DELETED', server_response=response, school=requesting_account.school,)
 
             classroom.delete()
 
@@ -324,7 +324,7 @@ def delete_classroom(account, role, details):
 
     except Classroom.DoesNotExist:
         # Handle case where the grade does not exist
-        return {'error': 'classroom with the provided credentials does not exist'}
+        return {'error': 'Could not proccess your request, a classroom in your school with the provided credentials does not exist. Please check the term details and try again.'}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()

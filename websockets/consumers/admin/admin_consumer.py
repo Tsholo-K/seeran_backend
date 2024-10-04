@@ -175,6 +175,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'search_term_subject_performance': admin_search_async_functions.search_term_subject_performance,
 
             'search_classroom': admin_search_async_functions.search_classroom,
+            'search_classroom_details': admin_search_async_functions.search_classroom,
+            
             'search_teacher_classrooms': admin_search_async_functions.search_teacher_classrooms,
 
             'search_month_attendance_records': admin_search_async_functions.search_month_attendance_records,
@@ -315,6 +317,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'update_subject_details' : admin_update_async_functions.update_subject_details,
 
             'update_term_details' : admin_update_async_functions.update_term_details,
+
+            'update_classroom_details' : admin_update_async_functions.update_classroom_details,
 
             'update_assessment' : admin_update_async_functions.update_assessment,
             'update_assessment_as_collected' : admin_update_async_functions.update_assessment_as_collected,

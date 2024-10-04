@@ -39,7 +39,7 @@ from grades.serializers import GradeSerializer, GradesSerializer, GradeDetailsSe
 from terms.serializers import  TermsSerializer, TermSerializer
 from term_subject_performances.serializers import TermSubjectPerformanceSerializer
 from subjects.serializers import SubjectSerializer, SubjectDetailsSerializer
-from classrooms.serializers import TeacherClassroomsSerializer, ClassesSerializer, ClassroomSerializer
+from classrooms.serializers import TeacherClassroomsSerializer, ClassesSerializer, ClassroomSerializer, ClassroomDetailsSerializer
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, GradedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer, GradedAssessmentSerializer
 from assessment_transcripts.serializers import TranscriptsSerializer, TranscriptSerializer
 from student_activities.serializers import ActivitiesSerializer, ActivitySerializer
@@ -747,6 +747,37 @@ def search_classroom(account, role, details):
         # Fetch the specific classroom based on class_id and school
         classroom = requesting_account.school.classrooms.get(classroom_id=details['classroom'])
         serialized_classroom = ClassroomSerializer(classroom).data
+
+        return {"classroom": serialized_classroom}
+    
+    except Classroom.DoesNotExist:
+        # Handle case where the classroom does not exist
+        return {'error': _('Could not process your request, a classroom with the provided details does not exist. Please review the classroom details and try again.')}
+    
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def search_classroom_details(account, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'CLASSROOM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view classrooms. please contact your administrator to adjust you permissions for viewing classroom details.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        if not 'classroom' in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid classroom ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        # Fetch the specific classroom based on class_id and school
+        classroom = requesting_account.school.classrooms.get(classroom_id=details['classroom'])
+        serialized_classroom = ClassroomDetailsSerializer(classroom).data
 
         return {"classroom": serialized_classroom}
     

@@ -38,6 +38,24 @@ class TeacherSecurityInformationSerializer(serializers.ModelSerializer):
         fields = ['multifactor_authentication']
     
 
+class TeacherBasicAccountDetailsEmailSerializer(serializers.ModelSerializer):
+
+    image = serializers.SerializerMethodField()
+    identifier = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Teacher
+        fields = ['name', 'surname', 'identifier', 'image']
+            
+    def get_identifier(self, obj):
+        """Return the email of the user."""
+        return obj.email_address
+            
+    def get_image(self, obj):
+        """Return the URL of the user's image or a default image."""
+        return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
+
+
 class TeacherAccountSerializer(serializers.ModelSerializer):
     
     name = serializers.SerializerMethodField()
