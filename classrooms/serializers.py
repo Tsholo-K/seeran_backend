@@ -15,7 +15,6 @@ from accounts.serializers.students.serializers import StudentSourceAccountSerial
 
 class ClassCreationSerializer(serializers.ModelSerializer):
 
-    teacher = serializers.PrimaryKeyRelatedField(queryset=Teacher.objects.all(), required=False, allow_null=True)
     subject = serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all(), required=False, allow_null=True)
     register_classroom = serializers.BooleanField(required=False)
 
@@ -27,7 +26,7 @@ class ClassCreationSerializer(serializers.ModelSerializer):
         super(ClassCreationSerializer, self).__init__(*args, **kwargs)
         # Remove the unique together validator that's added by DRF
         self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
-
+        self.fields['teacher'].required = False
 
 class UpdateClassSerializer(serializers.ModelSerializer):
 

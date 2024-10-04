@@ -461,8 +461,6 @@ def create_classroom(account, role, details):
         if details.get('teacher'):
             teacker = requesting_account.school.teachers.only('id').get(account_id=details['teacher'])
             details['teacher'] = teacker.id
-        else:
-            details['teacher'] = None
 
         # Serialize and validate the data
         serializer = ClassCreationSerializer(data=details)
