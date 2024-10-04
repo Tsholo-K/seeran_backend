@@ -108,10 +108,10 @@ class Classroom(models.Model):
                 
                 if remove:
                     # Check if students to be removed are actually in the class
-                    existing_students = self.students.filter(account_id__in=students).values_list('account_id', flat=True)
-                    if not existing_students:
-                        raise ValidationError("could not proccess your request, all the provided students are not part of this classroom")
-                    self.students.remove(*existing_students)
+                    existing_students = self.students.filter(account_id__in=students)
+                    if not existing_students.exists():
+                        raise ValidationError("could not proccess your request, non of the provided students are part of this classroom.")
+                    self.students.remove(existing_students)
 
                 else:
                     # Check if students are already in a class of the same subject
@@ -132,11 +132,11 @@ class Classroom(models.Model):
                     students_in_provided_classroom = self.students.filter(account_id__in=students).values_list('surname', 'name')
                     if students_in_provided_classroom:
                         student_names = [f"{surname} {name}" for surname, name in students_in_provided_classroom]
-                        raise ValidationError(f'the following students are already in this class: {", ".join(student_names)}')
+                        raise ValidationError(f'the following students are already in this classroom: {", ".join(student_names)}')
                     
-                    students = self.grade.students.filter(account_id__in=students)
+                    students_in_grade = self.grade.students.filter(account_id__in=students)
 
-                    self.students.add(*students)
+                    self.students.add(students_in_grade)
 
                 # Save the classroom instance first to ensure student changes are persisted
                 self.save()
