@@ -40,8 +40,8 @@ class Classroom(models.Model):
 
     student_count = models.PositiveIntegerField(default=0)
 
-    register_classroom = models.BooleanField(_('is the class a register class'), help_text='Ensure only one register class per teacher.')
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='classrooms', null=True, blank=True, help_text='Subject taught in the classroom.')
+    register_classroom = models.BooleanField(_('is the class a register class'), editable=False, default=False, help_text='Ensure only one register class per teacher.')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, editable=False, related_name='classrooms', null=True, blank=True, help_text='Subject taught in the classroom.')
 
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='classrooms', help_text='Grade level associated with the classroom.')
 
