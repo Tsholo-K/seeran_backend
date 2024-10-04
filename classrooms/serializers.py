@@ -54,7 +54,7 @@ class ClassroomSerializer(serializers.ModelSerializer):
         return None
             
     def get_subject(self, obj):
-        if  obj.register_class:
+        if  obj.register_classroom:
             return 'Register Class'
         if obj.subject:
             return f'{obj.subject.subject}'.title()
