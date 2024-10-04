@@ -28,7 +28,7 @@ from permission_groups.serializers import AdminPermissionGroupCreationSerializer
 from grades.serializers import GradeCreationSerializer
 from terms.serializers import  TermCreationSerializer
 from subjects.serializers import  SubjectCreationSerializer
-from classrooms.serializers import ClassCreationSerializer
+from classrooms.serializers import ClassroomCreationSerializer
 from assessments.serializers import AssessmentCreationSerializer
 from student_activities.serializers import ActivityCreationSerializer
 from student_group_timetables.serializers import StudentGroupTimetableCreationSerializer
@@ -462,7 +462,7 @@ def create_classroom(account, role, details):
             details['teacher'] = teacher.id
 
         # Serialize and validate the data
-        serializer = ClassCreationSerializer(data=details)
+        serializer = ClassroomCreationSerializer(data=details)
         if serializer.is_valid():
             # Create the class within a transaction
             with transaction.atomic():

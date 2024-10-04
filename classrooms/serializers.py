@@ -4,25 +4,23 @@ from rest_framework.validators import UniqueTogetherValidator
 
 # models
 from .models import Classroom
-from subjects.models import Subject
 
 # serilializers
 from accounts.serializers.students.serializers import StudentSourceAccountSerializer
 
 
-class ClassCreationSerializer(serializers.ModelSerializer):
-
-    subject = serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all(), required=False, allow_null=True)
+class ClassroomCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Classroom
-        fields = ['classroom_number', 'group', 'subject', 'register_classroom', 'teacher', 'grade', 'school']
+        fields = ['classroom_number', 'group', 'teacher', 'register_classroom', 'subject', 'grade', 'school']
     
     def __init__(self, *args, **kwargs):
-        super(ClassCreationSerializer, self).__init__(*args, **kwargs)
+        super(ClassroomCreationSerializer, self).__init__(*args, **kwargs)
         # Remove the unique together validator that's added by DRF
         self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
         self.fields['teacher'].required = False
+        self.fields['subject'].required = False
 
 class UpdateClassSerializer(serializers.ModelSerializer):
 

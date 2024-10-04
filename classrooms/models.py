@@ -67,8 +67,8 @@ class Classroom(models.Model):
         - Validate before saving.
         - Provide meaningful error messages on IntegrityError.
         """
+        self.clean()
         try:
-            self.clean()
             super().save(*args, **kwargs)
         except IntegrityError as e:
             # Handle any database integrity errors (such as unique or foreign key constraints).
