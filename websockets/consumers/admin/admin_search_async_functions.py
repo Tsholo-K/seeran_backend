@@ -554,8 +554,8 @@ def search_grade_register_classrooms(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        grade  = requesting_account.school.grades.prefetch_related(models.Prefetch('classrooms', queryset=Classroom.objects.filter(register_class=True))).get(grade_id=details['grade'])
-        serialized_classrooms = ClassesSerializer(grade.classes, many=True).data
+        grade  = requesting_account.school.grades.prefetch_related(models.Prefetch('classrooms', queryset=Classroom.objects.filter(register_classroom=True))).get(grade_id=details['grade'])
+        serialized_classrooms = ClassesSerializer(grade.classrooms, many=True).data
 
         return {"classrooms": serialized_classrooms}
     
