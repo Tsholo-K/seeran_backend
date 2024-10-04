@@ -557,8 +557,8 @@ def update_classroom_teacher(account, role, details):
 @database_sync_to_async
 def update_classroom_students(account, role, details):
     try:
-        students_list = details.get('students', '').split(', ')
-        if not students_list or students_list == ['']:
+        students = details.get('students', '').split(', ')
+        if not students or students == ['']:
             return {'error': 'your request could not be proccessed.. no students were provided'}
         
         classroom = None  # Initialize assessment as None to prevent issues in error handling
@@ -581,9 +581,9 @@ def update_classroom_students(account, role, details):
 
         with transaction.atomic():
             # Check for validation errors and perform student updates
-            classroom.update_students(students_list=students_list, remove=details.get('remove'))
+            classroom.update_students(students=students, remove=details.get('remove'))
 
-            response = f'{"Students" if len(students_list) > 1  else "Student"} with the following account {"IDs" if len(students_list) > 1  else "ID"}: {", ".join(students_list)} ,{"have" if len(students_list) > 1  else "has"} been successfully {"removed from" if details.get("remove") else "added to"} the grade {classroom.grade.grade}, group {classroom.group} {"register" if classroom.register_class else classroom.subject.subject} classroom'.lower()
+            response = f'{"Students" if len(students) > 1  else "Student"} with the following account {"IDs" if len(students) > 1  else "ID"}: {", ".join(students)} ,{"have" if len(students) > 1  else "has"} been successfully {"removed from" if details.get("remove") else "added to"} the grade {classroom.grade.grade}, group {classroom.group} {"register" if classroom.register_class else classroom.subject.subject} classroom'.lower()
             audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='UPDATED', server_response=response, school=requesting_account.school,)
 
         return {"message": response}
@@ -595,13 +595,11 @@ def update_classroom_students(account, role, details):
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
         audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
-
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
         audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
-
         return {'error': error_message}
 
 
