@@ -441,6 +441,7 @@ def create_classroom(account, role, details):
 
         if details.get('register_classroom'):
             details['subject'] = None
+            details['register_classroom'] = True
 
             response = f"A new register classroom, group {details['group']}, for your schools grade {grade.grade} has been successfully created. You can now {'assign a teacher to the classroom,' if details['teacher'] else None} add students and start tracking attendance."
         
@@ -460,6 +461,8 @@ def create_classroom(account, role, details):
         if details.get('teacher'):
             teacker = requesting_account.school.teachers.only('id').get(account_id=details['teacher'])
             details['teacher'] = teacker.id
+        else:
+            details['teacher'] = None
 
         # Serialize and validate the data
         serializer = ClassCreationSerializer(data=details)

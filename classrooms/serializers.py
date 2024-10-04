@@ -28,14 +28,6 @@ class ClassCreationSerializer(serializers.ModelSerializer):
         # Remove the unique together validator that's added by DRF
         self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
 
-    def validate(self, data):
-        """
-        Ensure that the subject field is only required when register_class is False.
-        """
-        if not data.get('register_classroom') and not data.get('subject'):
-            raise serializers.ValidationError({"error": "a classroom needs to either be a register class or be associated with one subject in your school"})
-        return data
-
 
 class UpdateClassSerializer(serializers.ModelSerializer):
 
