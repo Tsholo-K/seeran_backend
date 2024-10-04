@@ -221,7 +221,13 @@ def form_data_for_adding_students_to_classroom(user, role, details):
         # Serialize the list of students to return them in the response
         serialized_students = StudentSourceAccountSerializer(students, many=True).data
 
-        return {"students": serialized_students}
+        # Compress the serialized data
+        compressed_students = zlib.compress(json.dumps(serialized_students).encode('utf-8'))
+
+        # Encode compressed data as base64 for safe transport
+        encoded_students = base64.b64encode(compressed_students).decode('utf-8')
+
+        return {"students": encoded_students}
     
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
