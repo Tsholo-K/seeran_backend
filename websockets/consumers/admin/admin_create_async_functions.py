@@ -451,7 +451,7 @@ def create_classroom(account, role, details):
             details['register_classroom'] = False
             details['subject'] = subject.id
 
-            response = f'A new classroom, group {details['group']}, for your schools grade {grade.grade} {subject.subject.lower()} subject has been successfully created. You can now {'assign a teacher to the classroom,' if details['teacher'] else None} add students and track performance.'
+            response = f"A new classroom, group {details['group']}, for your schools grade {grade.grade} {subject.subject.lower()} subject has been successfully created. You can now {'assign a teacher to the classroom,' if details['teacher'] else None} add students and track performance."
 
         # Set the school and grade fields
         details.update({'school': requesting_account.school.id, 'grade': grade.id})
