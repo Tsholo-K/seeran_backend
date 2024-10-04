@@ -102,10 +102,10 @@ class Classroom(models.Model):
             if students:                
                 if remove:
                     # Check if students to be removed are actually in the class
-                    existing_students = self.students.filter(account_id__in=students)
+                    existing_students = self.students.filter(account_id__in=students).values_list('id', flat=True)
                     if not existing_students.exists():
                         raise ValidationError("could not proccess your request, non of the provided students are part of this classroom.")
-                    self.students.remove(existing_students.values_list('id', flat=True))
+                    self.students.remove(*existing_students)
 
                 else:
                     # Check if students are already in a class of the same subject
@@ -128,9 +128,11 @@ class Classroom(models.Model):
                         student_names = [f"{surname} {name}" for surname, name in students_in_provided_classroom]
                         raise ValidationError(f'the following students are already in this classroom: {", ".join(student_names)}')
                     
-                    students_in_grade = self.grade.students.filter(account_id__in=students)
+                    # Get the list of student primary keys
+                    students_in_grade = self.grade.students.filter(account_id__in=students).values_list('id', flat=True)
 
-                    self.students.add(students_in_grade.values_list('id', flat=True))
+                    # Add the students by their primary keys
+                    self.students.add(*students_in_grade)
 
                 # Save the classroom instance first to ensure student changes are persisted
                 self.save()
