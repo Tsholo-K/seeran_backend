@@ -534,7 +534,7 @@ def update_classroom_teacher(account, role, details):
             if details['teacher'] == 'remove teacher':
                 classroom.update_teacher(teacher=None)
             else:
-                classroom.update_teacher(teacher=['teacher'])
+                classroom.update_teacher(teacher=details['teacher'])
                 
             response = f'Classroom teacher has been successfully updated.'
             audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='UPDATED', server_response=response, school=requesting_account.school,)
