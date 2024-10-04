@@ -22,7 +22,7 @@ from grades.serializers import UpdateGradeSerializer, GradeDetailsSerializer
 from schools.serializers import UpdateSchoolAccountSerializer, SchoolDetailsSerializer
 from terms.serializers import UpdateTermSerializer, TermSerializer
 from subjects.serializers import UpdateSubjectSerializer, SubjectDetailsSerializer
-from classrooms.serializers import UpdateClassroomSerializer
+from classrooms.serializers import UpdateClassroomSerializer, ClassroomDetailsSerializer
 from assessments.serializers import AssessmentUpdateSerializer
 from assessment_transcripts.serializers import TranscriptUpdateSerializer
 from student_group_timetables.serializers import StudentGroupTimetableDetailsSerializer, StudentGroupTimetableUpdateSerializer
@@ -481,13 +481,15 @@ def update_classroom_details(account, role, details):
                 serializer.save()
                     
                 response = f'A classroom in your school with classroom ID: {classroom.classroom_id}, has had it\'s details successfully updated.'
-                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='UPDATED', response=response, school=requesting_account.school,)
+                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='UPDATED', server_response=response, school=requesting_account.school,)
+            
+            serialized_classroom = ClassroomDetailsSerializer(classroom).data
 
-            return {"message": response}
+            return {"message": response, 'classroom': serialized_classroom}
             
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
         return {"error": error_response}
     
     except Classroom.DoesNotExist:
@@ -496,12 +498,12 @@ def update_classroom_details(account, role, details):
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {'error': error_message}
 
 

@@ -66,7 +66,7 @@ class ClassroomDetailsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Classroom
-        fields = ['classroom_number', 'group', 'student_count', 'students', 'teacher']
+        fields = ['classroom_number', 'group', 'student_count', 'teacher']
 
     def get_teacher(self, obj):
         if obj.teacher:
