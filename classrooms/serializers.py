@@ -4,9 +4,6 @@ from rest_framework.validators import UniqueTogetherValidator
 
 # models
 from .models import Classroom
-from accounts.models import Teacher
-from schools.models import School
-from grades.models import Grade
 from subjects.models import Subject
 
 # serilializers
@@ -16,7 +13,6 @@ from accounts.serializers.students.serializers import StudentSourceAccountSerial
 class ClassCreationSerializer(serializers.ModelSerializer):
 
     subject = serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all(), required=False, allow_null=True)
-    register_classroom = serializers.BooleanField(required=False)
 
     class Meta:
         model = Classroom
