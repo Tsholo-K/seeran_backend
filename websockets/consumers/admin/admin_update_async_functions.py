@@ -583,7 +583,7 @@ def update_classroom_students(account, role, details):
             # Check for validation errors and perform student updates
             classroom.update_students(students=students, remove=details.get('remove'))
 
-            response = f'{"Students" if len(students) > 1  else "Student"} with the following account {"IDs" if len(students) > 1  else "ID"}: {", ".join(students)} ,{"have" if len(students) > 1  else "has"} been successfully {"removed from" if details.get("remove") else "added to"} the grade {classroom.grade.grade}, group {classroom.group} {"register" if classroom.register_class else classroom.subject.subject} classroom'.lower()
+            response = f'{"Students" if len(students) > 1  else "Student"} with the following account {"IDs" if len(students) > 1  else "ID"}: {", ".join(students)} ,{"have" if len(students) > 1  else "has"} been successfully {"removed from" if details.get("remove") else "added to"} the grade {classroom.grade.grade}, group {classroom.group} {"register" if classroom.register_class else classroom.subject.subject.lower()} classroom'
             audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='UPDATED', server_response=response, school=requesting_account.school,)
 
         return {"message": response}

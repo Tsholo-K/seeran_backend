@@ -99,13 +99,7 @@ class Classroom(models.Model):
 
     def update_students(self, students=None, remove=False):
         try:
-            if students:
-                # Retrieve CustomUser instances corresponding to the account_ids
-                students = self.grade.students.prefetch_related('enrolled_classrooms__subject').filter(account_id__in=students)
-
-                if not students.exists():
-                    raise ValidationError("no valid students were found in the grade with the provided account IDs.")
-                
+            if students:                
                 if remove:
                     # Check if students to be removed are actually in the class
                     existing_students = self.students.filter(account_id__in=students)
