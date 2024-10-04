@@ -175,8 +175,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'search_term_subject_performance': admin_search_async_functions.search_term_subject_performance,
 
             'search_classroom': admin_search_async_functions.search_classroom,
-            'search_classroom_details': admin_search_async_functions.search_classroom,
-            
+            'search_classroom_details': admin_search_async_functions.search_classroom_details,
+
             'search_teacher_classrooms': admin_search_async_functions.search_teacher_classrooms,
 
             'search_month_attendance_records': admin_search_async_functions.search_month_attendance_records,
