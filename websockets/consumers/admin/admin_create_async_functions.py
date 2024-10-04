@@ -440,17 +440,16 @@ def create_classroom(account, role, details):
         grade = requesting_account.school.grades.get(grade_id=details['grade'])
 
         if details.get('register_classroom'):
-            subject = None
-            register_classroom = True
+            details['subject'] = None
 
             response = f"A new register classroom, group {details['group']}, for your schools grade {grade.grade} has been successfully created. You can now {'assign a teacher to the classroom,' if not details.get('teacher') else None} add students and start tracking attendance."
         
         else:
             # Retrieve the subject and validate it against the grade
             subject = requesting_account.school.subjects.get(subject_id=details['subject'], grade=grade)
-            subject = subject.id
             
-            register_classroom = False
+            details['register_classroom'] = False
+            details['subject'] = subject.id
 
             response = f"A new classroom, group {details['group']}, for your schools grade {grade.grade} {subject.subject.lower()} subject has been successfully created. You can now {'assign a teacher to the classroom,' if not details.get('teacher') else None} add students and track performance."
 
@@ -467,8 +466,7 @@ def create_classroom(account, role, details):
         if serializer.is_valid():
             # Create the class within a transaction
             with transaction.atomic():
-                # Extract register_classroom and subject manually from validated data
-                classroom = Classroom.objects.create(**serializer.validated_data, register_classroom=register_classroom, subject=subject)
+                classroom = Classroom.objects.create(**serializer.validated_data)
 
                 audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='CREATED', server_response=response, school=requesting_account.school,)
 
