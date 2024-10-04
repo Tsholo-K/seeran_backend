@@ -442,7 +442,7 @@ def create_classroom(account, role, details):
         if details.get('register_classroom'):
             details['subject'] = None
 
-            response = f'A new register classroom, group {details['group']}, for your schools grade {grade.grade} has been successfully created. You can now {'assign a teacher to the classroom,' if details['teacher'] else None} add students and start tracking attendance.'
+            response = f"A new register classroom, group {details['group']}, for your schools grade {grade.grade} has been successfully created. You can now {'assign a teacher to the classroom,' if details['teacher'] else None} add students and start tracking attendance."
         
         else:
             # Retrieve the subject and validate it against the grade
