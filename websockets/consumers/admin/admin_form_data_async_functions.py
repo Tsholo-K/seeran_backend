@@ -98,23 +98,22 @@ def form_data_for_creating_classroom(user, role, details):
 
             return {'error': response}
 
+        if not 'reason' in details or details['reason'] not in ['subject classroom', 'register classroom']:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid reason for classroom creation and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
         # Determine the query based on the reason for retrieving teachers
-        if details.get('reason') == 'subject class':
-            # Retrieve the subject and validate it against the grade
-            subject = Subject.objects.get(subject_id=details.get('subject'), grade__school=requesting_account.school)
-
-            # Retrieve all teachers in the user's school who are not teaching the specified subject
-            teachers = requesting_account.school.teachers.all().exclude(taught_classes__subject=subject)
-
-        elif details.get('reason') == 'register class':
+        if details.get('reason') == 'register classroom':
             # Retrieve teachers not currently teaching a register class
-            teachers = requesting_account.school.teachers.all().exclude(taught_classes__register_class=True)
+            teachers = requesting_account.school.teachers.exclude(taught_classrooms__register_classroom=True)
 
         else:
-            response = "could not proccesses your request, invalid reason provided. expected 'subject class' or 'register class'."
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='CLASSROOM', outcome='ERROR', response=response, school=requesting_account.school)
+            # Retrieve the subject and validate it against the grade
+            subject = requesting_account.school.subjects.get(subject_id=details['subject'])
 
-            return {'error': response}
+            # Retrieve all teachers in the user's school who are not teaching the specified subject
+            teachers = requesting_account.school.teachers.exclude(taught_classrooms___subject=subject)
 
         # Serialize the list of teachers
         serialized_teachers = TeacherAccountSerializer(teachers, many=True).data
