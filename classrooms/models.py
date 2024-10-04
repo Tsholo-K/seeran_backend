@@ -121,7 +121,7 @@ class Classroom(models.Model):
                             raise ValidationError(f'the following students are already assigned to a classroom in the provided subject and grade: {", ".join(student_names)}')
 
                     # Check if students are already in any register class
-                    elif self.register_class:
+                    elif self.register_classroom:
                         students_in_register_classrooms = self.grade.students.filter(account_id__in=students, enrolled_classrooms__register_classroom=True).values_list('surname', 'name')
                         if students_in_register_classrooms:
                             student_names = [f"{surname} {name}" for surname, name in students_in_register_classrooms]
