@@ -466,7 +466,11 @@ def create_classroom(account, role, details):
         if serializer.is_valid():
             # Create the class within a transaction
             with transaction.atomic():
-                classroom = Classroom.objects.create(**serializer.validated_data)
+                # Extract register_classroom and subject manually from validated data
+                register_classroom = serializer.validated_data.pop('register_classroom', False)
+                subject = serializer.validated_data.pop('subject', None)
+
+                classroom = Classroom.objects.create(**serializer.validated_data, register_classroom=register_classroom, subject=subject)
 
                 audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='CREATED', server_response=response, school=requesting_account.school,)
 

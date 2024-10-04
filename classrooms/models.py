@@ -40,7 +40,7 @@ class Classroom(models.Model):
 
     student_count = models.PositiveIntegerField(default=0)
 
-    register_classroom = models.BooleanField(_('is the class a register class'), editable=False, help_text='Ensure only one register class per teacher.')
+    register_classroom = models.BooleanField(_('is the class a register class'), editable=False, default=False, help_text='Ensure only one register class per teacher.')
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, editable=False, related_name='classrooms', null=True, blank=True, help_text='Subject taught in the classroom.')
 
     grade = models.ForeignKey(Grade, on_delete=models.CASCADE, editable=False, related_name='classrooms', help_text='Grade level associated with the classroom.')
@@ -88,13 +88,13 @@ class Classroom(models.Model):
         if not self.school_id:
             raise ValidationError('Could not proccess your request, a classroom must either be a register classroom or be associated with a subject. Please review the provided information and try again.')
         
-        if not self.grade_id:
+        elif not self.grade_id:
             raise ValidationError('Could not proccess your request, a classroom must either be a register classroom or be associated with a subject. Please review the provided information and try again.')
         
-        if not self.subject_id and not self.register_classroom:
+        elif not self.subject_id and not self.register_classroom:
             raise ValidationError('Could not proccess your request, a classroom must either be a register classroom or be associated with a subject. Please review the provided information and try again.')
 
-        if self.subject_id and self.subject.grade != self.grade:
+        elif self.subject_id and self.subject.grade != self.grade:
             raise ValidationError('Could not proccess your request, the subject associated with this classroom is assigned to a different grade. Ensure that the subject belongs to the same grade as the classroom.')
 
     def update_students(self, student_ids=None, remove=False):
