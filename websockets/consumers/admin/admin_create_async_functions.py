@@ -392,7 +392,7 @@ def create_subject(account, role, details):
         if serializer.is_valid():
             # Create the grade within a transaction to ensure atomicity
             with transaction.atomic():
-                subject = requesting_account.school.subjects.create(serializer.validated_data)
+                subject = requesting_account.school.subjects.create(**serializer.validated_data)
 
                 response = f"A new {subject.subject.lower()} subject has been successfully created for your schools grade {grade.grade}. You can now create classrooms, assign teachers, add students and start tracking performance."
                 audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='CREATED', server_response=response, school=requesting_account.school,)
