@@ -104,7 +104,7 @@ class Classroom(models.Model):
                     # Check if students to be removed are actually in the class
                     existing_students = self.students.filter(account_id__in=students).values_list('id', flat=True)
                     if not existing_students.exists():
-                        raise ValidationError("could not proccess your request, non of the provided students are part of this classroom.")
+                        raise ValidationError("Could not proccess your request, none of the provided students are part of this classroom.")
                     self.students.remove(*existing_students)
 
                 else:
@@ -113,20 +113,20 @@ class Classroom(models.Model):
                         students_in_subject_classrooms = self.grade.students.filter(account_id__in=students, enrolled_classrooms__subject=self.subject).values_list('surname', 'name')
                         if students_in_subject_classrooms:
                             student_names = [f"{surname} {name}" for surname, name in students_in_subject_classrooms]
-                            raise ValidationError(f'the following students are already assigned to a classroom in the provided subject and grade: {", ".join(student_names)}')
+                            raise ValidationError(f'Could not proccess your request, the following students are already assigned to a classroom in the provided subject and grade: {", ".join(student_names)}')
 
                     # Check if students are already in any register class
                     elif self.register_classroom:
                         students_in_register_classrooms = self.grade.students.filter(account_id__in=students, enrolled_classrooms__register_classroom=True).values_list('surname', 'name')
                         if students_in_register_classrooms:
                             student_names = [f"{surname} {name}" for surname, name in students_in_register_classrooms]
-                            raise ValidationError(f'the following students are already assigned to a register classroom: {", ".join(student_names)}')
+                            raise ValidationError(f'Could not proccess your request, the following students are already assigned to a register classroom: {", ".join(student_names)}')
 
                     # Check if students are already in this specific class
                     students_in_provided_classroom = self.students.filter(account_id__in=students).values_list('surname', 'name')
                     if students_in_provided_classroom:
                         student_names = [f"{surname} {name}" for surname, name in students_in_provided_classroom]
-                        raise ValidationError(f'the following students are already in this classroom: {", ".join(student_names)}')
+                        raise ValidationError(f'Could not proccess your request, the following students are already in this classroom: {", ".join(student_names)}')
                     
                     # Get the list of student primary keys
                     students_in_grade = self.grade.students.filter(account_id__in=students).values_list('id', flat=True)

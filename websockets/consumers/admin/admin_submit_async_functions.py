@@ -181,7 +181,7 @@ def submit_attendance_register(account, role, details):
         
         with transaction.atomic():
             # Check if an Absent instance exists for today and the given class
-            attendance_register, created = requesting_account.school.school_attendances.get_or_create(timestamp__date=today, classroom=classroom, defaults={'attendance_taker': requesting_account})
+            attendance_register, created = requesting_account.school.school_attendances.get_or_create(timestamp__date=today, classroom=classroom, defaults={'attendance_taker': requesting_user})
 
             if created:
                 absent = True
