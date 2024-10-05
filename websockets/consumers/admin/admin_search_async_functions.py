@@ -585,7 +585,7 @@ def search_subject(user, role, details):
             return {'error': response}
 
         # Retrieve the subject
-        subject = requesting_account.subjects.prefetch_related('classrooms').get(subject_id=details['subject'])
+        subject = requesting_account.school.subjects.prefetch_related('classrooms').get(subject_id=details['subject'])
         serialized_subject = SubjectSerializer(subject).data
 
         return {"subject": serialized_subject}
