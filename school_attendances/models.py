@@ -32,9 +32,9 @@ class ClassroomAttendanceRegister(models.Model):
         constraints = [
             models.UniqueConstraint(fields=['timestamp', 'classroom'], name='unique_date_classroom')
         ]
-        unique_together = ('date', 'classroom')
-        ordering = ['-date']
-        indexes = [models.Index(fields=['date', 'classroom'])]  # Index for performance
+        unique_together = ('timestamp', 'classroom')
+        ordering = ['-timestamp']
+        indexes = [models.Index(fields=['timestamp', 'classroom'])]  # Index for performance
         
     def save(self, *args, **kwargs):
         """
