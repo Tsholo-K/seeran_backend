@@ -217,16 +217,20 @@ def delete_subject(account, role, details):
         # Check if the user has permission to create a grade
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'DELETE', 'SUBJECT'):
             response = f'could not proccess your request, you do not have the necessary permissions to delete a subject'
-            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='SUBJECT', outcome='DENIED', response=response, school=requesting_account.school)
-
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='SUBJECT', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        subject = Subject.objects.get(subject_id=details.get('subject'), school=requesting_account.school)
+        if 'subject' not in details:
+            response = f'Could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid subject ID and try again.'
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='SUBJECT', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        subject = requesting_account.school.subjects.get(subject_id=details['subject'])
 
         # Create the grade within a transaction to ensure atomicity
         with transaction.atomic():
-            response = f"a subject in your school with the subject ID {subject.subject_id} has been successfully deleted. the term and all it's associated data will no longer be assessible on the system"
-            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='DELETED', response=response, school=requesting_account.school,)
+            response = f"A subject in your school with the subject ID: {subject.subject_id}, has been successfully deleted. All it's associated data will be purged from the system, effective immedialtely."
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='DELETED', server_response=response, school=requesting_account.school,)
             
             subject.delete()
 
@@ -238,14 +242,12 @@ def delete_subject(account, role, details):
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {'error': error_message}
 
 
