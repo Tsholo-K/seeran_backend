@@ -1,9 +1,6 @@
 # channels
 from channels.db import database_sync_to_async
 
-# models 
-from accounts.models import Teacher
-
 # serilializers
 from school_announcements.serializers import AnnouncementsSerializer
 from classrooms.serializers import TeacherClassroomsSerializer
@@ -12,7 +9,6 @@ from classrooms.serializers import TeacherClassroomsSerializer
 from accounts import utils as accounts_utilities
 from account_permissions import utils as permissions_utilities
 from audit_logs import utils as audits_utilities
-from school_attendances import utils as attendances_utilities
 
 
 # Asynchronous database call to retrieve and return announcements for a user's school

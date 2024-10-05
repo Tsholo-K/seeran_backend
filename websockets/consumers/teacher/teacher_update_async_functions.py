@@ -10,7 +10,7 @@ from django.utils.translation import gettext as _
 # models 
 from accounts.models import BaseAccount, Teacher, Student
 from classrooms.models import Classroom
-from school_attendances.models import SchoolAttendance
+from school_attendances.models import ClassroomAttendanceRegister
 from assessments.models import Assessment
 from assessment_transcripts.models import AssessmentTranscript
 from topics.models import Topic
@@ -238,7 +238,7 @@ def submit_attendance(user, details):
                 return {'error': 'attendance register for this class has already been subimitted today.. can not resubmit'}
 
             with transaction.atomic():
-                register = SchoolAttendance.objects.create(submitted_by=requesting_user, classroom=classroom)
+                register = ClassroomAttendanceRegister.objects.create(submitted_by=requesting_user, classroom=classroom)
 
                 if details.get('students'):
                     register.absentes = True
@@ -261,11 +261,11 @@ def submit_attendance(user, details):
             if not absentes.absent_students.exists():
                 return {'error': 'todays attendance register for this class has all students accounted for'}
 
-            register = SchoolAttendance.objects.filter(date__date=today, classroom=classroom).first()
+            register = ClassroomAttendanceRegister.objects.filter(date__date=today, classroom=classroom).first()
             
             with transaction.atomic():
                 if not register:
-                    register = SchoolAttendance.objects.create(submitted_by=requesting_user, classroom=classroom)
+                    register = ClassroomAttendanceRegister.objects.create(submitted_by=requesting_user, classroom=classroom)
                     
                 for student in details['students'].split(', '):
                     student = Student.objects.get(account_id=student)
