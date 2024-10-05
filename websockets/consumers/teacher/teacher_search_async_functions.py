@@ -13,7 +13,7 @@ from django.utils.translation import gettext as _
 # models 
 from accounts.models import Teacher, Student
 from classrooms.models import Classroom
-from school_attendances.models import SchoolAttendance
+from school_attendances.models import ClassroomAttendanceRegister
 
 # serilializers
 from accounts.serializers.students.serializers import StudentSourceAccountSerializer, LeastAccountDetailsSerializer
@@ -217,12 +217,12 @@ def search_month_attendance_records(account, role, details):
         start_date, end_date = attendances_utilities.get_month_dates(details.get('month_name'))
 
         # Query for the Absent instances where absentes is True
-        absents = SchoolAttendance.objects.prefetch_related('absent_students').filter(models.Q(date__gte=start_date) & models.Q(date__lt=end_date) & models.Q(classroom=classroom) & models.Q(absentes=True))
+        absents = ClassroomAttendanceRegister.objects.prefetch_related('absent_students').filter(models.Q(date__gte=start_date) & models.Q(date__lt=end_date) & models.Q(classroom=classroom) & models.Q(absentes=True))
 
         # For each absent instance, get the corresponding Late instance
         attendance_records = []
         for absent in absents:
-            late = SchoolAttendance.objects.prefetch_related('late_students').filter(date__date=absent.date.date(), classroom=classroom).first()
+            late = ClassroomAttendanceRegister.objects.prefetch_related('late_students').filter(date__date=absent.date.date(), classroom=classroom).first()
             record = {
                 'date': absent.date.isoformat(),
                 'absent_students': LeastAccountDetailsSerializer(absent.absent_students.all(), many=True).data,
