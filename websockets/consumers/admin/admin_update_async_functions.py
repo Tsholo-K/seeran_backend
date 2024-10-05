@@ -372,7 +372,7 @@ def update_subject_details(user, role, details):
             with transaction.atomic():
                 serializer.save()
                     
-                response = f"The details a subject with subject ID: {subject.subject_id}, have been successfully updated."
+                response = f"The details of a subject in your school with subject ID: {subject.subject_id}, have been successfully updated."
                 audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='UPDATED', server_response=response, school=requesting_account.school,)
             
             # Serialize the subject
