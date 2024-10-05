@@ -467,11 +467,11 @@ class AdminConsumer(AsyncWebsocketConsumer):
             
             'create_permission_group': admin_create_async_functions.create_permission_group,
 
-            'create_term': admin_create_async_functions.create_term,
-
             'create_grade': admin_create_async_functions.create_grade,
 
             'create_subject': admin_create_async_functions.create_subject,
+
+            'create_term': admin_create_async_functions.create_term,
 
             'create_classroom': admin_create_async_functions.create_classroom,
             

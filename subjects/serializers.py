@@ -21,7 +21,7 @@ class SubjectCreationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Subject
-        fields = ['subject', 'major_subject', 'pass_mark', 'grade']
+        fields = ['subject', 'major_subject', 'pass_mark', 'grade', 'school']
 
     def __init__(self, *args, **kwargs):
         super(SubjectCreationSerializer, self).__init__(*args, **kwargs)

@@ -87,7 +87,7 @@ class Subject(models.Model):
         """
         # A unique constraint that prevents the same subject from being entered multiple times for the same grade.
         constraints = [
-            models.UniqueConstraint(fields=['grade', 'subject'], name='unique_grade_subject')
+            models.UniqueConstraint(fields=['grade', 'subject', 'school'], name='unique_school_grade_subject')
         ]
         # Default ordering for querying subjects, sorting by subject name alphabetically.
         ordering = ['subject']
@@ -126,8 +126,10 @@ class Subject(models.Model):
         Custom validation method for ensuring that the pass mark is within a valid range (0 to 100).
         This method is called before the subject is saved to ensure data integrity.
         """
+        if not self.school_id:
+            raise ValidationError(_('Could not process your request, a subject needs to be associated with a school. Please provide a school then try again.'))
         if not self.grade_id:
-            raise ValidationError(_('Could not process your request, a subject needs to be associated with a school grade. Please provide a grade before saving the subject.'))
+            raise ValidationError(_('Could not process your request, a subject needs to be associated with a school grade. Please provide a grade then try again.'))
         if self.subject not in dict(Subject.SCHOOL_SUBJECTS_CHOICES).keys():
             raise ValidationError(_('Could not process your request, the specified school subject is invalid. Please choose a valid subject from the provided options.'))
         # Ensure the pass mark is between 0 and 100

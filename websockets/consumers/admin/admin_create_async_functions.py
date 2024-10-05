@@ -363,22 +363,28 @@ def create_term(user, role, details):
 
 
 @database_sync_to_async
-def create_subject(user, role, details):
+def create_subject(account, role, details):
     try:
         subject = None  # Initialize subject as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to create a grade
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'SUBJECT'):
             response = f'could not proccess your request, you do not have the necessary permissions to create a subject'
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='SUBJECT', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='SUBJECT', outcome='DENIED', server_response=response, school=requesting_account.school)
 
             return {'error': response}
+        
+        # Check if the 'permissions' key is provided and not empty
+        if 'grade' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid grade ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
 
-        grade = requesting_account.school.grades.get(grade_id=details.get('grade'))
+        grade = requesting_account.school.grades.get(grade_id=details['grade'])
 
-        details['grade'] = grade.pk
+        details['grade'] = grade.id
 
         # Serialize the details for grade creation
         serializer = SubjectCreationSerializer(data=details)
@@ -386,17 +392,16 @@ def create_subject(user, role, details):
         if serializer.is_valid():
             # Create the grade within a transaction to ensure atomicity
             with transaction.atomic():
-                subject = Subject.objects.create(**serializer.validated_data)
+                subject = requesting_account.school.subjects.create({**serializer.validated_data, 'grade': grade})
 
-                response = f"{subject.subject} subject has been successfully created for your schools grade {grade.grade}".lower()
-                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='CREATED', response=response, school=requesting_account.school,)
+                response = f"A new {subject.subject.lower()} subject has been successfully created for your schools grade {grade.grade}. You can now create classrooms, assign teachers, add students and start tracking performance."
+                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='CREATED', server_response=response, school=requesting_account.school,)
 
             return {"message": response}
                 
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
         return {"error": error_response}
 
     except Grade.DoesNotExist:
@@ -405,14 +410,12 @@ def create_subject(user, role, details):
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {'error': error_message}
 
 
