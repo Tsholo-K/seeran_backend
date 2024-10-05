@@ -15,7 +15,6 @@ from permission_groups.models import AdminPermissionGroup, TeacherPermissionGrou
 from grades.models import Grade
 from subjects.models import Subject
 from classrooms.models import Classroom
-from school_attendances.models import SchoolAttendance
 from assessments.models import Assessment
 from assessment_submissions.models import AssessmentSubmission
 from student_group_timetables.models import StudentGroupTimetable
@@ -32,8 +31,6 @@ from assessment_transcripts.serializers import TranscriptFormSerializer
 from accounts import utils as users_utilities
 from account_permissions import utils as permissions_utilities
 from audit_logs import utils as audits_utilities
-
-
 
 
 @database_sync_to_async
@@ -245,38 +242,44 @@ def form_data_for_classroom_attendance_register(user, role, details):
         requesting_account = users_utilities.get_account_and_linked_school(user, role)
 
         # Check if the user has permission to create an assessment
-        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'SUBMIT', 'CLASSROOM'):
-            response = f'could not proccess your request, you do not have the necessary permissions to submit classroom attendance register. please contact your principal to adjust you permissions for viewing classrooms.'
-            audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='CLASSROOM', outcome='DENIED', response=response, school=requesting_account.school)
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'SUBMIT', 'ATTENDANCE'):
+            response = f'could not proccess your request, you do not have the necessary permissions to submit classroom attendance register. please contact your principal to adjust you permissions for submitting classroom data.'
+            audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='CLASSROOM', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
         
         if not {'classroom'}.issubset(details):
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid classroom ID and try again'
-            audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='CLASSROOM', outcome='ERROR', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='ATTENDANCE', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
         
-        classroom = Classroom.objects.get(classroom_id=details.get('classroom'), register_class=True, school=requesting_account.school)
+        classroom = requesting_account.school.classrooms.get(classroom_id=details['classroom'], register_classroom=True)
 
         # Get today's date
         today = timezone.now()
             
         # Check if an Absent instance exists for today and the given class
-        attendance = SchoolAttendance.objects.prefetch_related('absent_students').filter(date__date=today, classroom=classroom).first()
+        attendance = requesting_account.school.school_attendances.prefetch_related('absent_students').filter(timestamp__date=today, classroom=classroom).first()
 
         if attendance:
-            students = attendance.absent_students.all()
+            students = attendance.absent_students
             attendance_register_taken = True
 
         else:
-            students = classroom.students.all()
+            students = classroom.students
             attendance_register_taken = False
 
         serialized_students = StudentSourceAccountSerializer(students, many=True).data
 
-        return {"students": serialized_students, "attendance_register_taken" : attendance_register_taken}
+        # Compress the serialized data
+        compressed_students = zlib.compress(json.dumps(serialized_students).encode('utf-8'))
+
+        # Encode compressed data as base64 for safe transport
+        encoded_students = base64.b64encode(compressed_students).decode('utf-8')
+
+        return {"students": encoded_students, "attendance_register_taken" : attendance_register_taken}
             
     except Classroom.DoesNotExist:
-        return { 'error': 'class with the provided credentials does not exist' }
+        return {'error': 'Could not proccess your request, a classroom in your school with the provided credentials does not exist. Please review the classroom details and try again.'}
 
     except Exception as e:
         return { 'error': str(e) }

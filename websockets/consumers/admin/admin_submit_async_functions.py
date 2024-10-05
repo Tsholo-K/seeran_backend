@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 # models 
 from accounts.models import BaseAccount, Student
 from classrooms.models import Classroom
-from school_attendances.models import SchoolAttendance
+from school_attendances.models import ClassroomAttendanceRegister
 from assessments.models import Assessment
 from assessment_submissions.models import AssessmentSubmission
 from assessment_transcripts.models import AssessmentTranscript
@@ -151,69 +151,48 @@ def submit_student_transcript_score(user, role, details):
     
 
 @database_sync_to_async
-def submit_school_attendance(user, role, details):
+def submit_attendance_register(account, role, details):
     try:
+        students = details.get('students', '').split(', ')
+        if not students or students == ['']:
+            return {'error': 'your request could not be proccessed.. no students were provided'}
+        
         classroom = None  # Initialize classroom as None to prevent issues in error handling
 
-        requesting_user = BaseAccount.objects.get(account_id=user)
+        requesting_user = BaseAccount.objects.get(account_id=account)
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = users_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to create an assessment
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'SUBMIT', 'ATTENDANCE'):
             response = f'could not proccess your request, you do not have the necessary permissions to grade assessments.'
-            audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='ATTENDANCE', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='ATTENDANCE', outcome='DENIED', server_response=response, school=requesting_account.school)
 
             return {'error': response}
+        
+        if not {'classroom'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid classroom ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='ATTENDANCE', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
 
-        classroom = Classroom.objects.get(classroom_id=details.get('class'), school=requesting_account.school, register_class=True)
+        classroom = requesting_account.school.classrooms.get(classroom_id=details['classroom'], register_classroom=True)
         
         today = timezone.localdate()
+        
+        with transaction.atomic():
+            # Check if an Absent instance exists for today and the given class
+            attendance_register, created = requesting_account.school.school_attendances.get_or_create(timestamp__date=today, classroom=classroom, defaults={'attendance_taker': requesting_account})
 
-        if details.get('absent'):
-            if classroom.attendances.filter(date__date=today).exists():
-                return {'error': 'attendance register for this class has already been subimitted today.. can not resubmit'}
-
-            with transaction.atomic():
-                register = SchoolAttendance.objects.create(submitted_by=requesting_user, classroom=classroom)
-
-                if details.get('students'):
-                    register.absentes = True
-                    for student in details['students'].split(', '):
-                        register.absent_students.add(Student.objects.get(account_id=student))
-
-                register.save()
-            
+            if created:
+                absent = True
                 response = 'attendance register successfully taken for today'
-                audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='ATTENDANCE', target_object_id=str(student.account_id) if student else 'N/A', outcome='SUBMITTED', response=response, school=requesting_account.school,)
 
-        if details.get('late'):
-            if not details.get('students'):
-                return {"error" : 'invalid request.. no students were provided.. at least one student is needed to be marked as late'}
-
-            absentes = classroom.attendances.prefetch_related('absent_students').filter(date__date=today).first()
-            if not absentes:
-                return {'error': 'attendance register for this class has not been submitted today.. can not submit late arrivals before the attendance register'}
-
-            if not absentes.absent_students.exists():
-                return {'error': 'todays attendance register for this class has all students accounted for'}
-
-            register = SchoolAttendance.objects.filter(date__date=today, classroom=classroom).first()
-            
-            with transaction.atomic():
-                if not register:
-                    register = SchoolAttendance.objects.create(submitted_by=requesting_user, classroom=classroom)
-                    
-                for student in details['students'].split(', '):
-                    student = Student.objects.get(account_id=student)
-                    absentes.absent_students.remove(student)
-                    register.late_students.add(student)
-
-                absentes.save()
-                register.save()
-
+            else:                    
+                absent = False
                 response = 'students marked as late, attendance register successfully updated'
-                audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='ATTENDANCE', target_object_id=str(student.account_id) if student else 'N/A', outcome='SUBMITTED', response=response, school=requesting_account.school,)
+            
+            attendance_register.update_attendance_register(students=students, absent=absent)
+            audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='ATTENDANCE', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='SUBMITTED', server_response=response, school=requesting_account.school,)
 
         return {'message': response}
 
@@ -223,15 +202,18 @@ def submit_school_attendance(user, role, details):
     
     except Classroom.DoesNotExist:
         return { 'error': 'class with the provided credentials does not exist' }
+    
+    except ClassroomAttendanceRegister.DoesNotExist:
+        return { 'error': 'class with the provided credentials does not exist' }
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='ATTENDANCE', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='ATTENDANCE', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
 
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='ATTENDANCE', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='ATTENDANCE', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
 
         return {'error': error_message}

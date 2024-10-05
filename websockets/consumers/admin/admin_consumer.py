@@ -379,7 +379,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
         submit_map = {
             'submit_assessment_submissions' : admin_submit_async_functions.submit_assessment_submissions,
 
-            'submit_attendance': admin_submit_async_functions.submit_school_attendance,
+            'submit_attendance_register': admin_submit_async_functions.submit_attendance_register,
 
             'submit_log_out_request': general_submit_async_functions.submit_log_out_request,
         }
