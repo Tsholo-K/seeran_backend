@@ -615,7 +615,7 @@ def search_subject_details(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='SUBJECT', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        subject = requesting_account.subjects.only('student_count', 'teacher_count', 'classroom_count', 'major_subject', 'pass_mark').get(subject_id=details['subject'])
+        subject = requesting_account.school.subjects.only('student_count', 'teacher_count', 'classroom_count', 'major_subject', 'pass_mark').get(subject_id=details['subject'])
         serialized_subject = SubjectDetailsSerializer(subject).data
         
         return {'subject': serialized_subject}
