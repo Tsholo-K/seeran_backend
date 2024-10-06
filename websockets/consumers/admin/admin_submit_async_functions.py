@@ -52,7 +52,7 @@ def submit_assessment_submissions(account, role, details):
             # Bulk create Submission objects
             assessment.collect_submissions(school=requesting_account.school, students=students)
 
-            response = f"assessment submission successfully collected from {len(students)} students."
+            response = f"{len(students)} submissions successfully collected from students for an assessment in your school with assessment ID: {assessment.assessment_id}."
             audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='COLLECTED', server_response=response, school=assessment.school)
 
         return {"message": response}

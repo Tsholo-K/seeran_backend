@@ -764,7 +764,7 @@ def update_assessment_as_collected(user, role, details):
         with transaction.atomic():
             assessment.mark_as_collected()
 
-            response = f"assessment {assessment.unique_identifier} has been flagged as collected, any submissions going further will be marked as late submissions on the system."
+            response = f"An assessment in your school with the following assessment ID: {assessment.assessment_id}, has been successfully flagged as collected. the assessor and moderator (if any) can now grade student submissions. Any submissions collected from here on out will be flagged as late submissions."
             audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='UPDATED', server_response=response, school=assessment.school)
 
         return {"message": response}
