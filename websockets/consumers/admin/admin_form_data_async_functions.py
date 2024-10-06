@@ -286,10 +286,10 @@ def form_data_for_classroom_attendance_register(user, role, details):
 
 
 @database_sync_to_async
-def form_data_for_setting_assessment(user, role, details):
+def form_data_for_setting_assessment(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = users_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to create an assessment
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'ASSESSMENT'):
@@ -297,17 +297,20 @@ def form_data_for_setting_assessment(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
 
             return {'error': response}
+        
+        if not {'grade'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid grade ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
 
-        grade = requesting_account.school.grades.prefetch_related('terms').get(grade_id=details.get('grade'))
-
-        terms = grade.terms.all()        
-        serialized_terms = FormTermsSerializer(terms, many=True).data
+        grade = requesting_account.school.grades.prefetch_related('terms').get(grade_id=details['grade'])
+        serialized_terms = FormTermsSerializer(grade.terms, many=True).data
 
         return {"terms": serialized_terms}
     
     except Grade.DoesNotExist:
         # Handle the case where the provided grade ID does not exist
-        return { 'error': 'a grade in your school with the provided credentials does not exist, please check the grade details and try again'}
+        return {'error': 'Could not proccess your request, a grade in your school with the provided credentials does not exist. Please review the grade details and try again.'}
 
     except Exception as e:
         # Handle any other unexpected errors
