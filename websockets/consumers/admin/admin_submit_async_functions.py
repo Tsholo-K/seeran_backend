@@ -153,10 +153,6 @@ def submit_student_transcript_score(user, role, details):
 @database_sync_to_async
 def submit_attendance_register(account, role, details):
     try:
-        students = details.get('students', '').split(', ')
-        if not students or students == ['']:
-            return {'error': 'your request could not be proccessed.. no students were provided'}
-        
         classroom = None  # Initialize classroom as None to prevent issues in error handling
 
         requesting_user = BaseAccount.objects.get(account_id=account)
@@ -182,12 +178,16 @@ def submit_attendance_register(account, role, details):
         with transaction.atomic():
             # Check if an Absent instance exists for today and the given class
             attendance_register, created = requesting_account.school.school_attendances.get_or_create(timestamp__date=today, classroom=classroom, defaults={'attendance_taker': requesting_user})
+            students = details.get('students', '').split(', ')
 
             if created:
                 absent = True
                 response = 'attendance register successfully taken for today'
 
             else:                    
+                if not students or students == ['']:
+                    return {'error': 'Could not process your request, no students were provided.'}
+                
                 absent = False
                 response = 'students marked as late, attendance register successfully updated'
             
