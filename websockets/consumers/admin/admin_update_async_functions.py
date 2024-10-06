@@ -627,7 +627,7 @@ def update_assessment(user, role, details):
 
         assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'])
 
-
+        topics = None
         # Serialize the details for assessment creation
         if assessment.grades_released:
             serializer = GradesReleasedAssessmentUpdateSerializer(instance=assessment, data=details)
@@ -644,7 +644,6 @@ def update_assessment(user, role, details):
             else:
                 serializer = DueAssessmentUpdateSerializer(instance=assessment, data=details)
                 if details.get('topics'):
-                    topics = []
                     for name in details.get('topics'):
                         topic, _ = Topic.objects.get_or_create(name=name)
                         topics.append(topic)
@@ -653,7 +652,8 @@ def update_assessment(user, role, details):
             # Create the assessment within a transaction to ensure atomicity
             with transaction.atomic():
                 serializer.save()
-                assessment.topics.set(topics)
+                if topics:
+                    assessment.topics.set(topics)
                     
                 response = f'assessment {assessment.assessment_id} has been successfully updated, the new updates will reflect imemdiately to all the students being assessed and their parents'
                 audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='UPDATED', server_response=response, school=requesting_account.school,)
