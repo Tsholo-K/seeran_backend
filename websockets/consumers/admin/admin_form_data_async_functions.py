@@ -110,7 +110,7 @@ def form_data_for_creating_classroom(user, role, details):
             subject = requesting_account.school.subjects.get(subject_id=details['subject'])
 
             # Retrieve all teachers in the user's school who are not teaching the specified subject
-            teachers = requesting_account.school.teachers.exclude(taught_classrooms___subject=subject)
+            teachers = requesting_account.school.teachers.exclude(taught_classrooms__subject=subject)
 
         # Serialize the list of teachers
         serialized_teachers = TeacherAccountSerializer(teachers, many=True).data
