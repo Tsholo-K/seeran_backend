@@ -30,7 +30,9 @@ class ClassroomAttendanceRegister(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['timestamp', 'classroom'], name='unique_date_classroom')
+            models.UniqueConstraint(fields=['timestamp', 'classroom'], name='unique_date_classroom'),
+            models.UniqueConstraint(fields=['timestamp', 'classroom', 'absent_students'], name='unique_date_absent_students_classroom'),
+            models.UniqueConstraint(fields=['timestamp', 'classroom', 'late_students'], name='unique_date_late_students_classroom'),
         ]
         unique_together = ('timestamp', 'classroom')
         ordering = ['-timestamp']
@@ -64,30 +66,35 @@ class ClassroomAttendanceRegister(models.Model):
 
     def update_attendance_register(self, students=None, absent=False):
         try:
-            if students:
-                if not self.absentes:
-                    self.absentes = True
-
-                if absent:
+            if absent:
+                if students:
                     # Check if students to be removed are actually in the class
-                    absent_students = self.classroom.students.filter(account_id__in=students).values_list('id', flat=True)
-                    if not absent_students.exists():
-                        raise ValidationError("Could not proccess your request, none of the provided students are part of this classroom. Please review the list of students and try again")
+                    present_students = self.classroom.students.filter(account_id__in=students).values_list('id', flat=True)
+                    if not present_students:
+                        raise ValidationError("Could not proccess your request, none of the provided students are part of this classroom. Please review the list of students and try again.")
+                    
+                    absent_students = self.classroom.students.exclude(account_id__in=students).values_list('id', flat=True)
+                
+                else:
+                    absent_students = self.classroom.students.values_list('id', flat=True)
+                    
+                if absent_students:
+                    self.absentes = True
                     self.absent_students.add(*absent_students)
 
-                else:
+            else:
+                if students:
                     # Check if students are already marked as absent
-                    students_marked_as_absent = self.absent_students.filter(account_id__in=students).values_list('surname', 'name')
-                    if not students_marked_as_absent:
-                        student_names = [f"{surname} {name}" for surname, name in students_marked_as_absent]
-                        raise ValidationError(f"Could not proccess your request, the following students are already in this classroom: {', '.join(student_names)}")
-                    
-                    # Get the list of student primary keys
-                    late_student = self.absent_students.filter(account_id__in=students).values_list('id', flat=True)
+                    late_students = self.absent_students.filter(account_id__in=students).values_list('id', flat=True)
+                    if not late_students:
+                        raise ValidationError(f"Could not proccess your request, the the provided list of students have not been marked as absent for this classroom. Please review the list of students and try again.")
 
-                    self.absent_students.remove(*late_student)
+                    self.absent_students.remove(*late_students)
                     # Add the students by their primary keys
-                    self.late_students.add(*late_student)
+                    self.late_students.add(*late_students)
+                
+                else:
+                    raise ValidationError(f"Could not proccess your request, no students were provided to be marked as late. Please review the provided list of students and try again.")
 
             # Save the classroom instance first to ensure student changes are persisted
             self.save()
