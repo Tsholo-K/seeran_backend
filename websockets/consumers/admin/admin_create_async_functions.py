@@ -567,7 +567,7 @@ def create_assessment(account, role, details):
 
                     assessment.topics.set(topics)
                     
-                response = f"A new {f'classroom' if details.get('classroom') else f'grade wide'} assessment with assessment ID: {assessment.assessment_id} has been successfully created for {f'classroom group {classroom.group}, grade {classroom.grade.grade} {classroom.subject.lower()}' if details.get('classroom') else f'grade {grade.grade} {subject.subject.lower()}'}. It\'s details will become accessible to all account with access to the classrooms data, effective immedialtely."
+                response = f"A new {f'classroom' if details.get('classroom') else f'grade wide'} assessment with assessment ID: {assessment.assessment_id} has been successfully created for {f'classroom group {classroom.group}, grade {classroom.grade.grade} {classroom.subject.subject.lower()}' if details.get('classroom') else f'grade {grade.grade} {subject.subject.lower()}'}. It\'s details will become accessible to all account with access to the classrooms data, effective immedialtely."
                 audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='CREATED', server_response=response, school=requesting_account.school)
 
             return {"message": response}
