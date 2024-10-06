@@ -8,7 +8,7 @@ from accounts.models import BaseAccount
 from classrooms.models import Classroom
 
 # serializers
-from accounts.serializers.general_serializers import SourceAccountSerializer, BasicAccountDetailsEmailSerializer
+from accounts.serializers.general_serializers import BasicAccountDetailsEmailSerializer
 from accounts.serializers.students.serializers import StudentBasicAccountDetailsEmailSerializer
 from topics.serializers import TopicSerializer
 

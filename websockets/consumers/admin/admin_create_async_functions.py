@@ -536,6 +536,7 @@ def create_assessment(account, role, details):
             term = grade.terms.get(term_id=details.get('term'))
             subject = grade.subjects.get(subject_id=details.get('subject'))
             
+            details['classroom'] = None
             details['grade'] = grade.id
 
         else:
@@ -574,7 +575,6 @@ def create_assessment(account, role, details):
         
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
         audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
-
         return {"error": error_response}
     
     except Classroom.DoesNotExist:
@@ -596,13 +596,11 @@ def create_assessment(account, role, details):
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
         audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
-
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
         audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
-
         return {'error': error_message}
 
 

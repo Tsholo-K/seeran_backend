@@ -838,16 +838,15 @@ def search_assessments(user, role, details):
             return {'error': response}
         
         # Determine the classroom based on the request details
-        if details.get('grade') and details.get('subject'):
-            grade = requesting_account.school.grades.get(grade_id=details['grade'])
-            subject = grade.subjects.get(subject_id=details['subject'])
+        if details.get('subject'):
+            subject = requesting_account.school.subjects.get(subject_id=details['subject'])
 
             if status == 'due':
-                assessments = subject.assessments.filter(collected=False, grades_released=False)
+                assessments = subject.assessments.filter(collected=False, grades_released=False, classroom=None)
             elif status == 'collected':
-                assessments = subject.assessments.filter(collected=True, releasing_grades=False, grades_released=False)
+                assessments = subject.assessments.filter(collected=True, releasing_grades=False, grades_released=False, classroom=None)
             elif status == 'graded':
-                assessments = subject.assessments.filter(models.Q(releasing_grades=True) | models.Q(grades_released=True))
+                assessments = subject.assessments.filter(models.Q(releasing_grades=True) | models.Q(grades_released=True), classroom=None)
 
         elif details.get('classroom'):
             # Fetch the specific classroom based on classroom_id and school
