@@ -30,14 +30,14 @@ class AssessmentCreationSerializer(serializers.ModelSerializer):
         self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
 
 
-class AssessmentUpdateSerializer(serializers.ModelSerializer):
+class DueAssessmentUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Assessment
         fields = ['start_time', 'dead_line', 'title', 'total', 'percentage_towards_term_mark', 'term', 'moderator']
 
     def __init__(self, *args, **kwargs):
-        super(AssessmentUpdateSerializer, self).__init__(*args, **kwargs)
+        super(DueAssessmentUpdateSerializer, self).__init__(*args, **kwargs)
         # Remove the unique together validator that's added by DRF
         self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
         # Make all fields optional 
@@ -45,7 +45,29 @@ class AssessmentUpdateSerializer(serializers.ModelSerializer):
             self.fields[field].required = False
 
 
-class AssessmentUpdateFormDataSerializer(serializers.ModelSerializer):
+class CollectAssessmentUpdateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Assessment
+        fields = ['percentage_towards_term_mark', 'moderator']
+
+    def __init__(self, *args, **kwargs):
+        super(CollectAssessmentUpdateSerializer, self).__init__(*args, **kwargs)
+        # Remove the unique together validator that's added by DRF
+        self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
+        # Make all fields optional 
+        for field in self.fields:
+            self.fields[field].required = False
+
+
+class GradesReleasedAssessmentUpdateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Assessment
+        fields = ['percentage_towards_term_mark']
+
+
+class DueAssessmentUpdateFormDataSerializer(serializers.ModelSerializer):
 
     term = serializers.SerializerMethodField()
     topics = TopicSerializer(many=True)
@@ -60,6 +82,18 @@ class AssessmentUpdateFormDataSerializer(serializers.ModelSerializer):
 
     def get_term(self, obj):
         return str(obj.term.term_id)
+
+    def get_moderator(self, obj):
+        return BasicAccountDetailsEmailSerializer(obj.moderator).data if obj.moderator else None
+
+
+class CollectedAssessmentUpdateFormDataSerializer(serializers.ModelSerializer):
+
+    moderator = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Assessment
+        fields = ['percentage_towards_term_mark', 'moderator']
 
     def get_moderator(self, obj):
         return BasicAccountDetailsEmailSerializer(obj.moderator).data if obj.moderator else None

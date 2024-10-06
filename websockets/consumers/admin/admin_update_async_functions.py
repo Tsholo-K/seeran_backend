@@ -23,7 +23,7 @@ from schools.serializers import UpdateSchoolAccountSerializer, SchoolDetailsSeri
 from terms.serializers import UpdateTermSerializer, TermSerializer
 from subjects.serializers import UpdateSubjectSerializer, SubjectDetailsSerializer
 from classrooms.serializers import UpdateClassroomSerializer, ClassroomDetailsSerializer
-from assessments.serializers import AssessmentUpdateSerializer
+from assessments.serializers import DueAssessmentUpdateSerializer, CollectAssessmentUpdateSerializer, GradesReleasedAssessmentUpdateSerializer
 from assessment_transcripts.serializers import TranscriptUpdateSerializer
 from student_group_timetables.serializers import StudentGroupTimetableDetailsSerializer, StudentGroupTimetableUpdateSerializer
 
@@ -616,63 +616,71 @@ def update_assessment(user, role, details):
         # Check if the user has permission to update an assessment
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'ASSESSMENT'):
             response = f'could not proccess your request, you do not have the necessary permissions to update assessments.'
-            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', outcome='DENIED', server_response=response, school=requesting_account.school)
 
             return {'error': response}
+        
+        if 'assessment' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid assessment ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
 
-        assessment = requesting_account.school.assessments.get(assessment_id=details.get('assessment'))
+        assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'])
 
-        if details.get('moderator'):
-            if details['moderator'] == 'remove current moderator':
-                details['moderator'] = None
-            else:
-                moderator = BaseAccount.objects.only('pk').get(account_id=details['moderator'])
-                details['moderator'] = moderator.pk
 
         # Serialize the details for assessment creation
-        serializer = AssessmentUpdateSerializer(instance=assessment, data=details)
-        if serializer.is_valid():
-            # Create the assessment within a transaction to ensure atomicity
-            with transaction.atomic():
-                serializer.save()
+        if assessment.grades_released:
+            serializer = GradesReleasedAssessmentUpdateSerializer(instance=assessment, data=details)
+        else:
+            if details.get('moderator'):
+                if details['moderator'] == 'remove current moderator':
+                    details['moderator'] = None
+                else:
+                    moderator = BaseAccount.objects.only('id').get(account_id=details['moderator'])
+                    details['moderator'] = moderator.id
 
+            if assessment.collected:
+                serializer = CollectAssessmentUpdateSerializer(instance=assessment, data=details)
+            else:
+                serializer = DueAssessmentUpdateSerializer(instance=assessment, data=details)
                 if details.get('topics'):
                     topics = []
                     for name in details.get('topics'):
                         topic, _ = Topic.objects.get_or_create(name=name)
                         topics.append(topic)
 
-                    assessment.topics.set(topics)
+        if serializer.is_valid():
+            # Create the assessment within a transaction to ensure atomicity
+            with transaction.atomic():
+                serializer.save()
+                assessment.topics.set(topics)
                     
-                response = f'assessment {assessment.unique_identifier} has been successfully updated, the new updates will reflect imemdiately to all the students being assessed and their parents'
-                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='UPDATED', response=response, school=requesting_account.school,)
+                response = f'assessment {assessment.assessment_id} has been successfully updated, the new updates will reflect imemdiately to all the students being assessed and their parents'
+                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='UPDATED', server_response=response, school=requesting_account.school,)
 
             return {"message": response}
                 
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
         return {"error": error_response}
 
     except Assessment.DoesNotExist:
         # Handle the case where the provided assessment ID does not exist
-        return {'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
+        return {'error': 'Could not process your request, an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
 
     except BaseAccount.DoesNotExist:
         # Handle the case where the provided assessment ID does not exist
-        return {'error': 'an account with the provided credentials does not exist. please check the moderators account ID and try again.'}
+        return {'error': 'Could not process your request, an account with the provided credentials does not exist. please check the moderators account ID and try again.'}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {'error': error_message}
 
 

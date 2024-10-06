@@ -24,7 +24,7 @@ from accounts.serializers.general_serializers import SourceAccountSerializer
 from accounts.serializers.teachers.serializers import TeacherAccountSerializer
 from accounts.serializers.students.serializers import StudentSourceAccountSerializer
 from terms.serializers import FormTermsSerializer
-from assessments.serializers import AssessmentUpdateFormDataSerializer
+from assessments.serializers import DueAssessmentUpdateFormDataSerializer, CollectedAssessmentUpdateFormDataSerializer
 from assessment_transcripts.serializers import TranscriptFormSerializer
 
 # utility functions 
@@ -329,15 +329,27 @@ def form_data_for_updating_assessment(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
 
             return {'error': response}
+        
+        if 'assessment' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid assessment ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
 
-        assessment = requesting_account.school.assessments.select_related('grade', 'assessor', 'moderator').prefetch_related('grade__terms').get(assessment_id=details.get('assessment'))
+        if details.gret('collected'):
+            assessment = requesting_account.school.assessments.select_related('moderator').get(assessment_id=details['assessment'])
+            serialized_assessment = CollectedAssessmentUpdateFormDataSerializer(assessment).data
 
-        terms = assessment.grade.terms.all()        
-        serialized_terms = FormTermsSerializer(terms, many=True).data
+            return {"assessment": serialized_assessment}
+        
+        else:
+            assessment = requesting_account.school.assessments.select_related('grade', 'assessor', 'moderator').prefetch_related('grade__terms').get(assessment_id=details['assessment'])
 
-        serialized_assessment = AssessmentUpdateFormDataSerializer(assessment).data
+            terms = assessment.grade.terms
+            serialized_terms = FormTermsSerializer(terms, many=True).data
 
-        return {"terms": serialized_terms, "assessment": serialized_assessment}
+            serialized_assessment = DueAssessmentUpdateFormDataSerializer(assessment).data
+
+            return {"terms": serialized_terms, "assessment": serialized_assessment}
     
     except Assessment.DoesNotExist:
         # Handle the case where the provided grade ID does not exist
