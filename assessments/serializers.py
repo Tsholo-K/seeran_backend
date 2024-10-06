@@ -103,7 +103,6 @@ class GradedAssessmentsSerializer(serializers.ModelSerializer):
 
 class DueAssessmentSerializer(serializers.ModelSerializer):
 
-    title = serializers.SerializerMethodField()
     term = serializers.SerializerMethodField()
     assessment_type = serializers.CharField(source='get_assessment_type_display')
     topics = TopicSerializer(many=True)
@@ -112,9 +111,6 @@ class DueAssessmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assessment
         fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'start_time', 'dead_line', 'term', 'topics', 'moderator']
-
-    def get_title(self, obj):
-        return obj.title.title()
 
     def get_term(self, obj):
         return obj.term.term.title()
@@ -143,7 +139,6 @@ class CollectedAssessmentSerializer(serializers.ModelSerializer):
 
 class GradedAssessmentSerializer(serializers.ModelSerializer):
 
-    title = serializers.SerializerMethodField()
     term = serializers.SerializerMethodField()
     assessment_type = serializers.CharField(source='get_assessment_type_display')
     topics = TopicSerializer(many=True)
@@ -154,9 +149,6 @@ class GradedAssessmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assessment
         fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'date_collected', 'date_grades_released', 'term', 'topics', 'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'mode_score', 'standard_deviation', 'percentile_distribution', 'completion_rate', 'interquartile_range', 'top_performers', 'students_who_failed_the_assessment', 'moderator']
-
-    def get_title(self, obj):
-        return obj.title.title()
 
     def get_term(self, obj):
         return obj.term.term.title()
