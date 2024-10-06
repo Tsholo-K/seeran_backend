@@ -914,13 +914,13 @@ def search_assessment(user, role, details):
         assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'])
 
         if status == 'due':
-            assessment = requesting_account.school.assessments.filter(assessment_id=details['assessment'], collected=False, grades_released=False)
+            assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'], collected=False, grades_released=False)
             serialized_assessment = DueAssessmentSerializer(assessment).data
         elif status == 'collected':
-            assessment = requesting_account.school.assessments.filter(assessment_id=details['assessment'], collected=True, releasing_grades=False, grades_released=False)
+            assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'], collected=True, releasing_grades=False, grades_released=False)
             serialized_assessment = CollectedAssessmentSerializer(assessment).data 
         elif status == 'graded':
-            assessment = requesting_account.school.assessments.filter(models.Q(releasing_grades=True) | models.Q(grades_released=True), assessment_id=details['assessment'])
+            assessment = requesting_account.school.assessments.get(models.Q(releasing_grades=True) | models.Q(grades_released=True), assessment_id=details['assessment'])
             serialized_assessment = GradedAssessmentSerializer(assessment).data 
 
         return {"assessment": serialized_assessment}

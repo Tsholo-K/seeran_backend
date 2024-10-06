@@ -113,7 +113,7 @@ class DueAssessmentSerializer(serializers.ModelSerializer):
         fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'start_time', 'dead_line', 'term', 'topics', 'moderator']
 
     def get_term(self, obj):
-        return obj.term.term.title()
+        return obj.term.term
 
     def get_moderator(self, obj):
         return BasicAccountDetailsEmailSerializer(obj.moderator).data if obj.moderator else None
@@ -131,7 +131,7 @@ class CollectedAssessmentSerializer(serializers.ModelSerializer):
         fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'date_collected', 'term', 'topics', 'moderator']
 
     def get_term(self, obj):
-        return obj.term.term.title()
+        return obj.term.term
 
     def get_moderator(self, obj):
         return BasicAccountDetailsEmailSerializer(obj.moderator).data if obj.moderator else None
@@ -151,7 +151,7 @@ class GradedAssessmentSerializer(serializers.ModelSerializer):
         fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'date_collected', 'date_grades_released', 'term', 'topics', 'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'mode_score', 'standard_deviation', 'percentile_distribution', 'completion_rate', 'interquartile_range', 'top_performers', 'students_who_failed_the_assessment', 'moderator']
 
     def get_term(self, obj):
-        return obj.term.term.title()
+        return obj.term.term
     
     def get_top_performers(self, obj):
         return StudentBasicAccountDetailsEmailSerializer(obj.top_performers, many=True).data
