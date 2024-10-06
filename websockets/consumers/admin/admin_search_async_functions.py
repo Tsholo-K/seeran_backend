@@ -905,19 +905,22 @@ def search_assessment(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENTS', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
         
-        if not {'assessment', 'status'}.issubset(details) or details['status'] not in ['due', 'collected', 'graded']:
+        status = details['status']
+        if not {'assessment'}.issubset(details) or not status or status not in ['due', 'collected', 'graded']:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid assessment ID and status and try again.'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        status = details['status']
         assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'])
 
         if status == 'due':
+            assessment = requesting_account.school.assessments.filter(assessment_id=details['assessment'], collected=False, grades_released=False)
             serialized_assessment = DueAssessmentSerializer(assessment).data
         elif status == 'collected':
+            assessment = requesting_account.school.assessments.filter(assessment_id=details['assessment'], collected=True, releasing_grades=False, grades_released=False)
             serialized_assessment = CollectedAssessmentSerializer(assessment).data 
         elif status == 'graded':
+            assessment = requesting_account.school.assessments.filter(models.Q(releasing_grades=True) | models.Q(grades_released=True), assessment_id=details['assessment'])
             serialized_assessment = GradedAssessmentSerializer(assessment).data 
 
         return {"assessment": serialized_assessment}
