@@ -496,7 +496,7 @@ def form_data_for_assessment_submission_details(user, role, details):
         # Fetch the assessment from the requesting user's school
         assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'])
 
-        transcript = assessment.scores.select_related('student').filter(student__account_id=details['student']).first()
+        transcript = assessment.transcripts.select_related('student').filter(student__account_id=details['student']).first()
         if transcript:
             serialized_submission = TranscriptFormSerializer(transcript).data
         else:
