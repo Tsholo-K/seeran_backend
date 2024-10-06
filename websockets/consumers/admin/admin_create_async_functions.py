@@ -505,27 +505,30 @@ def create_classroom(account, role, details):
 
 
 @database_sync_to_async
-def create_assessment(user, role, details):
+def create_assessment(account, role, details):
     try:
         assessment = None  # Initialize assessment as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to create an assessment
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'ASSESSMENT'):
             response = f'could not proccess your request, you do not have the necessary permissions to create assessments.'
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
-
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         elif details.get('classroom'):
-            classroom = requesting_account.school.classes.select_related('grade', 'subject').prefetch_related('grade__terms').get(classroom_id=details.get('classroom'))
+            classroom = requesting_account.school.classrooms.select_related('grade', 'subject').get(classroom_id=details.get('classroom'))
 
             term = classroom.grade.terms.get(term_id=details.get('term'))
-            subject = classroom.subject.pk
 
-            details['classroom'] = classroom.pk
-            details['grade'] = classroom.grade.pk
+            subject = classroom.subject
+            if not subject:
+                response = "Could not proccess your request, invalid assessment creation details. The provided classroom is not linked to a subject."
+                return {'error': response}
+
+            details['classroom'] = classroom.id
+            details['grade'] = classroom.grade.id
  
         elif details.get('grade') and details.get('subject'):
             grade = requesting_account.school.grades.prefetch_related('terms', 'subjects').get(grade_id=details.get('grade'))
@@ -537,8 +540,7 @@ def create_assessment(user, role, details):
 
         else:
             response = "could not proccess your request, invalid assessment creation details. please provide all required information and try again."
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', outcome='ERROR', response=response, school=requesting_account.school)
-
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         if details.get('moderator'):
@@ -566,40 +568,40 @@ def create_assessment(user, role, details):
                     assessment.topics.set(topics)
                     
                 response = f'assessment {assessment.unique_identifier} has been successfully created, and will become accessible to all the students being assessed and their parents'
-                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='CREATED', response=response, school=requesting_account.school)
+                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='CREATED', server_response=response, school=requesting_account.school)
 
             return {"message": response}
         
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
 
         return {"error": error_response}
     
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
-        return {'error': 'a classroom in your school with the provided credentials does not exist. please check the classroom details and try again.'}
+        return {'error': 'Could not process your request, a classroom in your school with the provided credentials does not exist. Please check the classroom details and try again.'}
                        
     except Grade.DoesNotExist:
         # Handle the case where the provided account ID does not exist
-        return {'error': 'an grade for your school with the provided credentials does not exist, please check the grade details and try again'}
+        return {'error': 'Could not process your request, an grade for your school with the provided credentials does not exist. Please check the grade details and try again'}
                        
     except Term.DoesNotExist:
         # Handle the case where the provided account ID does not exist
-        return {'error': 'a term for your school with the provided credentials does not exist, please check the term details and try again'}
+        return {'error': 'Could not process your request, a term for your school with the provided credentials does not exist. Please check the term details and try again'}
         
     except Subject.DoesNotExist:
         # Handle case where the subject does not exist
-        return {'error': 'a subject in your school with the provided credentials does not exist, please check the subject details and try again.'}
+        return {'error': 'Could not process your request, a subject in your school with the provided credentials does not exist. Please check the subject details and try again.'}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
 
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
 
         return {'error': error_message}
 
