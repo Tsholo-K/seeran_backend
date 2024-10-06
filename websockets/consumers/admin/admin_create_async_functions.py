@@ -536,7 +536,7 @@ def create_assessment(account, role, details):
             term = grade.terms.get(term_id=details.get('term'))
             subject = grade.subjects.get(subject_id=details.get('subject'))
             
-            details['grade'] = grade.pk
+            details['grade'] = grade.id
 
         else:
             response = "could not proccess your request, invalid assessment creation details. please provide all required information and try again."
@@ -567,7 +567,7 @@ def create_assessment(account, role, details):
 
                     assessment.topics.set(topics)
                     
-                response = f'assessment {assessment.unique_identifier} has been successfully created, and will become accessible to all the students being assessed and their parents'
+                response = f"A new {f'classroom' if details.get('classroom') else f'grade wide'} assessment with assessment ID: {assessment.assessment_id} has been successfully created for {f'classroom group {classroom.group}, grade {classroom.grade.grade} {classroom.subject.lower()}' if details.get('classroom') else f'grade {grade.grade} {subject.subject.lower()}'}. It\'s details will become accessible to all account with access to the classrooms data, effective immedialtely."
                 audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='CREATED', server_response=response, school=requesting_account.school)
 
             return {"message": response}
