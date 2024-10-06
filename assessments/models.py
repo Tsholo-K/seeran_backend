@@ -281,7 +281,6 @@ class Assessment(models.Model):
         except Exception as e:
             raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
 
-    @transaction.atomic
     def mark_as_collected(self):
         """
         Marks the assessment as collected. This should be called only after the assessment's deadline has passed or all submissions have been received.

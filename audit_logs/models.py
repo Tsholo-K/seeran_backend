@@ -40,7 +40,7 @@ class AuditLog(models.Model):
     OUTCOME_CHOICES = [
         ('CREATED', 'Created'),
         ('UPDATED', 'Updated'),
-        ('ASSIGNEd', 'Assigned'),
+        ('ASSIGNED', 'Assigned'),
         ('DELETED', 'Deleted'),
         ('SUBMITED', 'Submited'),
         ('GENERATED', 'Generated'),
