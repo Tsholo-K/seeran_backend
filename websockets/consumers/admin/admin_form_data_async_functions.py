@@ -349,10 +349,10 @@ def form_data_for_updating_assessment(user, role, details):
 
 
 @database_sync_to_async
-def form_data_for_collecting_assessment_submissions(user, role, details):
+def form_data_for_collecting_assessment_submissions(account, role, details):
     try:
         # Retrieve the requesting user's account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = users_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to collect assessment submissions
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'COLLECT', 'ASSESSMENT'):

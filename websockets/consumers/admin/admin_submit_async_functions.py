@@ -24,40 +24,36 @@ from audit_logs import utils as audits_utilities
 
 
 @database_sync_to_async
-def submit_assessment_submissions(user, role, details):
+def submit_assessment_submissions(account, role, details):
     try:
+        students = details.get('students', '').split(', ')
+        if not students or students == ['']:
+            return {'error': 'your request could not be proccessed.. no students were provided'}
+
         assessment = None  # Initialize assessment as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = users_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to create an assessment
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'COLLECT', 'ASSESSMENT'):
             response = f'could not proccess your request, you do not have the necessary permissions to collect assessments.'
-            audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', outcome='DENIED', server_response=response, school=requesting_account.school)
 
             return {'error': response}
         
-        student_ids = details['students'].split(', ')
+        if 'assessment' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid assessment ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
 
-        # Validate that all student IDs exist and are valid
-        if not requesting_account.school.students.filter(account_id__in=student_ids).count() == len(student_ids):
-            return {'error': 'one or more student account IDs are invalid. please check the provided students information and try again'}
-        
-        # Fetch the assessment from the requesting user's school
-        assessment = requesting_account.school.assessments.get(assessment_id=details.get('assessment'))
-
-        # Prepare the list of Submission objects, dynamically setting status based on the deadline
-        submissions = []
-        for student_id in student_ids:
-            student = requesting_account.school.students.get(account_id=student_id)
-            submissions.append(AssessmentSubmission(assessment=assessment, student=student))
+        assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'])
 
         with transaction.atomic():
             # Bulk create Submission objects
-            AssessmentSubmission.objects.bulk_create(submissions)
+            assessment.collect_submissions(school=requesting_account.school, students=students)
 
-            response = f"assessment submission successfully collected from {len(student_ids)} students."
-            audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='COLLECTED', response=response, school=assessment.school)
+            response = f"assessment submission successfully collected from {len(students)} students."
+            audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='COLLECTED', server_response=response, school=assessment.school)
 
         return {"message": response}
 
@@ -67,14 +63,12 @@ def submit_assessment_submissions(user, role, details):
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {'error': error_message}
 
 
@@ -95,7 +89,6 @@ def submit_student_transcript_score(user, role, details):
         if not {'student', 'assessment'}.issubset(details):
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid account and assessnt IDs and try again'
             audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ACCOUNT', outcome='ERROR', response=response, school=requesting_account.school)
-
             return {'error': response}
 
         # Fetch the assessment from the requesting user's school

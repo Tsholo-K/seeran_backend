@@ -18,6 +18,7 @@ from term_subject_performances import tasks as  term_subject_performances_tasks
 from classroom_performances import tasks as  classroom_performances_tasks
 from assessments import tasks as  assessments_tasks
 
+batch_size = 20
 
 class Assessment(models.Model):
     """
@@ -253,7 +254,34 @@ class Assessment(models.Model):
         
         # Set assessment as formal if it contributes to the term mark
         self.formal = self.percentage_towards_term_mark > Decimal('0.00')
-    
+
+    def collect_submissions(self, school, students=None, status='ONTIME'):
+        try:
+            if students and school:
+                submissions_status = status
+
+                # Check if the current time is before or after the deadline and set status accordingly
+                if timezone.now() >= self.dead_line or self.collected:
+                    submissions_status = 'LATE'
+
+                students_who_submittedd = school.students.filter(account_id__in=students)
+                if students_who_submittedd.exists():
+                    # Get the Submission model dynamically
+                    AssessmentSubmission = apps.get_model('assessment_submissions', 'AssessmentSubmission')
+
+                    # Prepare the list of Submission objects, dynamically setting status based on the deadline
+                    submissions = []
+                    for student in students_who_submittedd:
+                        submissions.append(AssessmentSubmission(assessment=self, student=student, status=submissions_status))
+
+                    for i in range(0, len(submissions), batch_size):
+                        AssessmentSubmission.objects.bulk_create(submissions[i:i + batch_size])
+
+            else:
+                raise ValidationError("Could not proccess your request, no students were provided to be added or removed from the classroom. please provide a valid list of students and try again")
+        except Exception as e:
+            raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
+
     @transaction.atomic
     def mark_as_collected(self):
         """
@@ -311,7 +339,6 @@ class Assessment(models.Model):
                 non_submissions.append(Submission(assessment=self, student=student, status='NOT_SUBMITTED'))
                 penalties.append(Transcript(assessment=self, student=student, score=0, weighted_score=0, percent_score=0, comment='you have failed to submit this assessment and have been penalized for non submission'))
             
-            batch_size = 50
             for i in range(0, len(non_submissions), batch_size):
                 Submission.objects.bulk_create(non_submissions[i:i + batch_size])
 
@@ -441,7 +468,6 @@ class Assessment(models.Model):
             transcripts_to_update.append(transcript)
 
         # Batch update the transcripts
-        batch_size = 50
         for i in range(0, len(transcripts_to_update), batch_size):
             Transcript.objects.bulk_update(transcripts_to_update[i:i + batch_size], ['percentile'])
 
