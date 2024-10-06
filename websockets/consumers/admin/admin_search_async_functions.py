@@ -862,7 +862,6 @@ def search_assessments(user, role, details):
         else:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid grade and subject IDs or a valid classroom ID and try again'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
-
             return {'error': response}
 
         if assessments.exists():

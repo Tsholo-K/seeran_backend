@@ -357,38 +357,28 @@ def form_data_for_collecting_assessment_submissions(user, role, details):
         # Check if the user has permission to collect assessment submissions
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'COLLECT', 'ASSESSMENT'):
             response = 'You do not have the necessary permissions to collect assessment submissions.'
-            audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+        
+        if not {'assessment'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid assessment ID and try again.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         # Fetch the assessment from the requesting user's school
-        assessment = requesting_account.school.assessments.select_related('classroom', 'grade').get(assessment_id=details.get('assessment'))
+        assessment = requesting_account.school.assessments.select_related('classroom', 'grade').get(assessment_id=details['assessment'])
 
         # Get the list of students who have already submitted the assessment
-        submitted_student_ids = assessment.submissions.values_list('student__account_id', flat=True)
-
-        search_filters = models.Q()
-
-        # Apply search filters if provided
-        if 'search_query' in details:
-            search_query = details.get('search_query')
-            search_filters &= (models.Q(name__icontains=search_query) | models.Q(surname__icontains=search_query) | models.Q(account_id__icontains=search_query))
-
-        # Apply cursor for pagination using the primary key (id)
-        if 'cursor' in details and details['cursor'] is not None:
-            cursor = details.get('cursor')
-            search_filters &= models.Q(id__gt=cursor)
+        submitted_student_ids = assessment.submissions.values_list('student__id', flat=True)
 
         if assessment.classroom:
             # Fetch students in the classroom who haven't submitted
-            students = assessment.classroom.students.filter(search_filters).only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').exclude(account_id__in=submitted_student_ids).order_by('id')[:10]
+            students = assessment.classroom.students.only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').exclude(id__in=submitted_student_ids)
         elif assessment.grade:
             # Fetch students in the grade who haven't submitted
-            students = assessment.grade.students.filter(search_filters).only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').exclude(account_id__in=submitted_student_ids).order_by('id')[:10]
+            students = assessment.grade.students.only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').exclude(id__in=submitted_student_ids)
         else:
             return {'error': 'No valid classroom or grade found for the assessment.'}
-        
-        if not students:
-            return {'students': [], 'cursor': None}
         
         # Serialize the student data
         serialized_students = StudentSourceAccountSerializer(students, many=True).data
@@ -399,10 +389,7 @@ def form_data_for_collecting_assessment_submissions(user, role, details):
         # Encode compressed data as base64 for safe transport
         encoded_students = base64.b64encode(compressed_students).decode('utf-8')
 
-        # Determine the next cursor (based on the primary key)
-        next_cursor = students[len(students) - 1].id if students and len(students) > 9 else None
-
-        return {'students': encoded_students, 'cursor': next_cursor}
+        return {'students': encoded_students}
     
     except Assessment.DoesNotExist:
         # Handle the case where the provided grade ID does not exist
