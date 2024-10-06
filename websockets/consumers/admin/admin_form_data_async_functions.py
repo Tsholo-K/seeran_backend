@@ -335,7 +335,7 @@ def form_data_for_updating_assessment(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        if details.gret('collected'):
+        if details.get('collected'):
             assessment = requesting_account.school.assessments.select_related('moderator').get(assessment_id=details['assessment'])
             serialized_assessment = CollectedAssessmentUpdateFormDataSerializer(assessment).data
 
