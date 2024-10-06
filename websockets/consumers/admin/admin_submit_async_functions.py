@@ -181,6 +181,8 @@ def submit_attendance_register(account, role, details):
             students = details.get('students', '').split(', ')
 
             if created:
+                if not students or students == ['']:
+                    students = None
                 absent = True
                 response = 'attendance register successfully taken for today'
 
