@@ -170,7 +170,6 @@ class Assessment(models.Model):
         # Returns a string representation of the unique identifier for this assessment.
         return str(self.assessment_id)
         
-    @transaction.atomic
     def save(self, *args, **kwargs):
         """
         Overrides the save method to run custom validation logic via the clean method.
