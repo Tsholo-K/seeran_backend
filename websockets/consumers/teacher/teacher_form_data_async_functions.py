@@ -131,13 +131,13 @@ def form_data_for_updating_assessment(account, role, details):
             return {'error': response}
 
         if details.get('collected'):
-            assessment = requesting_account.school.assessments.select_related('moderator').get(assessment_id=details['assessment'], assessment__classroom_id__in=requesting_account.taught_classrooms.values_list('id', flat=True))
+            assessment = requesting_account.school.assessments.select_related('moderator').get(assessment_id=details['assessment'], classroom_id__in=requesting_account.taught_classrooms.values_list('id', flat=True))
             serialized_assessment = CollectedAssessmentUpdateFormDataSerializer(assessment).data
 
             return {"assessment": serialized_assessment}
         
         else:
-            assessment = requesting_account.school.assessments.select_related('grade', 'assessor', 'moderator').prefetch_related('grade__terms').get(assessment_id=details['assessment'], assessment__classroom_id__in=requesting_account.taught_classrooms.values_list('id', flat=True))
+            assessment = requesting_account.school.assessments.select_related('grade', 'assessor', 'moderator').prefetch_related('grade__terms').get(assessment_id=details['assessment'], classroom_id__in=requesting_account.taught_classrooms.values_list('id', flat=True))
 
             terms = assessment.grade.terms
             serialized_terms = FormTermsSerializer(terms, many=True).data
