@@ -484,12 +484,12 @@ def form_data_for_assessment_submission_details(user, role, details):
         # Check if the user has permission to collect assessment submissions
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'GRADE', 'ASSESSMENT'):
             response = 'You do not have the necessary permissions to grade assessment submissions.'
-            audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ASSESSMENT', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
         
         if not {'student', 'assessment'}.issubset(details):
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid account and assessnt IDs and try again'
-            audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ACCOUNT', outcome='ERROR', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ACCOUNT', outcome='ERROR', server_response=response, school=requesting_account.school)
 
             return {'error': response}
         
