@@ -100,7 +100,7 @@ def submit_student_transcript_score(account, role, details):
 
         student = requesting_account.school.students.get(account_id=details['student'])
 
-        transcript, created = student.transcripts.get_or_create(assessment=assessment, defaults={'school': requesting_account.school})
+        transcript, created = student.transcripts.get_or_create(assessment=assessment, defaults={'school': requesting_account.school, 'score': details['score']})
 
         # Initialize the serializer with the prepared data
         serializer = TranscriptUpdateSerializer(transcript, data=details)
