@@ -67,7 +67,8 @@ class AssessmentTest(TestCase):
             student_count= 3,
             teacher_count= 1,
             classroom_count= 1,
-            grade= self.grade
+            grade= self.grade,
+            school= self.school
         )
 
         # Create a Term instance linked to the Grade

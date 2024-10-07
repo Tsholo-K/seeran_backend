@@ -31,8 +31,6 @@ class ClassroomAttendanceRegister(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=['timestamp', 'classroom'], name='unique_date_classroom'),
-            models.UniqueConstraint(fields=['timestamp', 'classroom', 'absent_students'], name='unique_date_absent_students_classroom'),
-            models.UniqueConstraint(fields=['timestamp', 'classroom', 'late_students'], name='unique_date_late_students_classroom'),
         ]
         unique_together = ('timestamp', 'classroom')
         ordering = ['-timestamp']
