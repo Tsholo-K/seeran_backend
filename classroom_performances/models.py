@@ -260,7 +260,7 @@ class ClassroomPerformance(models.Model):
 
         self.save()
 
-        term_performance, created = self.classroom.subject.termly_performances.get_or_create(term=self.term, defaults={'school': self.school})
+        term_performance, created = self.term.subject_performances.get_or_create(subject=self.classroom.subject, defaults={'school':self.school})
         term_subject_performances_tasks.update_term_performance_metrics_task.delay(term_performance_id=term_performance.id)
         # print(f'term_performance {term_performance}')
         # print(f'classroom performance metrics calculated successfully')
