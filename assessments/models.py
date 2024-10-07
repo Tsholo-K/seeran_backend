@@ -439,7 +439,7 @@ class Assessment(models.Model):
         }
 
         # Get the Transcript model dynamically
-        Transcript = apps.get_model('transcripts', 'Transcript')
+        Transcript = apps.get_model('assessment_transcripts', 'AssessmentTranscript')
 
         # Create a dictionary mapping student IDs to percentiles
         student_to_percentile = {}

@@ -136,7 +136,7 @@ class StudentSubjectPerformance(models.Model):
         pass_mark = self.subject.pass_mark
 
         # Fetch the student's transcripts and submissions for the subject's assessments.
-        students_transcripts = grade_assessments.transcripts.filter(student=self.student)
+        students_transcripts = self.student.transcripts.filter(assessment__in=grade_assessments)
         students_transcripts_data = students_transcripts.aggregate(
             score=models.Sum('weighted_score'),
             maximum_score_achievable=models.Sum('assessment__percentage_towards_term_mark'),
