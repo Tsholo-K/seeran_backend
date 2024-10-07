@@ -982,7 +982,7 @@ def search_transcript(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        transcript = requesting_account.transcripts.select_related('student').get(transcript_id=details['transcript'])
+        transcript = requesting_account.school.transcripts.select_related('student').get(transcript_id=details['transcript'])
         serialized_transcript = TranscriptSerializer(transcript).data 
 
         return {"transcript": serialized_transcript}

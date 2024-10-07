@@ -315,23 +315,26 @@ def search_assessment(account, role, details):
         status = details['status']
 
         if status == 'due':
-            assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'], collected=False, grades_released=False)
-        elif status == 'collected':
-            assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'], collected=True, releasing_grades=False, grades_released=False)
-        elif status == 'graded':
-            assessment = requesting_account.school.assessments.get(models.Q(releasing_grades=True) | models.Q(grades_released=True), assessment_id=details['assessment'])
-
-        if not requesting_account.taught_classrooms.filter(id=assessment.classroom_id):
-            response = f'Could not process your request, you do not have the necessary permissions to view this assessments. You can not view assessement you do not assess or moderate.'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='DENIED', server_response=response, school=requesting_account.school)
-            return {'error': response}
-
-        if status == 'due':
+            assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'], assessment__classroom_id__in=requesting_account.taught_classrooms.values_list('id', flat=True), collected=False, grades_released=False)
             serialized_assessment = DueAssessmentSerializer(assessment).data
         elif status == 'collected':
+            assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'], assessment__classroom_id__in=requesting_account.taught_classrooms.values_list('id', flat=True), collected=True, releasing_grades=False, grades_released=False)
             serialized_assessment = CollectedAssessmentSerializer(assessment).data 
         elif status == 'graded':
+            assessment = requesting_account.school.assessments.get(models.Q(releasing_grades=True) | models.Q(grades_released=True), assessment__classroom_id__in=requesting_account.taught_classrooms.values_list('id', flat=True), assessment_id=details['assessment'])
             serialized_assessment = GradedAssessmentSerializer(assessment).data 
+
+        # if not requesting_account.taught_classrooms.filter(id=assessment.classroom_id):
+        #     response = f'Could not process your request, you do not have the necessary permissions to view this assessments. You can not view assessement you do not assess or moderate.'
+        #     audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='DENIED', server_response=response, school=requesting_account.school)
+        #     return {'error': response}
+
+        # if status == 'due':
+        #     serialized_assessment = DueAssessmentSerializer(assessment).data
+        # elif status == 'collected':
+        #     serialized_assessment = CollectedAssessmentSerializer(assessment).data 
+        # elif status == 'graded':
+        #     serialized_assessment = GradedAssessmentSerializer(assessment).data 
 
         return {"assessment": serialized_assessment}
         
