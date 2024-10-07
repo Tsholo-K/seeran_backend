@@ -26,14 +26,14 @@ class TranscriptUpdateSerializer(serializers.ModelSerializer):
 class TranscriptFormSerializer(serializers.ModelSerializer):
 
     student = StudentSourceAccountSerializer()
-    total = serializers.SerializerMethodField()
+    assessment_total = serializers.SerializerMethodField()
 
     class Meta:
         model = AssessmentTranscript
-        fields = ['student', 'score', 'comment', 'total']
+        fields = ['student', 'score', 'comment', 'assessment_total']
 
-    def get_total(self, obj):
-        return str(obj.assessment.total)
+    def get_assessment_total(self, obj):
+        return obj.assessment.total
 
 
 class TranscriptsSerializer(serializers.ModelSerializer):
