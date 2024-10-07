@@ -14,13 +14,16 @@ from django.utils.translation import gettext as _
 from accounts.models import Teacher, Student
 from classrooms.models import Classroom
 from school_attendances.models import ClassroomAttendanceRegister
+from assessments.models import Assessment
+from assessment_transcripts.models import AssessmentTranscript
 
 # serilializers
 from accounts.serializers.students.serializers import StudentSourceAccountSerializer, LeastAccountDetailsSerializer
 from accounts.serializers.parents.serializers import ParentAccountSerializer
 from school_announcements.serializers import AnnouncementSerializer
-from classrooms.serializers import TeacherClassroomsSerializer, ClassroomSerializer
-from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer
+from classrooms.serializers import ClassroomSerializer
+from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, GradedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer, GradedAssessmentSerializer
+from assessment_transcripts.serializers import TranscriptsSerializer, TranscriptSerializer
 from student_activities.serializers import ActivitiesSerializer
 from timetables.serializers import TimetableSerializer
 
@@ -179,14 +182,14 @@ def search_classroom(account, role, details):
             return {'error': response}
 
         # Fetch the specific classroom based on class_id and school
-        classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'])
+        classroom = requesting_account.school.classrooms.get(classroom_id=details['classroom'])
         serialized_classroom = ClassroomSerializer(classroom).data
 
         return {"classroom": serialized_classroom}
     
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
-        return {'error': _('Could not process your request, a classroom you are teaching with the provided credentials does not exist. Please review the classroom details, make sure you\'re the classroom teacher and try again.')}
+        return {'error': _('Could not process your request, a classroom with the provided details does not exist. Please review the classroom details and try again.')}
     
     except Exception as e:
         # Handle any other unexpected errors
@@ -244,92 +247,166 @@ def search_month_attendance_records(account, role, details):
 
 
 @database_sync_to_async
-def search_assessments(account, details):
+def search_assessments(account, role, details):
     try:
-        # Build the queryset for the requesting account with the necessary related fields.
-        requesting_account = Teacher.objects.select_related('school').get(account_id=account)
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
         
         # Check if the user has permission to create an assessment
-        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ASSESSMENTS'):
-            response = f'could not proccess your request, you do not have the necessary permissions to view assessments. please contact your administrators to adjust you permissions for viewing assessments.'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENTS', outcome='DENIED', response=response, school=requesting_account.school)
+        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ASSESSMENT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view assessments. please contact your principal to adjust you permissions for viewing assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENTS', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
 
+        if not {'classroom', 'status'}.issubset(details) or details['status'] not in ['due', 'collected', 'graded']:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid assessment ID and status and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='SUBJECT', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
         
+        status = details.get('status')
         # Fetch the specific classroom based on classroom_id and school
-        classroom = requesting_account.taught_classes.get(classroom_id=details['classroom'])
-        assessments = classroom.assessments.filter(collected=details.get('collected'), grades_released=False)
-        
-        if not assessments:
-            return {"assessments": []}
+        classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'])
 
-        # Serialize and return the assessments data
-        serialized_assessments = CollectedAssessmentsSerializer(assessments, many=True).data if details.get('collected') else DueAssessmentsSerializer(assessments, many=True).data
+        if status == 'due':
+            assessments = classroom.assessments.filter(collected=False, grades_released=False)
+        elif status == 'collected':
+            assessments = classroom.assessments.filter(collected=True, releasing_grades=False, grades_released=False)
+        elif status == 'graded':
+            assessments = classroom.assessments.filter(models.Q(releasing_grades=True) | models.Q(grades_released=True))
+
+        if assessments.exists():
+            if status == 'due':
+                serialized_assessments = DueAssessmentsSerializer(assessments, many=True).data
+            elif status == 'collected':
+                serialized_assessments = CollectedAssessmentsSerializer(assessments, many=True).data 
+            elif status == 'graded':
+                serialized_assessments = GradedAssessmentsSerializer(assessments, many=True).data 
+        else:
+            serialized_assessments = []
 
         return {"assessments": serialized_assessments}
 
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
-        return {'error': _('A classroom in your school with the provided details does not exist. Please check the classroom details and try again.')}
+        return {'error': _('Could not process your request, classroom in your school with the provided details does not exist. Please review the classroom details and try again.')}
     
     except Exception as e:
         # Handle any other unexpected errors
         return {'error': str(e)}
 
 
-
 @database_sync_to_async
-def search_teacher_classes(user):
+def search_assessment(account, role, details):
     try:
-        requesting_account = Teacher.objects.prefetch_related('taught_classes').get(account_id=user)
-        classes = requesting_account.taught_classes.exclude(register_class=True)
-
-        serializer = TeacherClassroomsSerializer(classes, many=True)
-
-        return {"classes": serializer.data}
-               
-    except Teacher.DoesNotExist:
-        # Handle the case where the requested teacher account does not exist.
-        return {'error': 'A teacher account with the provided credentials does not exist, please check the account details and try again'}
-    
-    except Exception as e:
-        return { 'error': str(e) }
-
-
-@database_sync_to_async
-def search_teacher_schedule_schedules(user, role, details):
-    try:
-        teacher = Teacher.objects.prefetch_related('teacher_schedule__schedules').get(account_id=user)
-
-        # Check if the teacher has a schedule
-        if hasattr(teacher, 'teacher_schedule'):
-            schedules = teacher.teacher_schedule.schedules.all()
-
-        else:
-            return {'schedules': []}
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
         
-        # Serialize the schedules to return them in the response
-        serialized_schedules = TimetableSerializer(schedules, many=True).data
+        # Check if the user has permission to create an assessment
+        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ASSESSMENT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view assessments. please contact your principal to adjust you permissions for viewing assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENTS', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+        
+        if not {'classroom', 'status'}.issubset(details) or details['status'] not in ['due', 'collected', 'graded']:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid assessment ID and status and try again.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
 
-        return {"schedules": serialized_schedules}
-               
-    except Teacher.DoesNotExist:
-        # Handle the case where the requested teacher account does not exist.
-        return {'error': 'A teacher account with the provided credentials does not exist, please check the account details and try again'}
-    
+        status = details['status']
+
+        if status == 'due':
+            assessment = requesting_account.taught_classrooms.assessments.get(assessment_id=details['assessment'], collected=False, grades_released=False)
+            serialized_assessment = DueAssessmentSerializer(assessment).data
+        elif status == 'collected':
+            assessment = requesting_account.taught_classrooms.assessments.get(assessment_id=details['assessment'], collected=True, releasing_grades=False, grades_released=False)
+            serialized_assessment = CollectedAssessmentSerializer(assessment).data 
+        elif status == 'graded':
+            assessment = requesting_account.taught_classrooms.assessments.get(models.Q(releasing_grades=True) | models.Q(grades_released=True), assessment_id=details['assessment'])
+            serialized_assessment = GradedAssessmentSerializer(assessment).data 
+
+        return {"assessment": serialized_assessment}
+        
+    except Assessment.DoesNotExist:
+        # Handle the case where the provided assessment ID does not exist
+        return { 'error': 'Could not process your request, an assessment in any of your classrooms with the provided credentials does not exist, please review the assessment details and try again.'}
+        
     except Exception as e:
         # Handle any other unexpected errors
         return {'error': str(e)}
 
 
 @database_sync_to_async
-def search_student_class_card(user, role, details):
+def search_transcripts(account, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+        
+        # Check if the user has permission to create an assessment
+        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ASSESSMENT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view assessments. please contact your principal to adjust you permissions for viewing assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENTS', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+        
+        if 'assessment' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid assessment ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        assessment = requesting_account.taught_classrooms.assessments.prefetch_related('transcripts').get(assessment_id=details['assessment'])
+        transcripts = assessment.transcripts.select_related('student').only('student__surname', 'student__name')
+
+        serialized_transcripts = TranscriptsSerializer(transcripts, many=True).data 
+
+        return {"transcripts": serialized_transcripts}
+        
+    except Assessment.DoesNotExist:
+        # Handle the case where the provided assessment ID does not exist
+        return { 'error': 'Could not process your request, an assessment in your school with the provided credentials does not exist, please review the assessment details and try again.'}
+        
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def search_transcript(account, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+        
+        # Check if the user has permission to create an assessment
+        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ASSESSMENT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view assessments. please contact your principal to adjust you permissions for viewing assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENTS', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+        
+        if 'transcript' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid transcript ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        transcript = requesting_account.taught_classrooms.assessments.transcripts.select_related('student').get(transcript_id=details['transcript'])
+        serialized_transcript = TranscriptSerializer(transcript).data 
+
+        return {"transcript": serialized_transcript}
+        
+    except AssessmentTranscript.DoesNotExist:
+        # Handle the case where the provided assessment ID does not exist
+        return { 'error': 'Could not process your request, a transcript in your school with the provided credentials does not exist, please review the transcript details and try again.'}
+        
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def search_student_class_card(account, role, details):
     try:
         # Retrieve the requesting users account and related attr
-        requesting_account = accounts_utilities.get_account_and_attr(user, role)
+        requesting_account = accounts_utilities.get_account_and_attr(account, role)
 
         # Retrieve the requested users account and related attr
-        requested_account = accounts_utilities.get_account_and_attr(user, role)
+        requested_account = accounts_utilities.get_account_and_attr(account, role)
 
         # Check permissions
         permission_error = permission_checks.check_profile_or_details_view_permissions(requesting_account, requested_account)

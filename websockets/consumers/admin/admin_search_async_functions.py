@@ -911,8 +911,6 @@ def search_assessment(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'])
-
         if status == 'due':
             assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'], collected=False, grades_released=False)
             serialized_assessment = DueAssessmentSerializer(assessment).data
@@ -951,8 +949,8 @@ def search_transcripts(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        assessment = requesting_account.school.assessments.prefetch_related('scores').get(assessment_id=details['assessment'])
-        transcripts = assessment.scores.select_related('student').only('student__surname', 'student__name')
+        assessment = requesting_account.school.assessments.prefetch_related('transcripts').get(assessment_id=details['assessment'])
+        transcripts = assessment.transcripts.select_related('student').only('student__surname', 'student__name')
 
         serialized_transcripts = TranscriptsSerializer(transcripts, many=True).data 
 

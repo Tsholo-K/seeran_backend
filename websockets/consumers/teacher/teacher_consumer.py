@@ -151,10 +151,10 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             'search_month_attendance_records': teacher_search_async_functions.search_month_attendance_records,
 
             'search_assessments': teacher_search_async_functions.search_assessments,
-            # 'search_assessment': teacher_search_async_functions.search_assessment,
+            'search_assessment': teacher_search_async_functions.search_assessment,
 
-            # 'search_transcripts': teacher_search_async_functions.search_transcripts,
-            # 'search_transcript': teacher_search_async_functions.search_transcript,
+            'search_transcripts': teacher_search_async_functions.search_transcripts,
+            'search_transcript': teacher_search_async_functions.search_transcript,
 
             # 'search_student_classroom_card': teacher_search_async_functions.search_student_classroom_card,
             # 'search_activity': teacher_search_async_functions.search_activity,
@@ -229,9 +229,9 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             'form_data_for_setting_assessment' : teacher_form_data_async_functions.form_data_for_setting_assessment,
             'form_data_for_updating_assessment' : teacher_form_data_async_functions.form_data_for_updating_assessment,
 
-            # 'form_data_for_collecting_assessment_submissions' : teacher_form_data_async_functions.form_data_for_collecting_assessment_submissions,
-            # 'form_data_for_assessment_submissions' : teacher_form_data_async_functions.form_data_for_assessment_submissions,
-            # 'form_data_for_assessment_submission_details' : teacher_form_data_async_functions.form_data_for_assessment_submission_details,
+            'form_data_for_collecting_assessment_submissions' : teacher_form_data_async_functions.form_data_for_collecting_assessment_submissions,
+            'form_data_for_assessment_submissions' : teacher_form_data_async_functions.form_data_for_assessment_submissions,
+            'form_data_for_assessment_submission_details' : teacher_form_data_async_functions.form_data_for_assessment_submission_details,
         }
 
         func = form_data_map.get(description)

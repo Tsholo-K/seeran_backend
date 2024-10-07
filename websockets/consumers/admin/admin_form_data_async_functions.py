@@ -29,7 +29,7 @@ from assessments.serializers import DueAssessmentUpdateFormDataSerializer, Colle
 from assessment_transcripts.serializers import TranscriptFormSerializer
 
 # utility functions 
-from accounts import utils as users_utilities
+from accounts import utils as accounts_utilities
 from account_permissions import utils as permissions_utilities
 from audit_logs import utils as audits_utilities
 
@@ -38,7 +38,7 @@ from audit_logs import utils as audits_utilities
 def form_data_for_subscribing_accounts_to_permission_group(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         # Check if the user has permission to create an assessment
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'PERMISSION'):
@@ -87,7 +87,7 @@ def form_data_for_subscribing_accounts_to_permission_group(user, role, details):
 def form_data_for_creating_classroom(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         # Check if the user has permission to create classrooms
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'CLASSROOM'):
@@ -131,7 +131,7 @@ def form_data_for_updating_classroom_teacher(account, role, details):
     try:
         classroom = None  # Initialize classroom as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(account, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to update classrooms
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'CLASSROOM'):
@@ -176,7 +176,7 @@ def form_data_for_adding_students_to_classroom(user, role, details):
     try:
         classroom = None  # Initialize classroom as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         # Check if the user has permission to update classrooms
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'CLASSROOM'):
@@ -240,7 +240,7 @@ def form_data_for_adding_students_to_classroom(user, role, details):
 def form_data_for_classroom_attendance_register(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         # Check if the user has permission to create an assessment
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'SUBMIT', 'ATTENDANCE'):
@@ -290,7 +290,7 @@ def form_data_for_classroom_attendance_register(user, role, details):
 def form_data_for_setting_assessment(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(account, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to create an assessment
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'ASSESSMENT'):
@@ -319,15 +319,15 @@ def form_data_for_setting_assessment(account, role, details):
 
 
 @database_sync_to_async
-def form_data_for_updating_assessment(user, role, details):
+def form_data_for_updating_assessment(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to create an assessment
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'ASSESSMENT'):
             response = f'could not proccess your request, you do not have the necessary permissions to update assessments.'
-            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', outcome='DENIED', server_response=response, school=requesting_account.school)
 
             return {'error': response}
         
@@ -365,7 +365,7 @@ def form_data_for_updating_assessment(user, role, details):
 def form_data_for_collecting_assessment_submissions(account, role, details):
     try:
         # Retrieve the requesting user's account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(account, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to collect assessment submissions
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'COLLECT', 'ASSESSMENT'):
@@ -416,43 +416,29 @@ def form_data_for_collecting_assessment_submissions(account, role, details):
 def form_data_for_assessment_submissions(user, role, details):
     try:
         # Retrieve the requesting user's account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
 
         # Check if the user has permission to collect assessment submissions
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'COLLECT', 'ASSESSMENT'):
             response = 'You do not have the necessary permissions to collect assessment submissions.'
-            audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         # Fetch the assessment from the requesting user's school
         assessment = requesting_account.school.assessments.select_related('classroom', 'grade').get(assessment_id=details.get('assessment'))
 
         # Get the list of students who have already submitted the assessment
-        submitted_student_ids = assessment.submissions.values_list('student__account_id', flat=True)
-
-        search_filters = models.Q()
-
-        # Apply search filters if provided
-        if 'search_query' in details:
-            search_query = details.get('search_query')
-            search_filters &= (models.Q(name__icontains=search_query) | models.Q(surname__icontains=search_query) | models.Q(account_id__icontains=search_query))
-
-        # Apply cursor for pagination using the primary key (id)
-        if 'cursor' in details and details['cursor'] is not None:
-            cursor = details.get('cursor')
-            search_filters &= models.Q(id__gt=cursor)
+        submitted_student_ids = assessment.submissions.values_list('id', flat=True)
 
         if assessment.classroom:
             # Fetch students in the classroom who haven't submitted
-            students = assessment.classroom.students.filter(search_filters).only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').filter(account_id__in=submitted_student_ids).order_by('id')[:10]
+            students = assessment.classroom.students.only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').filter(id__in=submitted_student_ids)
         elif assessment.grade:
             # Fetch students in the grade who haven't submitted
-            students = assessment.grade.students.filter(search_filters).only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').filter(account_id__in=submitted_student_ids).order_by('id')[:10]
-        else:
-            return {'error': 'No valid classroom or grade found for the assessment.'}
+            students = assessment.grade.students.only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').filter(id__in=submitted_student_ids)
         
         if not students:
-            return {'students': [], 'cursor': None}
+            return {'students': []}
         
         # Serialize the student data
         serialized_students = StudentSourceAccountSerializer(students, many=True).data
@@ -463,10 +449,7 @@ def form_data_for_assessment_submissions(user, role, details):
         # Encode compressed data as base64 for safe transport
         encoded_students = base64.b64encode(compressed_students).decode('utf-8')
 
-        # Determine the next cursor (based on the primary key)
-        next_cursor = students[len(students) - 1].id if students and len(students) > 9 else None
-
-        return {'students': encoded_students, 'cursor': next_cursor}
+        return {'students': encoded_students}
     
     except Assessment.DoesNotExist:
         # Handle the case where the provided grade ID does not exist
@@ -480,7 +463,7 @@ def form_data_for_assessment_submissions(user, role, details):
 def form_data_for_assessment_submission_details(account, role, details):
     try:
         # Retrieve the requesting user's account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(account, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to collect assessment submissions
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'SUBMIT', 'ASSESSMENT'):
@@ -525,7 +508,7 @@ def form_data_for_assessment_submission_details(account, role, details):
 def form_data_for_adding_students_to_group_schedule(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
         
         # Retrieve the group schedule with the provided ID and related data
         group_schedule = StudentGroupTimetable.objects.select_related('grade').get(group_schedule_id=details.get('group_schedule_id'), grade__school=requesting_account.school)
