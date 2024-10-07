@@ -792,31 +792,31 @@ def update_assessment_as_collected(user, role, details):
 
 
 @database_sync_to_async
-def update_assessment_as_graded(user, role, details):
+def update_assessment_as_graded(account, role, details):
     try:
         assessment = None  # Initialize assessment as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to create an assessment
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'ASSESSMENT'):
             response = f'could not proccess your request, you do not have the necessary permissions to update assessments.'
             audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', outcome='DENIED', response=response, school=requesting_account.school)
-
             return {'error': response}
                 
         if 'assessment' not in details:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid assessment ID and try again'
             audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', outcome='ERROR', response=response, school=requesting_account.school)
-
             return {'error': response}
 
         # Fetch the assessment from the requesting user's school
-        assessment = requesting_account.school.assessments.get(assessment_id=details.get('assessment'))
-        release_grades_task.delay(assessment.id)
+        assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'])
 
-        response = f"the grades release process for assessment with assessment ID {assessment.title} has been triggered, results will be made available once performance metrics have been calculated and updated."
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='UPDATED', response=response, school=assessment.school)
+        with transaction.atomic():
+            release_grades_task.delay(assessment.id)
+
+            response = f"The grades release process for assessment with assessment ID {assessment.title} has been triggered, results will be made available once performance metrics have been calculated and updated."
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='UPDATED', response=response, school=assessment.school)
 
         return {"message": response}
 
