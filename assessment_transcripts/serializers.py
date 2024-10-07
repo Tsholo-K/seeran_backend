@@ -33,7 +33,7 @@ class TranscriptFormSerializer(serializers.ModelSerializer):
         fields = ['student', 'score', 'comment', 'total']
 
     def get_total(self, obj):
-        return obj.assessment.total
+        return str(obj.assessment.total)
 
 
 class TranscriptsSerializer(serializers.ModelSerializer):
