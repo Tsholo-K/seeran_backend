@@ -321,7 +321,7 @@ def search_assessment(account, role, details):
             assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'], classroom_id__in=requesting_account.taught_classrooms.values_list('id', flat=True), collected=True, releasing_grades=False, grades_released=False)
             serialized_assessment = CollectedAssessmentSerializer(assessment).data 
         elif status == 'graded':
-            assessment = requesting_account.school.assessments.get(models.Q(releasing_grades=True) | models.Q(grades_released=True), assessment__classroom_id__in=requesting_account.taught_classrooms.values_list('id', flat=True), assessment_id=details['assessment'])
+            assessment = requesting_account.school.assessments.get(models.Q(releasing_grades=True) | models.Q(grades_released=True), assessment_id=details['assessment'], classroom_id__in=requesting_account.taught_classrooms.values_list('id', flat=True))
             serialized_assessment = GradedAssessmentSerializer(assessment).data 
 
         # if not requesting_account.taught_classrooms.filter(id=assessment.classroom_id):
