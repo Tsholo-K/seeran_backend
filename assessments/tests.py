@@ -327,7 +327,7 @@ class AssessmentTest(TestCase):
             transcripts = []
             for student in assessment_d.classroom.students.all():
                 submissions.append(AssessmentSubmission(assessment=assessment_d, student=student, status='ON_TIME'))
-                transcripts.append(AssessmentTranscript(assessment=assessment_d, student=student, score=50, weighted_score=7.5, comment=''))
+                transcripts.append(AssessmentTranscript(assessment=assessment_d, student=student, score=50, weighted_score=7.5, percent_score=0, school=self.school, comment=''))
 
             batch_size = 50
             for i in range(0, len(submissions), batch_size):
@@ -360,7 +360,7 @@ class AssessmentTest(TestCase):
             transcripts = []
             for student in assessment_a.classroom.students.all():
                 submissions.append(AssessmentSubmission(assessment=assessment_a, student=student, status='ON_TIME'))
-                transcripts.append(AssessmentTranscript(assessment=assessment_a, student=student, score=50, weighted_score=7.5, comment=''))
+                transcripts.append(AssessmentTranscript(assessment=assessment_a, student=student, score=50, weighted_score=7.5, percent_score=0, school=self.school, comment=''))
 
             batch_size = 50
             for i in range(0, len(submissions), batch_size):

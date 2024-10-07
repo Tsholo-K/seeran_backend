@@ -227,17 +227,18 @@ class ClassroomPerformance(models.Model):
         student_submissions = self.classroom.students.annotate(
             submission_count=models.Count(
                 'assessment_submissions',
-                filter=models.Q(~models.Q(
-                    assessment_submissions__status='NOT_SUBMITTED'), 
-                    assessment_submissions__assessment__classroom=self, 
+                filter=models.Q(
+                    ~models.Q(assessment_submissions__status='NOT_SUBMITTED'), 
+                    assessment_submissions__assessment__classroom_id=self.classroom, 
                     assessment_submissions__assessment__term=self.term, 
                     assessment_submissions__assessment__formal=True
                 )
             )
         )
+
         # print(f'student_submissions {student_submissions}')
         # Track the total number of required assessments per student
-        required_assessments = self.classroom.subject.assessments.filter(classroom=self, term=self.term, formal=True).count()
+        required_assessments = self.classroom.subject.assessments.filter(classroom=self.classroom, term=self.term, formal=True).count()
         # print(f'required_assessments {required_assessments}')
 
         # Calculate the completion rate
@@ -247,7 +248,7 @@ class ClassroomPerformance(models.Model):
 
         # Determine top performers
         top_performers_count = 3
-        top_performers = performances.filter(normalized_score__gte=self.subject.pass_mark).order_by('-normalized_score').values_list('student_id', flat=True)[:top_performers_count]
+        top_performers = performances.filter(normalized_score__gte=self.classroom.subject.pass_mark).order_by('-normalized_score').values_list('student_id', flat=True)[:top_performers_count]
         if top_performers.exists():
             self.top_performers.set(top_performers)
         # print(f'top_performers {top_performers}')
@@ -262,6 +263,7 @@ class ClassroomPerformance(models.Model):
 
         term_performance, created = self.term.subject_performances.get_or_create(subject=self.classroom.subject, defaults={'school':self.school})
         term_subject_performances_tasks.update_term_performance_metrics_task.delay(term_performance_id=term_performance.id)
+        # term_performance.update_performance_metrics()
         # print(f'term_performance {term_performance}')
         # print(f'classroom performance metrics calculated successfully')
 

@@ -334,8 +334,20 @@ class Assessment(models.Model):
             non_submissions = []
             penalties = []
             for student in students_who_have_not_submitted:
-                non_submissions.append(Submission(assessment=self, student=student, status='NOT_SUBMITTED'))
-                penalties.append(Transcript(assessment=self, student=student, score=0, weighted_score=0, percent_score=0, comment='you have failed to submit this assessment and have been penalized for non submission'))
+                non_submissions.append(Submission(
+                    assessment=self, 
+                    student=student, 
+                    status='NOT_SUBMITTED'
+                ))
+                penalties.append(Transcript(
+                    assessment=self, 
+                    student=student, 
+                    score=0, 
+                    weighted_score=0, 
+                    percent_score=0, 
+                    school=self.school, 
+                    comment='you have failed to submit this assessment and have been penalized for non submission'
+                ))
             
             for i in range(0, len(non_submissions), batch_size):
                 Submission.objects.bulk_create(non_submissions[i:i + batch_size])
@@ -355,7 +367,8 @@ class Assessment(models.Model):
             performance, created = student.subject_performances.get_or_create(subject=self.subject, term=self.term, defaults={'grade':self.grade, 'school':self.school})
             performance.update_performance_metrics()
         
-        assessments_tasks.update_assessment_performance_metrics_task.delay(assessment_id=self.id)
+        self.update_performance_metrics()
+        # assessments_tasks.update_assessment_performance_metrics_task.delay(assessment_id=self.id)
         print(f'grades released successfully')
 
     @transaction.atomic
@@ -497,9 +510,11 @@ class Assessment(models.Model):
         if self.classroom:
             classroom_performance, created = self.classroom.classroom_performances.get_or_create(term=self.term, defaults={'school': self.school})
             classroom_performances_tasks.update_classroom_performance_metrics_task.delay(classroom_performance_id=classroom_performance.id)
+            # classroom_performance.update_performance_metrics() # for testing purposes
         else:
             term_performance, created = self.subject.termly_performances.get_or_create(term=self.term, defaults={'school': self.school})
             term_subject_performances_tasks.update_term_performance_metrics_task.delay(term_performance_id=term_performance.id)
+            # term_performance.update_performance_metrics() # for testing purposes
         
         print(f'assessment performance metrics calculated successfully')
 
