@@ -997,10 +997,10 @@ def search_transcript(user, role, details):
 
 
 @database_sync_to_async
-def search_student_classroom_card(user, role, details):
+def search_student_classroom_card(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ACCOUNT'):
             response = f'could not proccess your request, you do not have the necessary permissions to view classrooms. please contact your administrator to adjust you permissions for viewing classrooms.'
@@ -1016,7 +1016,7 @@ def search_student_classroom_card(user, role, details):
         requested_account = accounts_utilities.get_account_and_permission_check_attr(details['account'], 'STUDENT')
 
         # Check permissions
-        permission_error = permission_checks.view_classroom(requesting_account, requested_account)
+        permission_error = permission_checks.view_account(requesting_account, requested_account)
         if permission_error:
             return permission_error
 

@@ -18,14 +18,13 @@ from assessments.models import Assessment
 from assessment_transcripts.models import AssessmentTranscript
 
 # serilializers
-from accounts.serializers.students.serializers import StudentSourceAccountSerializer, LeastAccountDetailsSerializer
+from accounts.serializers.students.serializers import StudentBasicAccountDetailsEmailSerializer, LeastAccountDetailsSerializer
 from accounts.serializers.parents.serializers import ParentAccountSerializer
 from school_announcements.serializers import AnnouncementSerializer
 from classrooms.serializers import ClassroomSerializer
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, GradedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer, GradedAssessmentSerializer
 from assessment_transcripts.serializers import TranscriptsSerializer, TranscriptSerializer
 from student_activities.serializers import ActivitiesSerializer
-from timetables.serializers import TimetableSerializer
 
 # checks
 from accounts.checks import permission_checks
@@ -412,41 +411,45 @@ def search_transcript(account, role, details):
 
 
 @database_sync_to_async
-def search_student_class_card(account, role, details):
+def search_student_classroom_card(account, role, details):
     try:
-        # Retrieve the requesting users account and related attr
-        requesting_account = accounts_utilities.get_account_and_attr(account, role)
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
-        # Retrieve the requested users account and related attr
-        requested_account = accounts_utilities.get_account_and_attr(account, role)
+        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ACCOUNT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view classrooms. please contact your administrator to adjust you permissions for viewing classrooms.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ACCOUNT', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        if not {'account', 'classroom'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid account and classroom IDs and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ACCOUNT', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+            
+        # Retrieve the requested users account and related school in a single query using select_related
+        requested_account = accounts_utilities.get_account_and_permission_check_attr(account=details['account'], role='STUDENT')
 
         # Check permissions
-        permission_error = permission_checks.check_profile_or_details_view_permissions(requesting_account, requested_account)
+        permission_error = permission_checks.view_account(requesting_account, requested_account)
         if permission_error:
             return permission_error
-        
-        # Determine the classroom based on the request details
-        if details.get('class') == 'requesting my own class data':
-            # Fetch the classroom where the user is the teacher and it is a register class
-            classroom = requesting_account.taught_classes.filter(register_class=True).first()
-            if classroom is None:
-                return {"error": _("could not proccess your request. the account making the request has no register class assigned to it")}
 
+        if details['classroom'] == 'my register classroom':
+            classroom = requesting_account.taught_classrooms.get(register_classroom=True)
         else:
-            # Fetch the specific classroom based on class_id and school
-            classroom = Classroom.objects.get(classroom_id=details.get('classroom'), school=requesting_account.school)
+            classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'])
 
         # retrieve the students activities 
         activities = requested_account.my_activities.filter(classroom=classroom)
         
-        serialized_student = StudentSourceAccountSerializer(instance=requested_account).data
+        serialized_student = StudentBasicAccountDetailsEmailSerializer(instance=requested_account).data
         serialized_activities = ActivitiesSerializer(activities, many=True).data
 
-        return {"user": serialized_student, 'activities': serialized_activities}
+        return {"student": serialized_student, 'activities': serialized_activities}
 
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
-        return {'error': 'a classroom in your school with the provided credentials does not exist. please check the classroom details and try again.'}
+        return {'error': 'Could not process your request, a classroom in your school with the provided credentials does not exist. please review the classroom details and try again.'}
 
     except Exception as e:
         # Handle any other unexpected errors
