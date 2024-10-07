@@ -321,7 +321,7 @@ def search_assessment(account, role, details):
         elif status == 'graded':
             assessment = requesting_account.school.assessments.get(models.Q(releasing_grades=True) | models.Q(grades_released=True), assessment_id=details['assessment'])
 
-        if not requesting_account.taught_classrooms.filter(id=assessment.classroom):
+        if not requesting_account.taught_classrooms.filter(id=assessment.classroom_id):
             response = f'Could not process your request, you do not have the necessary permissions to view this assessments. You can not view assessement you do not assess or moderate.'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
