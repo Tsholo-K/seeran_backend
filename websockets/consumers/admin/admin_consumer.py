@@ -468,6 +468,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
             
             'create_permission_group': admin_create_async_functions.create_permission_group,
 
+            'create_announcement': admin_create_async_functions.create_announcement,
+
             'create_grade': admin_create_async_functions.create_grade,
 
             'create_subject': admin_create_async_functions.create_subject,
@@ -482,7 +484,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'create_group_timetable': admin_create_async_functions.create_group_timetable,
 
-            'create_announcement': admin_create_async_functions.create_announcement,
+            'create_student_activity': admin_create_async_functions.create_student_activity,
         }
 
         func = create_map.get(description)

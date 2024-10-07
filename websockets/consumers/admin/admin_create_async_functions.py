@@ -7,7 +7,7 @@ from django.utils.dateparse import parse_time
 from django.core.exceptions import ValidationError
 
 # models 
-from accounts.models import BaseAccount, Teacher, Student
+from accounts.models import BaseAccount, Teacher
 from permission_groups.models import AdminPermissionGroup, TeacherPermissionGroup
 from account_permissions.models import AdminAccountPermission, TeacherAccountPermission
 from school_announcements.models import Announcement
@@ -604,6 +604,58 @@ def create_assessment(account, role, details):
 
 
 @database_sync_to_async
+def create_student_activity(user, role, details):
+    try:
+        requested_account = None  # Initialize requested_account as None to prevent issues in error handling
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_attr(user, role)
+
+        # Check if the user has permission to create activities
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'ACTIVITY'):
+            response = f'could not proccess your request, you do not have the necessary permissions to log activities assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACTIVITY', outcome='DENIED', server_respons=response, school=requesting_account.school)
+            return {'error': response}
+
+        # Retrieve the student account
+        requested_account = requesting_account.school.students.get(account_id=details.get('recipient'))
+
+        # Prepare the data for serialization
+        details['auditor'] = requesting_account.id
+        details['recipient'] = requested_account.id
+        details['school'] = requesting_account.school.id
+
+        # Initialize the serializer with the prepared data
+        serializer = ActivityCreationSerializer(data=details)
+        if serializer.is_valid():
+            with transaction.atomic():
+                activity = StudentActivity.objects.create(**serializer.validated_data)
+
+                response = f'activity successfully logged. the activity is now available to everyone with access to the student\'s data.'
+                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACTIVITY', target_object_id=str(requested_account.account_id) if requested_account else 'N/A', outcome='CREATED', server_respons=response, school=requesting_account.school)
+
+            return {'message': response}
+
+        error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACTIVITY', target_object_id=str(requested_account.account_id) if requested_account else 'N/A', outcome='ERROR', server_respons=f'Validation failed: {error_response}', school=requesting_account.school)
+
+        return {"error": error_response}
+
+    except BaseAccount.DoesNotExist:
+        # Handle case where the user or student account does not exist
+        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACTIVITY', target_object_id=str(requested_account.account_id) if requested_account else 'N/A', outcome='ERROR', server_respons=error_message, school=requesting_account.school)
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACTIVITY', target_object_id=str(requested_account.account_id) if requested_account else 'N/A', outcome='ERROR', server_respons=error_message, school=requesting_account.school)
+        return {'error': error_message}
+
+
+@database_sync_to_async
 def create_group_timetable(account, role, details):
     try:
         group_timetable = None  # Initialize group timetable as None to prevent issues in error handling
@@ -742,63 +794,5 @@ def create_timetable(account, role, details):
     except Exception as e:
         error_message = str(e)
         audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TIMETABLE', target_object_id=str(timetable.timetable_id) if timetable else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
-        return {'error': error_message}
-    
-
-@database_sync_to_async
-def create_student_activity(user, role, details):
-    try:
-        activity = None
-        requesting_user = BaseAccount.objects.get(account_id=user)
-        
-        requested_account = None  # Initialize requested_account as None to prevent issues in error handling
-        # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_attr(user, role)
-
-        # Check if the user has permission to create activities
-        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'LOG', 'ACTIVITY'):
-            response = f'could not proccess your request, you do not have the necessary permissions to log activities assessments.'
-            audits_utilities.log_audit(actor=requesting_account, action='LOG', target_model='ACTIVITY', outcome='DENIED', response=response, school=requesting_account.school)
-
-            return {'error': response}
-
-        # Retrieve the student account
-        requested_account = Student.objects.get(account_id=details.get('recipient'), school=requesting_account.school)
-
-        # Prepare the data for serialization
-        details['recipient'] = requested_account.pk
-        details['logger'] = requesting_user.pk
-        details['school'] = requesting_account.school.pk
-
-        # Initialize the serializer with the prepared data
-        serializer = ActivityCreationSerializer(data=details)
-        if serializer.is_valid():
-            with transaction.atomic():
-                activity = StudentActivity.objects.create(**serializer.validated_data)
-
-                response = f'activity successfully logged. the activity is now available to everyone with access to the student\'s data.'
-                audits_utilities.log_audit(actor=requesting_account, action='LOG', target_model='ACTIVITY', target_object_id=str(activity.activity_id), outcome='LOGGED', response=response, school=requesting_account.school)
-
-            return {'message': response}
-
-        error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='LOG', target_model='ACTIVITY', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
-
-        return {"error": error_response}
-
-    except BaseAccount.DoesNotExist:
-        # Handle case where the user or student account does not exist
-        return {'error': 'an account with the provided credentials does not exist. Please check the account details and try again.'}
-
-    except ValidationError as e:
-        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='LOG', target_model='ACTIVITY', target_object_id=str(activity.activity_id) if activity else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
-        return {"error": error_message}
-
-    except Exception as e:
-        error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='LOG', target_model='ACTIVITY', target_object_id=str(activity.activity_id) if activity else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
         return {'error': error_message}
     

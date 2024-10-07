@@ -11,39 +11,33 @@ from accounts.serializers.general_serializers import SourceAccountSerializer
 
 class ActivityCreationSerializer(serializers.ModelSerializer):
 
-    classroom = serializers.PrimaryKeyRelatedField(queryset=Classroom.objects.all(), required=False, allow_null=True)
-
     class Meta:
         model = StudentActivity
-        fields = ['offence', 'details', 'logger', 'recipient', 'school', 'classroom']
+        fields = ['activity_summary', 'activity_details', 'recipient', 'auditor', 'classroom', 'school']
+
+    def __init__(self, *args, **kwargs):
+        super(ActivityCreationSerializer, self).__init__(*args, **kwargs)
+        # Make classroom optional 
+        self.fields['classroom'].required = False
 
 
 class ActivitiesSerializer(serializers.ModelSerializer):
 
-    offence = serializers.SerializerMethodField()
-
     class Meta:
         model = StudentActivity
-        fields = ['offence', 'date_logged', 'activity_id']
-
-    def get_offence(self, obj):
-        return  obj.offence.title()
+        fields = ['activity_summary', 'timestamp', 'student_activity_id']
 
 
 class ActivitySerializer(serializers.ModelSerializer):
 
-    offence = serializers.SerializerMethodField()
-    logger = serializers.SerializerMethodField()
+    auditor = serializers.SerializerMethodField()
 
     class Meta:
         model = StudentActivity
-        fields = ['offence', 'details', 'date_logged', 'logger']
+        fields = ['activity_summary', 'activity_details', 'timestamp', 'auditor']
 
-    def get_offence(self, obj):
-        return  obj.offence.title()
-
-    def get_logger(self, obj):
-        if  obj.logger:
-            return SourceAccountSerializer(obj.logger).data
+    def get_auditor(self, obj):
+        if  obj.auditor:
+            return SourceAccountSerializer(obj.auditor).data
         return None
 
