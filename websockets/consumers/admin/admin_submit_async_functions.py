@@ -1,3 +1,6 @@
+# python
+from decimal import Decimal
+
 # channels
 from channels.db import database_sync_to_async
 
@@ -100,7 +103,7 @@ def submit_student_transcript_score(account, role, details):
 
         student = requesting_account.school.students.get(account_id=details['student'])
 
-        transcript, created = student.transcripts.get_or_create(assessment=assessment, defaults={'school': requesting_account.school, 'score': int(details['score'])})
+        transcript, created = student.transcripts.get_or_create(assessment=assessment, defaults={'school': requesting_account.school, 'score': Decimal(details['score'])})
 
         # Initialize the serializer with the prepared data
         serializer = TranscriptUpdateSerializer(transcript, data=details)
