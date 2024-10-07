@@ -98,10 +98,10 @@ class TeacherClassroomsSerializer(serializers.ModelSerializer):
         fields = ['classroom_number', 'subject', 'grade', 'student_count', 'group', 'classroom_id']
 
     def get_subject(self, obj):
-        if  obj.register_class:
-            return 'Register Class'
         if obj.subject:
             return f'{obj.subject.subject}'.title()
+        elif  obj.register_classroom:
+            return 'Register Class'
         return None
 
     def get_grade(self, obj):
