@@ -325,9 +325,9 @@ class Assessment(models.Model):
             raise ValidationError(_('could not proccess your request, some submissions have not been graded. please make sure to grade all submissions and try again'))
         
         # Get the Submission model dynamically
-        Submission = apps.get_model('submissions', 'Submission')
+        Submission = apps.get_model('assessment_submissions', 'AssessmentSubmission')
         # Get the Transcript model dynamically
-        Transcript = apps.get_model('transcripts', 'Transcript')
+        Transcript = apps.get_model('assessment_transcripts', 'AssessmentTranscript')
 
         students_who_have_not_submitted = (self.classroom.students.exclude(id__in=students_who_have_submitted_ids) if self.classroom else self.grade.students.exclude(id__in=students_who_have_submitted_ids))
         if students_who_have_not_submitted.exists():
