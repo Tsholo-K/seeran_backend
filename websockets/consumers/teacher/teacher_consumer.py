@@ -336,6 +336,8 @@ class TeacherConsumer(AsyncWebsocketConsumer):
     async def handle_create(self, description, details, account, role, access_token):
         create_map = {
             # 'create_assessment': teacher_create_async_functions.create_assessment,
+
+            'create_student_activity': teacher_create_async_functions.create_student_activity,
         }
 
         func = create_map.get(description)
