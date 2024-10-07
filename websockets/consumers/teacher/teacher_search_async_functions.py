@@ -474,7 +474,7 @@ def search_student_activity(account, role, details):
             return {'error': response}
 
         # Retrieve the activity based on the provided activity_id
-        activity = requesting_account.taught_classrooms.student_activities.select_related('auditor', 'recipient', 'classroom', 'school').get(student_activity_id=details['activity'])
+        activity = requesting_account.school.student_activities.select_related('auditor', 'recipient', 'classroom', 'school').get(student_activity_id=details['activity'], classroom_id__in=requesting_account.taught_classrooms.values_list('id', flat=True))
         serialized_activity = ActivitySerializer(activity).data
 
         return {"activity": serialized_activity}
