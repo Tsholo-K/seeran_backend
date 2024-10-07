@@ -685,11 +685,11 @@ def update_assessment(user, role, details):
 
 
 @database_sync_to_async
-def update_student_transcript_score(user, role, details):
+def update_student_assessment_transcript(account, role, details):
     try:
         assessment = None  # Initialize assessment as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to create an assessment
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'TRANSCRPIT'):
@@ -700,21 +700,20 @@ def update_student_transcript_score(user, role, details):
                 
         if not {'student', 'assessment'}.issubset(details):
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid account and assessment IDs and try again'
-            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', outcome='ERROR', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TRANSCRPIT', outcome='ERROR', response=response, school=requesting_account.school)
 
             return {'error': response}
 
         # Fetch the assessment from the requesting user's school
-        assessment = requesting_account.school.assessments.select_related('assessor','moderator').get(assessment_id=details['assessment'])
+        assessment = requesting_account.school.assessments.select_related('assessor','moderator').get(assessment_id=details['assessment'], grades_released=False)
         
         # Check if the user has permission to grade the assessment
-        if (assessment.assessor and user != assessment.assessor.account_id) and (assessment.moderator and user != assessment.moderator.account_id):
-            response = f'could not proccess your request, you do not have the necessary permissions to update this transcrpit. only the assessments assessor or moderator can update scores of this transcrpit.'
+        if (assessment.assessor and account != assessment.assessor.account_id) and (assessment.moderator and account != assessment.moderator.account_id):
+            response = f'Could not proccess your request, you do not have the necessary permissions to update this transcrpit. only the assessments assessor or moderator can update scores of this transcrpit.'
             audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TRANSCRPIT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='DENIED', response=response, school=requesting_account.school)
-
             return {'error': response}
 
-        transcript = assessment.scores.get(student__account_id=details['student'])
+        transcript = assessment.transcripts.get(student__account_id=details['student'])
 
         serializer = TranscriptUpdateSerializer(instance=transcript, data=details)
         if serializer.is_valid():

@@ -324,7 +324,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'update_assessment_as_collected' : admin_update_async_functions.update_assessment_as_collected,
             'update_assessment_as_graded' : admin_update_async_functions.update_assessment_as_graded,
 
-            'update_student_grade' : admin_update_async_functions.update_student_transcript_score,
+            'update_student_assessment_transcript' : admin_update_async_functions.update_student_assessment_transcript,
             
             'update_messages_as_read': general_update_async_functions.update_messages_as_read,
 
@@ -377,9 +377,10 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
     async def handle_submit(self, description, details, account, role, access_token):
         submit_map = {
-            'submit_assessment_submissions' : admin_submit_async_functions.submit_assessment_submissions,
-
             'submit_attendance_register': admin_submit_async_functions.submit_attendance_register,
+
+            'submit_assessment_submissions' : admin_submit_async_functions.submit_assessment_submissions,
+            'submit_student_transcript_score' : admin_submit_async_functions.submit_student_transcript_score,
 
             'submit_log_out_request': general_submit_async_functions.submit_log_out_request,
         }

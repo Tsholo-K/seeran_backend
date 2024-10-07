@@ -9,19 +9,6 @@ from .models import AssessmentTranscript
 from accounts.serializers.students.serializers import StudentSourceAccountSerializer, LeastAccountDetailsSerializer, StudentBasicAccountDetailsEmailSerializer
 
 
-class TranscriptCreationSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = AssessmentTranscript
-        fields = ['student', 'score', 'comment', 'assessment']
-
-    def __init__(self, *args, **kwargs):
-        super(TranscriptCreationSerializer, self).__init__(*args, **kwargs)
-        # Remove the unique together validator that's added by DRF
-        self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
-        self.fields['comment'].required = False
-
-
 class TranscriptUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -29,11 +16,11 @@ class TranscriptUpdateSerializer(serializers.ModelSerializer):
         fields = ['score', 'comment']
 
     def __init__(self, *args, **kwargs):
-        super(TranscriptCreationSerializer, self).__init__(*args, **kwargs)
+        super(TranscriptUpdateSerializer, self).__init__(*args, **kwargs)
         # Remove the unique together validator that's added by DRF
         self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
-        self.fields['comment'].required = False
-        self.fields['score'].required = False
+        for field in self.fields:
+            self.fields[field].required = False
 
 
 class TranscriptFormSerializer(serializers.ModelSerializer):

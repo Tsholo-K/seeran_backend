@@ -20,7 +20,6 @@ from topics.models import Topic
 from student_activities.models import StudentActivity
 from timetable_sessions.models import TimetableSession
 from student_group_timetables.models import StudentGroupTimetable
-from teacher_timetables.models import TeacherTimetable
 from timetables.models import Timetable
 
 # serilializers

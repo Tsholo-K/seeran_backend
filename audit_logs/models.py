@@ -3,6 +3,7 @@ import uuid
 
 # djnago 
 from django.db import models
+from django.core.exceptions import ValidationError
 
 
 class AuditLog(models.Model):
@@ -42,7 +43,7 @@ class AuditLog(models.Model):
         ('UPDATED', 'Updated'),
         ('ASSIGNED', 'Assigned'),
         ('DELETED', 'Deleted'),
-        ('SUBMITED', 'Submited'),
+        ('SUBMITTED', 'Submitted'),
         ('GENERATED', 'Generated'),
         ('LINKED', 'Linked'),
         ('UNLINKED', 'Unlinked'),
@@ -70,9 +71,6 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"{self.actor.surname} {self.actor.name} performed {self.action} on {self.timestamp}"
-    
-    # def clean(self):
-    #     ...
                 
     def save(self, *args, **kwargs):
         # self.clean()
@@ -80,3 +78,13 @@ class AuditLog(models.Model):
             super().save(*args, **kwargs)
         except Exception as e:
             raise e  
+
+    def clean(self):
+        """
+        Custom validation method to ensure the integrity of the model's data.
+        """
+        if self.action not in dict(self.ACTION_CHOICES).keys():
+            raise ValidationError(_('The specified action is not valid. Please check the available audit log actions and ensure your input is correct.'))
+
+        if self.target_model not in dict(self.TARGET_MODEL_CHOICES).keys():
+            raise ValidationError(_('The specified target entity is invalid. Please verify the available audit log target entities and ensure your input is correct.'))
