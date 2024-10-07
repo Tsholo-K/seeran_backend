@@ -11,6 +11,7 @@ from django.utils import timezone
 from channels.db import database_sync_to_async
 
 # models
+from accounts.models import Student
 from permission_groups.models import AdminPermissionGroup, TeacherPermissionGroup
 from grades.models import Grade
 from subjects.models import Subject
@@ -476,39 +477,42 @@ def form_data_for_assessment_submissions(user, role, details):
 
 
 @database_sync_to_async
-def form_data_for_assessment_submission_details(user, role, details):
+def form_data_for_assessment_submission_details(account, role, details):
     try:
         # Retrieve the requesting user's account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_linked_school(user, role)
+        requesting_account = users_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to collect assessment submissions
-        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'GRADE', 'ASSESSMENT'):
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'SUBMIT', 'ASSESSMENT'):
             response = 'You do not have the necessary permissions to grade assessment submissions.'
-            audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ASSESSMENT', outcome='DENIED', server_response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='ASSESSMENT', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
         
         if not {'student', 'assessment'}.issubset(details):
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid account and assessnt IDs and try again'
-            audits_utilities.log_audit(actor=requesting_account, action='GRADE', target_model='ACCOUNT', outcome='ERROR', server_response=response, school=requesting_account.school)
-
+            audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='ASSESSMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
         
         # Fetch the assessment from the requesting user's school
         assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'])
 
         transcript = assessment.transcripts.select_related('student').filter(student__account_id=details['student']).first()
-        if transcript:
+        if transcript.exists():
             serialized_submission = TranscriptFormSerializer(transcript).data
         else:
-            submission = assessment.submissions.select_related('student').get(student__account_id=details['student'])
-            serialized_submission = {'student': StudentSourceAccountSerializer(submission.student).data, 'total': assessment.total}
+            student = requesting_account.school.students.get(account_id=details['student'])
+            serialized_submission = {'student': StudentSourceAccountSerializer(student).data, 'total': assessment.total}
 
         return {'submission': serialized_submission}
     
     except Assessment.DoesNotExist:
         # Handle the case where the provided grade ID does not exist
         return { 'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
-    
+
+    except Student.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'a student account with the provided credentials does not exist, please check the accounts details and try again'}
+
     except AssessmentSubmission.DoesNotExist:
         # Handle the case where the provided submission ID does not exist
         return { 'error': 'a submission for the specified assessment in your school with the provided credentials does not exist, please make sure the student has submitted the assessment and try again'}

@@ -87,8 +87,14 @@ class AssessmentSubmission(models.Model):
         - Automatically sets the submission status to 'ONTIME' or 'LATE' if it's a new submission.
         - Validates that the submission date is after the assessment's set date.
         """
+        # Validate that the submission date is not before the assessment was set
+        if self.assessment.classroom and not self.assessment.classroom.students.filter(self.student).exists():
+            raise ValidationError(_('Could not process your request, cannot collect submissions before the date the assessment was set.'))
+
+        elif not self.assessment.grade.students.filter(self.student).exists():
+            raise ValidationError(_('Could not process your request, cannot collect submissions before the date the assessment was set.'))
 
         # Validate that the submission date is not before the assessment was set
-        if self.timestamp and self.timestamp < self.assessment.timestamp:
+        elif self.timestamp and self.timestamp < self.assessment.timestamp:
             raise ValidationError(_('Could not process your request, cannot collect submissions before the date the assessment was set.'))
 
