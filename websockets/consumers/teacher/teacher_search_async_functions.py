@@ -364,7 +364,7 @@ def search_transcripts(account, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        assessment = requesting_account.taught_classrooms.assessments.prefetch_related('transcripts').get(assessment_id=details['assessment'])
+        assessment = requesting_account.school.assessments.prefetch_related('transcripts').get(assessment_id=details['assessment'], classroom_id__in=requesting_account.taught_classrooms.values_list('id', flat=True))
         transcripts = assessment.transcripts.select_related('student').only('student__surname', 'student__name')
 
         serialized_transcripts = TranscriptsSerializer(transcripts, many=True).data 
@@ -397,7 +397,7 @@ def search_transcript(account, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        transcript = requesting_account.taught_classrooms.assessments.transcripts.select_related('student').get(transcript_id=details['transcript'])
+        transcript = requesting_account.school.assessments.transcripts.select_related('student').get(transcript_id=details['transcript'], assessment__classroom_id__in=requesting_account.taught_classrooms.values_list('id', flat=True))
         serialized_transcript = TranscriptSerializer(transcript).data 
 
         return {"transcript": serialized_transcript}
