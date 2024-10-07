@@ -16,6 +16,7 @@ from classrooms.models import Classroom
 from school_attendances.models import ClassroomAttendanceRegister
 from assessments.models import Assessment
 from assessment_transcripts.models import AssessmentTranscript
+from student_activities.models import StudentActivity
 
 # serilializers
 from accounts.serializers.students.serializers import StudentBasicAccountDetailsEmailSerializer, LeastAccountDetailsSerializer
@@ -24,7 +25,7 @@ from school_announcements.serializers import AnnouncementSerializer
 from classrooms.serializers import ClassroomSerializer
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, GradedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer, GradedAssessmentSerializer
 from assessment_transcripts.serializers import TranscriptsSerializer, TranscriptSerializer
-from student_activities.serializers import ActivitiesSerializer
+from student_activities.serializers import ActivitiesSerializer, ActivitySerializer
 
 # checks
 from accounts.checks import permission_checks
@@ -454,3 +455,35 @@ def search_student_classroom_card(account, role, details):
     except Exception as e:
         # Handle any other unexpected errors
         return {'error': str(e)}
+
+
+@database_sync_to_async
+def search_student_activity(account, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+
+        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ACTIVITY'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view classrooms. please contact your administrator to adjust you permissions for viewing classrooms.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ACTIVITY', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        if not {'activity'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid account and classroom IDs and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ACTIVITY', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        # Retrieve the activity based on the provided activity_id
+        activity = requesting_account.taught_classrooms.student_activities.select_related('auditor', 'recipient', 'classroom', 'school').get(student_activity_id=details['activity'])
+        serialized_activity = ActivitySerializer(activity).data
+
+        return {"activity": serialized_activity}
+
+    except StudentActivity.DoesNotExist:
+        # Handle case where the activity does not exist
+        return {'error': 'Could not process your request, an activity in your school with the provided credentials does not exist. Please review the activity details and try again.'}
+
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+

@@ -1038,10 +1038,10 @@ def search_student_classroom_card(account, role, details):
 
 
 @database_sync_to_async
-def search_activity(user, role, details):
+def search_student_activity(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ACTIVITY'):
             response = f'could not proccess your request, you do not have the necessary permissions to view classrooms. please contact your administrator to adjust you permissions for viewing classrooms.'
@@ -1054,7 +1054,7 @@ def search_activity(user, role, details):
             return {'error': response}
 
         # Retrieve the activity based on the provided activity_id
-        activity = requesting_account.school.activities.select_related('school', 'logger', 'recipient', 'classroom').get(activity_id=details['activity'])
+        activity = requesting_account.school.student_activities.select_related('auditor', 'recipient', 'classroom', 'school').get(student_activity_id=details['activity'])
         serialized_activity = ActivitySerializer(activity).data
 
         return {"activity": serialized_activity}

@@ -188,7 +188,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'search_transcript': admin_search_async_functions.search_transcript,
 
             'search_student_classroom_card': admin_search_async_functions.search_student_classroom_card,
-            'search_activity': admin_search_async_functions.search_activity,
+            'search_student_activity': admin_search_async_functions.search_student_activity,
 
             'search_teacher_timetable': admin_search_async_functions.search_teacher_timetable,
 

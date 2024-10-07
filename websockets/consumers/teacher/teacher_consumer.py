@@ -157,7 +157,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             'search_transcript': teacher_search_async_functions.search_transcript,
 
             'search_student_classroom_card': teacher_search_async_functions.search_student_classroom_card,
-            # 'search_activity': teacher_search_async_functions.search_activity,
+            'search_student_activity': teacher_search_async_functions.search_student_activity,
 
             # 'search_teacher_timetable_timetables': teacher_search_async_functions.search_teacher_timetable_schedules,
 
