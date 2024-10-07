@@ -319,7 +319,7 @@ class Assessment(models.Model):
         students_who_have_submitted_ids = self.submissions.values_list('student_id', flat=True)
         students_who_have_submitted_count = len(students_who_have_submitted_ids)
 
-        graded_student_count = self.scores.count()
+        graded_student_count = self.transcripts.count()
 
         if students_who_have_submitted_count != graded_student_count:
             raise ValidationError(_('could not proccess your request, some submissions have not been graded. please make sure to grade all submissions and try again'))
@@ -368,7 +368,7 @@ class Assessment(models.Model):
         if not self.grades_released:
             raise ValidationError(_('could not process your request, the assessment does not have its grades released. cannot calculate performance metrics for an assessment that does not have its grades released.'))
 
-        transcripts = self.scores
+        transcripts = self.transcripts
         if not transcripts.exists():
             self.standard_deviation = self.interquartile_range = self.mode_score = None
             self.completion_rate = self.completion_rate = self.pass_rate = self.failure_rate = None
