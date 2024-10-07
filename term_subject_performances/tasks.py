@@ -2,8 +2,8 @@
 from celery import shared_task
 from celery.exceptions import Reject
 
-# models
-from .models import TermSubjectPerformance
+# django 
+from django.apps import apps
 
 # utility functions
 from seeran_backend import utils as system_utilities
@@ -16,6 +16,9 @@ def update_term_performance_metrics_task(self, term_performance_id):
         raise Reject('Task is already queued or running')
 
     try:
+        # Get the ClassroomPerformance model dynamically
+        TermSubjectPerformance = apps.get_model('term_subject_performances', 'TermSubjectPerformance')
+
         term_performance = TermSubjectPerformance.objects.get(id=term_performance_id)
         term_performance.update_performance_metrics()
     except TermSubjectPerformance.DoesNotExist:

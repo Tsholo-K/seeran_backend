@@ -82,7 +82,6 @@ class ClassroomPerformance(models.Model):
     school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='classroom_performances', help_text='School to which the classroom belongs.')
     
     last_updated = models.DateTimeField(auto_now=True)
-
     classroom_performance_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
@@ -261,8 +260,8 @@ class ClassroomPerformance(models.Model):
 
         self.save()
 
-        term_performance, created = self.term.subject_performances.get_or_create(subject=self.classroom.subject, defaults={'school':self.school})
+        term_performance, created = self.classroom.subject.termly_performances.get_or_create(term=self.term, defaults={'school': self.school})
         term_subject_performances_tasks.update_term_performance_metrics_task.delay(term_performance_id=term_performance.id)
         # print(f'term_performance {term_performance}')
-        print(f'classroom performance metrics calculated successfully')
+        # print(f'classroom performance metrics calculated successfully')
 

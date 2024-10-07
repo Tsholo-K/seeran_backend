@@ -495,7 +495,8 @@ class Assessment(models.Model):
         self.save()
         
         if self.classroom:
-            classroom_performances_tasks.update_classroom_performance_metrics_task.delay(classroom_id=self.classroom.id, term_id=self.term.id)
+            classroom_performance, created = self.classroom.classroom_performances.get_or_create(term=self.term, defaults={'school': self.school})
+            classroom_performances_tasks.update_classroom_performance_metrics_task.delay(classroom_performance_id=classroom_performance.id)
         else:
             term_performance, created = self.subject.termly_performances.get_or_create(term=self.term, defaults={'school': self.school})
             term_subject_performances_tasks.update_term_performance_metrics_task.delay(term_performance_id=term_performance.id)
