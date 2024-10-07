@@ -811,10 +811,9 @@ def update_assessment_as_graded(account, role, details):
 
         # Fetch the assessment from the requesting user's school
         assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'])
+        release_grades_task.delay(assessment.id)
 
         with transaction.atomic():
-            release_grades_task.delay(assessment.id)
-
             response = f"The grades release process for assessment with assessment ID {assessment.title} has been triggered, results will be made available once performance metrics have been calculated and updated."
             audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='UPDATED', server_response=response, school=assessment.school)
 
