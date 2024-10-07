@@ -180,7 +180,7 @@ class StudentSubjectPerformance(models.Model):
             self.mode_score = unique_scores[np.argmax(counts)]
 
         # Calculate the completion rate: percentage of assessments the student has submitted.
-        submitted_assessments_count = self.student.submissions.filter(assessment__in=grade_assessments).exclude(status='NOT_SUBMITTED').count()
+        submitted_assessments_count = self.student.assessment_submissions.filter(assessment__in=grade_assessments).exclude(status='NOT_SUBMITTED').count()
         self.completion_rate = (submitted_assessments_count / grade_assessments_count) * 100
 
         # Save the updated performance metrics.

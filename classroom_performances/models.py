@@ -227,8 +227,13 @@ class ClassroomPerformance(models.Model):
 
         student_submissions = self.classroom.students.annotate(
             submission_count=models.Count(
-                'submissions',
-                filter=models.Q(~models.Q(submissions__status='NOT_SUBMITTED'), submissions__assessment__classroom=self, submissions__assessment__term=self.term, submissions__assessment__formal=True),
+                'assessment_submissions',
+                filter=models.Q(~models.Q(
+                    assessment_submissions__status='NOT_SUBMITTED'), 
+                    assessment_submissions__assessment__classroom=self, 
+                    assessment_submissions__assessment__term=self.term, 
+                    assessment_submissions__assessment__formal=True
+                )
             )
         )
         # print(f'student_submissions {student_submissions}')
