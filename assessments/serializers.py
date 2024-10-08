@@ -195,3 +195,4 @@ class GradedAssessmentSerializer(serializers.ModelSerializer):
     
     def get_moderator(self, obj):
         return BasicAccountDetailsEmailSerializer(obj.moderator).data if obj.moderator else None
+
