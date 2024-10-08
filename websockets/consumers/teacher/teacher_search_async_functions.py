@@ -180,13 +180,16 @@ def search_grade_terms(account, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        if 'grade' not in details:
-            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid grade ID and try again'
+        if not 'classroom' in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid classroom ID and try again'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
+        # Fetch the specific classroom based on class_id and school
+        classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'])
+
         # Prefetch related school terms to minimize database hits
-        grade_terms = requesting_account.school.terms.only('term', 'weight', 'start_date', 'end_date', 'term_id').filter(grade__grade_id=details['grade'], grade_id__in=requesting_account.taught_classrooms.values_list('grade_id', flat=True))
+        grade_terms = classroom.grade.terms.only('term', 'weight', 'start_date', 'end_date', 'term_id')
         serialized_terms = TermsSerializer(grade_terms, many=True).data
         
         # Return the serialized terms in a dictionary
@@ -203,22 +206,23 @@ def search_term_subject_performance(account, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
-        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'CLASSROOM'):
+        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'CLASSROOM'):
             response = f'could not proccess your request, you do not have the necessary permissions to view term performances. please contact your administrator to adjust you permissions for viewing term details.'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        if not {'term', 'subject'}.issubset(details):
-            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid term and subject IDs and try again'
+        if not {'term', 'classroom'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid term and classroom IDs and try again'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
-        
-        term = requesting_account.school.terms.get(term_id=details['term'], grade_id__in=requesting_account.taught_classrooms.values_list('grade_id', flat=True))
-        subject = requesting_account.school.subjects.get(subject_id=details['subject'], id__in=requesting_account.taught_classrooms.values_list('subject_id', flat=True))
+
+        # Fetch the specific classroom based on class_id and school
+        classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'])
+        term = classroom.grade.terms.get(term_id=details['term'])
 
         performance, created = requesting_account.school.termly_subject_performances.only(
             'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'standard_deviation', 'percentile_distribution', 'completion_rate', 'top_performers', 'students_failing_the_subject_in_the_term', 'improvement_rate'
-        ).get_or_create(term=term, subject=subject, defaults={'school': requesting_account.school})
+        ).get_or_create(term=term, subject=classroom.subject, defaults={'school': requesting_account.school})
         serialized_term = TermSubjectPerformanceSerializer(performance).data
         
         # Return the serialized terms in a dictionary
