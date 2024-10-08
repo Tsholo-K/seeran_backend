@@ -25,8 +25,8 @@ from accounts.serializers.students.serializers import StudentBasicAccountDetails
 from accounts.serializers.parents.serializers import ParentAccountSerializer
 from school_announcements.serializers import AnnouncementSerializer
 from terms.serializers import  TermsSerializer
-from term_subject_performances.serializers import TermSubjectPerformanceSerializer
 from classrooms.serializers import ClassroomSerializer
+from classroom_performances.serializers import ClassroomPerformanceSerializer
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, GradedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer, GradedAssessmentSerializer
 from assessment_transcripts.serializers import TranscriptsSerializer, TranscriptSerializer
 from student_activities.serializers import ActivitiesSerializer, ActivitySerializer
@@ -201,7 +201,7 @@ def search_grade_terms(account, role, details):
 
 
 @database_sync_to_async
-def search_term_subject_performance(account, role, details):
+def search_classroom_subject_performance(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
@@ -217,24 +217,24 @@ def search_term_subject_performance(account, role, details):
             return {'error': response}
 
         # Fetch the specific classroom based on class_id and school
-        classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'])
+        classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'], register_classroom=False)
         term = classroom.grade.terms.get(term_id=details['term'])
 
-        performance, created = requesting_account.school.termly_subject_performances.only(
-            'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'standard_deviation', 'percentile_distribution', 'completion_rate', 'top_performers', 'students_failing_the_subject_in_the_term', 'improvement_rate'
-        ).get_or_create(term=term, subject=classroom.subject, defaults={'school': requesting_account.school})
-        serialized_term = TermSubjectPerformanceSerializer(performance).data
+        performance, created = classroom.classroom_performances.only(
+            'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'standard_deviation', 'percentile_distribution', 'completion_rate', 'top_performers', 'students_failing_the_classroom', 'improvement_rate'
+        ).get_or_create(term=term, defaults={'school': requesting_account.school})
+        serialized_term = ClassroomPerformanceSerializer(performance).data
         
         # Return the serialized terms in a dictionary
         return {'performance': serialized_term}
     
+    except Classroom.DoesNotExist:
+        # Handle case where the subject does not exist
+        return {'error': 'Could not process your request, a classroom in your school with the provided credentials does not exist, please review the classroom details and try again.'}
+    
     except Term.DoesNotExist:
         # Handle the case where the provided term ID does not exist
         return {'error': 'Could not process your request, a term in your school with the provided credentials does not exist, please review the term details and try again.'}
-    
-    except Subject.DoesNotExist:
-        # Handle case where the subject does not exist
-        return {'error': 'Could not process your request, a subject in your school with the provided credentials does not exist, please review the subject details and try again.'}
 
     except Exception as e:
         # Handle any unexpected errors with a general error message
