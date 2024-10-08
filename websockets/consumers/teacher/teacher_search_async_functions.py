@@ -14,6 +14,8 @@ from django.utils.translation import gettext as _
 from accounts.models import Teacher, Student
 from classrooms.models import Classroom
 from school_attendances.models import ClassroomAttendanceRegister
+from subjects.models import Subject
+from terms.models import Term
 from assessments.models import Assessment
 from assessment_transcripts.models import AssessmentTranscript
 from student_activities.models import StudentActivity
@@ -22,6 +24,8 @@ from student_activities.models import StudentActivity
 from accounts.serializers.students.serializers import StudentBasicAccountDetailsEmailSerializer, LeastAccountDetailsSerializer
 from accounts.serializers.parents.serializers import ParentAccountSerializer
 from school_announcements.serializers import AnnouncementSerializer
+from terms.serializers import  TermsSerializer
+from term_subject_performances.serializers import TermSubjectPerformanceSerializer
 from classrooms.serializers import ClassroomSerializer
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, GradedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer, GradedAssessmentSerializer
 from assessment_transcripts.serializers import TranscriptsSerializer, TranscriptSerializer
@@ -162,6 +166,74 @@ def search_school_announcement(account, role, details):
     
     except Exception as e:
         # Handle any other unexpected errors
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def search_grade_terms(account, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+
+        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'CLASSROOM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view terms. please contact your administrator to adjust you permissions for viewing terms.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        if 'grade' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid grade ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        # Prefetch related school terms to minimize database hits
+        grade_terms = requesting_account.school.terms.only('term', 'weight', 'start_date', 'end_date', 'term_id').filter(grade__grade_id=details['grade'], grade_id__in=requesting_account.taught_classrooms.values_list('grade_id', flat=True))
+        serialized_terms = TermsSerializer(grade_terms, many=True).data
+        
+        # Return the serialized terms in a dictionary
+        return {'terms': serialized_terms}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def search_term_subject_performance(account, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'CLASSROOM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view term performances. please contact your administrator to adjust you permissions for viewing term details.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        if not {'term', 'subject'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid term and subject IDs and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+        
+        term = requesting_account.school.terms.get(term_id=details['term'], grade_id__in=requesting_account.taught_classrooms.values_list('grade_id', flat=True))
+        subject = requesting_account.school.subjects.get(subject_id=details['subject'], id__in=requesting_account.taught_classrooms.values_list('subject_id', flat=True))
+
+        performance, created = requesting_account.school.termly_subject_performances.only(
+            'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'standard_deviation', 'percentile_distribution', 'completion_rate', 'top_performers', 'students_failing_the_subject_in_the_term', 'improvement_rate'
+        ).get_or_create(term=term, subject=subject, defaults={'school': requesting_account.school})
+        serialized_term = TermSubjectPerformanceSerializer(performance).data
+        
+        # Return the serialized terms in a dictionary
+        return {'performance': serialized_term}
+    
+    except Term.DoesNotExist:
+        # Handle the case where the provided term ID does not exist
+        return {'error': 'Could not process your request, a term in your school with the provided credentials does not exist, please review the term details and try again.'}
+    
+    except Subject.DoesNotExist:
+        # Handle case where the subject does not exist
+        return {'error': 'Could not process your request, a subject in your school with the provided credentials does not exist, please review the subject details and try again.'}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
         return {'error': str(e)}
 
 

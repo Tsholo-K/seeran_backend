@@ -16,8 +16,8 @@ from audit_logs.models import AuditLog
 from permission_groups.models import AdminPermissionGroup, TeacherPermissionGroup
 from account_permissions.models import AdminAccountPermission, TeacherAccountPermission
 from grades.models import Grade
-from terms.models import Term
 from subjects.models import Subject
+from terms.models import Term
 from classrooms.models import Classroom
 from assessments.models import Assessment
 from assessment_transcripts.models import AssessmentTranscript
@@ -705,7 +705,7 @@ def search_term_subject_performance(user, role, details):
             return {'error': response}
         
         term = requesting_account.school.terms.get(term_id=details['term'])
-        subject = requesting_account.subjects.get(subject_id=details['subject'])
+        subject = requesting_account.school.subjects.get(subject_id=details['subject'])
 
         performance, created = requesting_account.school.termly_subject_performances.only(
             'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'standard_deviation', 'percentile_distribution', 'completion_rate', 'top_performers', 'students_failing_the_subject_in_the_term', 'improvement_rate'
