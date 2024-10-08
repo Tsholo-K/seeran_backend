@@ -39,7 +39,9 @@ from grades.serializers import GradeSerializer, GradesSerializer, GradeDetailsSe
 from terms.serializers import  TermsSerializer, TermSerializer
 from term_subject_performances.serializers import TermSubjectPerformanceSerializer
 from subjects.serializers import SubjectSerializer, SubjectDetailsSerializer
+from student_subject_performances.serializers import StudentPerformanceSerializer
 from classrooms.serializers import TeacherClassroomsSerializer, ClassesSerializer, ClassroomSerializer, ClassroomDetailsSerializer
+from classroom_performances.serializers import ClassroomPerformanceSerializer
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, GradedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer, GradedAssessmentSerializer
 from assessment_transcripts.serializers import TranscriptsSerializer, TranscriptSerializer
 from student_activities.serializers import ActivitiesSerializer, ActivitySerializer
@@ -791,6 +793,47 @@ def search_classroom_details(account, role, details):
 
 
 @database_sync_to_async
+def search_classroom_subject_performance(account, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'CLASSROOM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view term performances. please contact your administrator to adjust you permissions for viewing term details.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        if not {'term', 'classroom'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid term and classroom IDs and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        # Fetch the specific classroom based on class_id and school
+        classroom = requesting_account.school.classrooms.get(classroom_id=details['classroom'], register_classroom=False)
+        term = classroom.grade.terms.get(term_id=details['term'])
+
+        classroom_performance, created = classroom.classroom_performances.only(
+            'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'standard_deviation', 'percentile_distribution', 'completion_rate', 'top_performers', 'students_failing_the_classroom', 'improvement_rate'
+        ).get_or_create(term=term, defaults={'school': requesting_account.school})
+        serialized_classroom_performance = ClassroomPerformanceSerializer(classroom_performance).data
+        
+        # Return the serialized terms in a dictionary
+        return {'performance': serialized_classroom_performance}
+    
+    except Classroom.DoesNotExist:
+        # Handle case where the subject does not exist
+        return {'error': 'Could not process your request, a classroom in your school with the provided credentials does not exist, please review the classroom details and try again.'}
+    
+    except Term.DoesNotExist:
+        # Handle the case where the provided term ID does not exist
+        return {'error': 'Could not process your request, a term in your school with the provided credentials does not exist, please review the term details and try again.'}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
+
+
+@database_sync_to_async
 def search_teacher_classrooms(user, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
@@ -817,6 +860,52 @@ def search_teacher_classrooms(user, role, details):
     
     except Exception as e:
         return { 'error': str(e) }
+
+
+@database_sync_to_async
+def search_student_classroom_performance(account, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'CLASSROOM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view term performances. please contact your administrator to adjust you permissions for viewing term details.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        if not {'term', 'classroom', 'student'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid student, term and classroom IDs and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        # Fetch the specific classroom based on class_id and school
+        classroom = requesting_account.school.classrooms.get(classroom_id=details['classroom'], register_classroom=False)
+        term = requesting_account.school.terms.get(term_id=details['term'])
+        student = requesting_account.school.students.get(account_id=details['student'])
+
+        student_performance, created = student.subject_performances.only(
+            'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'completion_rate', 'mode_score', 'passed'
+        ).get_or_create(term=term, subject=classroom.subject, grade=classroom.grade, defaults={'school': requesting_account.school})
+        serialized_student_performance = StudentPerformanceSerializer(student_performance).data
+        
+        # Return the serialized terms in a dictionary
+        return {'performance': serialized_student_performance}
+    
+    except Classroom.DoesNotExist:
+        # Handle case where the subject does not exist
+        return {'error': 'Could not process your request, a classroom in your school with the provided credentials does not exist, please review the classroom details and try again.'}
+    
+    except Term.DoesNotExist:
+        # Handle the case where the provided term ID does not exist
+        return {'error': 'Could not process your request, a term in your school with the provided credentials does not exist, please review the term details and try again.'}
+                   
+    except Student.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'Could not process your request, a student account with the provided credentials does not exist. Please review your account details and try again.'}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
 
 
 @database_sync_to_async

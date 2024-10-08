@@ -23,10 +23,11 @@ from student_activities.models import StudentActivity
 # serilializers
 from accounts.serializers.students.serializers import StudentBasicAccountDetailsEmailSerializer, LeastAccountDetailsSerializer
 from accounts.serializers.parents.serializers import ParentAccountSerializer
+from student_subject_performances.serializers import StudentPerformanceSerializer
 from school_announcements.serializers import AnnouncementSerializer
 from terms.serializers import  TermsSerializer
-from term_subject_performances.serializers import TermSubjectPerformanceSerializer
 from classrooms.serializers import ClassroomSerializer
+from classroom_performances.serializers import ClassroomPerformanceSerializer
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, GradedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer, GradedAssessmentSerializer
 from assessment_transcripts.serializers import TranscriptsSerializer, TranscriptSerializer
 from student_activities.serializers import ActivitiesSerializer, ActivitySerializer
@@ -201,7 +202,7 @@ def search_grade_terms(account, role, details):
 
 
 @database_sync_to_async
-def search_term_subject_performance(account, role, details):
+def search_classroom_subject_performance(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
@@ -217,24 +218,24 @@ def search_term_subject_performance(account, role, details):
             return {'error': response}
 
         # Fetch the specific classroom based on class_id and school
-        classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'])
+        classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'], register_classroom=False)
         term = classroom.grade.terms.get(term_id=details['term'])
 
-        performance, created = requesting_account.school.termly_subject_performances.only(
-            'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'standard_deviation', 'percentile_distribution', 'completion_rate', 'top_performers', 'students_failing_the_subject_in_the_term', 'improvement_rate'
-        ).get_or_create(term=term, subject=classroom.subject, defaults={'school': requesting_account.school})
-        serialized_term = TermSubjectPerformanceSerializer(performance).data
+        performance, created = classroom.classroom_performances.only(
+            'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'standard_deviation', 'percentile_distribution', 'completion_rate', 'top_performers', 'students_failing_the_classroom', 'improvement_rate'
+        ).get_or_create(term=term, defaults={'school': requesting_account.school})
+        serialized_term = ClassroomPerformanceSerializer(performance).data
         
         # Return the serialized terms in a dictionary
         return {'performance': serialized_term}
     
+    except Classroom.DoesNotExist:
+        # Handle case where the subject does not exist
+        return {'error': 'Could not process your request, a classroom in your school with the provided credentials does not exist, please review the classroom details and try again.'}
+    
     except Term.DoesNotExist:
         # Handle the case where the provided term ID does not exist
         return {'error': 'Could not process your request, a term in your school with the provided credentials does not exist, please review the term details and try again.'}
-    
-    except Subject.DoesNotExist:
-        # Handle case where the subject does not exist
-        return {'error': 'Could not process your request, a subject in your school with the provided credentials does not exist, please review the subject details and try again.'}
 
     except Exception as e:
         # Handle any unexpected errors with a general error message
@@ -323,6 +324,52 @@ def search_month_attendance_records(account, role, details):
 
 
 @database_sync_to_async
+def search_student_classroom_performance(account, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+
+        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'CLASSROOM'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view term performances. please contact your administrator to adjust you permissions for viewing term details.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        if not {'term', 'classroom', 'student'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid student, term and classroom IDs and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        # Fetch the specific classroom based on class_id and school
+        classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'], register_classroom=False)
+        term = classroom.grade.terms.get(term_id=details['term'])
+        student = classroom.students.get(account_id=details['student'])
+
+        student_performance, created = student.subject_performances.only(
+            'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'completion_rate', 'mode_score', 'passed'
+        ).get_or_create(term=term, subject=classroom.subject, grade=classroom.grade, defaults={'school': requesting_account.school})
+        serialized_student_performance = StudentPerformanceSerializer(student_performance).data
+        
+        # Return the serialized terms in a dictionary
+        return {'performance': serialized_student_performance}
+    
+    except Classroom.DoesNotExist:
+        # Handle case where the subject does not exist
+        return {'error': 'Could not process your request, a classroom in your school with the provided credentials does not exist, please review the classroom details and try again.'}
+    
+    except Term.DoesNotExist:
+        # Handle the case where the provided term ID does not exist
+        return {'error': 'Could not process your request, a term in your school with the provided credentials does not exist, please review the term details and try again.'}
+                   
+    except Student.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'Could not process your request, a student account with the provided credentials does not exist. Please review your account details and try again.'}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
+        return {'error': str(e)}
+
+
+@database_sync_to_async
 def search_assessments(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
@@ -391,26 +438,29 @@ def search_assessment(account, role, details):
         status = details['status']
 
         if status == 'due':
-            assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'], classroom_id__in=requesting_account.taught_classrooms.values_list('id', flat=True), collected=False, grades_released=False)
+            assessment = requesting_account.school.assessments.get(
+                assessment_id=details['assessment'], 
+                classroom_id__in=requesting_account.taught_classrooms.values_list('id', flat=True), 
+                collected=False, 
+                grades_released=False
+            )
             serialized_assessment = DueAssessmentSerializer(assessment).data
         elif status == 'collected':
-            assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'], classroom_id__in=requesting_account.taught_classrooms.values_list('id', flat=True), collected=True, releasing_grades=False, grades_released=False)
+            assessment = requesting_account.school.assessments.get(
+                assessment_id=details['assessment'], 
+                classroom_id__in=requesting_account.taught_classrooms.values_list('id', flat=True), 
+                collected=True, 
+                releasing_grades=False, 
+                grades_released=False
+            )
             serialized_assessment = CollectedAssessmentSerializer(assessment).data 
         elif status == 'graded':
-            assessment = requesting_account.school.assessments.get(models.Q(releasing_grades=True) | models.Q(grades_released=True), assessment_id=details['assessment'], classroom_id__in=requesting_account.taught_classrooms.values_list('id', flat=True))
+            assessment = requesting_account.school.assessments.get(
+                models.Q(releasing_grades=True) | models.Q(grades_released=True), 
+                assessment_id=details['assessment'], 
+                classroom_id__in=requesting_account.taught_classrooms.values_list('id', flat=True)
+            )
             serialized_assessment = GradedAssessmentSerializer(assessment).data 
-
-        # if not requesting_account.taught_classrooms.filter(id=assessment.classroom_id):
-        #     response = f'Could not process your request, you do not have the necessary permissions to view this assessments. You can not view assessement you do not assess or moderate.'
-        #     audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='DENIED', server_response=response, school=requesting_account.school)
-        #     return {'error': response}
-
-        # if status == 'due':
-        #     serialized_assessment = DueAssessmentSerializer(assessment).data
-        # elif status == 'collected':
-        #     serialized_assessment = CollectedAssessmentSerializer(assessment).data 
-        # elif status == 'graded':
-        #     serialized_assessment = GradedAssessmentSerializer(assessment).data 
 
         return {"assessment": serialized_assessment}
         
@@ -531,6 +581,7 @@ def search_student_classroom_card(account, role, details):
     except Exception as e:
         # Handle any other unexpected errors
         return {'error': str(e)}
+
 
 
 @database_sync_to_async

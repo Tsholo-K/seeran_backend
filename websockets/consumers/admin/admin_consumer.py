@@ -176,8 +176,13 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'search_classroom': admin_search_async_functions.search_classroom,
             'search_classroom_details': admin_search_async_functions.search_classroom_details,
+            'search_classroom_subject_performance': admin_search_async_functions.search_classroom_subject_performance,
 
             'search_teacher_classrooms': admin_search_async_functions.search_teacher_classrooms,
+
+            'search_student_classroom_performance': admin_search_async_functions.search_student_classroom_performance,
+            'search_student_classroom_card': admin_search_async_functions.search_student_classroom_card,
+            'search_student_activity': admin_search_async_functions.search_student_activity,
 
             'search_month_attendance_records': admin_search_async_functions.search_month_attendance_records,
 
@@ -186,9 +191,6 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
             'search_transcripts': admin_search_async_functions.search_transcripts,
             'search_transcript': admin_search_async_functions.search_transcript,
-
-            'search_student_classroom_card': admin_search_async_functions.search_student_classroom_card,
-            'search_student_activity': admin_search_async_functions.search_student_activity,
 
             'search_teacher_timetable': admin_search_async_functions.search_teacher_timetable,
 

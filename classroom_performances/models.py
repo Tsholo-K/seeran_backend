@@ -70,14 +70,14 @@ class ClassroomPerformance(models.Model):
     students_failing_the_classroom = models.ManyToManyField(Student, related_name='failing_classes', help_text='Students who are failing the classroom.')
 
     # Measures the standard deviation of students' scores, providing insight into score variability
-    std_dev_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    standard_deviation = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     # A JSONField storing percentile data, where each key (e.g., "10th", "90th") maps to a list of students who fall within that percentile range
     percentile_distribution = models.JSONField(null=True, blank=True)
 
-    # Tracks the percentage of students who have improved their scores compared to a previous assessment or term
-    improvement_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     # Percentage of students who completed all assessments
     completion_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    # Tracks the percentage of students who have improved their scores compared to a previous assessment or term
+    improvement_rate = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
     school = models.ForeignKey(School, on_delete=models.CASCADE, editable=False, related_name='classroom_performances', help_text='School to which the classroom belongs.')
     
@@ -141,7 +141,7 @@ class ClassroomPerformance(models.Model):
         performances = self.classroom.subject.student_performances.filter(student__in=self.classroom.students.all(), term=self.term)            
         if not performances.exists():
             self.pass_rate = self.failure_rate = self.average_score = None
-            self.median_score = self.std_dev_score = self.percentile_distribution = None
+            self.median_score = self.standard_deviation = self.percentile_distribution = None
             return
         
         pass_mark = self.classroom.subject.pass_mark
@@ -150,7 +150,7 @@ class ClassroomPerformance(models.Model):
             highest_score=models.Max('normalized_score'),
             lowest_score=models.Min('normalized_score'),
             average_score=models.Avg('normalized_score'),
-            stddev=models.StdDev('normalized_score'),
+            standard_deviation=models.StdDev('normalized_score'),
             students_in_the_classroom_count=models.Count('id'),
             students_passing_the_classroom_count=models.Count('id', filter=models.Q(normalized_score__gte=pass_mark)),
         )
@@ -164,7 +164,7 @@ class ClassroomPerformance(models.Model):
         self.highest_score = performance_data['highest_score']
         self.lowest_score = performance_data['lowest_score']
         self.average_score = performance_data['average_score']
-        self.standard_deviation = performance_data['stddev']
+        self.standard_deviation = performance_data['standard_deviation']
 
         # Retrieve all scores and the associated student for the assessment
         student_scores = np.array(performances.order_by('normalized_score').values_list('normalized_score', 'student_id'))

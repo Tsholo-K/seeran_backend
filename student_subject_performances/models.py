@@ -71,6 +71,7 @@ class StudentSubjectPerformance(models.Model):
     # Timestamp of the last update to this record.
     last_updated = models.DateTimeField(auto_now=True)
 
+    timestamp = models.DateTimeField(auto_now_add=True)
     # Unique identifier for the student's subject performance.
     student_score_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
 
