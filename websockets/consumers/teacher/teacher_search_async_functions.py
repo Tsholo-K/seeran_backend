@@ -223,7 +223,7 @@ def search_classroom_subject_performance(account, role, details):
 
         performance, created = classroom.classroom_performances.only(
             'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'standard_deviation', 'percentile_distribution', 'completion_rate', 'top_performers', 'students_failing_the_classroom', 'improvement_rate'
-        ).get_or_create(term=term, defaults={'school': requesting_account.school})
+        ).get_or_create(term=term, defaults={'school': requesting_account.school, 'classroom': classroom})
         serialized_term = ClassroomPerformanceSerializer(performance).data
         
         # Return the serialized terms in a dictionary
