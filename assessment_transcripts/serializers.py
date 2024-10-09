@@ -68,6 +68,7 @@ class TranscriptSerializer(serializers.ModelSerializer):
 class DetailedTranscriptSerializer(serializers.ModelSerializer):
 
     assessment = serializers.SerializerMethodField()
+    student = serializers.SerializerMethodField()
 
     class Meta:
         model = AssessmentTranscript
