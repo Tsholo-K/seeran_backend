@@ -29,7 +29,7 @@ from terms.serializers import  TermsSerializer
 from classrooms.serializers import ClassroomSerializer
 from classroom_performances.serializers import ClassroomPerformanceSerializer
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, GradedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer, GradedAssessmentSerializer
-from assessment_transcripts.serializers import TranscriptsSerializer, TranscriptSerializer
+from assessment_transcripts.serializers import TranscriptsSerializer, TranscriptSerializer, DetailedTranscriptSerializer
 from student_activities.serializers import ActivitiesSerializer, ActivitySerializer
 
 # checks
@@ -500,6 +500,54 @@ def search_transcripts(account, role, details):
     except Assessment.DoesNotExist:
         # Handle the case where the provided assessment ID does not exist
         return { 'error': 'Could not process your request, an assessment in your school with the provided credentials does not exist, please review the assessment details and try again.'}
+        
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def search_student_assessment_transcript(account, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_permission_check_attr(account, role)
+        
+        # Check if the user has permission to create an assessment
+        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ASSESSMENT'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view assessments. please contact your principal to adjust you permissions for viewing assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENTS', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        if not {'term', 'classroom', 'student', 'assessment'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid student, term, classroom and assessment IDs and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        # Build the queryset for the requested account with the necessary related fields.
+        requested_account = accounts_utilities.get_account_and_permission_check_attr(details['student'], 'STUDENT')
+
+        # Check if the requesting user has permission to view the requested user's profile or details.
+        permission_error = permission_checks.view_account(requesting_account, requested_account)
+        if permission_error:
+            # Return an error message if the requesting user does not have the necessary permissions.
+            return permission_error
+
+        classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'])
+
+        assessment = requesting_account.school.assessments.get(models.Q(releasing_grades=True) | models.Q(grades_released=True), term__term_id=details['term'], assessment_id=details['assessment'], subject=classroom.subject, grade=classroom.grade,)
+        transcript = assessment.transcripts.get(student=requested_account)
+
+        serialized_transcript = DetailedTranscriptSerializer(transcript).data 
+
+        return {"transcript": serialized_transcript}
+
+    except Classroom.DoesNotExist:
+        # Handle case where the classroom does not exist
+        return {'error': _('Could not process your request, classroom in your school with the provided details does not exist. Please review the classroom details and try again.')}
+
+    except AssessmentTranscript.DoesNotExist:
+        # Handle the case where the provided assessment ID does not exist
+        return { 'error': 'Could not process your request, a transcript in your school with the provided credentials does not exist, please review the transcript details and try again.'}
         
     except Exception as e:
         # Handle any other unexpected errors

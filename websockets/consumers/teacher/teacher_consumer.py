@@ -150,6 +150,8 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             'search_classroom_subject_performance': teacher_search_async_functions.search_classroom_subject_performance,
 
             'search_classroom': teacher_search_async_functions.search_classroom,
+            
+            'search_student_classroom_performance': teacher_search_async_functions.search_student_classroom_performance,
 
             'search_month_attendance_records': teacher_search_async_functions.search_month_attendance_records,
 
@@ -157,9 +159,9 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             'search_assessment': teacher_search_async_functions.search_assessment,
 
             'search_transcripts': teacher_search_async_functions.search_transcripts,
+            'search_student_assessment_transcript': teacher_search_async_functions.search_student_assessment_transcript,
             'search_transcript': teacher_search_async_functions.search_transcript,
 
-            'search_student_classroom_performance': teacher_search_async_functions.search_student_classroom_performance,
             'search_student_classroom_card': teacher_search_async_functions.search_student_classroom_card,
             'search_student_activity': teacher_search_async_functions.search_student_activity,
 

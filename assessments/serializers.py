@@ -176,13 +176,14 @@ class GradedAssessmentSerializer(serializers.ModelSerializer):
     term = serializers.SerializerMethodField()
     assessment_type = serializers.CharField(source='get_assessment_type_display')
     topics = TopicSerializer(many=True)
+    assessor = serializers.SerializerMethodField()
     moderator = serializers.SerializerMethodField()
     top_performers = serializers.SerializerMethodField()
     students_who_failed_the_assessment = serializers.SerializerMethodField()
 
     class Meta:
         model = Assessment
-        fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'date_collected', 'date_grades_released', 'term', 'topics', 'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'mode_score', 'standard_deviation', 'percentile_distribution', 'completion_rate', 'interquartile_range', 'top_performers', 'students_who_failed_the_assessment', 'moderator']
+        fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'date_collected', 'date_grades_released', 'term', 'topics', 'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'mode_score', 'standard_deviation', 'percentile_distribution', 'completion_rate', 'interquartile_range', 'top_performers', 'students_who_failed_the_assessment', 'assessor', 'moderator']
 
     def get_term(self, obj):
         return obj.term.term
@@ -192,6 +193,31 @@ class GradedAssessmentSerializer(serializers.ModelSerializer):
 
     def get_students_who_failed_the_assessment(self, obj):
         return StudentBasicAccountDetailsEmailSerializer(obj.students_who_failed_the_assessment, many=True).data
+    
+    def get_assessor(self, obj):
+        return BasicAccountDetailsEmailSerializer(obj.assessor).data if obj.assessor else None
+    
+    def get_moderator(self, obj):
+        return BasicAccountDetailsEmailSerializer(obj.moderator).data if obj.moderator else None
+
+
+class TranscriptGradedAssessmentSerializer(serializers.ModelSerializer):
+
+    term = serializers.SerializerMethodField()
+    assessment_type = serializers.CharField(source='get_assessment_type_display')
+    topics = TopicSerializer(many=True)
+    assessor = serializers.SerializerMethodField()
+    moderator = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Assessment
+        fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'date_collected', 'date_grades_released', 'term', 'topics', 'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'mode_score', 'standard_deviation', 'percentile_distribution', 'completion_rate', 'interquartile_range', 'assessor', 'moderator']
+
+    def get_term(self, obj):
+        return obj.term.term
+    
+    def get_assessor(self, obj):
+        return BasicAccountDetailsEmailSerializer(obj.assessor).data if obj.assessor else None
     
     def get_moderator(self, obj):
         return BasicAccountDetailsEmailSerializer(obj.moderator).data if obj.moderator else None

@@ -7,6 +7,7 @@ from .models import AssessmentTranscript
 
 # serializers
 from accounts.serializers.students.serializers import StudentSourceAccountSerializer, LeastAccountDetailsSerializer, StudentBasicAccountDetailsEmailSerializer
+from assessments.serializers import TranscriptGradedAssessmentSerializer
 
 
 class TranscriptUpdateSerializer(serializers.ModelSerializer):
@@ -55,10 +56,26 @@ class TranscriptSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AssessmentTranscript
-        fields = ['student', 'score', 'comment', 'total']
+        fields = ['student', 'score', 'moderated_score', 'moderator_comment', 'comment', 'total']
 
     def get_student(self, obj):
         return StudentBasicAccountDetailsEmailSerializer(obj.student).data
 
     def get_total(self, obj):
         return str(obj.assessment.total)
+
+
+class DetailedTranscriptSerializer(serializers.ModelSerializer):
+
+    assessment = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AssessmentTranscript
+        fields = ['student', 'score', 'moderated_score', 'moderator_comment', 'comment', 'total', 'assessment']
+
+    def get_student(self, obj):
+        return StudentBasicAccountDetailsEmailSerializer(obj.student).data
+
+    def get_assessment(self, obj):
+        return TranscriptGradedAssessmentSerializer(obj.assessment).data
+

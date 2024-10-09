@@ -43,6 +43,10 @@ class AssessmentTranscript(models.Model):
     # for various reasons like grading consistency. This field is optional.
     moderated_score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
+    # Optional field allowing teachers to leave comments on the student's performance.
+    # The field can be blank or null if no comments are provided.
+    moderator_comment = models.TextField(max_length=1024, null=True, blank=True)
+
     # The date and time when the score was updated after moderation.
     # This field is optional and is only set if the score is moderated.
     moderated_date = models.DateTimeField(null=True, blank=True)
