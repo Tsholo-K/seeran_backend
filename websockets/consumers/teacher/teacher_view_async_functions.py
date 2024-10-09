@@ -54,7 +54,7 @@ def view_my_classrooms(account, role):
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        my_classrooms = requesting_account.taught_classrooms.exclude(register_classroom=True)
+        my_classrooms = requesting_account.taught_classrooms
         serialized_classrooms = TeacherClassroomsSerializer(my_classrooms, many=True).data
 
         return {"classrooms": serialized_classrooms}
