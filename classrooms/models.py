@@ -54,8 +54,8 @@ class Classroom(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['group', 'grade', 'subject'], name='unique_group_grade_subject_classroom'),
-            models.UniqueConstraint(fields=['group', 'grade', 'register_classroom'], name='unique_group_grade_register_classroom')
+            models.UniqueConstraint(fields=['group', 'grade', 'subject', 'school', 'timestamp__year'], name='unique_group_grade_subject_classroom'),
+            models.UniqueConstraint(fields=['group', 'grade', 'register_classroom', 'school', 'timestamp__year'], name='unique_group_grade_register_classroom')
         ]
 
     def __str__(self):

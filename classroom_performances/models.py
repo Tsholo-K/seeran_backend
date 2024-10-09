@@ -117,7 +117,7 @@ class ClassroomPerformance(models.Model):
         if not self.classroom_id:
             raise ValidationError('A classroom must either be a register class or be associated with a subject. Please review the provided information and try again.')
 
-        if not self.classroom.subject:
+        if not self.classroom.subject_id:
             raise ValidationError('A classroom must either be a register class or be associated with a subject. Please review the provided information and try again.')
 
         if not self.term_id:
