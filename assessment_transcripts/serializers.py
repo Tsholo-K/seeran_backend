@@ -71,7 +71,7 @@ class DetailedTranscriptSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AssessmentTranscript
-        fields = ['student', 'score', 'moderated_score', 'moderator_comment', 'comment', 'total', 'assessment']
+        fields = ['student', 'score', 'moderated_score', 'moderator_comment', 'comment', 'assessment']
 
     def get_student(self, obj):
         return StudentBasicAccountDetailsEmailSerializer(obj.student).data
