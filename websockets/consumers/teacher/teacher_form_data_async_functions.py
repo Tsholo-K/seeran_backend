@@ -221,7 +221,7 @@ def form_data_for_assessment_submissions(user, role, details):
         assessment = requesting_account.taught_classrooms.assessments.select_related('classroom', 'grade').get(assessment_id=details['assessment'])
 
         # Get the list of students who have already submitted the assessment
-        submitted_student_ids = assessment.submissions.values_list('id', flat=True)
+        submitted_student_ids = assessment.submissions.values_list('student_id', flat=True)
 
         # Fetch students in the classroom who haven't submitted
         students = assessment.classroom.students.only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').filter(id__in=submitted_student_ids)

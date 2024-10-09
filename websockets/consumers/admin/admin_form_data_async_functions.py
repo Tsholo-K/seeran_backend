@@ -423,12 +423,17 @@ def form_data_for_assessment_submissions(user, role, details):
             response = 'You do not have the necessary permissions to collect assessment submissions.'
             audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
+        
+        if not {'assessment'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid assessment ID and try again.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
 
         # Fetch the assessment from the requesting user's school
-        assessment = requesting_account.school.assessments.select_related('classroom', 'grade').get(assessment_id=details.get('assessment'))
+        assessment = requesting_account.school.assessments.select_related('classroom', 'grade').get(assessment_id=details['assessment'])
 
         # Get the list of students who have already submitted the assessment
-        submitted_student_ids = assessment.submissions.values_list('id', flat=True)
+        submitted_student_ids = assessment.submissions.values_list('student_id', flat=True)
 
         if assessment.classroom:
             # Fetch students in the classroom who haven't submitted
