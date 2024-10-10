@@ -755,8 +755,8 @@ def create_timetable(account, role, details):
                 # Create a new timetable
                 timetable = requesting_account.school.timetables.create(day_of_week=day_of_week, day_of_week_order=Timetable.DAY_OF_THE_WEEK_ORDER[day_of_week], teacher_timetable=teacher_timetable)
                 
-                group_timetable.timetables_count = group_timetable.timetables.count()
-                group_timetable.save()
+                teacher_timetable.timetables_count = teacher_timetable.timetables.count()
+                teacher_timetable.save()
 
                 response = f'A new timetable has been added to the teacher\'s weekly schedules. They should be able to view the sessions in the schedule when they check their timetables again.'
 
