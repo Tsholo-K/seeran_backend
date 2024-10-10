@@ -21,8 +21,80 @@ from assessments.serializers import AssessmentCreationSerializer
 from student_activities.serializers import ActivityCreationSerializer
 
 # utility functions 
+from accounts import utils as accounts_utilities
 from account_permissions import utils as permissions_utilities
 from audit_logs import utils as audits_utilities
+
+
+
+@database_sync_to_async
+def submit_attendance_register(account, role, details):
+    try:
+        classroom = None  # Initialize classroom as None to prevent issues in error handling
+
+        requesting_user = BaseAccount.objects.get(account_id=account)
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+
+        # Check if the user has permission to create an assessment
+        if not permissions_utilities.has_permission(requesting_account, 'SUBMIT', 'ATTENDANCE'):
+            response = f'could not proccess your request, you do not have the necessary permissions to grade assessments.'
+            audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='ATTENDANCE', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+        
+        if not {'classroom'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid classroom ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='ATTENDANCE', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'], register_classroom=True)
+        
+        today = timezone.localdate()
+        
+        with transaction.atomic():
+            # Check if an Absent instance exists for today and the given class
+            attendance_register, created = classroom.attendances.get_or_create(timestamp__date=today, defaults={'attendance_taker': requesting_user, 'classroom': classroom})
+            students = details.get('students', '').split(', ')
+
+            if created:
+                if not students or students == ['']:
+                    students = None
+                absent = True
+                response = 'attendance register successfully taken for today'
+
+            else:                    
+                if not students or students == ['']:
+                    return {'error': 'Could not process your request, no students were provided.'}
+                
+                absent = False
+                response = 'students marked as late, attendance register successfully updated'
+            
+            attendance_register.update_attendance_register(students=students, absent=absent)
+            audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='ATTENDANCE', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='SUBMITTED', server_response=response, school=requesting_account.school,)
+
+        return {'message': response}
+
+    except BaseAccount.DoesNotExist:
+        # Handle case where the user or teacher account does not exist
+        return {'error': 'The account with the provided credentials does not exist. Please check the account details and try again.'}
+    
+    except Classroom.DoesNotExist:
+        return { 'error': 'class with the provided credentials does not exist' }
+    
+    except ClassroomAttendanceRegister.DoesNotExist:
+        return { 'error': 'class with the provided credentials does not exist' }
+
+    except ValidationError as e:
+        error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
+        audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='ATTENDANCE', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
+
+        return {"error": error_message}
+
+    except Exception as e:
+        error_message = str(e)
+        audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='ATTENDANCE', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
+
+        return {'error': error_message}
 
 
 @database_sync_to_async

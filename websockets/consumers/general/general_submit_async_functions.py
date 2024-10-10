@@ -39,4 +39,4 @@ def submit_log_out_request(access_token):
 
     except Exception as e:
         return {"error": str(e)}
-    
+
