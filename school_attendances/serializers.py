@@ -10,7 +10,6 @@ from accounts.serializers.students.serializers import LeastAccountDetailsSeriali
 
 class ClassroomAttendanceSerializer(serializers.ModelSerializer):
 
-    absent = serializers.SerializerMethodField()
     absent_students = LeastAccountDetailsSerializer(many=True)
     late_students = LeastAccountDetailsSerializer(many=True)
 
