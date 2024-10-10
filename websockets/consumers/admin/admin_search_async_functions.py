@@ -1448,7 +1448,7 @@ def search_month_attendance_records(account, role, details):
         attendances = requesting_account.school.school_attendances.prefetch_related('absent_students', 'late_students').filter(models.Q(timestamp__gte=start_date) & models.Q(timestamp__lt=end_date) & models.Q(classroom=classroom) & models.Q(absentes=True))
 
         # For each absent instance, get the corresponding Late instance
-        attendance_records = ClassroomAttendanceSerializer(attendances, many=True)
+        attendance_records = ClassroomAttendanceSerializer(attendances, many=True).data
 
         # Compress the serialized data
         compressed_attendance_records = zlib.compress(json.dumps(attendance_records).encode('utf-8'))
@@ -1489,7 +1489,7 @@ def search_student_attendance(account, role, details):
         attendances = classroom.attendances.filter(models.Q(absent_students=student) & models.Q(late_students=student) & models.Q(absentes=True))
 
         # For each absent instance, get the corresponding Late instance
-        attendance_records = StudentAttendanceSerializer(attendances, many=True, context={'student': account})
+        attendance_records = StudentAttendanceSerializer(attendances, many=True, context={'student': account}).data
 
         # Compress the serialized data
         compressed_attendance_records = zlib.compress(json.dumps(attendance_records).encode('utf-8'))
