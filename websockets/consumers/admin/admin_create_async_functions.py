@@ -723,7 +723,6 @@ def create_timetable(account, role, details):
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'TIMETABLE'):
             response = 'Could not process your request, you do not have the necessary permissions to create schedules.'
             audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TIMETABLE', outcome='DENIED', server_response=response, school=requesting_account.school)
-
             return {'error': response}
 
         if not 'group_timetable' in details and not 'teacher' in details:
@@ -749,7 +748,7 @@ def create_timetable(account, role, details):
                 response = f'A new timetable has been added to the group\'s weekly schedules. All subscribed students should be able to view the sessions in the timetable when they check their timetables again.'
 
             else:
-                teacher_timetable, created = teacher.teacher_timetable.prefetch_related('timetables').get_or_create()
+                teacher_timetable, created = teacher.teacher_timetable.prefetch_related('timetables').get_or_create(defaults={'teacher': teacher})
                 if not created:
                     teacher_timetable.timetables.filter(day_of_week=day_of_week).delete()
 
