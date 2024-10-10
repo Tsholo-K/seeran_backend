@@ -337,13 +337,13 @@ def create_term(account, role, details):
                 term = requesting_account.school.terms.create(**serializer.validated_data)
 
                 response = f"A new term, {term.term}, for your schools {grade.grade} has been successfully created."
-                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', target_object_id=str(term.term_id), outcome='CREATED', server_response=response, school=requesting_account.school)
+                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='CREATED', server_response=response, school=requesting_account.school)
 
             return {"message": response}
         
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', target_object_id=str(term.term_id), outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
         return {"error": error_response}
 
     except Grade.DoesNotExist:
@@ -352,12 +352,12 @@ def create_term(account, role, details):
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', target_object_id=str(term.term_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', target_object_id=str(term.term_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {'error': error_message}
 
 
