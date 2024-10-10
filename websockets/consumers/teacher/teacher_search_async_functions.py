@@ -383,8 +383,8 @@ def search_student_attendance(account, role, details):
 
         # Query for the Absent instances where absentes is True
         attendances = []
-        attendances.extend(student.absences)
-        attendances.extend(student.late_arrivals)
+        attendances.extend(student.absences.all())
+        attendances.extend(student.late_arrivals.all())
 
         # Now sort the combined attendances list by 'timestamp'
         sorted_attendances = sorted(attendances, key=lambda attendance: attendance.timestamp)
