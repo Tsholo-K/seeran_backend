@@ -234,7 +234,7 @@ def form_data_for_adding_students_to_classroom(user, role, details):
     except Exception as e:
         # Handle any other unexpected errors
         return {'error': str(e)}
-    
+
 
 @database_sync_to_async
 def form_data_for_classroom_attendance_register(user, role, details):
