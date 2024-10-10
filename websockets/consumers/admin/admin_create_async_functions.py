@@ -748,7 +748,7 @@ def create_timetable(account, role, details):
                 response = f'A new timetable has been added to the group\'s weekly schedules. All subscribed students should be able to view the sessions in the timetable when they check their timetables again.'
 
             else:
-                teacher_timetable, created = requesting_account.school.teacher_timetables.prefetch_related('timetables').get_or_create(defaults={'teacher': teacher})
+                teacher_timetable, created = requesting_account.school.teacher_timetables.prefetch_related('timetables').get_or_create(defaults={'teacher': teacher, 'school': requesting_account.school})
                 if not created:
                     teacher_timetable.timetables.filter(day_of_week=day_of_week).delete()
 
