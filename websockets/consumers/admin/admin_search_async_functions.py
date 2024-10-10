@@ -649,7 +649,7 @@ def search_grade_terms(user, role, details):
             return {'error': response}
 
         # Prefetch related school terms to minimize database hits
-        grade_terms = requesting_account.school.terms.only('term', 'weight', 'start_date', 'end_date', 'term_id').filter(grade__grade_id=details['grade'])
+        grade_terms = requesting_account.school.terms.only('term_name', 'weight', 'start_date', 'end_date', 'term_id').filter(grade__grade_id=details['grade'])
         serialized_terms = TermsSerializer(grade_terms, many=True).data
         
         # Return the serialized terms in a dictionary

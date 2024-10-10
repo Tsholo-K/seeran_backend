@@ -190,7 +190,7 @@ def search_grade_terms(account, role, details):
         classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'])
 
         # Prefetch related school terms to minimize database hits
-        grade_terms = classroom.grade.terms.only('term', 'weight', 'start_date', 'end_date', 'term_id')
+        grade_terms = classroom.grade.terms.only('term_name', 'weight', 'start_date', 'end_date', 'term_id')
         serialized_terms = TermsSerializer(grade_terms, many=True).data
         
         # Return the serialized terms in a dictionary
