@@ -23,7 +23,7 @@ class Term(models.Model):
     """
 
     # The term identifier (e.g., "Term 1", "Term 2", etc.)
-    term = models.CharField(max_length=16)
+    term_name = models.CharField(max_length=16)
     
     # Weight of the term in relation to the final year calculations (e.g., 30.00%)
     weight = models.DecimalField(max_digits=5, decimal_places=2)
@@ -57,7 +57,7 @@ class Term(models.Model):
 
     def __str__(self):
         """String representation of the Term object."""
-        return f"Term {self.term}"
+        return f"Term {self.term_name}"
 
     def save(self, *args, **kwargs):
         """
@@ -72,7 +72,7 @@ class Term(models.Model):
         except IntegrityError as e:
             # Handle potential unique constraint violation for duplicate terms
             if 'unique_grade_term' in str(e).lower():
-                raise ValidationError(_(f'A term with the identifier {self.term} already exists for the specified grade and school. Duplicate terms within the same grade and school are not allowed. Please choose a different term identifier or check existing terms.'))
+                raise ValidationError(_(f'A term with the identifier {self.term_name} already exists for the specified grade and school. Duplicate terms within the same grade and school are not allowed. Please choose a different term identifier or check existing terms.'))
             else:
                 # Re-raise other database exceptions
                 raise ValidationError(_(str(e)))
@@ -89,9 +89,9 @@ class Term(models.Model):
         - The term dates do not overlap with other terms in the same grade and school.
         - The total weight of all terms in the grade does not exceed 100% for a given school year.
         """
-        if not self.term:
+        if not self.term_name:
             raise ValidationError(_('The provided term information is missing a term identifier. Please specify a valid term (e.g., "Term 1").'))
-        elif len(self.term) > 16:
+        elif len(self.term_name) > 16:
             raise ValidationError(_('The specified term identifier is too long. A term identifier can have a maximum length of 16 characters. Consider shortening the identifier.'))
         
         # Ensure the start date is before the end date

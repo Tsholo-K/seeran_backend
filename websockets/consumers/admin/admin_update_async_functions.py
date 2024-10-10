@@ -418,9 +418,6 @@ def update_term_details(account, role, details):
 
         term = Term.objects.get(term_id=details.get('term'), school=requesting_account.school)
 
-        if details.get('term_name'):
-            details['term'] = details['term_name']
-
         # Initialize the serializer with the existing school instance and incoming data
         serializer = UpdateTermSerializer(instance=term, data=details)
         # Validate the incoming data
