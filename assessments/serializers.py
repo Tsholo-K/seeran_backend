@@ -77,9 +77,6 @@ class DueAssessmentUpdateFormDataSerializer(serializers.ModelSerializer):
         model = Assessment
         fields = ['start_time', 'dead_line', 'title', 'total', 'topics', 'percentage_towards_term_mark', 'term', 'moderator']
 
-    def get_title(self, obj):
-        return obj.title.title()
-
     def get_term(self, obj):
         return str(obj.term.term_id)
 
@@ -101,38 +98,23 @@ class CollectedAssessmentUpdateFormDataSerializer(serializers.ModelSerializer):
 
 class DueAssessmentsSerializer(serializers.ModelSerializer):
 
-    title = serializers.SerializerMethodField()
-
     class Meta:
         model = Assessment
         fields = ['title', 'assessment_type', 'dead_line', 'formal', 'assessment_id']
 
-    def get_title(self, obj):
-        return obj.title.title()
-
 
 class CollectedAssessmentsSerializer(serializers.ModelSerializer):
-
-    title = serializers.SerializerMethodField()
 
     class Meta:
         model = Assessment
         fields = ['title', 'assessment_type', 'date_collected', 'formal', 'assessment_id']
 
-    def get_title(self, obj):
-        return obj.title.title()
-
 
 class GradedAssessmentsSerializer(serializers.ModelSerializer):
-
-    title = serializers.SerializerMethodField()
 
     class Meta:
         model = Assessment
         fields = ['title', 'assessment_type', 'date_grades_released', 'formal', 'assessment_id']
-
-    def get_title(self, obj):
-        return obj.title.title()
 
 
 class DueAssessmentSerializer(serializers.ModelSerializer):
@@ -147,7 +129,7 @@ class DueAssessmentSerializer(serializers.ModelSerializer):
         fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'start_time', 'dead_line', 'term', 'topics', 'moderator']
 
     def get_term(self, obj):
-        return obj.term.term
+        return obj.term.term_name
 
     def get_moderator(self, obj):
         return BasicAccountDetailsEmailSerializer(obj.moderator).data if obj.moderator else None
@@ -165,7 +147,7 @@ class CollectedAssessmentSerializer(serializers.ModelSerializer):
         fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'date_collected', 'term', 'topics', 'moderator']
 
     def get_term(self, obj):
-        return obj.term.term
+        return obj.term.term_name
 
     def get_moderator(self, obj):
         return BasicAccountDetailsEmailSerializer(obj.moderator).data if obj.moderator else None
@@ -214,7 +196,7 @@ class TranscriptGradedAssessmentSerializer(serializers.ModelSerializer):
         fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'date_collected', 'date_grades_released', 'term', 'topics', 'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'mode_score', 'standard_deviation', 'percentile_distribution', 'interquartile_range', 'assessor', 'moderator']
 
     def get_term(self, obj):
-        return obj.term.term
+        return obj.term.term_name
     
     def get_assessor(self, obj):
         return BasicAccountDetailsEmailSerializer(obj.assessor).data if obj.assessor else None
