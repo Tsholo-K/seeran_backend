@@ -15,8 +15,12 @@ class TeacherTimetable(models.Model):
     
     timetables_count = models.PositiveIntegerField(default=0)
 
+    # Foreign key linking to the school where the assessment took place.
+    school = models.ForeignKey('schools.School', on_delete=models.CASCADE, related_name='teacher_timetables')
+
     last_updated = models.DateTimeField(auto_now=True)
 
+    timestamp = models.DateTimeField(auto_now_add=True)
     timetable_id  = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     class Meta:
