@@ -382,7 +382,7 @@ def search_student_attendance(account, role, details):
         student = classroom.students.get(account_id=details['student'])
 
         # Query for the Absent instances where absentes is True
-        attendances = classroom.attendances.filter(models.Q(absent_students=student) | models.Q(late_students=student) & models.Q(absentes=True))
+        attendances = classroom.attendances.filter((models.Q(absent_students=student) | models.Q(late_students=student)) & models.Q(absentes=True))
 
         # For each absent instance, get the corresponding Late instance
         attendance_records = StudentAttendanceSerializer(attendances, many=True, context={'student': account}).data
