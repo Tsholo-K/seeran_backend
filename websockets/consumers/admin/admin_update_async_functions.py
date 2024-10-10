@@ -403,16 +403,16 @@ def update_subject_details(user, role, details):
 
 
 @database_sync_to_async
-def update_term_details(user, role, details):
+def update_term_details(account, role, details):
     try:
         term = None  # Initialize term as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to update terms
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'TERM'):
             response = f'could not proccess your request, you do not have the necessary permissions to update term details.'
-            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', outcome='DENIED', server_response=response, school=requesting_account.school)
 
             return {'error': response}
 
@@ -427,7 +427,7 @@ def update_term_details(user, role, details):
                 serializer.save()
                     
                 response = f"school term details have been successfully updated"
-                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='UPDATED', response=response, school=requesting_account.school,)
+                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='UPDATED', server_response=response, school=requesting_account.school,)
 
             # Serialize the school terms
             serialized_term = TermSerializer(term).data
@@ -436,8 +436,7 @@ def update_term_details(user, role, details):
             
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
         return {"error": error_response}
                        
     except Term.DoesNotExist:
@@ -446,14 +445,12 @@ def update_term_details(user, role, details):
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {'error': error_message}
 
 
