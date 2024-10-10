@@ -78,7 +78,7 @@ class Term(models.Model):
                 raise ValidationError(_(str(e)))
         except Exception as e:
             # Catch any other errors during saving and re-raise them as validation errors
-            raise ValidationError(_(str(e).lower()))
+            raise ValidationError(_(str(e)))
 
     def clean(self):
         """
@@ -108,7 +108,7 @@ class Term(models.Model):
         total_weight = Term.objects.filter(school=self.school, grade=self.grade).exclude(pk=self.pk).aggregate(total_weight=models.Sum('weight'))['total_weight'] or Decimal('0.00')
 
         if total_weight + self.weight > Decimal('100.00'):
-            raise ValidationError(_('The total weight of all terms in the grade for the specified school exceeds 100%. The maximum allowed weight for all terms combined is 100%. Please adjust the term weight.'))
+            raise ValidationError(_('The total weight of all terms in the grade exceeds 100%. The maximum allowed weight for all terms combined is 100%. Please adjust the term weight and try again.'))
 
         if total_weight + self.weight < Decimal('0.00'):
             raise ValidationError(_('The total weight of all terms in the grade must be at least 0%. Please adjust the term weight accordingly.'))
