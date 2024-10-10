@@ -676,7 +676,7 @@ def search_term_details(user, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TERM', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        term = requesting_account.school.terms.only('term', 'weight', 'start_date', 'end_date', 'school_days').get(term_id=details['term'])
+        term = requesting_account.school.terms.only('term_name', 'weight', 'start_date', 'end_date', 'school_days').get(term_id=details['term'])
         serialized_term = TermSerializer(term).data
         
         # Return the serialized terms in a dictionary
