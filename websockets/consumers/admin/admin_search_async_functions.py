@@ -42,6 +42,7 @@ from term_subject_performances.serializers import TermSubjectPerformanceSerializ
 from subjects.serializers import SubjectSerializer, SubjectDetailsSerializer
 from student_subject_performances.serializers import StudentPerformanceSerializer
 from classrooms.serializers import TeacherClassroomsSerializer, ClassesSerializer, ClassroomSerializer, ClassroomDetailsSerializer
+from school_attendances.serializers import ClassroomAttendanceSerializer, StudentAttendanceSerializer
 from classroom_performances.serializers import ClassroomPerformanceSerializer
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, GradedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer, GradedAssessmentSerializer
 from assessment_transcripts.serializers import TranscriptsSerializer, TranscriptSerializer, DetailedTranscriptSerializer
@@ -1447,14 +1448,7 @@ def search_month_attendance_records(account, role, details):
         attendances = requesting_account.school.school_attendances.prefetch_related('absent_students', 'late_students').filter(models.Q(timestamp__gte=start_date) & models.Q(timestamp__lt=end_date) & models.Q(classroom=classroom) & models.Q(absentes=True))
 
         # For each absent instance, get the corresponding Late instance
-        attendance_records = []
-        for attendance in attendances:
-            record = {
-                'date': attendance.timestamp.isoformat(),
-                'absent_students': LeastAccountDetailsSerializer(attendance.absent_students, many=True).data if attendance.absent_students else [],
-                'late_students': LeastAccountDetailsSerializer(attendance.late_students, many=True).data if attendance.late_students else [],
-            }
-            attendance_records.append(record)
+        attendance_records = ClassroomAttendanceSerializer(attendances, many=True)
 
         # Compress the serialized data
         compressed_attendance_records = zlib.compress(json.dumps(attendance_records).encode('utf-8'))
@@ -1466,6 +1460,51 @@ def search_month_attendance_records(account, role, details):
     
     except Classroom.DoesNotExist:
         return {'error': 'a classroom in your school with the provided credentials does not exist. Please check the classrooms details and try again.'}
+
+    except Exception as e:
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def search_student_attendance(account, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+ 
+        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ATTENDANCE'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view classrooms. please contact your administrator to adjust you permissions for viewing classrooms.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ATTENDANCE', outcome='DENIED', server_response=response, school=requesting_account.school)
+
+            return {'error': response}
+
+        if not {'classroom', 'student'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid student and classroom IDs and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ATTENDANCE', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'], register_classroom=True)
+        student = classroom.students.get(account_id=details['student'])
+
+        # Query for the Absent instances where absentes is True
+        attendances = classroom.attendances.filter(models.Q(absent_students=student) & models.Q(late_students=student) & models.Q(absentes=True))
+
+        # For each absent instance, get the corresponding Late instance
+        attendance_records = StudentAttendanceSerializer(attendances, many=True, context={'student': account})
+
+        # Compress the serialized data
+        compressed_attendance_records = zlib.compress(json.dumps(attendance_records).encode('utf-8'))
+
+        # Encode compressed data as base64 for safe transport
+        encoded_attendance_records = base64.b64encode(compressed_attendance_records).decode('utf-8')
+
+        return {'records': encoded_attendance_records}
+    
+    except Classroom.DoesNotExist:
+        return {'error': 'a classroom in your school with the provided credentials does not exist. Please check the classrooms details and try again.'}
+                   
+    except Student.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'Could not process your request, a student account with the provided credentials does not exist. Please review your account details and try again.'}
 
     except Exception as e:
         return {'error': str(e)}
