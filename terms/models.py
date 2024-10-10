@@ -48,7 +48,7 @@ class Term(models.Model):
     class Meta:
         # Ensure that a combination of term, grade, and school is unique
         constraints = [
-            models.UniqueConstraint(fields=['term', 'grade', 'school'], name='unique_grade_term')
+            models.UniqueConstraint(fields=['term_name', 'grade', 'school'], name='unique_grade_term')
         ]
         # Order terms by start date, most recent first
         ordering = ['-start_date']
