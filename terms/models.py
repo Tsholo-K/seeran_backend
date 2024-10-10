@@ -23,7 +23,7 @@ class Term(models.Model):
     """
 
     # The term identifier (e.g., "Term 1", "Term 2", etc.)
-    term = models.CharField(max_length=16, editable=False)
+    term = models.CharField(max_length=16)
     
     # Weight of the term in relation to the final year calculations (e.g., 30.00%)
     weight = models.DecimalField(max_digits=5, decimal_places=2)

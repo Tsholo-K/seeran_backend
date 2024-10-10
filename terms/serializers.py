@@ -33,7 +33,7 @@ class UpdateTermSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Term
-        fields = [ 'weight', 'start_date', 'end_date', 'school_days' ]
+        fields = ['term', 'weight', 'start_date', 'end_date', 'school_days']
 
     def __init__(self, *args, **kwargs):
         super(UpdateTermSerializer, self).__init__(*args, **kwargs)
