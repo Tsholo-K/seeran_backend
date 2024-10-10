@@ -168,7 +168,7 @@ class GradedAssessmentSerializer(serializers.ModelSerializer):
         fields = ['title', 'assessment_type', 'total', 'formal', 'percentage_towards_term_mark', 'date_collected', 'date_grades_released', 'term', 'topics', 'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'mode_score', 'standard_deviation', 'percentile_distribution', 'completion_rate', 'interquartile_range', 'top_performers', 'students_who_failed_the_assessment', 'assessor', 'moderator']
 
     def get_term(self, obj):
-        return obj.term.term
+        return obj.term.term_name
     
     def get_top_performers(self, obj):
         return StudentBasicAccountDetailsEmailSerializer(obj.top_performers, many=True).data
