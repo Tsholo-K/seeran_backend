@@ -29,7 +29,7 @@ class StudentAttendanceSerializer(serializers.ModelSerializer):
     
     def get_absent(self, obj):
         student = self.context.get('student')
-        return obj.absent_students.filter(account_id=student).exists()
+        return obj.absent_students.filter(id=student).exists()
 
 
 

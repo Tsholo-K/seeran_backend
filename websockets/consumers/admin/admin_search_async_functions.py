@@ -1491,10 +1491,10 @@ def search_student_attendance(account, role, details):
         attendances.extend(student.late_arrivals.all())
 
         # Now sort the combined attendances list by 'timestamp'
-        sorted_attendances = sorted(attendances, key=lambda attendance: attendance.timestamp)
+        sorted_attendances = sorted(attendances, key=lambda attendance: attendance.timestamp, reverse=True)
 
         # For each absent instance, get the corresponding Late instance
-        attendance_records = StudentAttendanceSerializer(sorted_attendances, many=True, context={'student': account}).data
+        attendance_records = StudentAttendanceSerializer(sorted_attendances, many=True, context={'student': student.id}).data
 
         # Compress the serialized data
         compressed_attendance_records = zlib.compress(json.dumps(attendance_records).encode('utf-8'))
