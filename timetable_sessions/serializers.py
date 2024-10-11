@@ -7,8 +7,8 @@ from .models import TimetableSession
 
 class SessoinsSerializer(serializers.ModelSerializer):
     
-    session_from = serializers.TimeField(format='%H:%M')
-    session_till = serializers.TimeField(format='%H:%M')
+    seesion_start_time = serializers.TimeField(format='%H:%M')
+    seesion_end_time = serializers.TimeField(format='%H:%M')
 
     class Meta:
         model = TimetableSession
