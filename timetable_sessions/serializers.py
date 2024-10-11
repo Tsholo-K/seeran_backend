@@ -12,5 +12,5 @@ class SessoinsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TimetableSession
-        fields = [ 'type', 'classroom', 'session_from', 'session_till' ]
+        fields = [ 'session_type', 'session_location', 'seesion_start_time', 'seesion_end_time' ]
 
