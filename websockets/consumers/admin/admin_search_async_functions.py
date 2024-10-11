@@ -1209,10 +1209,10 @@ def search_student_activity(account, role, details):
 
 
 @database_sync_to_async
-def search_teacher_timetable(user, role, details):
+def search_teacher_timetables(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'VIEW', 'TEACHER_TIMETABLE'):
             response = f'could not proccess your request, you do not have the necessary permissions to view teacher timetables. please contact your administrator to adjust you permissions for viewing teacher timetables.'
@@ -1390,7 +1390,7 @@ def search_group_timetable_subscribers(user, role, details):
     except Exception as e:
         # Handle any unexpected errors with a general error message
         return {'error': str(e)}
-    
+
 
 @database_sync_to_async
 def search_timetable_sessions(user, role, details):

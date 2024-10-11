@@ -11,13 +11,12 @@ from django.db import models, transaction
 from django.utils.translation import gettext as _
 
 # models 
-from accounts.models import Teacher, Student
+from accounts.models import Student
 from classrooms.models import Classroom
-from school_attendances.models import ClassroomAttendanceRegister
-from subjects.models import Subject
 from terms.models import Term
 from assessments.models import Assessment
 from assessment_transcripts.models import AssessmentTranscript
+from timetables.models import Timetable
 from student_activities.models import StudentActivity
 
 # serilializers
@@ -31,7 +30,9 @@ from school_attendances.serializers import ClassroomAttendanceSerializer, Studen
 from classroom_performances.serializers import ClassroomPerformanceSerializer
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, GradedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer, GradedAssessmentSerializer
 from assessment_transcripts.serializers import TranscriptsSerializer, TranscriptSerializer, DetailedTranscriptSerializer
+from timetables.serializers import TimetableSerializer
 from student_activities.serializers import ActivitiesSerializer, ActivitySerializer
+from timetable_sessions.serializers import SessoinsSerializer
 
 # checks
 from accounts.checks import permission_checks
@@ -704,4 +705,58 @@ def search_student_activity(account, role, details):
     except Exception as e:
         # Handle any other unexpected errors
         return {'error': str(e)}
+
+
+
+@database_sync_to_async
+def search_teacher_timetables(account, role):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+
+        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'TEACHER_TIMETABLE'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view teacher timetables. please contact your administrator to adjust you permissions for viewing teacher timetables.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TEACHER_TIMETABLE', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        # Check if the teacher has a schedule
+        if hasattr(requesting_account, 'teacher_timetable'):
+            serialized_timetables = TimetableSerializer(requesting_account.teacher_timetable.timetables, many=True).data
+        else:
+            serialized_timetables = []
+
+        return {"timetables": serialized_timetables}
+    
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def search_timetable_sessions(account, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+
+        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'TIMETABLE'):
+            response = f'could not proccess your request, you do not have the necessary permissions to view timetable sessions. please contact your administrators to adjust you permissions for viewing group schedules.'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TIMETABLE', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        if 'timetable' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid timetable ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TIMETABLE', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        timetable = requesting_account.teacher_timetable.timetables.prefetch_related('sessions').get(timetable_id=details['timetable'])
+        serialized_sessions = SessoinsSerializer(timetable.sessions, many=True).data
+        
+        return {"sessions": serialized_sessions}
+    
+    except Timetable.DoesNotExist:
+        return {"error" : "a schedule with the provided credentials does not exist"}
+    
+    except Exception as e:
+        return { 'error': str(e) }
+
 

@@ -166,12 +166,12 @@ class TeacherConsumer(AsyncWebsocketConsumer):
             'search_student_classroom_card': teacher_search_async_functions.search_student_classroom_card,
             'search_student_activity': teacher_search_async_functions.search_student_activity,
 
-            # 'search_teacher_timetable_timetables': teacher_search_async_functions.search_teacher_timetable_schedules,
+            'search_teacher_timetables': teacher_search_async_functions.search_teacher_timetables,
 
             # 'search_group_timetables': teacher_search_async_functions.search_group_timetables,
             # 'search_group_timetable_timetables': teacher_search_async_functions.search_group_timetable_schedules,
 
-            # 'search_schedule_sessions': teacher_search_async_functions.search_timetable_sessions,
+            'search_timetable_sessions': teacher_search_async_functions.search_timetable_sessions,
         }
 
         func = search_map.get(description)
@@ -179,6 +179,8 @@ class TeacherConsumer(AsyncWebsocketConsumer):
         if func:
             if description in ['search_email_ban']:
                 response = await func(details) 
+            elif description in ['search_teacher_timetables']:
+                response = await func(account, role) 
             elif description in ['search_chat_room_messages']:
                 response = await func(account, details)
             else:
