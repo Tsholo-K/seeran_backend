@@ -12,7 +12,7 @@ from authentication.utils import validate_access_token
 
 # admin async functions 
 from . import student_connect_async_functions
-# from . import student_view_async_functions
+from . import student_view_async_functions
 # from . import student_search_async_functions
 
 # general async functions
@@ -112,7 +112,9 @@ class StudentConsumer(AsyncWebsocketConsumer):
 
             'view_chat_rooms': general_view_async_functions.view_chat_rooms,
 
-            # 'view_school_announcements': admin_view_async_functions.view_school_announcements,
+            'view_school_announcements': student_view_async_functions.view_school_announcements,
+
+            'view_my_classrooms': student_view_async_functions.view_my_classrooms,
         }
 
         func = view_map.get(description)
