@@ -120,6 +120,7 @@ class TeacherAccountPermission(models.Model):
         ('TRANSCRIPT', 'Transcript'),   # Related to student transcripts
         ('ACTIVITY', 'Activity'),       # Student Activity
         ('TIMETABLE', 'Timetable'),       # Timetable
+        ('TEACHER_TIMETABLE', 'Teacher Timetable'),       # Teacher Timetable
         ('GROUP_TIMETABLE', 'Group Timetable'),     # Timetables for groups of students
     ]
 
