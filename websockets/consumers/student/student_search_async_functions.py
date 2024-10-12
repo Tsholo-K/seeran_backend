@@ -630,33 +630,17 @@ def search_student_classroom_card(account, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
-        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ACCOUNT'):
-            response = f'could not proccess your request, you do not have the necessary permissions to view classrooms. please contact your administrator to adjust you permissions for viewing classrooms.'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ACCOUNT', outcome='DENIED', server_response=response, school=requesting_account.school)
-            return {'error': response}
-
         if not {'account', 'classroom'}.issubset(details):
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid account and classroom IDs and try again'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ACCOUNT', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
-            
-        # Retrieve the requested users account and related school in a single query using select_related
-        requested_account = accounts_utilities.get_account_and_permission_check_attr(account=details['account'], role='STUDENT')
 
-        # Check permissions
-        permission_error = permission_checks.view_account(requesting_account, requested_account)
-        if permission_error:
-            return permission_error
-
-        if details['classroom'] == 'my register classroom':
-            classroom = requesting_account.taught_classrooms.get(register_classroom=True)
-        else:
-            classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'])
+        classroom = requesting_account.enrolled_classrooms.get(classroom_id=details['classroom'])
 
         # retrieve the students activities 
-        activities = requested_account.my_activities.filter(classroom=classroom)
+        activities = requesting_account.my_activities.filter(classroom=classroom)
         
-        serialized_student = StudentBasicAccountDetailsEmailSerializer(instance=requested_account).data
+        serialized_student = StudentBasicAccountDetailsEmailSerializer(instance=requesting_account).data
         serialized_activities = ActivitiesSerializer(activities, many=True).data
 
         return {"student": serialized_student, 'activities': serialized_activities}

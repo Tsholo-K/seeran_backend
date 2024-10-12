@@ -137,6 +137,8 @@ class StudentConsumer(AsyncWebsocketConsumer):
 
             'search_classroom': student_search_async_functions.search_classroom,
 
+            'search_student_classroom_card': student_search_async_functions.search_student_classroom_card,
+
             # 'search_audit_entries': admin_search_async_functions.search_audit_entries,
             # 'search_audit_entry': admin_search_async_functions.search_audit_entry,
 
