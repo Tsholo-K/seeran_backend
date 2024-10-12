@@ -13,7 +13,7 @@ from authentication.utils import validate_access_token
 # admin async functions 
 from . import student_connect_async_functions
 from . import student_view_async_functions
-# from . import student_search_async_functions
+from . import student_search_async_functions
 
 # general async functions
 from websockets.consumers.general import general_message_async_functions
@@ -134,6 +134,8 @@ class StudentConsumer(AsyncWebsocketConsumer):
 
             'search_chat_room': general_search_async_functions.search_chat_room,
             'search_chat_room_messages': general_search_async_functions.search_chat_room_messages,
+
+            'search_classroom': student_search_async_functions.search_classroom,
 
             # 'search_audit_entries': admin_search_async_functions.search_audit_entries,
             # 'search_audit_entry': admin_search_async_functions.search_audit_entry,
