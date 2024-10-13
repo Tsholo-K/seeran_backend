@@ -331,11 +331,11 @@ def search_student_assessment_transcript(account, role, details):
         student = requesting_account.children.get(account_id=details['student'])
 
         # Fetch the specific classroom based on class_id and school
-        classroom = Classroom.objects.get(classroom_id=details['classroom'], register_classroom=False, students=student)
+        classroom = student.enrolled_classrooms.get(classroom_id=details['classroom'], register_classroom=False)
         term = classroom.grade.terms.get(term_id=details['term'])
 
         assessment = classroom.subject.assessments.get(models.Q(releasing_grades=True) | models.Q(grades_released=True), term=term, assessment_id=details['assessment'])
-        transcript = assessment.transcripts.get(student__id=student.id)
+        transcript = assessment.transcripts.get(student=student)
 
         serialized_transcript = DetailedTranscriptSerializer(transcript).data 
 
