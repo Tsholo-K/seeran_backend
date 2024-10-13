@@ -210,7 +210,7 @@ class StudentConsumer(AsyncWebsocketConsumer):
                 response = await func(details) 
             elif description in ['search_chat_room_messages']:
                 response = await func(account, details)
-            elif description in ['search_student_attendance']:
+            elif description in ['search_student_attendance', 'search_group_timetables']:
                 response = await func(account, role)
             else:
                 response =  await func(account, role, details)

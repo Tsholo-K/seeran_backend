@@ -646,7 +646,7 @@ def search_group_timetables(account, role):
         if hasattr(requesting_account, 'timetables'):
             group_timetables = requesting_account.timetables
         else:
-            return {"schedules": []}
+            return {"timetables": []}
 
         # Serialize the group schedules to return them in the response
         serialized_timetables = StudentGroupTimetablesSerializer(group_timetables, many=True).data
