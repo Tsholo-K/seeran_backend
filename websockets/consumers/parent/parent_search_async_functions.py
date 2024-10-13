@@ -163,7 +163,7 @@ def search_school_announcement(account, role, details):
 def search_grade_terms(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+        requesting_account = accounts_utilities.get_account(account, role)
 
         if not 'classroom' in details:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid classroom ID and try again'
