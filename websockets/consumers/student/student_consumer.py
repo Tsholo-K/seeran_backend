@@ -135,12 +135,18 @@ class StudentConsumer(AsyncWebsocketConsumer):
             'search_chat_room': general_search_async_functions.search_chat_room,
             'search_chat_room_messages': general_search_async_functions.search_chat_room_messages,
 
+            'search_grade_terms': student_search_async_functions.search_grade_terms,
+
             'search_classroom': student_search_async_functions.search_classroom,
             
+            'search_student_classroom_performance': student_search_async_functions.search_student_classroom_performance,
+
             'search_student_attendance': student_search_async_functions.search_student_attendance,
 
             'search_student_classroom_card': student_search_async_functions.search_student_classroom_card,
             'search_student_activity': student_search_async_functions.search_student_activity,
+
+            'search_student_assessment_transcript': student_search_async_functions.search_student_assessment_transcript,
 
             # 'search_audit_entries': admin_search_async_functions.search_audit_entries,
             # 'search_audit_entry': admin_search_async_functions.search_audit_entry,

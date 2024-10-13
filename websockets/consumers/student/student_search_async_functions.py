@@ -178,18 +178,12 @@ def search_grade_terms(account, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
-        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'CLASSROOM'):
-            response = f'could not proccess your request, you do not have the necessary permissions to view terms. please contact your administrator to adjust you permissions for viewing terms.'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='DENIED', server_response=response, school=requesting_account.school)
-            return {'error': response}
-
         if not 'classroom' in details:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid classroom ID and try again'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         # Fetch the specific classroom based on class_id and school
-        classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'])
+        classroom = requesting_account.enrolled_classrooms.get(classroom_id=details['classroom'])
 
         # Prefetch related school terms to minimize database hits
         grade_terms = classroom.grade.terms.only('term_name', 'weight', 'start_date', 'end_date', 'term_id')
@@ -317,24 +311,17 @@ def search_student_classroom_performance(account, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
-        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'CLASSROOM'):
-            response = f'could not proccess your request, you do not have the necessary permissions to view term performances. please contact your administrator to adjust you permissions for viewing term details.'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='DENIED', server_response=response, school=requesting_account.school)
-            return {'error': response}
-
-        if not {'term', 'classroom', 'student'}.issubset(details):
+        if not {'term', 'classroom'}.issubset(details):
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid student, term and classroom IDs and try again'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         # Fetch the specific classroom based on class_id and school
-        classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'], register_classroom=False)
+        classroom = requesting_account.enrolled_classrooms.get(classroom_id=details['classroom'], register_classroom=False)
         term = classroom.grade.terms.get(term_id=details['term'])
-        student = classroom.students.get(account_id=details['student'])
 
-        student_performance, created = student.subject_performances.only(
+        student_performance, created = requesting_account.subject_performances.only(
             'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'completion_rate', 'mode_score', 'passed'
-        ).get_or_create(term=term, subject=classroom.subject, grade=classroom.grade, defaults={'school': requesting_account.school, 'student': student})
+        ).get_or_create(term=term, subject=classroom.subject, grade=classroom.grade, defaults={'school': requesting_account.school, 'student': requesting_account})
         serialized_student_performance = StudentPerformanceSerializer(student_performance).data
         
         # Return the serialized terms in a dictionary
@@ -347,10 +334,6 @@ def search_student_classroom_performance(account, role, details):
     except Term.DoesNotExist:
         # Handle the case where the provided term ID does not exist
         return {'error': 'Could not process your request, a term in your school with the provided credentials does not exist, please review the term details and try again.'}
-                   
-    except Student.DoesNotExist:
-        # Handle the case where the provided account ID does not exist
-        return {'error': 'Could not process your request, a student account with the provided credentials does not exist. Please review your account details and try again.'}
 
     except Exception as e:
         # Handle any unexpected errors with a general error message
@@ -536,31 +519,15 @@ def search_student_assessment_transcript(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = accounts_utilities.get_account_and_permission_check_attr(account, role)
-        
-        # Check if the user has permission to create an assessment
-        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ASSESSMENT'):
-            response = f'could not proccess your request, you do not have the necessary permissions to view assessments. please contact your principal to adjust you permissions for viewing assessments.'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENTS', outcome='DENIED', server_response=response, school=requesting_account.school)
+
+        if not {'term', 'classroom', 'assessment'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid term, classroom and assessment IDs and try again'
             return {'error': response}
-
-        if not {'term', 'classroom', 'student', 'assessment'}.issubset(details):
-            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid student, term, classroom and assessment IDs and try again'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
-            return {'error': response}
-
-        # Build the queryset for the requested account with the necessary related fields.
-        requested_account = accounts_utilities.get_account_and_permission_check_attr(details['student'], 'STUDENT')
-
-        # Check if the requesting user has permission to view the requested user's profile or details.
-        permission_error = permission_checks.view_account(requesting_account, requested_account)
-        if permission_error:
-            # Return an error message if the requesting user does not have the necessary permissions.
-            return permission_error
 
         classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'])
 
         assessment = requesting_account.school.assessments.get(models.Q(releasing_grades=True) | models.Q(grades_released=True), term__term_id=details['term'], assessment_id=details['assessment'], subject=classroom.subject, grade=classroom.grade,)
-        transcript = assessment.transcripts.get(student=requested_account)
+        transcript = assessment.transcripts.get(student=requesting_account)
 
         serialized_transcript = DetailedTranscriptSerializer(transcript).data 
 
