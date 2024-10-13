@@ -661,18 +661,13 @@ def search_student_activity(account, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
-        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ACTIVITY'):
-            response = f'could not proccess your request, you do not have the necessary permissions to view classrooms. please contact your administrator to adjust you permissions for viewing classrooms.'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ACTIVITY', outcome='DENIED', server_response=response, school=requesting_account.school)
-            return {'error': response}
-
         if not {'activity'}.issubset(details):
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid account and classroom IDs and try again'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ACTIVITY', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         # Retrieve the activity based on the provided activity_id
-        activity = requesting_account.school.student_activities.select_related('auditor', 'recipient', 'classroom', 'school').get(student_activity_id=details['activity'], classroom_id__in=requesting_account.taught_classrooms.values_list('id', flat=True))
+        activity = requesting_account.my_activities.select_related('auditor', 'recipient', 'classroom', 'school').get(student_activity_id=details['activity'])
         serialized_activity = ActivitySerializer(activity).data
 
         return {"activity": serialized_activity}

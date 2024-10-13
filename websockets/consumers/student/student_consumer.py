@@ -138,6 +138,7 @@ class StudentConsumer(AsyncWebsocketConsumer):
             'search_classroom': student_search_async_functions.search_classroom,
 
             'search_student_classroom_card': student_search_async_functions.search_student_classroom_card,
+            'search_student_activity': student_search_async_functions.search_student_activity,
 
             # 'search_audit_entries': admin_search_async_functions.search_audit_entries,
             # 'search_audit_entry': admin_search_async_functions.search_audit_entry,
@@ -175,7 +176,6 @@ class StudentConsumer(AsyncWebsocketConsumer):
 
             # 'search_student_classroom_performance': admin_search_async_functions.search_student_classroom_performance,
             # 'search_student_classroom_card': admin_search_async_functions.search_student_classroom_card,
-            # 'search_student_activity': admin_search_async_functions.search_student_activity,
 
             # 'search_month_attendance_records': admin_search_async_functions.search_month_attendance_records,
             # 'search_student_attendance': admin_search_async_functions.search_student_attendance,
