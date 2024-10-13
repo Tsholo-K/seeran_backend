@@ -888,8 +888,8 @@ def update_group_timetable_details(account, role, details):
 @database_sync_to_async
 def update_group_timetable_subscribers(user, role, details):
     try:
-        students_list = details.get('students', '').split(', ')
-        if not students_list or students_list == ['']:
+        student_ids = details.get('students', '').split(', ')
+        if not student_ids or student_ids == ['']:
             return {'error': 'your request could not be proccessed.. no students were provided'}
         
         group_timetable = None  # Initialize assessment as None to prevent issues in error handling
@@ -912,7 +912,7 @@ def update_group_timetable_subscribers(user, role, details):
 
         with transaction.atomic():
             # Check for validation errors and perform student updates
-            group_timetable.update_subscribers(students_list=students_list, subscribe=details.get('subscribe'))
+            group_timetable.update_subscribers(student_ids=student_ids, subscribe=details.get('subscribe'))
 
             response = f"The provided list of student accounts has been {'subscribed to' if details.get('subscribe') else 'unsubscribed from'} the group timetable with the group timetable ID: {group_timetable.group_schedule_id}."
             audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='UPDATED', server_response=response, school=requesting_account.school)
