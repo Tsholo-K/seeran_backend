@@ -255,7 +255,7 @@ def search_student_classroom_performance(account, role, details):
 
         student_performance, created = student.subject_performances.only(
             'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'completion_rate', 'mode_score', 'passed'
-        ).get_or_create(term=term, subject=classroom.subject, grade=classroom.grade, defaults={'school': student.school, 'student': student})
+        ).get_or_create(term=term, subject=classroom.subject, grade=classroom.grade, defaults={'school': classroom.school, 'student': student})
         serialized_student_performance = StudentPerformanceSerializer(student_performance).data
         
         # Return the serialized terms in a dictionary
@@ -322,16 +322,19 @@ def search_student_attendance(account, role, details):
 def search_student_assessment_transcript(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_permission_check_attr(account, role)
+        requesting_account = accounts_utilities.get_account(account, role)
 
-        if not {'term', 'classroom', 'assessment'}.issubset(details):
+        if not {'term', 'classroom', 'assessment', 'student'}.issubset(details):
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid term, classroom and assessment IDs and try again'
             return {'error': response}
+        
+        student = requesting_account.children.get(account_id=details['student'])
+        # Fetch the specific classroom based on class_id and school
+        classroom = Classroom.objects.get(classroom_id=details['classroom'], register_classroom=False, students=student)
+        term = classroom.grade.terms.get(term_id=details['term'])
 
-        classroom = requesting_account.enrolled_classrooms.get(classroom_id=details['classroom'])
-
-        assessment = requesting_account.school.assessments.get(models.Q(releasing_grades=True) | models.Q(grades_released=True), term__term_id=details['term'], assessment_id=details['assessment'], subject=classroom.subject, grade=classroom.grade,)
-        transcript = assessment.transcripts.get(student=requesting_account)
+        assessment = requesting_account.school.assessments.get(models.Q(releasing_grades=True) | models.Q(grades_released=True), term__term_id=details['term'], assessment_id=details['assessment'], subject=classroom.subject, grade=classroom.grade)
+        transcript = assessment.transcripts.get(student=student)
 
         serialized_transcript = DetailedTranscriptSerializer(transcript).data 
 
