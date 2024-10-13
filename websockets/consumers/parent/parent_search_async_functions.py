@@ -224,7 +224,7 @@ def search_student_classrooms(account, role, details):
         child = requesting_account.children.get(account_id=details['account'])
 
         serialized_child = StudentBasicAccountDetailsEmailSerializer(child).data
-        serialized_child_classrooms = ClassroomSerializer(child.enrolled_classrooms, many=True).data
+        serialized_child_classrooms = ClassroomsSerializer(child.enrolled_classrooms, many=True).data
         
         # Return the serialized terms in a dictionary
         return {'student' : serialized_child, 'classrooms': serialized_child_classrooms}
