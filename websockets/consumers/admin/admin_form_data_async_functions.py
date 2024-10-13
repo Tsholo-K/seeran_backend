@@ -510,19 +510,36 @@ def form_data_for_assessment_submission_details(account, role, details):
 
 
 @database_sync_to_async
-def form_data_for_adding_students_to_group_schedule(user, role, details):
+def form_data_for_adding_students_to_group_timetable(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+
+        # Check if the user has permission to collect assessment submissions
+        if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'GROUP_TIMETABLE'):
+            response = f'Could not proccess your request, you do not have the necessary permissions to update group timetables. please contact your principal to adjust you permissions for updating group timetables.'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
         
+        if not {'group_timetable'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid group timetable ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
         # Retrieve the group schedule with the provided ID and related data
-        group_schedule = StudentGroupTimetable.objects.select_related('grade').get(group_schedule_id=details.get('group_schedule_id'), grade__school=requesting_account.school)
+        group_schedule = requesting_account.school.group_timetables.select_related('grade').get(group_timetable_id=details.get('group_timetable'))
 
         # Fetch all students in the same grade who are not already subscribed to the group schedule
-        students = requesting_account.school.students.all().filter(grade=group_schedule.grade).exclude(my_group_schedule=group_schedule)
+        students = requesting_account.school.students.filter(grade=group_schedule.grade).exclude(timetables=group_schedule)
         serialized_students = StudentSourceAccountSerializer(students, many=True).data
 
-        return {"students": serialized_students}
+        # Compress the serialized data
+        compressed_students = zlib.compress(json.dumps(serialized_students).encode('utf-8'))
+
+        # Encode compressed data as base64 for safe transport
+        encoded_students = base64.b64encode(compressed_students).decode('utf-8')
+
+        return {'students': encoded_students}
     
     except StudentGroupTimetable.DoesNotExist:
         # Handle case where the group schedule does not exist

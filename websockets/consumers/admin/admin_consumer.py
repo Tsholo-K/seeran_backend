@@ -291,7 +291,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'form_data_for_assessment_submissions' : admin_form_data_async_functions.form_data_for_assessment_submissions,
             'form_data_for_assessment_submission_details' : admin_form_data_async_functions.form_data_for_assessment_submission_details,
 
-            'form_data_for_adding_students_to_group_schedule': admin_form_data_async_functions.form_data_for_adding_students_to_group_schedule,
+            'form_data_for_adding_students_to_group_timetable': admin_form_data_async_functions.form_data_for_adding_students_to_group_timetable,
         }
 
         func = form_data_map.get(description)
