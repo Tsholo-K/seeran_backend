@@ -148,6 +148,11 @@ class StudentConsumer(AsyncWebsocketConsumer):
 
             'search_student_assessment_transcript': student_search_async_functions.search_student_assessment_transcript,
 
+            'search_group_timetables': student_search_async_functions.search_group_timetables,
+            'search_group_timetable_timetables': student_search_async_functions.search_group_timetable_timetables,
+
+            'search_timetable_sessions': student_search_async_functions.search_timetable_sessions,
+
             # 'search_audit_entries': admin_search_async_functions.search_audit_entries,
             # 'search_audit_entry': admin_search_async_functions.search_audit_entry,
 
@@ -196,13 +201,6 @@ class StudentConsumer(AsyncWebsocketConsumer):
             # 'search_transcript': admin_search_async_functions.search_transcript,
 
             # 'search_teacher_timetables': admin_search_async_functions.search_teacher_timetables,
-
-            # 'search_group_timetables': admin_search_async_functions.search_group_timetables,
-            # 'search_group_timetable_details': admin_search_async_functions.search_group_timetable_details,
-            # 'search_group_timetable_timetables': admin_search_async_functions.search_group_timetable_timetables,
-            # 'search_group_timetable_subscribers': admin_search_async_functions.search_group_timetable_subscribers,
-
-            # 'search_timetable_sessions': admin_search_async_functions.search_timetable_sessions,
         }
 
         func = search_map.get(description)

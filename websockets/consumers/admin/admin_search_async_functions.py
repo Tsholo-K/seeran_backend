@@ -1241,7 +1241,7 @@ def search_teacher_timetables(account, role, details):
     except Exception as e:
         # Handle any other unexpected errors
         return {'error': str(e)}
-    
+
 
 @database_sync_to_async
 def search_group_timetables(account, role, details):

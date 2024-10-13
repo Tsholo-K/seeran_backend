@@ -18,6 +18,7 @@ from assessments.models import Assessment
 from assessment_transcripts.models import AssessmentTranscript
 from timetables.models import Timetable
 from student_activities.models import StudentActivity
+from student_group_timetables.models import StudentGroupTimetable
 
 # serilializers
 from accounts.serializers.students.serializers import StudentBasicAccountDetailsEmailSerializer
@@ -31,6 +32,7 @@ from classroom_performances.serializers import ClassroomPerformanceSerializer
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, GradedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer, GradedAssessmentSerializer
 from assessment_transcripts.serializers import TranscriptsSerializer, TranscriptSerializer, DetailedTranscriptSerializer
 from timetables.serializers import TimetableSerializer
+from student_group_timetables.serializers import StudentGroupTimetablesSerializer
 from student_activities.serializers import ActivitiesSerializer, ActivitySerializer
 from timetable_sessions.serializers import SessoinsSerializer
 
@@ -632,27 +634,49 @@ def search_student_activity(account, role, details):
     except Exception as e:
         # Handle any other unexpected errors
         return {'error': str(e)}
+    
 
+@database_sync_to_async
+def search_group_timetables(account, role):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account(account, role)
+        
+        # Retrieve all group schedules associated with the student
+        if hasattr(requesting_account, 'timetables'):
+            group_timetables = requesting_account.timetables
+        else:
+            return {"schedules": []}
+
+        # Serialize the group schedules to return them in the response
+        serialized_timetables = StudentGroupTimetablesSerializer(group_timetables, many=True).data
+
+        return {"timetables": serialized_timetables}
+
+    except Exception as e:
+        # Handle any other unexpected errors
+        return {'error': str(e)}
 
 
 @database_sync_to_async
-def search_teacher_timetables(account, role):
+def search_group_timetable_timetables(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+        requesting_account = accounts_utilities.get_account(account, role)
 
-        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'TEACHER_TIMETABLE'):
-            response = f'could not proccess your request, you do not have the necessary permissions to view teacher timetables. please contact your administrator to adjust you permissions for viewing teacher timetables.'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TEACHER_TIMETABLE', outcome='DENIED', server_response=response, school=requesting_account.school)
+        if 'group_timetable' not in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid group timetable ID and try again'
             return {'error': response}
 
-        # Check if the teacher has a schedule
-        if hasattr(requesting_account, 'teacher_timetable'):
-            serialized_timetables = TimetableSerializer(requesting_account.teacher_timetable.timetables, many=True).data
-        else:
-            serialized_timetables = []
+        # Retrieve the specified group schedule
+        group_timetable = requesting_account.timetables.prefetch_related('timetables').get(group_timetable_id=details['group_timetable'])
+        serialized_timetables = TimetableSerializer(group_timetable.timetables, many=True).data
 
         return {"timetables": serialized_timetables}
+    
+    except StudentGroupTimetable.DoesNotExist:
+        # Handle case where the group schedule does not exist
+        return {'error': 'Could not process your request, a group schedule with the provided credentials does not exist. Please check the group schedule details and try again.'}
     
     except Exception as e:
         # Handle any other unexpected errors
