@@ -139,6 +139,7 @@ class ParentConsumer(AsyncWebsocketConsumer):
 
             'search_classroom': parent_search_async_functions.search_classroom,
             
+            'search_student_classrooms': parent_search_async_functions.search_student_classrooms,
             'search_student_classroom_performance': parent_search_async_functions.search_student_classroom_performance,
 
             'search_student_attendance': parent_search_async_functions.search_student_attendance,

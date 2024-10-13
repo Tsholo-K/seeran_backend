@@ -25,7 +25,7 @@ from accounts.serializers.parents.serializers import ParentAccountSerializer
 from student_subject_performances.serializers import StudentPerformanceSerializer
 from school_announcements.serializers import AnnouncementSerializer
 from terms.serializers import  TermsSerializer
-from classrooms.serializers import ClassroomSerializer
+from classrooms.serializers import ClassroomSerializer, ClassroomsSerializer
 from school_attendances.serializers import StudentAttendanceSerializer
 from assessment_transcripts.serializers import DetailedTranscriptSerializer
 from timetables.serializers import TimetableSerializer
@@ -207,6 +207,34 @@ def search_classroom(account, role, details):
     
     except Exception as e:
         # Handle any other unexpected errors
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def search_student_classrooms(account, role, details):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account(account, role)
+
+        if not {'account'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid account ID and try again'
+            return {'error': response}
+
+        # Fetch the specific classroom based on class_id and school
+        child = requesting_account.children.get(account_id=details['account'])
+
+        serialized_child = StudentBasicAccountDetailsEmailSerializer(child).data
+        serialized_child_classrooms = ClassroomSerializer(child.enrolled_classrooms, many=True).data
+        
+        # Return the serialized terms in a dictionary
+        return {'student' : serialized_child, 'classrooms': serialized_child_classrooms}
+                   
+    except Student.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'Could not process your request, a student account with the provided credentials does not exist. Please review your account details and try again.'}
+
+    except Exception as e:
+        # Handle any unexpected errors with a general error message
         return {'error': str(e)}
 
 
