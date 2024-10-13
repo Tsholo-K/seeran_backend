@@ -274,10 +274,18 @@ def search_student_classroom_performance(account, role, details):
 
 
 @database_sync_to_async
-def search_student_attendance(account, role):
+def search_student_attendance(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = accounts_utilities.get_account(account, role)
+
+        if not {'classroom', 'student'}.issubset(details):
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid student and classroom IDs and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ATTENDANCE', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
+        student = requesting_account.children.get(account_id=details['student'])
+        classroom = student.enrolled_classrooms.get(classroom_id=details['classroom'], register_classroom=True)
 
         # Query for the Absent instances where absentes is True
         attendances = []
