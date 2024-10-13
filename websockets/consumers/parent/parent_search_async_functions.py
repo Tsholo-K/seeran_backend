@@ -170,7 +170,7 @@ def search_grade_terms(account, role, details):
             return {'error': response}
 
         # Fetch the specific classroom based on class_id and school
-        classroom = Classroom.objects.get(classroom_id=details['classroom'], students_id__in=requesting_account.children.values_list('id', flat=True))
+        classroom = Classroom.objects.get(classroom_id=details['classroom'], students__id__in=requesting_account.children.values_list('id', flat=True))
 
         # Prefetch related school terms to minimize database hits
         grade_terms = classroom.grade.terms.only('term_name', 'weight', 'start_date', 'end_date', 'term_id')
