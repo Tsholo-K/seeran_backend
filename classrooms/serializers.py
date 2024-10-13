@@ -73,6 +73,21 @@ class ClassroomDetailsSerializer(serializers.ModelSerializer):
         return None
 
 
+class ClassesSerializer(serializers.ModelSerializer):
+
+    teacher = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Classroom
+        fields = ['teacher', 'classroom_number', 'student_count', 'group', 'classroom_id']
+
+    def get_teacher(self, obj):
+        if obj.teacher:
+            return f'{obj.teacher.surname} {obj.teacher.name}'.title()
+        else:
+            return None
+
+
 class ClassroomsSerializer(serializers.ModelSerializer):
 
     subject = serializers.SerializerMethodField()

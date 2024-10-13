@@ -41,7 +41,7 @@ from terms.serializers import  TermsSerializer, TermSerializer
 from term_subject_performances.serializers import TermSubjectPerformanceSerializer
 from subjects.serializers import SubjectSerializer, SubjectDetailsSerializer
 from student_subject_performances.serializers import StudentPerformanceSerializer
-from classrooms.serializers import TeacherClassroomsSerializer, ClassesSerializer, ClassroomSerializer, ClassroomDetailsSerializer
+from classrooms.serializers import ClassesSerializer, ClassroomsSerializer, ClassroomSerializer, ClassroomDetailsSerializer
 from school_attendances.serializers import ClassroomAttendanceSerializer, StudentAttendanceSerializer
 from classroom_performances.serializers import ClassroomPerformanceSerializer
 from assessments.serializers import DueAssessmentsSerializer, CollectedAssessmentsSerializer, GradedAssessmentsSerializer, DueAssessmentSerializer, CollectedAssessmentSerializer, GradedAssessmentSerializer
@@ -853,7 +853,7 @@ def search_teacher_classrooms(user, role, details):
             return {'error': response}
 
         teacher = requesting_account.school.teachers.prefetch_related('taught_classrooms').get(account_id=details['account'])
-        serialized_classrooms = TeacherClassroomsSerializer(teacher.taught_classrooms, many=True).data
+        serialized_classrooms = ClassroomsSerializer(teacher.taught_classrooms, many=True).data
 
         return {"classrooms": serialized_classrooms}
                
