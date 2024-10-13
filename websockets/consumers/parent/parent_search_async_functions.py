@@ -170,7 +170,7 @@ def search_grade_terms(account, role, details):
             return {'error': response}
 
         # Fetch the specific classroom based on class_id and school
-        classroom = requesting_account.enrolled_classrooms.get(classroom_id=details['classroom'])
+        classroom = Classroom.objects.get(classroom_id=details['classroom'], students_id__in=requesting_account.children.values_list('id', flat=True))
 
         # Prefetch related school terms to minimize database hits
         grade_terms = classroom.grade.terms.only('term_name', 'weight', 'start_date', 'end_date', 'term_id')
@@ -178,6 +178,10 @@ def search_grade_terms(account, role, details):
         
         # Return the serialized terms in a dictionary
         return {'terms': serialized_terms}
+    
+    except Classroom.DoesNotExist:
+        # Handle case where the classroom does not exist
+        return {'error': _('Could not process your request, a classroom with the provided details does not exist. Please review the classroom details and try again.')}
 
     except Exception as e:
         # Handle any unexpected errors with a general error message
