@@ -47,7 +47,7 @@ class StudentGroupTimetable(models.Model):
                     if not students:
                         raise ValidationError("Could not proccess your request, no valid students were found in the provided list of student account IDs.")
                     
-                    self.subscribers.add(students)
+                    self.subscribers.add(*students)
 
                 else:
                     # Check if students to be removed are actually in the class
@@ -55,7 +55,7 @@ class StudentGroupTimetable(models.Model):
                     if not existing_students:
                         raise ValidationError("could not proccess your request, none of the provided students are part of this group timetable.")
                     
-                    self.subscribers.remove(existing_students)
+                    self.subscribers.remove(*existing_students)
 
                 # Save the classroom instance first to ensure student changes are persisted
                 self.save()
