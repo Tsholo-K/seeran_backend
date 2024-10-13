@@ -914,7 +914,7 @@ def update_group_timetable_subscribers(user, role, details):
             # Check for validation errors and perform student updates
             group_timetable.update_subscribers(student_ids=student_ids, subscribe=details.get('subscribe'))
 
-            response = f"The provided list of student accounts has been {'subscribed to' if details.get('subscribe') else 'unsubscribed from'} the group timetable with the group timetable ID: {group_timetable.group_schedule_id}."
+            response = f"The provided list of student accounts has been {'subscribed to' if details.get('subscribe') else 'unsubscribed from'} the group timetable with the group timetable ID: {group_timetable.group_timetable_id}."
             audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GROUP_TIMETABLE', target_object_id=str(group_timetable.group_timetable_id) if group_timetable else 'N/A', outcome='UPDATED', server_response=response, school=requesting_account.school)
 
         return {'message': response}
