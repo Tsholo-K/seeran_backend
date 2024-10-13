@@ -42,17 +42,17 @@ class StudentGroupTimetable(models.Model):
                         raise ValidationError(f'the following students are already in this group timetable: {", ".join(student_names)}')
 
                     # Retrieve CustomUser instances corresponding to the account_ids
-                    students = self.grade.students.filter(account_id__in=student_ids)
+                    students = self.grade.students.filter(account_id__in=student_ids).values_list('id', flat=True)
 
-                    if not students.exists():
+                    if not students:
                         raise ValidationError("Could not proccess your request, no valid students were found in the provided list of student account IDs.")
                     
                     self.subscribers.add(students)
 
                 else:
                     # Check if students to be removed are actually in the class
-                    existing_students = self.subscribers.filter(account_id__in=student_ids)
-                    if not existing_students.exists():
+                    existing_students = self.subscribers.filter(account_id__in=student_ids).values_list('id', flat=True)
+                    if not existing_students:
                         raise ValidationError("could not proccess your request, none of the provided students are part of this group timetable.")
                     
                     self.subscribers.remove(existing_students)
