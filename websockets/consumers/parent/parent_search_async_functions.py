@@ -392,7 +392,7 @@ def search_student_classroom_card(account, role, details):
 def search_student_activity(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+        requesting_account = accounts_utilities.get_account(account, role)
 
         if not {'activity'}.issubset(details):
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid account and classroom IDs and try again'
@@ -400,7 +400,7 @@ def search_student_activity(account, role, details):
             return {'error': response}
 
         # Retrieve the activity based on the provided activity_id
-        activity = requesting_account.my_activities.select_related('auditor', 'recipient', 'classroom', 'school').get(student_activity_id=details['activity'])
+        activity = StudentActivity.objects.select_related('auditor', 'recipient', 'classroom', 'school').get(student_activity_id=details['activity'], recipient_id__in=requesting_account.children.values_list('id', flat=True))
         serialized_activity = ActivitySerializer(activity).data
 
         return {"activity": serialized_activity}
