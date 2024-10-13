@@ -24,7 +24,7 @@ def account_details(account, role):
             return {"denied": "Could not process your request, all of the children linked to your account have their accounts deactivated. For more information about this you can read our Termination Policy for why you're seeing this."}
         
         # Fetch announcements relevant to the user's school
-        unread_announcements_count = requesting_account.children.school.announcements.exclude(accounts_reached=requesting_account).count()
+        unread_announcements_count = requesting_account.children.filter(school__announcements__accounts_reached=requesting_account).count()
 
         # Fetch unread messages for the user
         unread_messages_count = PrivateMessage.objects.filter(read_receipt=False).exclude(author=requesting_account).count()
