@@ -346,19 +346,22 @@ def search_student_assessment_transcript(account, role, details):
 def search_student_classroom_card(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+        requesting_account = accounts_utilities.get_account(account, role)
 
-        if not {'classroom'}.issubset(details):
+        if not {'account', 'classroom'}.issubset(details):
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid account and classroom IDs and try again'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ACCOUNT', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        classroom = requesting_account.enrolled_classrooms.get(classroom_id=details['classroom'])
+        # Retrieve the requested users account and related school in a single query using select_related
+        requested_account = requesting_account.children.get(account_id=details['account'])
+
+        classroom = requested_account.enrolled_classrooms.get(classroom_id=details['classroom'])
 
         # retrieve the students activities 
-        activities = requesting_account.my_activities.filter(classroom=classroom)
+        activities = requested_account.my_activities.filter(classroom=classroom)
         
-        serialized_student = StudentBasicAccountDetailsEmailSerializer(instance=requesting_account).data
+        serialized_student = StudentBasicAccountDetailsEmailSerializer(instance=requested_account).data
         serialized_activities = ActivitiesSerializer(activities, many=True).data
 
         return {"student": serialized_student, 'activities': serialized_activities}
@@ -366,6 +369,10 @@ def search_student_classroom_card(account, role, details):
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
         return {'error': 'Could not process your request, a classroom in your school with the provided credentials does not exist. please review the classroom details and try again.'}
+                   
+    except Student.DoesNotExist:
+        # Handle the case where the provided account ID does not exist
+        return {'error': 'Could not process your request, a student account with the provided credentials does not exist. Please review your account details and try again.'}
 
     except Exception as e:
         # Handle any other unexpected errors
