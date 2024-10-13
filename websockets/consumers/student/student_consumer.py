@@ -152,55 +152,6 @@ class StudentConsumer(AsyncWebsocketConsumer):
             'search_group_timetable_timetables': student_search_async_functions.search_group_timetable_timetables,
 
             'search_timetable_sessions': student_search_async_functions.search_timetable_sessions,
-
-            # 'search_audit_entries': admin_search_async_functions.search_audit_entries,
-            # 'search_audit_entry': admin_search_async_functions.search_audit_entry,
-
-            # 'search_permission_groups': admin_search_async_functions.search_permission_groups,
-            # 'search_permission_group': admin_search_async_functions.search_permission_group,
-
-            # 'search_permission_group_subscribers': admin_search_async_functions.search_permission_group_subscribers,
-
-            # 'search_accounts': admin_search_async_functions.search_accounts,
-            # 'search_students': admin_search_async_functions.search_students,
-            # 'search_parents': admin_search_async_functions.search_parents,
-
-            # 'search_account': admin_search_async_functions.search_account,
-
-            # 'search_school_announcement': admin_search_async_functions.search_school_announcement,
-
-            # 'search_grades': admin_search_async_functions.search_grades,
-            # 'search_grade': admin_search_async_functions.search_grade,
-            # 'search_grade_details': admin_search_async_functions.search_grade_details,
-            # 'search_grade_register_classrooms': admin_search_async_functions.search_grade_register_classrooms,
-
-            # 'search_subject': admin_search_async_functions.search_subject,
-            # 'search_subject_details': admin_search_async_functions.search_subject_details,
-
-            # 'search_grade_terms': admin_search_async_functions.search_grade_terms,
-            # 'search_term_details': admin_search_async_functions.search_term_details,
-            # 'search_term_subject_performance': admin_search_async_functions.search_term_subject_performance,
-
-            # 'search_classroom': admin_search_async_functions.search_classroom,
-            # 'search_classroom_details': admin_search_async_functions.search_classroom_details,
-            # 'search_classroom_subject_performance': admin_search_async_functions.search_classroom_subject_performance,
-
-            # 'search_teacher_classrooms': admin_search_async_functions.search_teacher_classrooms,
-
-            # 'search_student_classroom_performance': admin_search_async_functions.search_student_classroom_performance,
-            # 'search_student_classroom_card': admin_search_async_functions.search_student_classroom_card,
-
-            # 'search_month_attendance_records': admin_search_async_functions.search_month_attendance_records,
-            # 'search_student_attendance': admin_search_async_functions.search_student_attendance,
-
-            # 'search_assessments': admin_search_async_functions.search_assessments,
-            # 'search_student_attendance': admin_search_async_functions.search_student_attendance,
-
-            # 'search_transcripts': admin_search_async_functions.search_transcripts,
-            # 'search_student_assessment_transcript': admin_search_async_functions.search_student_assessment_transcript,
-            # 'search_transcript': admin_search_async_functions.search_transcript,
-
-            # 'search_teacher_timetables': admin_search_async_functions.search_teacher_timetables,
         }
 
         func = search_map.get(description)
@@ -311,11 +262,10 @@ class StudentConsumer(AsyncWebsocketConsumer):
         if func:
             response = await func(account, role, details)
             if response.get('reciever'):
-                if description in ['message_private']:
-                    await connection_manager.send_message(response['recipient']['account_id'], json.dumps({'description': 'text_message', 'message': response['message'], 'author': response['author']}))
-                    await connection_manager.send_message(response['author']['account_id'], json.dumps({'description': 'text_message_fan', 'message': response['message'], 'recipient': response['recipient']}))
+                await connection_manager.send_message(response['recipient']['account_id'], json.dumps({'description': 'text_message', 'message': response['message'], 'author': response['author']}))
+                await connection_manager.send_message(response['author']['account_id'], json.dumps({'description': 'text_message_fan', 'message': response['message'], 'recipient': response['recipient']}))
 
-                    return {'message': 'private message successfully sent'}
+                return {'message': 'private message successfully sent'}
             
         return {'error': 'Could not process your request, an invalid text description was provided. If this problem persist open a bug report ticket.'}
 
@@ -328,11 +278,7 @@ class StudentConsumer(AsyncWebsocketConsumer):
 
         func = submit_map.get(description)
         if func:
-            if description in ['submit_log_out_request']:
-                response = await func(access_token)
-            else:
-                response = await func(account, role, details)            
-            return response
+            return await func(access_token)
         
         return {'error': 'Could not process your request, an invalid submit description was provided. If this problem persist open a bug report ticket.'}
 
