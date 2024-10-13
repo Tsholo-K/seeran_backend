@@ -30,7 +30,7 @@ def link_parent(account, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='LINK', target_model='ACCOUNT', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        student = Student.objects.prefetch_related('parents').get(account_id=details.get('student'), school=requesting_account.school)
+        student = requesting_account.school.students.prefetch_related('parents').get(account_id=details.get('student'))
 
         # Check if the child already has two or more parents linked
         student_parent_count = student.parents.count()
@@ -40,7 +40,7 @@ def link_parent(account, role, details):
             return {'error': response}
         
         # Check if an account with the provided email already exists
-        existing_parent = Parent.objects.filter(email=details.get('email')).first()
+        existing_parent = Parent.objects.filter(email_address=details.get('email_address')).first()
         if existing_parent:
             return {'user' : existing_parent, 'notice' : 'there is already a parent account with the provide email address'}
 
