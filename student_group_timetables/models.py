@@ -53,7 +53,7 @@ class StudentGroupTimetable(models.Model):
                     # Check if students to be removed are actually in the class
                     existing_students = self.subscribers.filter(account_id__in=student_ids)
                     if not existing_students.exists():
-                        raise ValidationError("could not proccess your request, all the provided students are not part of this classroom")
+                        raise ValidationError("could not proccess your request, none of the provided students are part of this group timetable.")
                     
                     self.subscribers.remove(existing_students)
 
