@@ -333,7 +333,7 @@ def search_student_assessment_transcript(account, role, details):
         classroom = Classroom.objects.get(classroom_id=details['classroom'], register_classroom=False, students=student)
         term = classroom.grade.terms.get(term_id=details['term'])
 
-        assessment = classroom.assessments.get(models.Q(releasing_grades=True) | models.Q(grades_released=True), term=term, assessment_id=details['assessment'])
+        assessment = classroom.subject.assessments.get(models.Q(releasing_grades=True) | models.Q(grades_released=True), term=term, assessment_id=details['assessment'])
         transcript = assessment.transcripts.get(student=requesting_account)
 
         serialized_transcript = DetailedTranscriptSerializer(transcript).data 
