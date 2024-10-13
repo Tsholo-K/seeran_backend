@@ -334,7 +334,7 @@ def search_student_assessment_transcript(account, role, details):
         term = classroom.grade.terms.get(term_id=details['term'])
 
         assessment = classroom.subject.assessments.get(models.Q(releasing_grades=True) | models.Q(grades_released=True), term=term, assessment_id=details['assessment'])
-        transcript = assessment.transcripts.get(student=student)
+        transcript = assessment.transcripts.get(student_id=student.id)
 
         serialized_transcript = DetailedTranscriptSerializer(transcript).data 
 
