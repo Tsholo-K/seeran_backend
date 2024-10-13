@@ -3,7 +3,7 @@ from channels.db import database_sync_to_async
 
 # serilializers
 from school_announcements.serializers import AnnouncementsSerializer
-from classrooms.serializers import TeacherClassroomsSerializer
+from classrooms.serializers import ClassroomsSerializer
 
 # utility functions 
 from accounts import utils as accounts_utilities
@@ -48,7 +48,7 @@ def view_my_classrooms(account, role):
         requesting_account = accounts_utilities.get_account(account, role)
 
         my_classrooms = requesting_account.enrolled_classrooms
-        serialized_classrooms = TeacherClassroomsSerializer(my_classrooms, many=True).data
+        serialized_classrooms = ClassroomsSerializer(my_classrooms, many=True).data
 
         return {"classrooms": serialized_classrooms}
     
