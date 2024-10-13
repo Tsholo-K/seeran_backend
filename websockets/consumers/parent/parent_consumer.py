@@ -162,7 +162,7 @@ class ParentConsumer(AsyncWebsocketConsumer):
                 response = await func(details) 
             elif description in ['search_chat_room_messages']:
                 response = await func(account, details)
-            elif description in ['search_student_attendance', 'search_group_timetables']:
+            elif description in ['search_group_timetables']:
                 response = await func(account, role)
             else:
                 response =  await func(account, role, details)
