@@ -524,7 +524,7 @@ def search_student_assessment_transcript(account, role, details):
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid term, classroom and assessment IDs and try again'
             return {'error': response}
 
-        classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'])
+        classroom = requesting_account.enrolled_classrooms.get(classroom_id=details['classroom'])
 
         assessment = requesting_account.school.assessments.get(models.Q(releasing_grades=True) | models.Q(grades_released=True), term__term_id=details['term'], assessment_id=details['assessment'], subject=classroom.subject, grade=classroom.grade,)
         transcript = assessment.transcripts.get(student=requesting_account)
