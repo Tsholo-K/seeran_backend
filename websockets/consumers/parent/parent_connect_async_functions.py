@@ -20,7 +20,7 @@ def account_details(account, role):
         if not requesting_account.children:
             return {"denied": "Could not process your request, your account doesnt have any children linked to it. For more information about this you can read our Parent Dashboard Documentation for why you're seeing this."}
 
-        if not requesting_account.children.school.filter(none_compliant=False).exists():
+        if not requesting_account.children.filter(school__none_compliant=False).exists():
             return {"denied": "Could not process your request, all of the children linked to your account have their accounts deactivated. For more information about this you can read our Termination Policy for why you're seeing this."}
         
         # Fetch announcements relevant to the user's school
