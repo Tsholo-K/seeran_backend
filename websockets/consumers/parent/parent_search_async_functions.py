@@ -289,15 +289,15 @@ def search_student_attendance(account, role, details):
 
         # Query for the Absent instances where absentes is True
         attendances = []
-        attendances.extend(requesting_account.absences.all())
-        days_absent = requesting_account.absences.count()
-        attendances.extend(requesting_account.late_arrivals.all())
+        attendances.extend(student.absences.all())
+        days_absent = student.absences.count()
+        attendances.extend(student.late_arrivals.all())
 
         # Now sort the combined attendances list by 'timestamp'
         sorted_attendances = sorted(attendances, key=lambda attendance: attendance.timestamp, reverse=True)
 
         # For each absent instance, get the corresponding Late instance
-        attendance_records = StudentAttendanceSerializer(sorted_attendances, many=True, context={'student': requesting_account.id}).data
+        attendance_records = StudentAttendanceSerializer(sorted_attendances, many=True, context={'student': student.id}).data
 
         # Compress the serialized data
         compressed_attendance_records = zlib.compress(json.dumps({'records': attendance_records, 'days_absent': days_absent}).encode('utf-8'))
