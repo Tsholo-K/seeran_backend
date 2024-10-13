@@ -689,17 +689,12 @@ def search_timetable_sessions(account, role, details):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
-        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'TIMETABLE'):
-            response = f'could not proccess your request, you do not have the necessary permissions to view timetable sessions. please contact your administrators to adjust you permissions for viewing group schedules.'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TIMETABLE', outcome='DENIED', server_response=response, school=requesting_account.school)
-            return {'error': response}
-
         if 'timetable' not in details:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid timetable ID and try again'
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TIMETABLE', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        timetable = requesting_account.teacher_timetable.timetables.prefetch_related('sessions').get(timetable_id=details['timetable'])
+        timetable = requesting_account.timetables.prefetch_related('sessions').get(timetable_id=details['timetable'], student_group_timetable__subscribers=requesting_account)
         serialized_sessions = SessoinsSerializer(timetable.sessions, many=True).data
         
         return {"sessions": serialized_sessions}
