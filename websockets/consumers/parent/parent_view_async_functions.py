@@ -7,6 +7,7 @@ import json
 from channels.db import database_sync_to_async
 
 # serilializers
+from accounts.serializers.students.serializers import StudentSourceAccountSerializer
 from school_announcements.serializers import AnnouncementsSerializer
 from classrooms.serializers import TeacherClassroomsSerializer
 
@@ -67,7 +68,7 @@ def children(account, role):
         # Retrieve the requesting users account and related school in a single query using select_related
         requesting_account = accounts_utilities.get_account(account, role)
 
-        serialized_children = TeacherClassroomsSerializer(requesting_account.children, many=True).data
+        serialized_children = StudentSourceAccountSerializer(requesting_account.children, many=True).data
 
         # Compress the serialized data
         compressed_children = zlib.compress(json.dumps(serialized_children).encode('utf-8'))
