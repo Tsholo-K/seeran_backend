@@ -28,7 +28,7 @@ from student_group_timetables.models import StudentGroupTimetable
 # serilializers
 from accounts.serializers.general_serializers import BasicAccountDetailsEmailSerializer
 from accounts.serializers.principals.serializers import PrincipalAccountSerializer
-from accounts.serializers.students.serializers import StudentSourceAccountSerializer, LeastAccountDetailsSerializer
+from accounts.serializers.students.serializers import StudentSourceAccountSerializer, StudentBasicAccountDetailsEmailSerializer
 from accounts.serializers.admins.serializers import AdminAccountSerializer
 from accounts.serializers.teachers.serializers import TeacherAccountSerializer
 from accounts.serializers.parents.serializers import ParentAccountSerializer
@@ -1373,7 +1373,7 @@ def search_group_timetable_subscribers(user, role, details):
 
         # Retrieve the group schedule
         group_schedule = requesting_account.school.group_timetables.prefetch_related('subscribers').get(group_timetable_id=details['group_timetable'])
-        serialized_students = StudentSourceAccountSerializer(group_schedule.subscribers, many=True).data
+        serialized_students = StudentBasicAccountDetailsEmailSerializer(group_schedule.subscribers, many=True).data
 
         # Compress the serialized data
         compressed_subscribers = zlib.compress(json.dumps(serialized_students).encode('utf-8'))
