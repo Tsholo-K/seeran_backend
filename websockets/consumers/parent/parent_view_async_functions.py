@@ -1,3 +1,8 @@
+# python
+import base64
+import zlib
+import json
+
 # channels
 from channels.db import database_sync_to_async
 
@@ -54,3 +59,23 @@ def view_my_classrooms(account, role):
     
     except Exception as e:
         return { 'error': str(e) }
+
+
+@database_sync_to_async
+def children(account, role):
+    try:
+        # Retrieve the requesting users account and related school in a single query using select_related
+        requesting_account = accounts_utilities.get_account(account, role)
+
+        serialized_children = TeacherClassroomsSerializer(requesting_account.children, many=True).data
+
+        # Compress the serialized data
+        compressed_children = zlib.compress(json.dumps(serialized_children).encode('utf-8'))
+        # Encode compressed data as base64 for safe transport
+        encoded_children = base64.b64encode(compressed_children).decode('utf-8')
+
+        return {"children": encoded_children}
+    
+    except Exception as e:
+        return { 'error': str(e) }
+

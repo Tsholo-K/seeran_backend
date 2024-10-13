@@ -114,7 +114,7 @@ class ParentConsumer(AsyncWebsocketConsumer):
 
             'view_school_announcements': parent_view_async_functions.view_school_announcements,
 
-            'view_my_classrooms': parent_view_async_functions.view_my_classrooms,
+            'children': parent_view_async_functions.children,
         }
 
         func = view_map.get(description)
