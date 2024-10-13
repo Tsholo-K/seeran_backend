@@ -694,7 +694,7 @@ def search_timetable_sessions(account, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TIMETABLE', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        timetable = requesting_account.timetables.prefetch_related('sessions').get(timetable_id=details['timetable'], student_group_timetable__subscribers=requesting_account)
+        timetable = requesting_account.school.timetables.prefetch_related('sessions').get(timetable_id=details['timetable'], student_group_timetable__subscribers=requesting_account)
         serialized_sessions = SessoinsSerializer(timetable.sessions, many=True).data
         
         return {"sessions": serialized_sessions}
