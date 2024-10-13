@@ -34,7 +34,7 @@ class ParentConsumer(AsyncWebsocketConsumer):
         role = self.scope['role']
 
         # Check if the user has the required role
-        if role not in ['STUDENT']:
+        if role not in ['PARENT']:
             return await self.close()
 
         account = self.scope['account']
