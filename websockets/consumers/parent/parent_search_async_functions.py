@@ -52,7 +52,6 @@ def search_parents(account, role, details):
 
         if 'account' not in details:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid account ID and try again'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ACCOUNT', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         requested_account = requesting_account.school.students.select_related('school').prefetch_related('parents').get(account_id=details['account'])
@@ -92,7 +91,6 @@ def search_account(account, role, details):
 
         if not {'account', 'role', 'reason'}.issubset(details) or details['reason'] not in ['details', 'profile'] or details['role'] not in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT', 'PARENT']:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid account ID, role and reason and try again'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ACCOUNT', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         # Build the queryset for the requested account with the necessary related fields.
@@ -138,7 +136,6 @@ def search_school_announcement(account, role, details):
         
         if not 'announcement' in details:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid announcement ID and try again'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ANNOUNCEMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         # Retrieve the specified announcement
@@ -196,7 +193,6 @@ def search_classroom(account, role, details):
 
         if not 'classroom' in details:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid classroom ID and try again'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='CLASSROOM', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         # Fetch the specific classroom based on class_id and school
@@ -246,19 +242,20 @@ def search_student_classrooms(account, role, details):
 def search_student_classroom_performance(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
+        requesting_account = accounts_utilities.get_account(account, role)
 
-        if not {'term', 'classroom'}.issubset(details):
+        if not {'term', 'classroom', 'student'}.issubset(details):
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid student, term and classroom IDs and try again'
             return {'error': response}
 
+        student = requesting_account.children.get(account_id=details['student'])
         # Fetch the specific classroom based on class_id and school
-        classroom = requesting_account.enrolled_classrooms.get(classroom_id=details['classroom'], register_classroom=False)
+        classroom = Classroom.objects.get(classroom_id=details['classroom'], register_classroom=False, students=student)
         term = classroom.grade.terms.get(term_id=details['term'])
 
-        student_performance, created = requesting_account.subject_performances.only(
+        student_performance, created = student.subject_performances.only(
             'pass_rate', 'highest_score', 'lowest_score', 'average_score', 'median_score', 'completion_rate', 'mode_score', 'passed'
-        ).get_or_create(term=term, subject=classroom.subject, grade=classroom.grade, defaults={'school': requesting_account.school, 'student': requesting_account})
+        ).get_or_create(term=term, subject=classroom.subject, grade=classroom.grade, defaults={'school': requesting_account.school, 'student': student})
         serialized_student_performance = StudentPerformanceSerializer(student_performance).data
         
         # Return the serialized terms in a dictionary
@@ -285,7 +282,6 @@ def search_student_attendance(account, role, details):
 
         if not {'classroom', 'student'}.issubset(details):
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid student and classroom IDs and try again'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ATTENDANCE', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         student = requesting_account.children.get(account_id=details['student'])
@@ -362,7 +358,6 @@ def search_student_classroom_card(account, role, details):
 
         if not {'account', 'classroom'}.issubset(details):
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid account and classroom IDs and try again'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ACCOUNT', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         # Retrieve the requested users account and related school in a single query using select_related
@@ -400,7 +395,6 @@ def search_student_activity(account, role, details):
 
         if not {'activity'}.issubset(details):
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid account and classroom IDs and try again'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ACTIVITY', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         # Retrieve the activity based on the provided activity_id
@@ -473,7 +467,6 @@ def search_timetable_sessions(account, role, details):
 
         if 'timetable' not in details:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid timetable ID and try again'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='TIMETABLE', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         timetable = requesting_account.school.timetables.prefetch_related('sessions').get(timetable_id=details['timetable'], student_group_timetable__subscribers=requesting_account)
