@@ -136,6 +136,8 @@ class StudentConsumer(AsyncWebsocketConsumer):
             'search_chat_room_messages': general_search_async_functions.search_chat_room_messages,
 
             'search_classroom': student_search_async_functions.search_classroom,
+            
+            'search_student_attendance': student_search_async_functions.search_student_attendance,
 
             'search_student_classroom_card': student_search_async_functions.search_student_classroom_card,
             'search_student_activity': student_search_async_functions.search_student_activity,
@@ -204,6 +206,8 @@ class StudentConsumer(AsyncWebsocketConsumer):
                 response = await func(details) 
             elif description in ['search_chat_room_messages']:
                 response = await func(account, details)
+            elif description in ['search_student_attendance']:
+                response = await func(account, role)
             else:
                 response =  await func(account, role, details)
 

@@ -358,36 +358,22 @@ def search_student_classroom_performance(account, role, details):
 
 
 @database_sync_to_async
-def search_student_attendance(account, role, details):
+def search_student_attendance(account, role):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
- 
-        if not permissions_utilities.has_permission(requesting_account, 'VIEW', 'ATTENDANCE'):
-            response = f'could not proccess your request, you do not have the necessary permissions to view classrooms. please contact your administrator to adjust you permissions for viewing classrooms.'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ATTENDANCE', outcome='DENIED', server_response=response, school=requesting_account.school)
-
-            return {'error': response}
-
-        if not {'classroom', 'student'}.issubset(details):
-            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid student and classroom IDs and try again'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ATTENDANCE', outcome='ERROR', server_response=response, school=requesting_account.school)
-            return {'error': response}
-
-        classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'], register_classroom=True)
-        student = classroom.students.get(account_id=details['student'])
+        requesting_account = accounts_utilities.get_account(account, role)
 
         # Query for the Absent instances where absentes is True
         attendances = []
-        attendances.extend(student.absences.all())
-        days_absent = student.absences.count()
-        attendances.extend(student.late_arrivals.all())
+        attendances.extend(requesting_account.absences.all())
+        days_absent = requesting_account.absences.count()
+        attendances.extend(requesting_account.late_arrivals.all())
 
         # Now sort the combined attendances list by 'timestamp'
         sorted_attendances = sorted(attendances, key=lambda attendance: attendance.timestamp, reverse=True)
 
         # For each absent instance, get the corresponding Late instance
-        attendance_records = StudentAttendanceSerializer(sorted_attendances, many=True, context={'student': student.id}).data
+        attendance_records = StudentAttendanceSerializer(sorted_attendances, many=True, context={'student': requesting_account.id}).data
 
         # Compress the serialized data
         compressed_attendance_records = zlib.compress(json.dumps({'records': attendance_records, 'days_absent': days_absent}).encode('utf-8'))
@@ -398,7 +384,7 @@ def search_student_attendance(account, role, details):
         return {'records': encoded_attendance_records}
     
     except Classroom.DoesNotExist:
-        return {'error': 'a classroom in your school with the provided credentials does not exist. Please check the classrooms details and try again.'}
+        return {'error': 'Could not process your request, a classroom in your school with the provided credentials does not exist. Please check the classrooms details and try again.'}
                    
     except Student.DoesNotExist:
         # Handle the case where the provided account ID does not exist
