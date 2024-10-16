@@ -60,7 +60,7 @@ def view_school_announcements(account, role):
         announcements = requesting_account.school.announcements
 
         # Step 3: Serialize the fetched announcements into a structured format using a serializer.
-        serialized_announcements = AnnouncementsSerializer(announcements, many=True, context={'user': account}).data
+        serialized_announcements = AnnouncementsSerializer(announcements, many=True, context={'account': account}).data
 
         # Step 4: Return the serialized announcements as part of the response
         return {'announcements': serialized_announcements}
