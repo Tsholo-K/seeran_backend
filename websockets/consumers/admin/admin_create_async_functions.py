@@ -210,21 +210,20 @@ def create_permission_group(account, role, details):
 
 
 @database_sync_to_async
-def create_announcement(user, role, details):
+def create_announcement(account, role, details):
     try:
         announcement = None  # Initialize requested_account as None to prevent issues in error handling
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to create a group schedule
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'ANNOUNCEMENT'):
             response = 'could not process your request, you do not have the necessary permissions to create announcements.'
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', outcome='DENIED', response=response, school=requesting_account.school)
-
+            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         # Add user and school information to the announcement details
-        details.update({'announcer': requesting_account.pk, 'school': requesting_account.school.pk})
+        details.update({'announcer': requesting_account.id, 'school': requesting_account.school.id})
 
         # Serialize the announcement data
         serializer = AnnouncementCreationSerializer(data=details)
@@ -233,25 +232,22 @@ def create_announcement(user, role, details):
                 announcement = Announcement.objects.create(**serializer.validated_data)
 
                 response = 'the announcement is now available to all users in the school and the parents linked to them.'
-                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', target_object_id=str(announcement.announcement_id), outcome='DELETED', response=response, school=requesting_account.school)
+                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', target_object_id=str(announcement.announcement_id) if announcement else 'N/A', outcome='CREATED', server_response=response, school=requesting_account.school)
 
             return {'message': response}
 
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', target_object_id=str(announcement.announcement_id) if announcement else 'N/A', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
         return {"error": error_response}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', target_object_id=str(announcement.announcement_id) if announcement else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', target_object_id=str(announcement.announcement_id) if announcement else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', target_object_id=str(announcement.announcement_id) if announcement else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', target_object_id=str(announcement.announcement_id) if announcement else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {'error': error_message}
 
 

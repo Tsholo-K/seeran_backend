@@ -12,7 +12,7 @@ from schools.models import School
 
 
 class Announcement(models.Model):
-    announcer = models.ForeignKey(BaseAccount, on_delete=models.CASCADE, related_name='my_announcements', help_text="User who made the announcement")
+    announcer = models.ForeignKey(BaseAccount, on_delete=models.SET_NULL, related_name='my_announcements', null=True, help_text="User who made the announcement")
 
     announcement_title = models.CharField(max_length=124, help_text="Title of the announcement")
     announcement_message = models.TextField(max_length=1024, help_text="Message of the announcement")
@@ -32,10 +32,9 @@ class Announcement(models.Model):
 
     def reached(self, user):
         try:
-            requesting_account = BaseAccount.objects.get(account_id=user)
-            
             # Only add if the user hasn't been added before
-            if not self.accounts_reached.filter(id=requesting_account.id).exists():
+            if not self.accounts_reached.filter(account_id=user).exists():
+                requesting_account = BaseAccount.objects.get(account_id=user)
                 self.accounts_reached.add(requesting_account)
 
         except BaseAccount.DoesNotExist:

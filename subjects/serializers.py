@@ -10,7 +10,7 @@ from grades.models import Grade
 from .models import Subject
 
 # serializers
-from classrooms.serializers import ClassroomsSerializer
+from classrooms.serializers import ClassesSerializer
 
 
 class SubjectCreationSerializer(serializers.ModelSerializer):
@@ -65,7 +65,7 @@ class SubjectSerializer(serializers.ModelSerializer):
         fields = ['classrooms']
     
     def get_classrooms(self, obj):
-        return ClassroomsSerializer(obj.classrooms.all(), many=True).data
+        return ClassesSerializer(obj.classrooms.all(), many=True).data
 
 
 class SubjectDetailsSerializer(serializers.ModelSerializer):

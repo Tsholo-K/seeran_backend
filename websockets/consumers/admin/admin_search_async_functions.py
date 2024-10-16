@@ -256,10 +256,10 @@ def search_permission_group_subscribers(user, role, details):
 
 
 @database_sync_to_async
-def search_school_announcement(user, role, details):
+def search_school_announcement(account, role, details):
     try:
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = accounts_utilities.get_account_and_linked_school(user, role)
+        requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
         
         if not 'announcement' in details:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid announcement ID and try again'
@@ -270,9 +270,9 @@ def search_school_announcement(user, role, details):
         announcement = requesting_account.announcements.get(announcement_id=details.get('announcement'))
 
         # Check if the user is already in the reached list and add if not
-        if not announcement.accounts_reached.filter(pk=requesting_account.pk).exists():
+        if not announcement.accounts_reached.filter(id=requesting_account.id).exists():
             with transaction.atomic():
-                announcement.reached(user)
+                announcement.reached(account)
 
         # Serialize and return the announcement data
         serialized_announcement = AnnouncementSerializer(announcement).data
