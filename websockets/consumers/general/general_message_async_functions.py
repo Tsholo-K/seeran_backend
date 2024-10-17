@@ -65,6 +65,9 @@ def message_private(account, role, details):
                     private_chat_room_last_message.last_message = False
                     private_chat_room_last_message.save()
 
+            private_chat_room.latest_message_timestamp = new_private_chat_room_message.timestamp
+            private_chat_room.save()
+
         # Serialize the new message
         serialized_message = PrivateChatRoomMessageSerializer(new_private_chat_room_message, context={'participant': account}).data
 
