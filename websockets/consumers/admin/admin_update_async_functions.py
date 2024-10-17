@@ -808,11 +808,24 @@ def update_assessment_as_graded(account, role, details):
 
         # Fetch the assessment from the requesting user's school
         assessment = requesting_account.school.assessments.get(assessment_id=details['assessment'])
-        release_grades_task.delay(assessment.id)
 
         with transaction.atomic():
+            # Get the list of students who have already submitted the assessment
+            students_who_have_submitted_ids = assessment.submissions.values_list('student_id', flat=True)
+            students_who_have_submitted_count = len(students_who_have_submitted_ids)
+
+            graded_student_count = assessment.transcripts.count()
+
+            if students_who_have_submitted_count != graded_student_count:
+                response = f'could not proccess your request, some submissions have not been graded. please make sure to grade all submissions and try again'
+                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='DENIED', server_response=response, school=assessment.school)
+                
+                return {'error': response}
+
             response = f"The grades release process for assessment with assessment ID {assessment.title} has been triggered, results will be made available once performance metrics have been calculated and updated."
             audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='UPDATED', server_response=response, school=assessment.school)
+        
+        release_grades_task.delay(assessment.id)
 
         return {"message": response}
 
