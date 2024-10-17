@@ -51,8 +51,8 @@ def message_private(account, role, details):
 
             # Update the last message's 'last' field if it's from the same sender
             if private_chat_room_last_message and private_chat_room_last_message.author == requesting_account:
-                private_chat_room_last_message.last = False
-                private_chat_room_last_message.save(update_fields=['last'])
+                private_chat_room_last_message.last_message = False
+                private_chat_room_last_message.save(update_fields=['last_message'])
 
             # Create the new message
             new_private_chat_room_message = PrivateMessage.objects.create(author=requesting_account, message_content=details.get('message'), chat_room=private_chat_room)
