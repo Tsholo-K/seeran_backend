@@ -25,7 +25,7 @@ class PrivateChatRoomMessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PrivateMessage
-        fields = ['message_content', 'timestamp', 'read_receipt', 'last', 'whos']
+        fields = ['message_content', 'timestamp', 'read_receipt', 'last_message', 'whos']
 
     def get_whos(self, obj):
         # Access the user from the context and determine the sender
