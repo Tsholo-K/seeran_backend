@@ -155,7 +155,7 @@ class StudentSubjectPerformance(models.Model):
         students_transcripts_data = students_transcripts.aggregate(
             score=models.Sum('weighted_score'),
             maximum_score_achievable=models.Sum('assessment__percentage_towards_term_mark'),
-            passed_assessments_count=models.Count('id', filter=models.Q(weighted_score__gte=pass_mark)),
+            passed_assessments_count=models.Count('id', filter=models.Q(percent_score__gte=pass_mark)),
             average=models.Avg('percent_score'),
             highest=models.Max('percent_score'),
             lowest=models.Min('percent_score')
