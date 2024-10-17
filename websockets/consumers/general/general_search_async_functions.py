@@ -529,13 +529,13 @@ def search_chat_room(account, role, details):
         # requesting_user = BaseAccount.objects.get(account_id=account)
 
         # Build the queryset for the requesting account with the necessary related fields.
-        requesting_account = accounts_utilities.get_account_and_permission_check_attr(account=account)
+        requesting_account = accounts_utilities.get_account_and_permission_check_attr(account=account, role=role)
 
         # Retrieve the requested user's account
         requested_user = BaseAccount.objects.get(account_id=details.get('account'))
 
         # Build the queryset for the requested account with the necessary related fields.
-        requested_account = accounts_utilities.get_account_and_permission_check_attr(account=details.get('account'))
+        requested_account = accounts_utilities.get_account_and_permission_check_attr(account=details.get('account'), role=requested_user.role)
         
         # Check permissions
         permission_error = permission_checks.message(requesting_account, requested_account)
