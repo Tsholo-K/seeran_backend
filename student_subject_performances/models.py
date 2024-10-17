@@ -156,9 +156,9 @@ class StudentSubjectPerformance(models.Model):
             score=models.Sum('weighted_score'),
             maximum_score_achievable=models.Sum('assessment__percentage_towards_term_mark'),
             passed_assessments_count=models.Count('id', filter=models.Q(weighted_score__gte=pass_mark)),
-            average=models.Avg('weighted_score'),
-            highest=models.Max('weighted_score'),
-            lowest=models.Min('weighted_score')
+            average=models.Avg('percent_score'),
+            highest=models.Max('percent_score'),
+            lowest=models.Min('percent_score')
         )
 
         # Calculate the student's total score across all assessments.

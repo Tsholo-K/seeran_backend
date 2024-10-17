@@ -147,12 +147,12 @@ class ClassroomPerformance(models.Model):
         pass_mark = self.classroom.subject.pass_mark
 
         performance_data = performances.aggregate(
-            highest_score=models.Max('normalized_score'),
-            lowest_score=models.Min('normalized_score'),
-            average_score=models.Avg('normalized_score'),
-            standard_deviation=models.StdDev('normalized_score'),
+            highest_score=models.Max(models.functions.Coalesce('normalized_score', 0)),
+            lowest_score=models.Min(models.functions.Coalesce('normalized_score', 0)),
+            average_score=models.Avg(models.functions.Coalesce('normalized_score', 0)),
+            standard_deviation=models.StdDev(models.functions.Coalesce('normalized_score', 0)),
             students_in_the_classroom_count=models.Count('id'),
-            students_passing_the_classroom_count=models.Count('id', filter=models.Q(normalized_score__gte=pass_mark)),
+            students_passing_the_classroom_count=models.Count('id', filter=models.Q(models.functions.Coalesce('normalized_score', 0) >= pass_mark)),
         )
         # print(f'performance_data {performance_data}')
 

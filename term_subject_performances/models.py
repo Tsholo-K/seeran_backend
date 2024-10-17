@@ -147,11 +147,11 @@ class TermSubjectPerformance(models.Model):
             return
         
         performance_data = performances.aggregate(
-            highest_score=models.Max('normalized_score'),
-            lowest_score=models.Min('normalized_score'),
-            average_score=models.Avg('normalized_score'),
-            stddev=models.StdDev('normalized_score'),
-            students_passing_the_term=models.Count('id', filter=models.Q(normalized_score__gte=self.subject.pass_mark)),
+            highest_score=models.Max(models.functions.Coalesce('normalized_score', 0)),
+            lowest_score=models.Min(models.functions.Coalesce('normalized_score', 0)),
+            average_score=models.Avg(models.functions.Coalesce('normalized_score', 0)),
+            stddev=models.StdDev(models.functions.Coalesce('normalized_score', 0)),
+            students_passing_the_term=models.Count('id', filter=models.Q(models.functions.Coalesce('normalized_score', 0) >= self.subject.pass_mark)),
             students_in_the_subject_count=models.Count('student')
         )
         # print(f'performance_data: {performance_data}')
