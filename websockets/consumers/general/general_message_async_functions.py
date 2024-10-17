@@ -4,6 +4,7 @@ from channels.db import database_sync_to_async
 # django
 from django.db import  transaction
 from django.utils.translation import gettext as _
+from django.utils import timezone
 
 # models 
 from accounts.models import BaseAccount
@@ -43,19 +44,26 @@ def message_private(account, role, details):
             return {'error': permission_error}
 
         with transaction.atomic():
+            timestamp = timezone.now()
+
             # Retrieve or create the chat room
-            private_chat_room, created = PrivateChatRoom.objects.get_or_create(participant_one=requesting_account if requesting_account.id < requested_user.id else requested_user, participant_two=requested_user if requesting_account.id < requested_user.id else requesting_account, defaults={'participant_one': requesting_account, 'participant_two': requested_user})
+            private_chat_room, created = PrivateChatRoom.objects.get_or_create(participant_one=requesting_account if requesting_account.id < requested_user.id else requested_user, participant_two=requested_user if requesting_account.id < requested_user.id else requesting_account, defaults={'participant_one': requesting_account, 'participant_two': requested_user, 'latest_message_timestamp': timestamp})
             
-            # Retrieve the last message in the chat room
-            private_chat_room_last_message = private_chat_room.messages.order_by('-timestamp').first()
+            if created:
+                # Create the new message
+                new_private_chat_room_message = PrivateMessage.objects.create(author=requesting_account, message_content=details.get('message'), chat_room=private_chat_room, timestamp=timestamp)
+            
+            else:
+                # Create the new message
+                new_private_chat_room_message = PrivateMessage.objects.create(author=requesting_account, message_content=details.get('message'), chat_room=private_chat_room)
 
-            # Update the last message's 'last' field if it's from the same sender
-            if private_chat_room_last_message and private_chat_room_last_message.author == requesting_account:
-                private_chat_room_last_message.last_message = False
-                private_chat_room_last_message.save()
+                # Retrieve the last message in the chat room
+                private_chat_room_last_message = private_chat_room.messages.order_by('-timestamp').first()
 
-            # Create the new message
-            new_private_chat_room_message = PrivateMessage.objects.create(author=requesting_account, message_content=details.get('message'), chat_room=private_chat_room)
+                # Update the last message's 'last' field if it's from the same sender
+                if private_chat_room_last_message and private_chat_room_last_message.author == requesting_account:
+                    private_chat_room_last_message.last_message = False
+                    private_chat_room_last_message.save()
 
         # Serialize the new message
         serialized_message = PrivateChatRoomMessageSerializer(new_private_chat_room_message, context={'participant': account}).data
