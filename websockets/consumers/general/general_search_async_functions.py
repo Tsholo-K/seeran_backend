@@ -588,7 +588,7 @@ def search_chat_room_messages(user, details):
         messages = list(messages)[::-1]
 
         # Serialize the messages
-        serialized_messages = PrivateChatRoomMessageSerializer(messages, many=True, context={'user': user}).data
+        serialized_messages = PrivateChatRoomMessageSerializer(messages, many=True, context={'participant': user}).data
         
         # Determine the next cursor
         next_cursor = messages[0].timestamp.isoformat() if len(messages) > 19 else None
