@@ -369,14 +369,14 @@ class AdminConsumer(AsyncWebsocketConsumer):
         func = message_map.get(description)
         if func:
             response = await func(account, role, details)
-            if response.get('reciever'):
+            if response.get('recipient'):
                 if description in ['message_private']:
                     await connection_manager.send_message(response['recipient']['account_id'], json.dumps({'description': 'text_message', 'message': response['message'], 'author': response['author']}))
                     await connection_manager.send_message(response['author']['account_id'], json.dumps({'description': 'text_message_fan', 'message': response['message'], 'recipient': response['recipient']}))
 
                     return {'message': 'private message successfully sent'}
             
-        return {'error': 'Could not process your request, an invalid text description was provided. If this problem persist open a bug report ticket.'}
+        return {'error': 'Could not process your request, an invalid message description was provided. If this problem persist open a bug report ticket.'}
 
 # SUBMIT
 
