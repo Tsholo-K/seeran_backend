@@ -374,7 +374,8 @@ class AdminConsumer(AsyncWebsocketConsumer):
                 await connection_manager.send_message(response['author']['account_id'], json.dumps({'description': 'text_message_fan', 'message': response['message'], 'recipient': response['recipient']}))
 
                 return {'message': 'private message successfully sent'}
-            
+            return {response}
+
         return {'error': 'Could not process your request, an invalid message description was provided. If this problem persist open a bug report ticket.'}
 
 # SUBMIT
