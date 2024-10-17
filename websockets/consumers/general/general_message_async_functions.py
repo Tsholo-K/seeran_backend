@@ -57,16 +57,16 @@ def message_private(account, role, details):
                 new_private_chat_room_message = PrivateMessage.objects.create(author=requesting_user, message_content=details.get('message'), chat_room=private_chat_room, timestamp=timestamp)
             
             else:
-                # Create the new message
-                new_private_chat_room_message = PrivateMessage.objects.create(author=requesting_user, message_content=details.get('message'), chat_room=private_chat_room)
-
                 # Retrieve the last message in the chat room
                 private_chat_room_last_message = private_chat_room.messages.order_by('-timestamp').first()
 
                 # Update the last message's 'last' field if it's from the same sender
                 if private_chat_room_last_message and private_chat_room_last_message.author == requesting_user:
                     private_chat_room_last_message.last_message = False
-                    private_chat_room_last_message.save()
+                    private_chat_room_last_message.save(update_fields=['last_message'])
+
+                # Create the new message
+                new_private_chat_room_message = PrivateMessage.objects.create(author=requesting_user, message_content=details.get('message'), chat_room=private_chat_room)
 
         # Serialize the new message
         serialized_message = PrivateChatRoomMessageSerializer(new_private_chat_room_message, context={'participant': account}).data
