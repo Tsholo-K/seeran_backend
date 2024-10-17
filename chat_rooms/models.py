@@ -15,7 +15,7 @@ class PrivateChatRoom(models.Model):
     participant_two = models.ForeignKey(BaseAccount, on_delete=models.CASCADE, related_name='participant_two')
 
     last_updated = models.DateTimeField(auto_now=True)
-    latest_message_timestamp = models.DateTimeField(null=True, blank=True, default=None)
+    latest_message_timestamp = models.DateTimeField()
 
     timestamp = models.DateTimeField(auto_now_add=True)
     private_chat_room_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
