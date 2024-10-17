@@ -22,8 +22,8 @@ class PrivateMessage(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     private_chat_room_message_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
-    # def save(self, *args, **kwargs):
-    #     self.chat_room.latest_message_timestamp = self.timestamp
-    #     self.chat_room.save()
+    def save(self, *args, **kwargs):
+        self.chat_room.latest_message_timestamp = self.timestamp
+        self.chat_room.save()
 
-    #     super().save(*args, **kwargs)
+        super().save(*args, **kwargs)
