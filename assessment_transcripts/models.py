@@ -149,5 +149,5 @@ class AssessmentTranscript(models.Model):
                 raise ValidationError(f'Could not process your request, the student\'s score must be within the range of 0 to {self.assessment.total}.')
             self.percent_score = (self.score / self.assessment.total) * 100
 
-        self.weighted_score = self.percent_score * (self.assessment.percentage_towards_term_mark / 100) if self.assessment.formal > 0 else 0
+        self.weighted_score = self.percent_score * (self.assessment.percentage_towards_term_mark / 100) if self.assessment.percentage_towards_term_mark > 0 else 0
 

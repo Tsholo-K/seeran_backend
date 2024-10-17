@@ -16,17 +16,11 @@ from accounts import utils as accounts_utilities
 # tasks
 from term_subject_performances import tasks as  term_subject_performances_tasks
 from classroom_performances import tasks as  classroom_performances_tasks
-from assessments import tasks as  assessments_tasks
+
 
 batch_size = 20
 
 class Assessment(models.Model):
-    """
-    This model represents an academic assessment conducted in a school. It tracks various aspects such as 
-    who set and moderated the assessment, the start and deadline times, the assessment's weight in the term mark, 
-    and statistics related to the assessment (e.g., pass rates, scores). It also maintains relationships to other models 
-    such as classrooms, grades, and students.
-    """
     
     ASSESSMENT_TYPE_CHOICES = [
         ('EXAMINATION', 'Examination'),
@@ -171,10 +165,6 @@ class Assessment(models.Model):
         return str(self.assessment_id)
         
     def save(self, *args, **kwargs):
-        """
-        Overrides the save method to run custom validation logic via the clean method.
-        Also handles potential integrity errors related to unique constraints.
-        """
         self.clean()
         try:
             super().save(*args, **kwargs)
@@ -182,14 +172,6 @@ class Assessment(models.Model):
             raise ValidationError(_(str(e).lower()))
 
     def clean(self):
-        """
-        Custom validation to ensure business logic is respected before saving the assessment.
-        For example, it ensures the following:
-        - The assessment is linked to a valid grade, term, subject, and school.
-        - The start time is before the deadline.
-        - Moderators and assessors are from the same school and have valid roles.
-        - The total percentage towards the term mark does not exceed 100%.
-        """
         if not self.grade:
             raise ValidationError(_('Could not proccess your request, assessments must be assigned to a grade.'))
 
@@ -282,10 +264,6 @@ class Assessment(models.Model):
             raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
 
     def mark_as_collected(self):
-        """
-        Marks the assessment as collected. This should be called only after the assessment's deadline has passed or all submissions have been received.
-        Raises validation errors if the conditions for marking as collected are not met.
-        """
         if self.collected:
             raise ValidationError(_('Could not proccess your request, the provided assessment has already been flagged as collected.'))
 
@@ -307,11 +285,6 @@ class Assessment(models.Model):
 
     @transaction.atomic
     def release_grades(self):
-        """
-        Releases the grades for the assessment after verifying all submissions are graded. Grades can only be released if all submissions have been 
-        graded. If a student has not submitted their work, their assessment submission will be marked as 'NOT_SUBMITTED' and a score of 0 will be given.
-        Raises validation errors if grades cannot be released (e.g., missing submissions).
-        """
         if not self.collected:
             raise ValidationError(_('could not proccess your request, the provided assessment has not been collected. can not release grades for an assessment that has not been collected'))
 
@@ -373,11 +346,6 @@ class Assessment(models.Model):
 
     @transaction.atomic
     def update_performance_metrics(self):
-        """
-        Updates key performance metrics for the assessment, such as pass rate, failure rate, 
-        completion rate, highest score, lowest score, standard deviation, and percentile distribution.
-        This method is called after grades are released.
-        """
         if not self.grades_released:
             raise ValidationError(_('could not process your request, the assessment does not have its grades released. cannot calculate performance metrics for an assessment that does not have its grades released.'))
 

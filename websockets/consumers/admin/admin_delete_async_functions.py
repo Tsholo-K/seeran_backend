@@ -24,6 +24,10 @@ from accounts import utils as accounts_utilities
 from account_permissions import utils as permissions_utilities
 from audit_logs import utils as audits_utilities
 
+# tasks
+from term_subject_performances import tasks as  term_subject_performances_tasks
+from classroom_performances import tasks as  classroom_performances_tasks
+
 
 
 @database_sync_to_async
@@ -365,7 +369,20 @@ def delete_assessment(account, role, details):
         with transaction.atomic():
             response = f"assessment with assessment ID {assessment.assessment_id} has been successfully deleted, along with it's associated data"
             audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='DELETED', server_response=response, school=requesting_account.school)
+            
+            if assessment.classroom:
+                classroom_performance, created = assessment.classroom.classroom_performances.get_or_create(term=assessment.term, defaults={'school': requesting_account.school})
+                classroom = True
+            else:
+                term_performance, created = assessment.subject.termly_performances.get_or_create(term=assessment.term, defaults={'school': requesting_account.school})
+                classroom = False
+
             assessment.delete()
+
+        if classroom:
+            classroom_performances_tasks.update_classroom_performance_metrics_task.delay(classroom_performance_id=classroom_performance.id)
+        else:
+            term_subject_performances_tasks.update_term_performance_metrics_task.delay(term_performance_id=term_performance.id)
 
         return {"message": response}
 

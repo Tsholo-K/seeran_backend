@@ -100,6 +100,15 @@ class StudentSubjectPerformance(models.Model):
         
         if self.weighted_score and not (0 <= self.weighted_score <= 100):
             raise ValidationError(_('A student\'s subject weighted score for any given term must be between 0 and 100'))
+        
+        if self.pass_rate and not (0 <= self.pass_rate <= 100):
+            raise ValidationError(_('A student\'s subject pass rate for any given term must be between 0 and 100'))
+        
+        if self.completion_rate and not (0 <= self.completion_rate <= 100):
+            raise ValidationError(_('A student\'s subject completion rate for any given term must be between 0 and 100'))
+        
+        if self.normalized_score and not (0 <= self.normalized_score <= 100):
+            raise ValidationError(_('A student\'s subject normalized score for any given term must be between 0 and 100'))
 
     def save(self, *args, **kwargs):
         """
@@ -129,8 +138,8 @@ class StudentSubjectPerformance(models.Model):
 
         # If no assessments exist, set relevant scores to None.
         if not grade_assessments.exists():
-            self.score = self.normalized_score = self.weighted_score = self.average_score = None
-            print('no assessments')
+            self.score = self.normalized_score = self.weighted_score = self.average_score = '0.00'
+            # print('no assessments')
             return
 
         grade_assessments_count = grade_assessments.count()
@@ -138,6 +147,11 @@ class StudentSubjectPerformance(models.Model):
 
         # Fetch the student's transcripts and submissions for the subject's assessments.
         students_transcripts = self.student.transcripts.filter(assessment__in=grade_assessments)
+
+        if not students_transcripts.exists():
+            self.score = self.normalized_score = self.weighted_score = self.average_score = '0.00'
+            return
+
         students_transcripts_data = students_transcripts.aggregate(
             score=models.Sum('weighted_score'),
             maximum_score_achievable=models.Sum('assessment__percentage_towards_term_mark'),
