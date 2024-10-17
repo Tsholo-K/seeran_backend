@@ -26,5 +26,5 @@ class PrivateChatRoomsSerializer(serializers.ModelSerializer):
     def get_last_message(self, obj):
         # Fetch the latest messages if no cursor is provided
         private_chat_room_last_message = obj.messages.filter(timestamp=obj.latest_message_timestamp).first()
-        return PrivateChatRoomMessageSerializer(private_chat_room_last_message).data if private_chat_room_last_message else None
+        return PrivateChatRoomMessageSerializer(private_chat_room_last_message, context={'participant': self.context['account']}).data if private_chat_room_last_message else None
     
