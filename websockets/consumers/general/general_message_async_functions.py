@@ -42,10 +42,10 @@ def message_private(account, role, details):
         if permission_error:
             return {'error': permission_error}
 
-        # Retrieve or create the chat room
-        private_chat_room, created = PrivateChatRoom.objects.get_or_create(participant_one=requesting_account if requesting_account.id < requested_user.id else requested_user, participant_two=requested_user if requesting_account.id < requested_user.id else requesting_account, defaults={'participant_one': requesting_account, 'participant_two': requested_user})
-
         with transaction.atomic():
+            # Retrieve or create the chat room
+            private_chat_room, created = PrivateChatRoom.objects.get_or_create(participant_one=requesting_account if requesting_account.id < requested_user.id else requested_user, participant_two=requested_user if requesting_account.id < requested_user.id else requesting_account, defaults={'participant_one': requesting_account, 'participant_two': requested_user})
+            
             # Retrieve the last message in the chat room
             private_chat_room_last_message = private_chat_room.messages.order_by('-timestamp').first()
 

@@ -569,7 +569,7 @@ def search_chat_room_messages(user, details):
         requested_user = BaseAccount.objects.get(account_id=details.get('account'))
         
         # Check if a chat room exists between the two users
-        chat_room = PrivateChatRoom.objects.filter(Q(participant_one=requesting_user, participant_two=requested_user) | Q(participant_one=requested_user, participant_two=requesting_user)).select_related('user_one', 'user_two').first()
+        chat_room = PrivateChatRoom.objects.filter(Q(participant_one=requesting_user, participant_two=requested_user) | Q(participant_one=requested_user, participant_two=requesting_user)).select_related('participant_one', 'participant_two').first()
         
         if not chat_room:
             return {"not_found": 'No such chat room exists'}
@@ -594,7 +594,7 @@ def search_chat_room_messages(user, details):
         next_cursor = messages[0].timestamp.isoformat() if len(messages) > 19 else None
 
         # Mark unread messages as read and count them in one query
-        unread_messages = chat_room.messages.filter(read_receipt=False).exclude(sender=requesting_user)
+        unread_messages = chat_room.messages.filter(read_receipt=False).exclude(author=requesting_user)
 
         # Check if there are any messages that match the criteria
         unread_count = unread_messages.count()
