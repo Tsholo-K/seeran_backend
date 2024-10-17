@@ -168,9 +168,8 @@ def update_messages_as_read(account, details):
         chat_room = PrivateChatRoom.objects.get(Q(participant_one=requesting_account, participant_two=requested_user) | Q(participant_one=requested_user, participant_two=account))
 
         if chat_room:
-
             # Query for messages that need to be marked as read
-            messages_to_update = PrivateMessage.objects.filter(chat_room=chat_room, read_receipt=False).exclude(sender=requesting_account)
+            messages_to_update = PrivateMessage.objects.filter(chat_room=chat_room, read_receipt=False).exclude(author=requesting_account)
 
             # Check if there are any messages that match the criteria
             if messages_to_update.exists():
