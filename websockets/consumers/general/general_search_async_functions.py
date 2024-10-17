@@ -30,17 +30,17 @@ from school_announcements.serializers import AnnouncementSerializer
 from chat_room_messages.serializers import PrivateChatRoomMessageSerializer
 from student_activities.serializers import ActivitySerializer
 
+# utility functions 
+from accounts import utils as accounts_utilities
+
+# queries
+from seeran_backend.complex_queries import queries
+
 # checks
 from accounts.checks import permission_checks
 
 # mappings
 from accounts.mappings import model_mapping
-
-# queries
-from seeran_backend.complex_queries import queries
-
-# utility functions 
-from accounts import utils as users_utilities
 
 
 @database_sync_to_async
@@ -341,7 +341,7 @@ def search_classrooms(user, role, details):
 def search_activity(user, role, details):
     try:
         # Retrieve the requesting users account and related attr
-        requesting_account = users_utilities.get_account_and_attr(user, role)
+        requesting_account = accounts_utilities.get_account_and_attr(user, role)
 
         # Retrieve the activity based on the provided activity_id
         activity = StudentActivity.objects.select_related('school', 'logger', 'recipient', 'classroom').get(activity_id=details.get('activity'))
@@ -369,7 +369,7 @@ def search_activity(user, role, details):
 def search_group_schedule_schedules(user, role, details):
     try:
         # Retrieve the requesting users account and related attr
-        requesting_account = users_utilities.get_account_and_attr(user, role)
+        requesting_account = accounts_utilities.get_account_and_attr(user, role)
         
         # Retrieve the specified group schedule
         group_schedule = StudentGroupTimetable.objects.select_related('grade__school').prefetch_related('subscribers').get(group_timetable_id=details.get('group_schedule'))
@@ -401,7 +401,7 @@ def search_group_schedules(user, role, details):
             return {"error": "The specified account's role is invalid. please ensure you are attempting to access group schedules from an authorized account."}
         
         # Get the appropriate model for the requesting user's role from the mapping.
-        Model = model_mapping.account_access_control_mapping[role]
+        Model = model_mapping.account[role]
 
         group_schedules = []
         if role in ['ADMIN', 'PRINCIPAL']:
@@ -523,34 +523,27 @@ def search_schedule_sessions(details):
     
 
 @database_sync_to_async
-def search_chat_room(user, role, details):
+def search_chat_room(account, role, details):
     try:
         # Retrieve the account making the request
-        requesting_user = BaseAccount.objects.get(account_id=user)
-
-        # Get the appropriate model and related fields (select_related and prefetch_related)
-        # for the requesting user's role from the mapping.
-        Model, select_related, prefetch_related = model_mapping.account_model_and_attr_mapping[role]
+        # requesting_user = BaseAccount.objects.get(account_id=account)
 
         # Build the queryset for the requesting account with the necessary related fields.
-        requesting_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=user)
+        requesting_account = accounts_utilities.get_account_and_permission_check_attr(account=account)
 
         # Retrieve the requested user's account
         requested_user = BaseAccount.objects.get(account_id=details.get('account'))
 
-        # Get the appropriate model and related fields for the requested user's role.
-        Model, select_related, prefetch_related = model_mapping.account_model_and_attr_mapping[requested_user.role]
-
         # Build the queryset for the requested account with the necessary related fields.
-        requested_account = queries.account_and_its_attr_query_build(Model, select_related, prefetch_related).get(account_id=details.get('account'))
+        requested_account = accounts_utilities.get_account_and_permission_check_attr(account=details.get('account'))
         
         # Check permissions
-        permission_error = permission_checks.check_message_permissions(requesting_account, requested_account)
+        permission_error = permission_checks.message(requesting_account, requested_account)
         if permission_error:
             return {'error': permission_error}
         
         # Check if a chat room exists between the two users
-        chat_room = PrivateChatRoom.objects.filter(Q(user_one=requesting_user, user_two=requested_user) | Q(user_one=requested_user, user_two=requesting_user)).first()
+        chat_room = PrivateChatRoom.objects.filter(Q(participant_one=requesting_account, participant_two=requested_user) | Q(participant_one=requested_user, participant_two=requesting_account)).first()
         
         chat_room_exists = bool(chat_room)
         
@@ -576,7 +569,7 @@ def search_chat_room_messages(user, details):
         requested_user = BaseAccount.objects.get(account_id=details.get('account'))
         
         # Check if a chat room exists between the two users
-        chat_room = PrivateChatRoom.objects.filter(Q(user_one=requesting_user, user_two=requested_user) | Q(user_one=requested_user, user_two=requesting_user)).select_related('user_one', 'user_two').first()
+        chat_room = PrivateChatRoom.objects.filter(Q(participant_one=requesting_user, participant_two=requested_user) | Q(participant_one=requested_user, participant_two=requesting_user)).select_related('user_one', 'user_two').first()
         
         if not chat_room:
             return {"not_found": 'No such chat room exists'}
