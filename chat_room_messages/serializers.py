@@ -29,5 +29,5 @@ class PrivateChatRoomMessageSerializer(serializers.ModelSerializer):
 
     def get_whos(self, obj):
         # Access the user from the context and determine the sender
-        requesting_account = self.context['user']
+        requesting_account = self.context['participant']
         return 'mine' if str(obj.author.account_id) == requesting_account else 'theirs'

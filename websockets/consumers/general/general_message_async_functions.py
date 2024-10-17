@@ -18,52 +18,49 @@ from chat_room_messages.serializers import PrivateChatRoomMessageSerializer
 from accounts.checks import permission_checks
 
 # utility functions 
-from accounts import utils as users_utilities
+from accounts import utils as accounts_utilities
 
 
 @database_sync_to_async
-def message_private(user, role, details):
+def message_private(account, role, details):
     try:
         # Validate users
-        if user == details.get('account'):
+        if account == details.get('account'):
             return {"error": "validation error. you can not send a text message to yourself, it violates database constraints and is therefore not allowed."}
-
-        # Retrieve the user making the request
-        requesting_user = BaseAccount.objects.get(account_id=user)
         
         # Retrieve the requesting users account and related school in a single query using select_related
-        requesting_account = users_utilities.get_account_and_attr(user, role)
+        requesting_account = accounts_utilities.get_account_and_permission_check_attr(account, role)
 
         # Retrieve the requested user's account
         requested_user = BaseAccount.objects.get(account_id=details.get('account'))
 
         # Retrieve the requested users account and related school in a single query using select_related
-        requested_account = users_utilities.get_account_and_attr(details.get('account'), requested_user.role)
+        requested_account = accounts_utilities.get_account_and_permission_check_attr(details.get('account'), requested_user.role)
 
         # Check permissions
-        permission_error = permission_checks.check_message_permissions(requesting_account, requested_account)
+        permission_error = permission_checks.message(requesting_account, requested_account)
         if permission_error:
             return {'error': permission_error}
 
         # Retrieve or create the chat room
-        private_chat_room, created = PrivateChatRoom.objects.get_or_create(participant_one=requesting_user if requesting_user.id < requested_user.id else requested_user, participant_two=requested_user if requesting_user.id < requested_user.id else requesting_user, defaults={'participant_one': requesting_user, 'participant_two': requested_user})
+        private_chat_room, created = PrivateChatRoom.objects.get_or_create(participant_one=requesting_account if requesting_account.id < requested_user.id else requested_user, participant_two=requested_user if requesting_account.id < requested_user.id else requesting_account, defaults={'participant_one': requesting_account, 'participant_two': requested_user})
 
         with transaction.atomic():
             # Retrieve the last message in the chat room
             private_chat_room_last_message = private_chat_room.messages.order_by('-timestamp').first()
 
             # Update the last message's 'last' field if it's from the same sender
-            if private_chat_room_last_message and private_chat_room_last_message.author == requesting_user:
+            if private_chat_room_last_message and private_chat_room_last_message.author == requesting_account:
                 private_chat_room_last_message.last = False
                 private_chat_room_last_message.save(update_fields=['last'])
 
             # Create the new message
-            new_private_chat_room_message = PrivateMessage.objects.create(author=requesting_user, message_content=details.get('message'), chat_room=private_chat_room)
+            new_private_chat_room_message = PrivateMessage.objects.create(author=requesting_account, message_content=details.get('message'), chat_room=private_chat_room)
 
         # Serialize the new message
-        serialized_message = PrivateChatRoomMessageSerializer(new_private_chat_room_message, context={'user': user}).data
+        serialized_message = PrivateChatRoomMessageSerializer(new_private_chat_room_message, context={'participant': account}).data
 
-        serialized_author = BareAccountDetailsSerializer(requesting_user).data
+        serialized_author = BareAccountDetailsSerializer(requesting_account).data
         serialized_recipient = BareAccountDetailsSerializer(requested_user).data
 
         return {'message': serialized_message, 'author': serialized_author, 'recipient': serialized_recipient}
