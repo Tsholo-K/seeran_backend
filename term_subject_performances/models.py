@@ -146,12 +146,17 @@ class TermSubjectPerformance(models.Model):
             self.pass_rate = self.average_score = self.median_score = None
             return
         
+        # Annotate performances with normalized_score replaced by 0 where it's null
+        performances = performances.annotate(
+            normalized_score_with_default=models.functions.Coalesce('normalized_score', models.Value(0))
+        )
+
         performance_data = performances.aggregate(
-            highest_score=models.Max(models.functions.Coalesce('normalized_score', 0)),
-            lowest_score=models.Min(models.functions.Coalesce('normalized_score', 0)),
-            average_score=models.Avg(models.functions.Coalesce('normalized_score', 0)),
-            stddev=models.StdDev(models.functions.Coalesce('normalized_score', 0)),
-            students_passing_the_term=models.Count('id', filter=models.Q(models.functions.Coalesce('normalized_score', 0) >= self.subject.pass_mark)),
+            highest_score=models.Max('normalized_score_with_default'),
+            lowest_score=models.Min('normalized_score_with_default'),
+            average_score=models.Avg('normalized_score_with_default'),
+            stddev=models.StdDev('normalized_score_with_default'),
+            students_passing_the_term=models.Count('id', filter=models.Q(normalized_score_with_default__gte=self.subject.pass_mark)),
             students_in_the_subject_count=models.Count('student')
         )
         # print(f'performance_data: {performance_data}')
