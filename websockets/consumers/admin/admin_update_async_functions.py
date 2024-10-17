@@ -817,7 +817,7 @@ def update_assessment_as_graded(account, role, details):
             graded_student_count = assessment.transcripts.count()
 
             if students_who_have_submitted_count != graded_student_count:
-                response = f'could not proccess your request, some submissions have not been graded. please make sure to grade all submissions and try again'
+                response = f"Could not proccess your request, some submissions have not been graded. please make sure to grade all submissions and try again"
                 audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='DENIED', server_response=response, school=assessment.school)
                 
                 return {'error': response}
