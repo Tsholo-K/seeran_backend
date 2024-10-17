@@ -148,7 +148,7 @@ class ClassroomPerformance(models.Model):
 
         # Annotate performances with normalized_score replaced by 0 where it's null
         performances = performances.annotate(
-            normalized_score_with_default=models.functions.Coalesce('normalized_score', models.Value(0))
+            normalized_score_with_default=models.functions.Coalesce('normalized_score', Decimal(0.00))
         )
 
         performance_data = performances.aggregate(
