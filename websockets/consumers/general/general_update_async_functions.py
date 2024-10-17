@@ -157,27 +157,27 @@ def update_multi_factor_authentication(user, details):
     
 
 @database_sync_to_async
-def update_messages_as_read(user, details):
+def update_messages_as_read(account, details):
     try:
         # Retrieve the account making the request
-        account = BaseAccount.objects.get(account_id=user)
+        requesting_account = BaseAccount.objects.get(account_id=account)
         # Retrieve the requested user's account
-        requested_user = BaseAccount.objects.get(account_id=details.get('account_id'))
+        requested_user = BaseAccount.objects.get(account_id=details.get('account'))
         
         # Check if a chat room exists between the two users
-        chat_room = PrivateChatRoom.objects.get(Q(user_one=account, user_two=requested_user) | Q(user_one=requested_user, user_two=account))
+        chat_room = PrivateChatRoom.objects.get(Q(participant_one=requesting_account, participant_two=requested_user) | Q(participant_one=requested_user, participant_two=account))
 
         if chat_room:
 
             # Query for messages that need to be marked as read
-            messages_to_update = PrivateMessage.objects.filter(chat_room=chat_room, read_receipt=False).exclude(sender=account)
+            messages_to_update = PrivateMessage.objects.filter(chat_room=chat_room, read_receipt=False).exclude(sender=requesting_account)
 
             # Check if there are any messages that match the criteria
             if messages_to_update.exists():
 
                 # Mark the messages as read
                 messages_to_update.update(read_receipt=True)
-                return {"read": True, 'user': str(requested_user.account_id), 'chat': str(account.account_id)}
+                return {"read": True, 'user': str(requested_user.account_id), 'chat': str(requesting_account.account_id)}
             
             else:
                 # Handle the case where no messages need to be updated (optional)
