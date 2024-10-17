@@ -219,7 +219,7 @@ class ClassroomPerformance(models.Model):
         previous_term = term_utilities.get_previous_term(school=self.school, grade=self.term.grade, end_date=self.term.start_date)
         # print(f'previous_term {previous_term}')
         if previous_term:
-            previous_scores = self.classroom.subject.student_performances.filter(student__in=self.students.all(), term=previous_term).values_list('normalized_score', flat=True)
+            previous_scores = self.classroom.subject.student_performances.filter(student__in=self.classroom.students.all(), term=previous_term).values_list('normalized_score', flat=True)
             if previous_scores:
                 improved_students = performances.filter(normalized_score__gt=models.F('previous_score')).count()
                 self.improvement_rate = (improved_students / performance_data['students_in_the_classroom_count']) * 100 if performance_data['students_in_the_classroom_count'] > 0 else 0
