@@ -157,7 +157,7 @@ class ClassroomPerformance(models.Model):
             average_score=models.Avg('normalized_score_with_default'),
             standard_deviation=models.StdDev('normalized_score_with_default'),
             students_in_the_classroom_count=models.Count('id'),
-            students_passing_the_classroom_count=models.Count('id', filter=models.Q('normalized_score_with_default' >= pass_mark)),
+            students_passing_the_classroom_count=models.Count('id', filter=models.Q(normalized_score_with_default__gte=pass_mark)),
         )
         # print(f'performance_data {performance_data}')
 
