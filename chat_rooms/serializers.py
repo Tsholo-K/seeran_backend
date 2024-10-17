@@ -13,10 +13,11 @@ class PrivateChatRoomsSerializer(serializers.ModelSerializer):
     
     participant = serializers.SerializerMethodField()
     last_message = serializers.SerializerMethodField()
+    unread = serializers.SerializerMethodField()
 
     class Meta:
         model = PrivateChatRoom
-        fields = ['participant', 'last_message']
+        fields = ['participant', 'last_message', 'unread']
     
     def get_participant(self, obj):
         # Access the user from the context and determine the sender
@@ -27,4 +28,9 @@ class PrivateChatRoomsSerializer(serializers.ModelSerializer):
         # Fetch the latest messages if no cursor is provided
         private_chat_room_last_message = obj.messages.order_by('-timestamp').first()
         return PrivateChatRoomMessageSerializer(private_chat_room_last_message, context={'participant': self.context['account']}).data
+
+    def get_unread(self, obj):
+        # Fetch the latest messages if no cursor is provided
+        requesting_account = self.context['account']
+        return obj.messages.filter(read_receipt=False).exclude(author__account_id=requesting_account).count()
     
