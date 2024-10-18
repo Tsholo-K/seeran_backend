@@ -155,7 +155,7 @@ def search_school_announcement(account, role, details):
             return {'error': response}
 
         # Retrieve the specified announcement
-        announcement = requesting_account.announcements.get(announcement_id=details.get('announcement'))
+        announcement = requesting_account.school.announcements.get(announcement_id=details.get('announcement'))
 
         # Check if the user is already in the reached list and add if not
         if not announcement.accounts_reached.filter(id=requesting_account.id).exists():
