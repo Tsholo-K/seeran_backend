@@ -144,7 +144,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
 
             'search_account': teacher_search_async_functions.search_account,
 
-            'search_school_announcement': general_search_async_functions.search_school_announcement,
+            'search_school_announcement': teacher_search_async_functions.search_school_announcement,
 
             'search_grade_terms': teacher_search_async_functions.search_grade_terms,
             'search_classroom_subject_performance': teacher_search_async_functions.search_classroom_subject_performance,
