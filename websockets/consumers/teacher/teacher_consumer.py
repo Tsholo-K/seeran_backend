@@ -144,7 +144,7 @@ class TeacherConsumer(AsyncWebsocketConsumer):
 
             'search_account': teacher_search_async_functions.search_account,
 
-            'search_school_announcement': teacher_search_async_functions.search_school_announcement,
+            'search_school_announcement': general_search_async_functions.search_school_announcement,
 
             'search_grade_terms': teacher_search_async_functions.search_grade_terms,
             'search_classroom_subject_performance': teacher_search_async_functions.search_classroom_subject_performance,
@@ -296,14 +296,14 @@ class TeacherConsumer(AsyncWebsocketConsumer):
         func = message_map.get(description)
         if func:
             response = await func(account, role, details)
-            if response.get('reciever'):
-                if description in ['message_private']:
-                    await connection_manager.send_message(response['recipient']['account_id'], json.dumps({'description': 'text_message', 'message': response['message'], 'author': response['author']}))
-                    await connection_manager.send_message(response['author']['account_id'], json.dumps({'description': 'text_message_fan', 'message': response['message'], 'recipient': response['recipient']}))
+            if response.get('recipient'):
+                await connection_manager.send_message(response['recipient']['account_id'], json.dumps({'description': 'text_message', 'message': response['message'], 'author': response['author']}))
+                await connection_manager.send_message(response['author']['account_id'], json.dumps({'description': 'text_message_fan', 'message': response['message'], 'recipient': response['recipient']}))
 
-                    return {'message': 'private message successfully sent'}
-            
-        return {'error': 'Could not process your request, an invalid text description was provided. If this problem persist open a bug report ticket.'}
+                return {'message': 'private message successfully sent'}
+            return response
+
+        return {'error': 'Could not process your request, an invalid message description was provided. If this problem persist open a bug report ticket.'}
 
 # SUBMIT
 

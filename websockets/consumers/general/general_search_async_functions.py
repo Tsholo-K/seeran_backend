@@ -209,7 +209,7 @@ def search_announcement(user, role, details):
         # Validate user role
         if role not in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT', 'PARENT']:
             return {"error": "The specified account's role is invalid. Please ensure you are attempting to access an announcement from an authorized account."}
-        
+
         # Retrieve the account making the request
         requesting_user = BaseAccount.objects.get(account_id=user)
 
@@ -228,7 +228,7 @@ def search_announcement(user, role, details):
             children_schools = requesting_account.children.values_list('school', flat=True)
             if announcement.school.id not in children_schools:
                 return {"error": "Unauthorized request. You can only view announcements from schools your children are linked to. Please check announcement details and try again."}
-        
+
         else:
             # Build the queryset for the requesting account with the necessary related fields.
             requesting_account = Model.objects.select_related('school').only('school').get(account_id=user)
@@ -245,7 +245,7 @@ def search_announcement(user, role, details):
         serialized_announcement = AnnouncementSerializer(announcement).data
 
         return {'announcement': serialized_announcement}
-               
+
     except BaseAccount.DoesNotExist:
         # Handle case where the user does not exist
         return {'error': 'Could not process your request, an account with the provided credentials does not exist. Please check the account details and try again.'}
