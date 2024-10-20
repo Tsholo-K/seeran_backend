@@ -97,6 +97,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
             'UPDATE': self.handle_update,
             'SUBMIT': self.handle_submit,
             'DELETE': self.handle_delete,
+            'UPLOAD': self.handle_upload,
             'CREATE': self.handle_create,
         }
 

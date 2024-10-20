@@ -95,6 +95,7 @@ class StudentConsumer(AsyncWebsocketConsumer):
             'MESSAGE': self.handle_message,
             'SUBMIT': self.handle_submit,
             'DELETE': self.handle_delete,
+            'UPLOAD': self.handle_upload,
             'CREATE': self.handle_create,
         }
 
