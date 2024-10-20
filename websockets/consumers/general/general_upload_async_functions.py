@@ -4,6 +4,7 @@ from channels.db import database_sync_to_async
 # django
 from django.utils.translation import gettext as _
 from django.db import transaction
+from django.core.cache import cache
 
 # models 
 from accounts.models import BaseAccount
@@ -22,6 +23,10 @@ def remove_profile_picture(account):
                 # Delete the old profile picture from GCS if it exists
                 if requesting_account.profile_picture:
                     accounts_utilities.delete_profile_picture_from_gcs(requesting_account.profile_picture.name)
+                    
+            cache.delete(account + 'profile_picture')
+
+            return {"message": "profile picture successfully removed."}
         else:
             return {"error": "Could not process your request, your account does not have a custom profile picture."}
 
