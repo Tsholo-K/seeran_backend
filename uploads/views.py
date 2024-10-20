@@ -42,7 +42,7 @@ def update_profile_picture(request):
         if serializer.is_valid():
             with transaction.atomic():
                 # Delete the old profile picture from GCS if it exists
-                if requesting_account.profile_picture:
+                if requesting_account.profile_picture and requesting_account.profile_picture.name:
                     accounts_utilities.delete_profile_picture_from_gcs(requesting_account.profile_picture.name)
 
                 # Generate a new filename
