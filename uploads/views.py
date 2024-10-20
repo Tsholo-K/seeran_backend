@@ -65,7 +65,7 @@ def update_profile_picture(request):
             return Response({"profile_picture" : singed_url}, status=status.HTTP_200_OK)
 
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        return {"error": error_response}
+        return Response({"error": error_response}, status=status.HTTP_400_BAD_REQUEST)
         
     except BaseAccount.DoesNotExist:
         return Response({"error" : "Could not process your request, an account with the provided credentials does not exist."}, status=status.HTTP_404_NOT_FOUND)
