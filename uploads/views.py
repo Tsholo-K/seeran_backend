@@ -47,6 +47,8 @@ def update_profile_picture(request):
                         accounts_utilities.delete_profile_picture_from_gcs(requesting_account.profile_picture.name)
                     except Exception as e:
                         pass
+                
+                requesting_account.profile_picture.delete()
 
                 # Generate a new filename
                 ext = profile_picture.name.split('.')[-1]  # Get the file extension

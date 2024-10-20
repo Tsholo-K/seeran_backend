@@ -21,9 +21,13 @@ def remove_profile_picture(account):
         if requesting_account.profile_picture:
             with transaction.atomic():
                 # Delete the old profile picture from GCS if it exists
-                if requesting_account.profile_picture:
+                try:
                     accounts_utilities.delete_profile_picture_from_gcs(requesting_account.profile_picture.name)
-                    
+                except Exception as e:
+                    pass
+
+                requesting_account.profile_picture.delete()
+
             cache.delete(account + 'profile_picture')
 
             return {"message": "profile picture successfully removed."}
@@ -33,4 +37,4 @@ def remove_profile_picture(account):
     except BaseAccount.DoesNotExist:
         return {"error": "Could not process your request, no account with the provided credentials exists."}
     except Exception as e:
-        return {"message": str(e)}
+        return {"error": str(e)}
