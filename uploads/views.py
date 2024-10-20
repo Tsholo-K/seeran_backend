@@ -47,24 +47,22 @@ def update_profile_picture(request):
                         accounts_utilities.delete_profile_picture_from_gcs(requesting_account.profile_picture.name)
                     except Exception as e:
                         pass
-                
-                requesting_account.profile_picture = None
 
                 # Generate a new filename
                 ext = profile_picture.name.split('.')[-1]  # Get the file extension
-                filename = f'{uuid.uuid4()}.{ext}'  # Create a new filename using a UUID
+                filename = f'profile_pictures/{uuid.uuid4()}.{ext}'  # Create a new filename using a UUID
 
                 # Upload the new profile picture to GCS
                 accounts_utilities.upload_profile_picture_to_gcs(filename, profile_picture)
 
                 # Update the user's profile picture field
-                requesting_account.profile_picture.name = f"profile_pictures/{filename}"
+                requesting_account.profile_picture.name = filename
                 requesting_account.save()
 
-            cache.delete(str(requesting_account.account_id) + 'profile_picture')
+            # cache.delete(str(requesting_account.account_id) + 'profile_picture')
                 
             singed_url = accounts_utilities.generate_signed_url(filename)
-            cache.set(str(requesting_account.account_id) + 'profile_picture', singed_url, timeout=3600) 
+            # cache.set(str(requesting_account.account_id) + 'profile_picture', singed_url, timeout=3600) 
 
             return Response({"profile_picture" : singed_url}, status=status.HTTP_200_OK)
 

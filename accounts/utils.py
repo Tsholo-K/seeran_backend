@@ -20,7 +20,7 @@ def upload_profile_picture_to_gcs(filename, file_data):
     """Uploads the file to Google Cloud Storage."""
     storage_client = storage.Client()
     bucket = storage_client.bucket('seeran-grades-bucket')
-    blob = bucket.blob(f"profile_pictures/{filename}")
+    blob = bucket.blob(filename)
     
     # Upload the file to GCS
     blob.upload_from_file(file_data, content_type=file_data.content_type)
