@@ -1,8 +1,14 @@
 # rest framework
 from rest_framework import serializers
 
+# django
+from django.core.cache import cache
+
 # models
 from accounts.models import Principal
+
+# utility functions 
+from accounts import utils as accounts_utilities
 
 
 class PrincipalAccountCreationSerializer(serializers.ModelSerializer):
@@ -55,8 +61,17 @@ class PrincipalAccountSerializer(serializers.ModelSerializer):
         return obj.email_address
             
     def get_image(self, obj):
-        """Return the URL of the user's image or a default image."""
-        return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
+        if obj.profile_picture:
+            existing_signed_url = cache.get(str(obj.account_id) + 'profile_picture')
+            if existing_signed_url:
+                return existing_signed_url
+            
+            singed_url = accounts_utilities.generate_signed_url(obj.profile_picture.name)
+            cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=3600) 
+
+            return singed_url
+
+        return '/default-user-icon.svg'
 
 
 class PrincipalAccountSerializer(serializers.ModelSerializer):
@@ -77,7 +92,17 @@ class PrincipalAccountSerializer(serializers.ModelSerializer):
         return obj.surname.title()
 
     def get_image(self, obj):
-        return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
+        if obj.profile_picture:
+            existing_signed_url = cache.get(str(obj.account_id) + 'profile_picture')
+            if existing_signed_url:
+                return existing_signed_url
+            
+            singed_url = accounts_utilities.generate_signed_url(obj.profile_picture.name)
+            cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=3600) 
+
+            return singed_url
+
+        return '/default-user-icon.svg'
 
     def get_identifier(self, obj):
         return obj.email_address
@@ -103,9 +128,19 @@ class PrincipalAccountDetailsSerializer(serializers.ModelSerializer):
         
     def get_role(self, obj):
         return obj.role.title()
-            
+
     def get_image(self, obj):
-        return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
+        if obj.profile_picture:
+            existing_signed_url = cache.get(str(obj.account_id) + 'profile_picture')
+            if existing_signed_url:
+                return existing_signed_url
+            
+            singed_url = accounts_utilities.generate_signed_url(obj.profile_picture.name)
+            cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=3600) 
+
+            return singed_url
+
+        return '/default-user-icon.svg'
     
     def get_identifier(self, obj):
         return obj.email_address

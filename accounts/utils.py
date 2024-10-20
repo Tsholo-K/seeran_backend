@@ -1,8 +1,10 @@
 # python
+from decouple import config
 from datetime import timedelta
 
 # google
 from google.cloud import storage  # Import for Google Cloud Storage usage
+from google.oauth2 import service_account
 
 # models
 from accounts.models import Principal, Admin, Teacher, Student, Parent
@@ -42,7 +44,11 @@ def generate_signed_url(filename, expiration=timedelta(hours=1)):
     :param expiration: The time duration for which the URL will be valid.
     :return: A signed URL string.
     """
-    storage_client = storage.Client()
+
+    # Load service account credentials from a JSON key file
+    credentials = service_account.Credentials.from_service_account_file(config('GS_CREDENTIALS'))
+
+    storage_client = storage.Client(credentials=credentials)
     bucket = storage_client.bucket('seeran-grades-bucket')
     blob = bucket.blob(filename)
 
