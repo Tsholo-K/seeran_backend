@@ -36,7 +36,7 @@ def delete_profile_picture_from_gcs(filename):
     blob.delete()
 
 
-def generate_signed_url(filename, expiration=timedelta(hours=1)):
+def generate_signed_url(filename, expiration=timedelta(hours=24)):
     """
     Generate a signed URL for accessing a specific object in Google Cloud Storage.
 

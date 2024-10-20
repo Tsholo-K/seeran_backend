@@ -29,7 +29,7 @@ def remove_profile_picture(account):
                 requesting_account.profile_picture = None
                 requesting_account.save()
 
-            # cache.delete(account + 'profile_picture')
+            cache.delete(account + 'profile_picture')
 
             return {"message": "profile picture successfully removed."}
         else:

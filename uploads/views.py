@@ -59,10 +59,10 @@ def update_profile_picture(request):
                 requesting_account.profile_picture.name = filename
                 requesting_account.save()
 
-            # cache.delete(str(requesting_account.account_id) + 'profile_picture')
+            cache.delete(str(requesting_account.account_id) + 'profile_picture')
                 
             singed_url = accounts_utilities.generate_signed_url(filename)
-            # cache.set(str(requesting_account.account_id) + 'profile_picture', singed_url, timeout=3600) 
+            cache.set(str(requesting_account.account_id) + 'profile_picture', singed_url, timeout=3600) 
 
             return Response({"profile_picture" : singed_url}, status=status.HTTP_200_OK)
 
