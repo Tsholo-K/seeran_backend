@@ -11,6 +11,9 @@ from django.core.exceptions import ValidationError
 # models
 from accounts.models import BaseAccount
 
+# utility functions 
+from accounts import utils as accounts_utilities
+
 
 class ProfilePictureSerializer(serializers.ModelSerializer):
     class Meta:
@@ -56,10 +59,19 @@ class BasicAccountDetailsSerializer(serializers.ModelSerializer):
     def get_surname(self, obj):
         """Return the formatted surname of the user."""
         return obj.surname.title()
-            
+
     def get_image(self, obj):
-        """Return the URL of the user's image or a default image."""
-        return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
+        if obj.profile_picture:
+            # existing_signed_url = cache.get(str(obj.account_id) + 'profile_picture')
+            # if existing_signed_url:
+            #     return existing_signed_url
+            
+            singed_url = accounts_utilities.generate_signed_url(obj.profile_picture.name)
+            # cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=3600) 
+
+            return singed_url
+
+        return '/default-user-icon.svg'
 
 
 class BasicAccountDetailsEmailSerializer(serializers.ModelSerializer):
@@ -74,10 +86,19 @@ class BasicAccountDetailsEmailSerializer(serializers.ModelSerializer):
     def get_identifier(self, obj):
         """Return the email of the user."""
         return obj.email_address
-            
+
     def get_image(self, obj):
-        """Return the URL of the user's image or a default image."""
-        return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
+        if obj.profile_picture:
+            # existing_signed_url = cache.get(str(obj.account_id) + 'profile_picture')
+            # if existing_signed_url:
+            #     return existing_signed_url
+            
+            singed_url = accounts_utilities.generate_signed_url(obj.profile_picture.name)
+            # cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=3600) 
+
+            return singed_url
+
+        return '/default-user-icon.svg'
     
 
 class SourceAccountSerializer(serializers.ModelSerializer):
@@ -88,14 +109,23 @@ class SourceAccountSerializer(serializers.ModelSerializer):
     class Meta:
         model = BaseAccount
         fields = ['name', 'surname', 'identifier', 'account_id', 'image']
-                
-    def get_image(self, obj):
-        """Return the URL of the user's image or a default image."""
-        return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
 
     def get_identifier(self, obj):
         """Return the identifier for the user: email."""
         return obj.email_address
+
+    def get_image(self, obj):
+        if obj.profile_picture:
+            # existing_signed_url = cache.get(str(obj.account_id) + 'profile_picture')
+            # if existing_signed_url:
+            #     return existing_signed_url
+            
+            singed_url = accounts_utilities.generate_signed_url(obj.profile_picture.name)
+            # cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=3600) 
+
+            return singed_url
+
+        return '/default-user-icon.svg'
 
 
 class BareAccountDetailsSerializer(serializers.ModelSerializer):
@@ -112,6 +142,16 @@ class DisplayAccountDetailsSerializer(serializers.ModelSerializer):
     class Meta:
         model = BaseAccount
         fields = [ 'name', 'surname', 'image' ]
-            
+
     def get_image(self, obj):
-        return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
+        if obj.profile_picture:
+            # existing_signed_url = cache.get(str(obj.account_id) + 'profile_picture')
+            # if existing_signed_url:
+            #     return existing_signed_url
+            
+            singed_url = accounts_utilities.generate_signed_url(obj.profile_picture.name)
+            # cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=3600) 
+
+            return singed_url
+
+        return '/default-user-icon.svg'

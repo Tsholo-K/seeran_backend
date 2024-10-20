@@ -4,6 +4,9 @@ from rest_framework import serializers
 # models
 from accounts.models import Teacher
 
+# utility functions 
+from accounts import utils as accounts_utilities
+
 
 class TeacherAccountCreationSerializer(serializers.ModelSerializer):
 
@@ -50,11 +53,19 @@ class TeacherBasicAccountDetailsEmailSerializer(serializers.ModelSerializer):
     def get_identifier(self, obj):
         """Return the email of the user."""
         return obj.email_address
-            
-    def get_image(self, obj):
-        """Return the URL of the user's image or a default image."""
-        return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
 
+    def get_image(self, obj):
+        if obj.profile_picture:
+            # existing_signed_url = cache.get(str(obj.account_id) + 'profile_picture')
+            # if existing_signed_url:
+            #     return existing_signed_url
+            
+            singed_url = accounts_utilities.generate_signed_url(obj.profile_picture.name)
+            # cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=3600) 
+
+            return singed_url
+
+        return '/default-user-icon.svg'
 
 class TeacherAccountSerializer(serializers.ModelSerializer):
     
@@ -74,11 +85,19 @@ class TeacherAccountSerializer(serializers.ModelSerializer):
     def get_surname(self, obj):
         """Return the formatted surname of the user."""
         return obj.surname.title()
-            
-    def get_image(self, obj):
-        """Return the URL of the user's image or a default image."""
-        return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
 
+    def get_image(self, obj):
+        if obj.profile_picture:
+            # existing_signed_url = cache.get(str(obj.account_id) + 'profile_picture')
+            # if existing_signed_url:
+            #     return existing_signed_url
+            
+            singed_url = accounts_utilities.generate_signed_url(obj.profile_picture.name)
+            # cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=3600) 
+
+            return singed_url
+
+        return '/default-user-icon.svg'
     def get_identifier(self, obj):
         """Return the identifier for the user: ID number, passport number, or email."""
         return obj.email_address
@@ -107,8 +126,17 @@ class TeacherAccountDetailsSerializer(serializers.ModelSerializer):
         
     def get_role(self, obj):
         return obj.role.title()
-            
-    def get_image(self, obj):
-        return obj.profile_picture.url if obj.profile_picture else '/default-user-icon.svg'
 
+    def get_image(self, obj):
+        if obj.profile_picture:
+            # existing_signed_url = cache.get(str(obj.account_id) + 'profile_picture')
+            # if existing_signed_url:
+            #     return existing_signed_url
+            
+            singed_url = accounts_utilities.generate_signed_url(obj.profile_picture.name)
+            # cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=3600) 
+
+            return singed_url
+
+        return '/default-user-icon.svg'
 
