@@ -469,12 +469,12 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
     async def handle_upload(self, description, details, account, role, access_token):
         unlink_map = {
-            'upload_profile_picture': general_upload_async_functions.upload_profile_picture,
+            'remove_profile_picture': general_upload_async_functions.remove_profile_picture,
         }
 
         func = unlink_map.get(description)
         if func:
-            return await func(account, details)          
+            return await func(account)          
         
         return {'error': 'Could not process your request, an invalid upload description was provided. If this problem persist open a bug report ticket.'}
 

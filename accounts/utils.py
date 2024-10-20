@@ -14,18 +14,24 @@ from seeran_backend.complex_queries import queries
 from accounts.mappings import model_mapping, serializer_mappings, attr_mappings
 
 
-def save_profile_picture_to_gcs(account, filename, file_data):
-    # Google Cloud Storage client setup
+def upload_profile_picture_to_gcs(filename, file_data):
+    """Uploads the file to Google Cloud Storage."""
     storage_client = storage.Client()
     bucket = storage_client.bucket('seeran-grades-bucket')
     blob = bucket.blob(f"profile_pictures/{filename}")
-
+    
     # Upload the file to GCS
-    blob.upload_from_string(file_data)
+    blob.upload_from_file(file_data, content_type=file_data.content_type)
 
-    # Link the GCS file to the user's profile picture
-    account.profile_picture.name = f"profile_pictures/{filename}"
-    account.save()
+
+def delete_profile_picture_from_gcs(filename):
+    """Deletes the file from Google Cloud Storage."""
+    storage_client = storage.Client()
+    bucket = storage_client.bucket('seeran-grades-bucket')
+    blob = bucket.blob(filename)
+    
+    # Delete the file from GCS
+    blob.delete()
 
 
 def generate_signed_url(filename, expiration=timedelta(hours=1)):
