@@ -25,6 +25,7 @@ from . import admin_unlink_async_functions
 
 # general async functions
 from websockets.consumers.general import general_message_async_functions
+from websockets.consumers.general import general_upload_async_functions
 from websockets.consumers.general import general_submit_async_functions
 from websockets.consumers.general import general_update_async_functions
 from websockets.consumers.general import general_search_async_functions
@@ -105,6 +106,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
             'DELETE': self.handle_delete,
             'LINK': self.handle_link,
             'UNLINK': self.handle_unlink,
+            'UPLOAD': self.handle_upload,
             'CREATE': self.handle_create,
         }
 
@@ -297,8 +299,7 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         func = form_data_map.get(description)
         if func:
-            response = await func(account, role, details)
-            return response
+            return await func(account, role, details)
         
         return {'error': 'Could not process your request, an invalid form data description was provided. If this problem persist open a bug report ticket.'}
 
@@ -460,10 +461,22 @@ class AdminConsumer(AsyncWebsocketConsumer):
 
         func = unlink_map.get(description)
         if func:
-            response = await func(account, role, details)            
-            return response
+            return await func(account, role, details)            
         
         return {'error': 'Could not process your request, an invalid unlink description was provided. If this problem persist open a bug report ticket.'}
+
+# UPLOAD
+
+    async def handle_upload(self, description, details, account, role, access_token):
+        unlink_map = {
+            'upload_profile_picture': general_upload_async_functions.upload_profile_picture,
+        }
+
+        func = unlink_map.get(description)
+        if func:
+            return await func(account, details)          
+        
+        return {'error': 'Could not process your request, an invalid upload description was provided. If this problem persist open a bug report ticket.'}
 
 # CREATE
 

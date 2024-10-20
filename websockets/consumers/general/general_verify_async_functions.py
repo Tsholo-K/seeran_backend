@@ -13,8 +13,7 @@ from accounts.models import BaseAccount
 from email_address_bans.models import EmailAddressBan
 
 # utility functions 
-from authentication.utils import generate_otp, verify_user_otp
-
+from authentication import utils as authentication_utilities
 
 
 @database_sync_to_async
@@ -75,12 +74,12 @@ def verify_otp(user, details):
             cache.delete(account.email + 'account_otp_attempts')
             return {"denied": "OTP expired.. please generate a new one"}
 
-        if verify_user_otp(user_otp=details.get('otp'), stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
+        if authentication_utilities.verify_user_otp(user_otp=details.get('otp'), stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
             
             # OTP is verified, prompt the user to set their password
             cache.delete(account.email)
             
-            authorization_otp, hashed_authorization_otp, salt = generate_otp()
+            authorization_otp, hashed_authorization_otp, salt = authentication_utilities.generate_otp()
             cache.set(account.email + 'authorization_otp', (hashed_authorization_otp, salt), timeout=300)  # 300 seconds = 5 mins
             
             return {"message": "OTP verified successfully..", "authorization_otp" : authorization_otp}
@@ -230,7 +229,7 @@ def verify_email_ban_revalidation_otp(user, details):
             return {"error": "OTP expired. Please request a new OTP."}
 
         # Verify the provided OTP
-        if verify_user_otp(user_otp=details.get('otp'), stored_hashed_otp_and_salt=hashed_otp):
+        if authentication_utilities.verify_user_otp(user_otp=details.get('otp'), stored_hashed_otp_and_salt=hashed_otp):
             # OTP is valid, update ban status and user account
             email_ban.status = 'APPEALED'
             account.email_banned = False

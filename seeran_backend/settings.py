@@ -14,13 +14,30 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 
 
-# uplaod image max-size 
-DATA_UPLOAD_MAX_MEMORY_SIZE = 26214400  # 25 MB
-
-
 # SECURITY WARNING: don't run with debug turned on in production!
 # activates debug mode for the application
 DEBUG = config('DEBUG')
+
+
+# uplaod image max-size 
+DATA_UPLOAD_MAX_MEMORY_SIZE = 26214400  # 25 MB
+
+# Configure Google Cloud Storage
+DEFAULT_FILE_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
+GS_BUCKET_NAME = config('GS_BUCKET_NAME')
+
+# Path to the service account key JSON file
+GS_CREDENTIALS = config('GS_CREDENTIALS')
+
+# (Optional) If you want to set a custom domain for accessing your media files through the bucket (like a CDN)
+# GS_CUSTOM_ENDPOINT = f"https://storage.googleapis.com/{GS_BUCKET_NAME}"
+
+# (Optional) Define a default ACL for your files (e.g., private access by default)
+GS_DEFAULT_ACL = 'private'
+
+# Set a timeout for connecting to the storage backend
+GS_EXPIRATION = 3600  # 1 hour expiration for pre-signed URLs (adjust as needed)
+
 
 # Application definition
 # a list of all installed apps
@@ -93,7 +110,7 @@ INSTALLED_APPS = [
     'django_celery_results', # celery db communication
     # 'django_celery_beat',
     'channels', # django channels 
-    # 'storages', # allows communication with google storage bucket
+    'storages', # allows communication with google storage bucket
 ]
 
 

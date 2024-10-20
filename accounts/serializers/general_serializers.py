@@ -1,8 +1,42 @@
+# python
+from PIL import Image
+import io
+
 # rest framework
 from rest_framework import serializers
 
+# django
+from django.core.exceptions import ValidationError
+
 # models
 from accounts.models import BaseAccount
+
+
+class ProfilePictureSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BaseAccount
+        fields = ['profile_picture']
+
+    def validate_profile_picture(self, value):
+        # File size validation (limit to 5 MB for example)
+        max_file_size = 25 * 1024 * 1024  # 5 MB
+        if value.size > max_file_size:
+            raise serializers.ValidationError("Could not process your request, file size must be under 25 MB.")
+
+        # File type validation (allow only JPEG and PNG)
+        if not value.name.lower().endswith(('.png', '.jpg', '.jpeg')):
+            raise serializers.ValidationError("Could not process your request, file type must be JPEG or PNG.")
+
+        # Image dimension validation
+        # try:
+        #     image = Image.open(value)
+        #     max_width, max_height = 1920, 1080  # Set your desired dimensions
+        #     if image.width > max_width or image.height > max_height:
+        #         raise serializers.ValidationError(f"Image dimensions must be within {max_width}x{max_height} pixels.")
+        # except Exception as e:
+        #     raise ValidationError("Invalid image format or unable to open the image.")
+
+        return value
 
 
 class BasicAccountDetailsSerializer(serializers.ModelSerializer):

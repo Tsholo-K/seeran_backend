@@ -1,3 +1,9 @@
+# python
+from datetime import timedelta
+
+# google
+from google.cloud import storage  # Import for Google Cloud Storage usage
+
 # models
 from accounts.models import Principal, Admin, Teacher, Student, Parent
 
@@ -6,6 +12,38 @@ from seeran_backend.complex_queries import queries
 
 # mappings
 from accounts.mappings import model_mapping, serializer_mappings, attr_mappings
+
+
+def save_profile_picture_to_gcs(account, filename, file_data):
+    # Google Cloud Storage client setup
+    storage_client = storage.Client()
+    bucket = storage_client.bucket('seeran-grades-bucket')
+    blob = bucket.blob(f"profile_pictures/{filename}")
+
+    # Upload the file to GCS
+    blob.upload_from_string(file_data)
+
+    # Link the GCS file to the user's profile picture
+    account.profile_picture.name = f"profile_pictures/{filename}"
+    account.save()
+
+
+def generate_signed_url(filename, expiration=timedelta(hours=1)):
+    """
+    Generate a signed URL for accessing a specific object in Google Cloud Storage.
+
+    :param filename: The name of the file in the GCS bucket.
+    :param expiration: The time duration for which the URL will be valid.
+    :return: A signed URL string.
+    """
+    storage_client = storage.Client()
+    bucket = storage_client.bucket('seeran-grades-bucket')
+    blob = bucket.blob(filename)
+
+    # Generate a signed URL for the blob
+    signed_url = blob.generate_signed_url(expiration=expiration)
+
+    return signed_url
 
 
 def get_account(account, role):
@@ -37,6 +75,7 @@ def get_account(account, role):
     except Exception as e:
         # Handle any unexpected errors with a general error message
         return {'error': str(e)}
+
 
 def get_account_and_security_information(account, role):
     try:
@@ -71,6 +110,7 @@ def get_account_and_security_information(account, role):
         # Handle any unexpected errors with a general error message
         return {'error': str(e)}
 
+
 def get_account_and_permission_check_attr(account, role):
     try:
         Model = model_mapping.account[role]
@@ -102,6 +142,7 @@ def get_account_and_permission_check_attr(account, role):
         # Handle any unexpected errors with a general error message
         return {'error': str(e)}
 
+
 def get_account_and_linked_school(account, role):
     try:
         Model = model_mapping.account[role]
@@ -127,6 +168,7 @@ def get_account_and_linked_school(account, role):
     except Exception as e:
         # Handle any unexpected errors with a general error message
         return {'error': str(e)}
+
 
 def get_account_and_creation_serializer(role):
     try:
