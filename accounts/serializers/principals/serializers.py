@@ -98,7 +98,7 @@ class PrincipalAccountSerializer(serializers.ModelSerializer):
             #     return existing_signed_url
             
             singed_url = accounts_utilities.generate_signed_url(obj.profile_picture.name)
-            cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=3600) 
+            # cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=3600) 
 
             return singed_url
 
@@ -136,7 +136,7 @@ class PrincipalAccountDetailsSerializer(serializers.ModelSerializer):
             #     return existing_signed_url
             
             singed_url = accounts_utilities.generate_signed_url(obj.profile_picture.name)
-            cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=3600) 
+            # cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=3600) 
 
             return singed_url
 
