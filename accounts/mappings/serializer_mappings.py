@@ -16,33 +16,33 @@ account_creation = {
 }
 
 account_update = {
-    'PARENT': ParentAccountUpdateSerializer,
     'ADMIN': AdminAccountUpdateSerializer,
     'TEACHER': TeacherAccountUpdateSerializer,
     'STUDENT': StudentAccountUpdateSerializer,
+    'PARENT': ParentAccountUpdateSerializer,
 }
 
 account_profile = {
-    'PARENT': SourceAccountSerializer,
     'PRINCIPAL': SourceAccountSerializer,
     'ADMIN': SourceAccountSerializer,
     'TEACHER': SourceAccountSerializer,
     'STUDENT': StudentSourceAccountSerializer,
+    'PARENT': SourceAccountSerializer,
 }
 
 account_details = {
-    'PARENT': ParentAccountDetailsSerializer,
     'PRINCIPAL': PrincipalAccountDetailsSerializer,
     'ADMIN': AdminAccountDetailsSerializer,
     'TEACHER': TeacherAccountDetailsSerializer,
     'STUDENT': StudentAccountDetailsSerializer,
+    'PARENT': ParentAccountDetailsSerializer,
 }
 
 account_security_information = {
     'FOUNDER': FounderSecurityInformationSerializer,
     'PRINCIPAL': PrincipalSecurityInformationSerializer,    
-    'PARENT': ParentSecurityInformationSerializer,
     'ADMIN': AdminSecurityInformationSerializer,
     'TEACHER':  TeacherSecurityInformationSerializer,
     'STUDENT': StudentSecurityInformationSerializer,
+    'PARENT': ParentSecurityInformationSerializer,
 }
