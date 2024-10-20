@@ -25,7 +25,7 @@ from accounts import utils as accounts_utilities
 
 
 # user profile pictures upload 
-@api_view(['PATCH'])
+@api_view(['PUT'])
 @parser_classes([MultiPartParser, FormParser])
 @token_required
 def update_profile_picture(request):
