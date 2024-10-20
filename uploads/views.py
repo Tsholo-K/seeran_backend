@@ -48,7 +48,7 @@ def update_profile_picture(request):
                     except Exception as e:
                         pass
                 
-                requesting_account.profile_picture.delete()
+                requesting_account.profile_picture = None
 
                 # Generate a new filename
                 ext = profile_picture.name.split('.')[-1]  # Get the file extension

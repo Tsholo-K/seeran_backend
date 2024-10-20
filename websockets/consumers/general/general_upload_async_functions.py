@@ -26,7 +26,7 @@ def remove_profile_picture(account):
                 except Exception as e:
                     pass
 
-                requesting_account.profile_picture.delete()
+                requesting_account.profile_picture = None
 
             cache.delete(account + 'profile_picture')
 
