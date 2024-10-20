@@ -33,10 +33,10 @@ GS_CREDENTIALS = config('GS_CREDENTIALS')
 # GS_CUSTOM_ENDPOINT = f"https://storage.googleapis.com/{GS_BUCKET_NAME}"
 
 # (Optional) Define a default ACL for your files (e.g., private access by default)
-GS_DEFAULT_ACL = 'private'
+# GS_DEFAULT_ACL = 'private'
 
 # Set a timeout for connecting to the storage backend
-GS_EXPIRATION = 3600  # 1 hour expiration for pre-signed URLs (adjust as needed)
+# GS_EXPIRATION = 3600  # 1 hour expiration for pre-signed URLs (adjust as needed)
 
 
 # Application definition
