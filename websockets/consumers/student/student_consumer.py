@@ -17,6 +17,7 @@ from . import student_search_async_functions
 
 # general async functions
 from websockets.consumers.general import general_message_async_functions
+from websockets.consumers.general import general_upload_async_functions
 from websockets.consumers.general import general_submit_async_functions
 from websockets.consumers.general import general_update_async_functions
 from websockets.consumers.general import general_search_async_functions
@@ -296,6 +297,19 @@ class StudentConsumer(AsyncWebsocketConsumer):
             else:
                 response = await func(account, role, details)            
             return response
+
+# UPLOAD
+
+    async def handle_upload(self, description, details, account, role, access_token):
+        unlink_map = {
+            'remove_profile_picture': general_upload_async_functions.remove_profile_picture,
+        }
+
+        func = unlink_map.get(description)
+        if func:
+            return await func(account)          
+        
+        return {'error': 'Could not process your request, an invalid upload description was provided. If this problem persist open a bug report ticket.'}
 
 # CREATE
 

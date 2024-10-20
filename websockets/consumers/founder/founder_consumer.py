@@ -19,6 +19,7 @@ from . import founder_update_async_functions
 from . import founder_view_async_functions
 
 # general async functions 
+from websockets.consumers.general import general_upload_async_functions
 from websockets.consumers.general import general_submit_async_functions
 from websockets.consumers.general import general_update_async_functions
 from websockets.consumers.general import general_view_async_functions
@@ -202,6 +203,19 @@ class FounderConsumer(AsyncWebsocketConsumer):
             return await founder_delete_async_functions.delete_principal_account(details)
         
         return {'error': 'Could not process your request, an invalid delete description was provided. If this problem persist open a bug report ticket.'}
+
+# UPLOAD
+
+    async def handle_upload(self, description, details, account, role, access_token):
+        unlink_map = {
+            'remove_profile_picture': general_upload_async_functions.remove_profile_picture,
+        }
+
+        func = unlink_map.get(description)
+        if func:
+            return await func(account)          
+        
+        return {'error': 'Could not process your request, an invalid upload description was provided. If this problem persist open a bug report ticket.'}
 
 # CREATE
 
