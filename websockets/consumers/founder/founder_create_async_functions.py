@@ -44,7 +44,7 @@ def create_school_account(details):
                 School.objects.create(**serializer.validated_data)
 
             # Return a success message
-            return {"message": "school account created successfully"}
+            return {"message": "A new school account has been created. Link a principal to fully activate the account for billing and usage."}
     
         # If the data is not valid, return the validation errors formatted as a string
         return {"error": '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])}

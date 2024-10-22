@@ -231,22 +231,20 @@ def update_account_details(user, role, details):
         # Check if the user has permission to update classrooms
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'UPDATE', 'ACCOUNT'):
             response = f'could not proccess your request, you do not have the necessary permissions to update classroom details.'
-            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', outcome='DENIED', server_response=response, school=requesting_account.school)
 
             return {'error': response}
 
         if details['role'] == 'ADMIN' and role == 'ADMIN':
             response = f'could not proccess your request, your accounts role does not have enough permissions to perform this action.'
-
-            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', outcome='DENIED', response=response, school=requesting_account.school)
-
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', outcome='DENIED', server_response=response, school=requesting_account.school)
             return {'error': response}
 
         # Retrieve the requested user's account and related attr for permission check
         requested_account = accounts_utilities.get_account_and_permission_check_attr(details['account'], details['role'])
         
         # Check if the requesting user has permission to view the requested user's profile.
-        permission_error = permission_checks.check_update_details_permissions(requesting_account, requested_account)
+        permission_error = permission_checks.update_account(requesting_account, requested_account)
         if permission_error:
             return permission_error
         
@@ -260,10 +258,10 @@ def update_account_details(user, role, details):
                 serializer.save()
                         
                 response = f'account details successfully updated'
-                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(requested_account.account_id) if requested_account else 'N/A', outcome='UPDATED', response=response, school=requesting_account.school,)
+                audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(requested_account.account_id) if requested_account else 'N/A', outcome='UPDATED', server_response=response, school=requesting_account.school,)
             
             # Get the appropriate serializer
-            Serializer = accounts_utilities.account_details_serializer_mapping[details['role']]
+            Serializer = serializer_mappings.account_details[details['role']]
 
             # Serialize the requested user's profile for returning in the response.
             serialized_user = Serializer(instance=requested_account).data
@@ -272,20 +270,17 @@ def update_account_details(user, role, details):
 
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(requested_account.account_id) if requested_account else 'N/A', outcome='ERROR', response=f'Validation failed: {error_response}', school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(requested_account.account_id) if requested_account else 'N/A', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
         return {"error": error_response}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(requested_account.account_id) if requested_account else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(requested_account.account_id) if requested_account else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(requested_account.account_id) if requested_account else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='ACCOUNT', target_object_id=str(requested_account.account_id) if requested_account else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {'error': error_message}
 
 
