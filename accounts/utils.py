@@ -19,7 +19,7 @@ from accounts.mappings import model_mapping, serializer_mappings, attr_mappings
 def upload_profile_picture_to_gcs(filename, file_data):
     """Uploads the file to Google Cloud Storage."""
     storage_client = storage.Client()
-    bucket = storage_client.bucket('seeran-grades-bucket')
+    bucket = storage_client.bucket('seeran-dion-bucket')
     blob = bucket.blob(filename)
     
     # Upload the file to GCS
@@ -29,7 +29,7 @@ def upload_profile_picture_to_gcs(filename, file_data):
 def delete_profile_picture_from_gcs(filename):
     """Deletes the file from Google Cloud Storage."""
     storage_client = storage.Client()
-    bucket = storage_client.bucket('seeran-grades-bucket')
+    bucket = storage_client.bucket('seeran-dion-bucket')
     blob = bucket.blob(filename)
     
     # Delete the file from GCS
@@ -49,7 +49,7 @@ def generate_signed_url(filename, expiration=timedelta(hours=24)):
     credentials = service_account.Credentials.from_service_account_file(config('GS_CREDENTIALS'))
 
     storage_client = storage.Client(credentials=credentials)
-    bucket = storage_client.bucket('seeran-grades-bucket')
+    bucket = storage_client.bucket('seeran-dion-bucket')
     blob = bucket.blob(filename)
 
     # Generate a signed URL for the blob
