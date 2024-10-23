@@ -419,7 +419,7 @@ def delete_timetable(account, role, details):
 
         timetable = requesting_account.school.timetables.get(timetable_id=details.get('timetable'))
         
-        if timetable.teacher_timetable:
+        if timetable.teacher_timetable_id:
             linked_timetable = timetable.teacher_timetable
         else:
             linked_timetable = timetable.student_group_timetable
