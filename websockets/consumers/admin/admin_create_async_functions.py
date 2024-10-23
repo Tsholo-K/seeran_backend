@@ -332,7 +332,7 @@ def create_term(account, role, details):
                 # Create the new term using the validated data
                 term = requesting_account.school.terms.create(**serializer.validated_data)
 
-                response = f"A new term, {term.term}, for your schools {grade.grade} has been successfully created."
+                response = f"A new term, {term.term_name}, for your schools grade {grade.grade} has been successfully created."
                 audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='CREATED', server_response=response, school=requesting_account.school)
 
             return {"message": response}
