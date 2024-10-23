@@ -1,5 +1,6 @@
 # rest framework
 from rest_framework import serializers
+from rest_framework.validators import UniqueTogetherValidator
 
 # django
 from django.core.cache import cache
@@ -19,6 +20,8 @@ class StudentAccountCreationSerializer(serializers.ModelSerializer):
 
     def __init__(self, *args, **kwargs):
         super(StudentAccountCreationSerializer, self).__init__(*args, **kwargs)
+        # Remove the unique together validator that's added by DRF
+        self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
         # Make some fields optional
         for field in ['email_address', 'id_number', 'passport_number']:
             self.fields[field].required = False

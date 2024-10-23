@@ -20,6 +20,7 @@ class ClassroomCreationSerializer(serializers.ModelSerializer):
         super(ClassroomCreationSerializer, self).__init__(*args, **kwargs)
         # Remove the unique together validator that's added by DRF
         self.validators = [v for v in self.validators if not isinstance(v, UniqueTogetherValidator)]
+        # Make some fields optional
         self.fields['teacher'].required = False
         self.fields['subject'].required = False
 
