@@ -391,10 +391,7 @@ class Student(BaseAccount):
     def save(self, *args, **kwargs):
         """Override save method to include validation for student accounts."""
         self.clean()
-        try:
-            super().save(*args, **kwargs)
-        except Exception as e:
-            raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
+        super().save(*args, **kwargs)
 
     def clean(self):
         """Validate student-specific fields."""
