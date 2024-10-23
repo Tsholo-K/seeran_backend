@@ -42,7 +42,13 @@ def link_parent(account, role, details):
         # Check if an account with the provided email already exists
         existing_parent = Parent.objects.filter(email_address=details.get('email_address')).first()
         if existing_parent:
-            return {'user' : existing_parent, 'notice' : 'there is already a parent account with the provide email address'}
+            with transaction.atomic():
+                existing_parent.children.add(student)
+
+                response = f'A parent account with the provided credentials has already been created, the two accounts have been linked. If this is a mistake, unlink the parent from the students account and review the parents information.'
+                audits_utilities.log_audit(actor=requesting_account, action='LINK', target_model='ACCOUNT', target_object_id=str(student.account_id) if student else 'N/A', outcome='LINKED', server_response=response, school=requesting_account.school,)
+            
+            return {'message' : response}
 
         details['role'] = 'PARENT'
         
