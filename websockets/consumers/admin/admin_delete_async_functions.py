@@ -179,16 +179,20 @@ def delete_grade(account, role, details):
         # Check if the user has permission to create a grade
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'DELETE', 'GRADE'):
             response = f'could not proccess your request, you do not have the necessary permissions to delete a grade'
-            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='GRADE', outcome='DENIED', response=response, school=requesting_account.school)
-
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='GRADE', outcome='DENIED', server_response=response, school=requesting_account.school)
+            return {'error': response}
+        
+        if not {'grade'}.issubset(details):
+            response = f'Could not proccess your request, the provided information is invalid for the action you are trying to perform. Please make sure to provide a valid grade ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='GRADE', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        grade = requesting_account.school.grades.get(grade_id=details.get('grade'), school=requesting_account.school)
+        grade = requesting_account.school.grades.get(grade_id=details['grade'])
 
         # Create the grade within a transaction to ensure atomicity
         with transaction.atomic():
             response = f"your schools grade {grade.grade} has been successfully deleted. the grade and all it's associated data will no longer be assessible on the system"
-            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='DELETED', response=response, school=requesting_account.school,)
+            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='DELETED', server_response=response, school=requesting_account.school,)
             
             grade.delete()
 
@@ -200,14 +204,12 @@ def delete_grade(account, role, details):
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='ERROR', response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='GRADE', target_object_id=str(grade.grade_id) if grade else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
         return {'error': error_message}
 
 
