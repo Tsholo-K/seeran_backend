@@ -422,7 +422,7 @@ def delete_timetable(account, role, details):
         if timetable.teacher_timetable:
             linked_timetable = timetable.teacher_timetable
         else:
-            linked_timetable = timetable.group_timetable
+            linked_timetable = timetable.student_group_timetable
 
         with transaction.atomic():
             response = f"A timetable with timetable ID: {timetable.timetable_id}, has been successfully deleted from your schools system. All sessions linked to the timetable will also be purged from the system, effective immediately."
