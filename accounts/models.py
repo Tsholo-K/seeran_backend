@@ -171,8 +171,6 @@ class BaseAccount(AbstractBaseUser, PermissionsMixin):
                     raise ValidationError(_('Could not process your request, an account with the provided passport number already exists, please use a different passport number.'))                
             # If it's not handled, re-raise the original exception
             raise ValidationError(_(error_message))
-        except Exception as e:
-            raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
 
     def clean(self):
         if self.role not in dict(BaseAccount.ROLE_CHOICES).keys():
@@ -215,10 +213,7 @@ class Founder(BaseAccount):
     def save(self, *args, **kwargs):
         """Override save method to include validation for founder accounts."""
         self.clean()
-        try:
-            super().save(*args, **kwargs)
-        except Exception as e:
-            raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
+        super().save(*args, **kwargs)
 
     def clean(self):
         """Validate founder-specific fields."""
@@ -256,10 +251,7 @@ class Principal(BaseAccount):
     def save(self, *args, **kwargs):
         """Override save method to include validation for principal accounts."""
         self.clean()
-        try:
-            super().save(*args, **kwargs)
-        except Exception as e:
-            raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
+        super().save(*args, **kwargs)
 
     def clean(self):
         """Validate principal-specific fields."""
@@ -305,10 +297,7 @@ class Admin(BaseAccount):
     def save(self, *args, **kwargs):
         """Override save method to include validation for admin accounts."""
         self.clean()
-        try:
-            super().save(*args, **kwargs)
-        except Exception as e:
-            raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
+        super().save(*args, **kwargs)
 
     def clean(self):
         """Validate admin-specific fields."""
@@ -341,10 +330,7 @@ class Teacher(BaseAccount):
     def save(self, *args, **kwargs):
         """Override save method to include validation for teacher accounts."""
         self.clean()
-        try:
-            super().save(*args, **kwargs)
-        except Exception as e:
-            raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
+        super().save(*args, **kwargs)
 
     def clean(self):
         """Validate teacher-specific fields."""
@@ -452,10 +438,7 @@ class Parent(BaseAccount):
     def save(self, *args, **kwargs):
         """Override save method to include validation for parent accounts."""
         self.clean()
-        try:
-            super().save(*args, **kwargs)
-        except Exception as e:
-            raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
+        super().save(*args, **kwargs)
 
     def clean(self):
         """Validate parent-specific fields."""

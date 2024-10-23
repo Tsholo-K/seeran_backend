@@ -298,10 +298,15 @@ def update_grade_details(user, role, details):
 
             return {'error': response}
 
+        if not 'grade' in details:
+            response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide valid grade ID and try again'
+            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='GRADE', outcome='ERROR', server_response=response, school=requesting_account.school)
+            return {'error': response}
+
         grade = Grade.objects.get(grade_id=details.get('grade'), school=requesting_account.school)
 
         # Initialize the serializer with the existing school instance and incoming data
-        serializer = UpdateGradeSerializer(instance=grade, data=details)
+        serializer = UpdateGradeSerializer(instance=grade, data=details.get('updates'))
         if serializer.is_valid():
             with transaction.atomic():
                 serializer.save()
