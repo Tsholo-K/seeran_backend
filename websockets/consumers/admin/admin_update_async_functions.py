@@ -264,9 +264,9 @@ def update_account_details(user, role, details):
             Serializer = serializer_mappings.account_details[details['role']]
 
             # Serialize the requested user's profile for returning in the response.
-            serialized_user = Serializer(instance=requested_account).data
+            serialized_account = Serializer(instance=requested_account).data
 
-            return {"user" : serialized_user}
+            return {"account" : serialized_account}
 
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
