@@ -158,36 +158,36 @@ def multi_factor_authentication_login(request):
         if verify_user_otp(account_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
             # provided otp is verified successfully
                         
-            if not verify_user_otp(user_otp=authorization_cookie_otp, stored_hashed_otp_and_salt=hashed_authorization_otp_and_salt):
-                # if the authorization otp does'nt match the one stored for the user return an error 
-                response = Response({"denied": "incorrect authorization OTP, action forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
-                            
+            if verify_user_otp(account_otp=authorization_cookie_otp, stored_hashed_otp_and_salt=hashed_authorization_otp_and_salt):
                 # if there's no error till here verification is successful, delete all cached otps
                 cache.delete(requesting_user.email_address+'login_otp')
-                cache.delete(requesting_user.email_address+'login_authorization_otp')
+                cache.delete(requesting_user.email_address+'login_authorization_otp_attempts')
+                
+                # then generate an access and refresh token for the user 
+                token = generate_token(requesting_user)
+                
+                if 'access' in token:
+                    session_response = manage_user_sessions(requesting_user, token)
+                    if session_response:  # If the function returns a response, it indicates an error
+                        return session_response
+                    
+                    # set access token cookie with custom expiration (5 mins)
+                    response = Response({"message": "you will have access to your dashboard for the next 24 hours, until your session ends", "role" : requesting_user.role.title()}, status=status.HTTP_200_OK)
+                    response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
 
-                response.delete_cookie('login_authorization_otp', domain='.seeran-grades.cloud')
-                return response
+                    return response
+                
+                return Response({"error": "the server could not generate an access token for your account, please try again in a moment"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
+            # if the authorization otp does'nt match the one stored for the user return an error 
+            response = Response({"denied": "incorrect authorization OTP, action forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
+                        
             # if there's no error till here verification is successful, delete all cached otps
             cache.delete(requesting_user.email_address+'login_otp')
-            cache.delete(requesting_user.email_address+'login_authorization_otp_attempts')
-            
-            # then generate an access and refresh token for the user 
-            token = generate_token(requesting_user)
-            
-            if 'access' in token:
-                session_response = manage_user_sessions(requesting_user, token)
-                if session_response:  # If the function returns a response, it indicates an error
-                    return session_response
-                
-                # set access token cookie with custom expiration (5 mins)
-                response = Response({"message": "you will have access to your dashboard for the next 24 hours, until your session ends", "role" : requesting_user.role.title()}, status=status.HTTP_200_OK)
-                response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
+            cache.delete(requesting_user.email_address+'login_authorization_otp')
 
-                return response
-            
-            return Response({"error": "the server could not generate an access token for your account, please try again in a moment"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            response.delete_cookie('login_authorization_otp', domain='.seeran-grades.cloud')
+            return response
 
         attempts = cache.get(email_address + 'login_authorization_otp_attempts', 3)
         
@@ -320,28 +320,28 @@ def activate_account(request):
             cache.delete(email_address + 'signin_authorization_otp')
             return Response({"denied": "Your request does not contain an authorization OTP.. request forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not verify_user_otp(account_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
-            response = Response({"denied": "Your requests authorization OTP is invalid.. request forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
+        if verify_user_otp(account_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
+            # activate users account
+            with transaction.atomic():
+                print('about to activate account')
+                account = BaseAccount.objects.activate(email_address=email_address, password=password)
 
-            cache.delete(email_address + 'signin_authorization_otp')
-            response.delete_cookie('signin_authorization_otp', domain='.seeran-grades.cloud')
+                # generate an access and refresh token for the user 
+                account_access_token = generate_token(account=account)
+                AccountAccessToken.objects.create(account=account, access_token_string=account_access_token['access'])
+
+            response = Response({"message": "You have successully activated your account. Welcome to seeran grades.", "role": account.role}, status=status.HTTP_200_OK)
+            # set access/refresh token cookies
+            response.set_cookie('access_token', account_access_token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
+            
             return response
-        
-        # activate users account
-        with transaction.atomic():
-            print('about to activate account')
-            account = BaseAccount.objects.activate(email_address=email_address, password=password)
 
-            # generate an access and refresh token for the user 
-            account_access_token = generate_token(account=account)
-            AccountAccessToken.objects.create(account=account, access_token_string=account_access_token['access'])
+        response = Response({"denied": "Your requests authorization OTP is invalid.. request forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
 
-        response = Response({"message": "You have successully activated your account. Welcome to seeran grades.", "role": account.role}, status=status.HTTP_200_OK)
-        # set access/refresh token cookies
-        response.set_cookie('access_token', account_access_token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
-        
+        cache.delete(email_address + 'signin_authorization_otp')
+        response.delete_cookie('signin_authorization_otp', domain='.seeran-grades.cloud')
         return response
-    
+
     except BaseAccount.DoesNotExist:
         # if theres no user with the provided email return an error
         return Response({"denied": "an account with the provided credentials does not exist. please check the account details and try again"}, status=status.HTTP_404_NOT_FOUND)
