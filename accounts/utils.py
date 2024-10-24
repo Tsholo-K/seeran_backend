@@ -50,7 +50,7 @@ def generate_signed_url(filename, expiration=timedelta(hours=24)):
     """
 
     # Base URL using your load balancer's IP address
-    base_url = f"{config('CDN_URL')}/{filename}"
+    base_url = f"{config('HTTP_CDN_URL')}/{filename}"
     
     # Create the URL to sign
     url_to_sign = f"{base_url}?Expires={expiration}&KeyName={config('SIGNING_KEY_NAME')}"
