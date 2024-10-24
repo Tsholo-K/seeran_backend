@@ -85,10 +85,10 @@ def login(request):
             email_response = send_otp_email(requesting_user, otp, reason="Your account has multi-factor authentication toggled on, this OTP was generated in response to your login request.")
             
             if email_response['status'] == 'success':
-                login_authorization_otp, hashed_login_authorization_otp, salt = generate_otp()
+                login_authorization_otp, hashed_login_authorization_otp, authorization_salt = generate_otp()
 
                 cache.set(email_address + 'login_otp', (hashed_otp, salt), timeout=300)  # Cache OTP for 5 mins
-                cache.set(email_address + 'login_authorization_otp', (hashed_login_authorization_otp, salt), timeout=300)  # Cache auth OTP for 5 mins
+                cache.set(email_address + 'login_authorization_otp', (hashed_login_authorization_otp, authorization_salt), timeout=300)  # Cache auth OTP for 5 mins
 
                 response = Response({"multifactor_authentication": "A new OTP has been sent to your email address. Please check your inbox"}, status=status.HTTP_200_OK)
                 response.set_cookie('login_authorization_otp', login_authorization_otp, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # Set auth OTP cookie (5 mins)
@@ -155,7 +155,29 @@ def multi_factor_authentication_login(request):
             return Response({"denied": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
     
         # if everything above checks out verify the provided otp against the stored otp
-        elif not verify_user_otp(account_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
+        if verify_user_otp(account_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
+            # provided otp is verified successfully
+            if verify_user_otp(account_otp=authorization_cookie_otp, stored_hashed_otp_and_salt=hashed_authorization_otp_and_salt):
+                # if there's no error till here verification is successful, delete all cached otps
+                cache.delete(email_address + 'login_otp')
+                cache.delete(email_address + 'login_authorization_otp_attempts')
+                
+                # then generate an access and refresh token for the user 
+                token = generate_token(requesting_user)
+                
+                if 'access' in token:
+                    session_response = manage_user_sessions(requesting_user, token)
+                    if session_response:  # If the function returns a response, it indicates an error
+                        return session_response
+                    
+                    # set access token cookie with custom expiration (5 mins)
+                    response = Response({"message": "you will have access to your dashboard for the next 24 hours, until your session ends", "role" : requesting_user.role.title()}, status=status.HTTP_200_OK)
+                    response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
+
+                    return response
+                
+                return Response({"error": "the server could not generate an access token for your account, please try again in a moment"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
             # if the authorization otp does'nt match the one stored for the user return an error 
             response = Response({"denied": "incorrect authorization OTP, action forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
                         
@@ -166,40 +188,18 @@ def multi_factor_authentication_login(request):
             response.delete_cookie('login_authorization_otp', domain='.seeran-grades.cloud')
             return response
 
-        # provided otp is verified successfully
-        elif not verify_user_otp(account_otp=authorization_cookie_otp, stored_hashed_otp_and_salt=hashed_authorization_otp_and_salt):
-            attempts = cache.get(email_address + 'login_authorization_otp_attempts', 3)
-            
-            if attempts <= 0:
-                cache.delete(email_address + 'login_otp')
-                cache.delete(email_address + 'login_authorization_otp_attempts')
-                return Response({"denied": "maximum OTP verification attempts exceeded.."}, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Incorrect OTP, decrement attempts and handle expiration
-            attempts -= 1
-            cache.set(email_address + 'login_authorization_otp_attempts', attempts, timeout=300)  # Update attempts with expiration
+        attempts = cache.get(email_address + 'login_authorization_otp_attempts', 3)
+        
+        if attempts <= 0:
+            cache.delete(email_address + 'login_otp')
+            cache.delete(email_address + 'login_authorization_otp_attempts')
+            return Response({"denied": "maximum OTP verification attempts exceeded.."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Incorrect OTP, decrement attempts and handle expiration
+        attempts -= 1
+        cache.set(email_address + 'login_authorization_otp_attempts', attempts, timeout=300)  # Update attempts with expiration
 
-            return Response({"error": f"incorrect OTP.. {attempts} remaining"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # if there's no error till here verification is successful, delete all cached otps
-        cache.delete(email_address + 'login_otp')
-        cache.delete(email_address + 'login_authorization_otp_attempts')
-        
-        # then generate an access and refresh token for the user 
-        token = generate_token(requesting_user)
-        
-        if 'access' in token:
-            session_response = manage_user_sessions(requesting_user, token)
-            if session_response:  # If the function returns a response, it indicates an error
-                return session_response
-            
-            # set access token cookie with custom expiration (5 mins)
-            response = Response({"message": "you will have access to your dashboard for the next 24 hours, until your session ends", "role" : requesting_user.role.title()}, status=status.HTTP_200_OK)
-            response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
-
-            return response
-        
-        return Response({"error": "the server could not generate an access token for your account, please try again in a moment"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": f"incorrect OTP.. {attempts} remaining"}, status=status.HTTP_400_BAD_REQUEST)
     
     except BaseAccount.DoesNotExist:
         # Handle the case where the provided email does not exist
