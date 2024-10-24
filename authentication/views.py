@@ -155,7 +155,7 @@ def multi_factor_authentication_login(request):
             return Response({"denied": "OTP expired"}, status=status.HTTP_400_BAD_REQUEST)
     
         # if everything above checks out verify the provided otp against the stored otp
-        if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
+        if verify_user_otp(account_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
             # provided otp is verified successfully
                         
             if not verify_user_otp(user_otp=authorization_cookie_otp, stored_hashed_otp_and_salt=hashed_authorization_otp_and_salt):
@@ -507,7 +507,7 @@ def password_reset_otp_verification(request):
         if not stored_hashed_otp_and_salt:
             return Response({"denied": "no password reset OTP for account on record.. please generate a new one"}, status=status.HTTP_400_BAD_REQUEST)
     
-        if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
+        if verify_user_otp(account_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
             
             cache.delete(email_address+'password_reset_otp')
             authorization_otp, hashed_authorization_otp, salt = generate_otp()
@@ -547,7 +547,7 @@ def reset_password(request):
         if not hashed_authorization_otp_and_salt:
             return Response({"denied": "no password reset authorization OTP for account on record.. process forrbiden"}, status=status.HTTP_403_FORBIDDEN)
         
-        if verify_user_otp(user_otp=otp, stored_hashed_otp_and_salt=hashed_authorization_otp_and_salt):
+        if verify_user_otp(account_otp=otp, stored_hashed_otp_and_salt=hashed_authorization_otp_and_salt):
             response = Response({"denied": "requests provided authorization OTP is invalid.. process forrbiden"}, status=status.HTTP_403_FORBIDDEN)
         
         password_validation.validate_password(new_password)
