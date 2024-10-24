@@ -48,7 +48,7 @@ def generate_signed_url(filename, expiration=timedelta(hours=24)):
     :param expiration: The time duration for which the URL will be valid.
     :return: A signed URL string.
     """
-    expiration_time = int((datetime.utcnow() + expiration).timestamp())
+    expiration_time = int((datetime.now() + expiration).timestamp())
 
     # Base URL using your load balancer's IP address
     base_url = f"{config('HTTP_CDN_URL')}/{filename}"
