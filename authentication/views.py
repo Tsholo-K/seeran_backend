@@ -87,8 +87,8 @@ def login(request):
             if email_response['status'] == 'success':
                 login_authorization_otp, hashed_login_authorization_otp, salt = generate_otp()
 
-                cache.set(requesting_user.email+'login_otp', (hashed_otp, salt), timeout=300)  # Cache OTP for 5 mins
-                cache.set(requesting_user.email+'login_authorization_otp', (hashed_login_authorization_otp, salt), timeout=300)  # Cache auth OTP for 5 mins
+                cache.set(requesting_user.email_address + 'login_otp', (hashed_otp, salt), timeout=300)  # Cache OTP for 5 mins
+                cache.set(requesting_user.email_address + 'login_authorization_otp', (hashed_login_authorization_otp, salt), timeout=300)  # Cache auth OTP for 5 mins
 
                 response = Response({"multifactor_authentication": "A new OTP has been sent to your email address. Please check your inbox"}, status=status.HTTP_200_OK)
                 response.set_cookie('login_authorization_otp', login_authorization_otp, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # Set auth OTP cookie (5 mins)
