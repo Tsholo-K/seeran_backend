@@ -133,7 +133,7 @@ def multi_factor_authentication_login(request):
         
         # if anyone of these is missing return a 400 error
         if not email_address or not otp or not authorization_cookie_otp:
-            return Response({"error": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"denied": "missing credentials"}, status=status.HTTP_400_BAD_REQUEST)
         
         requesting_user = BaseAccount.objects.get(email_address=email_address)
 
