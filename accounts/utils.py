@@ -40,10 +40,11 @@ def upload_profile_picture_to_gcs(filename, file_data):
         
         # Upload the file to GCS
         blob.upload_from_file(file_data, content_type=file_data.content_type)
-        
-        # Make the file public and return its public URL
-        blob.make_public()
-        return blob.public_url
+
+        # Generate a signed URL for the uploaded file
+        signed_url = generate_signed_url(filename)
+
+        return signed_url
 
     except GoogleCloudError as e:
         raise ValidationError(f"Could not process your request, failed to upload file to GCS: {e}")
