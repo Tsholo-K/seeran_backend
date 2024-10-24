@@ -1,13 +1,14 @@
 # python
 from decouple import config
-from datetime import datetime, timedelta
-import base64
-import hmac
-import hashlib
+from datetime import timedelta
 
 # google
 from google.cloud import storage  # Import for Google Cloud Storage usage
 from google.oauth2 import service_account
+from google.cloud.exceptions import GoogleCloudError
+
+# django
+from django.core.exceptions import ValidationError
 
 # models
 from accounts.models import Principal, Admin, Teacher, Student, Parent
@@ -19,14 +20,33 @@ from seeran_backend.complex_queries import queries
 from accounts.mappings import model_mapping, serializer_mappings, attr_mappings
 
 
+
 def upload_profile_picture_to_gcs(filename, file_data):
-    """Uploads the file to Google Cloud Storage."""
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(config('GS_BUCKET_NAME'))
-    blob = bucket.blob(filename)
+    """
+    Uploads the file to Google Cloud Storage with Cache-Control headers for client-side caching.
     
-    # Upload the file to GCS
-    blob.upload_from_file(file_data, content_type=file_data.content_type)
+    :param filename: The name of the file in the GCS bucket.
+    :param file_data: The file data (typically from a form or request).
+    :return: URL of the uploaded file or None in case of failure.
+    """
+    try:
+        # Initialize the GCS client and bucket
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(config('GS_BUCKET_NAME'))
+        blob = bucket.blob(filename)
+
+        # Set Cache-Control header (cache for 1 day = 86400 seconds)
+        blob.cache_control = 'private, max-age=86400'
+        
+        # Upload the file to GCS
+        blob.upload_from_file(file_data, content_type=file_data.content_type)
+        
+        # Make the file public and return its public URL
+        blob.make_public()
+        return blob.public_url
+
+    except GoogleCloudError as e:
+        raise ValidationError(f"Could not process your request, failed to upload file to GCS: {e}")
 
 
 def delete_profile_picture_from_gcs(filename):
@@ -38,36 +58,25 @@ def delete_profile_picture_from_gcs(filename):
     # Delete the file from GCS
     blob.delete()
 
+
 def generate_signed_url(filename, expiration=timedelta(hours=24)):
     """
-    Generate a signed URL for accessing content through Cloud CDN.
+    Generate a signed URL for accessing a specific object in Google Cloud Storage.
 
-    :param filename: The path to the resource in the CDN (relative to the base URL).
-    :param key_name: The name of the signing key configured in the load balancer.
-    :param secret_key: The secret key associated with the signing key.
+    :param filename: The name of the file in the GCS bucket.
     :param expiration: The time duration for which the URL will be valid.
     :return: A signed URL string.
     """
-    expiration_time = int((datetime.now() + expiration).timestamp())
 
-    # Base URL using your load balancer's IP address
-    base_url = f"https://{config('CDN_DOMAIN')}/{filename}"
-    
-    # Create the URL to sign
-    url_to_sign = f"{base_url}?Expires={expiration_time}&KeyName={config('SIGNING_KEY_NAME')}"
-    
-    # Create the signature using HMAC-SHA1
-    signature = hmac.new(
-        base64.urlsafe_b64decode(config('SIGNING_KEY')),
-        url_to_sign.encode(),
-        hashlib.sha1
-    ).digest()
+    # Load service account credentials from a JSON key file
+    credentials = service_account.Credentials.from_service_account_file(config('GS_CREDENTIALS'))
 
-    # Encode the signature in URL-safe base64
-    encoded_signature = base64.urlsafe_b64encode(signature).decode()
+    storage_client = storage.Client(credentials=credentials)
+    bucket = storage_client.bucket(config('GS_BUCKET_NAME'))
+    blob = bucket.blob(filename)
 
-    # Append the signature to the URL
-    signed_url = f"{url_to_sign}&Signature={encoded_signature}"
+    # Generate a signed URL for the blob
+    signed_url = blob.generate_signed_url(expiration=expiration)
 
     return signed_url
 
