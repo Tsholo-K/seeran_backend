@@ -58,11 +58,11 @@ class TeacherBasicAccountDetailsEmailSerializer(serializers.ModelSerializer):
         return obj.email_address
 
     def get_image(self, obj):
+        existing_signed_url = cache.get(str(obj.account_id) + 'profile_picture')
+        if existing_signed_url:
+            return existing_signed_url
+
         if obj.profile_picture:
-            existing_signed_url = cache.get(str(obj.account_id) + 'profile_picture')
-            if existing_signed_url:
-                return existing_signed_url
-            
             singed_url = accounts_utilities.generate_signed_url(obj.profile_picture.name)
             cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=3600) 
 
@@ -90,15 +90,17 @@ class TeacherAccountSerializer(serializers.ModelSerializer):
         return obj.surname.title()
 
     def get_image(self, obj):
+        existing_signed_url = cache.get(str(obj.account_id) + 'profile_picture')
+        if existing_signed_url:
+            return existing_signed_url
+
         if obj.profile_picture:
-            existing_signed_url = cache.get(str(obj.account_id) + 'profile_picture')
-            if existing_signed_url:
-                return existing_signed_url
-            
             singed_url = accounts_utilities.generate_signed_url(obj.profile_picture.name)
             cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=3600) 
 
             return singed_url
+
+        return '/default-user-icon.svg'
 
         return '/default-user-icon.svg'
     def get_identifier(self, obj):
@@ -131,11 +133,11 @@ class TeacherAccountDetailsSerializer(serializers.ModelSerializer):
         return obj.role.title()
 
     def get_image(self, obj):
+        existing_signed_url = cache.get(str(obj.account_id) + 'profile_picture')
+        if existing_signed_url:
+            return existing_signed_url
+
         if obj.profile_picture:
-            existing_signed_url = cache.get(str(obj.account_id) + 'profile_picture')
-            if existing_signed_url:
-                return existing_signed_url
-            
             singed_url = accounts_utilities.generate_signed_url(obj.profile_picture.name)
             cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=3600) 
 
