@@ -1,6 +1,6 @@
 # python
 from decouple import config
-from datetime import timedelta
+from datetime import datetime, timedelta
 import base64
 import hmac
 import hashlib
@@ -48,12 +48,13 @@ def generate_signed_url(filename, expiration=timedelta(hours=24)):
     :param expiration: The time duration for which the URL will be valid.
     :return: A signed URL string.
     """
+    expiration_time = int((datetime.utcnow() + expiration).timestamp())
 
     # Base URL using your load balancer's IP address
     base_url = f"{config('HTTP_CDN_URL')}/{filename}"
     
     # Create the URL to sign
-    url_to_sign = f"{base_url}?Expires={expiration}&KeyName={config('SIGNING_KEY_NAME')}"
+    url_to_sign = f"{base_url}?Expires={expiration_time}&KeyName={config('SIGNING_KEY_NAME')}"
     
     # Create the signature using HMAC-SHA1
     signature = hmac.new(
