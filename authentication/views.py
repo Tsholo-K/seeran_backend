@@ -87,8 +87,8 @@ def login(request):
             if email_response['status'] == 'success':
                 login_authorization_otp, hashed_login_authorization_otp, salt = generate_otp()
 
-                cache.set(requesting_user.email_address + 'login_otp', (hashed_otp, salt), timeout=300)  # Cache OTP for 5 mins
-                cache.set(requesting_user.email_address + 'login_authorization_otp', (hashed_login_authorization_otp, salt), timeout=300)  # Cache auth OTP for 5 mins
+                cache.set(email_address + 'login_otp', (hashed_otp, salt), timeout=300)  # Cache OTP for 5 mins
+                cache.set(email_address + 'login_authorization_otp', (hashed_login_authorization_otp, salt), timeout=300)  # Cache auth OTP for 5 mins
 
                 response = Response({"multifactor_authentication": "A new OTP has been sent to your email address. Please check your inbox"}, status=status.HTTP_200_OK)
                 response.set_cookie('login_authorization_otp', login_authorization_otp, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # Set auth OTP cookie (5 mins)
@@ -145,10 +145,10 @@ def multi_factor_authentication_login(request):
                 return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
 
         # after getting the user object retrieve the stored otp from cache 
-        stored_hashed_otp_and_salt = cache.get(requesting_user.email_address+'login_otp')
+        stored_hashed_otp_and_salt = cache.get(email_address + 'login_otp')
         
         # try to get the the authorization otp from cache
-        hashed_authorization_otp_and_salt = cache.get(requesting_user.email_address + 'login_authorization_otp')
+        hashed_authorization_otp_and_salt = cache.get(email_address + 'login_authorization_otp')
         
         if not (hashed_authorization_otp_and_salt and stored_hashed_otp_and_salt):
             # if there's no authorization otp in cache( wasn't provided in the first place, or expired since it also has a 5 minute lifespan )
@@ -157,11 +157,10 @@ def multi_factor_authentication_login(request):
         # if everything above checks out verify the provided otp against the stored otp
         if verify_user_otp(account_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
             # provided otp is verified successfully
-                        
             if verify_user_otp(account_otp=authorization_cookie_otp, stored_hashed_otp_and_salt=hashed_authorization_otp_and_salt):
                 # if there's no error till here verification is successful, delete all cached otps
-                cache.delete(requesting_user.email_address+'login_otp')
-                cache.delete(requesting_user.email_address+'login_authorization_otp_attempts')
+                cache.delete(email_address + 'login_otp')
+                cache.delete(email_address + 'login_authorization_otp_attempts')
                 
                 # then generate an access and refresh token for the user 
                 token = generate_token(requesting_user)
@@ -183,8 +182,8 @@ def multi_factor_authentication_login(request):
             response = Response({"denied": "incorrect authorization OTP, action forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
                         
             # if there's no error till here verification is successful, delete all cached otps
-            cache.delete(requesting_user.email_address+'login_otp')
-            cache.delete(requesting_user.email_address+'login_authorization_otp')
+            cache.delete(requesting_user.email_address + 'login_otp')
+            cache.delete(requesting_user.email_address + 'login_authorization_otp')
 
             response.delete_cookie('login_authorization_otp', domain='.seeran-grades.cloud')
             return response
