@@ -1,6 +1,9 @@
 # python
 from decouple import config
 from datetime import timedelta
+import base64
+import hmac
+import hashlib
 
 # google
 from google.cloud import storage  # Import for Google Cloud Storage usage
@@ -35,25 +38,35 @@ def delete_profile_picture_from_gcs(filename):
     # Delete the file from GCS
     blob.delete()
 
-
 def generate_signed_url(filename, expiration=timedelta(hours=24)):
     """
-    Generate a signed URL for accessing a specific object in Google Cloud Storage.
+    Generate a signed URL for accessing content through Cloud CDN.
 
-    :param filename: The name of the file in the GCS bucket.
+    :param filename: The path to the resource in the CDN (relative to the base URL).
+    :param key_name: The name of the signing key configured in the load balancer.
+    :param secret_key: The secret key associated with the signing key.
     :param expiration: The time duration for which the URL will be valid.
     :return: A signed URL string.
     """
 
-    # Load service account credentials from a JSON key file
-    credentials = service_account.Credentials.from_service_account_file(config('GS_CREDENTIALS'))
+    # Base URL using your load balancer's IP address
+    base_url = f"{config('CDN_URL')}/{filename}"
+    
+    # Create the URL to sign
+    url_to_sign = f"{base_url}?Expires={expiration}&KeyName={config('SIGNING_KEY_NAME')}"
+    
+    # Create the signature using HMAC-SHA1
+    signature = hmac.new(
+        base64.urlsafe_b64decode(config('SIGNING_KEY')),
+        url_to_sign.encode(),
+        hashlib.sha1
+    ).digest()
 
-    storage_client = storage.Client(credentials=credentials)
-    bucket = storage_client.bucket(config('GS_BUCKET_NAME'))
-    blob = bucket.blob(filename)
+    # Encode the signature in URL-safe base64
+    encoded_signature = base64.urlsafe_b64encode(signature).decode()
 
-    # Generate a signed URL for the blob
-    signed_url = blob.generate_signed_url(expiration=expiration)
+    # Append the signature to the URL
+    signed_url = f"{url_to_sign}&Signature={encoded_signature}"
 
     return signed_url
 
