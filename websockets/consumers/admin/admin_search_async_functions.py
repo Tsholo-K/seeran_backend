@@ -1420,7 +1420,7 @@ def search_timetable_sessions(user, role, details):
         return {"sessions": serialized_sessions}
     
     except Timetable.DoesNotExist:
-        return {"error" : "a schedule with the provided credentials does not exist"}
+        return {"error" : "Could not process your request, a schedule with the provided credentials does not exist"}
     
     except Exception as e:
         return { 'error': str(e) }
@@ -1463,7 +1463,7 @@ def search_month_attendance_records(account, role, details):
         return {'records': encoded_attendance_records}
     
     except Classroom.DoesNotExist:
-        return {'error': 'a classroom in your school with the provided credentials does not exist. Please check the classrooms details and try again.'}
+        return {'error': 'Could not process your request, a classroom in your school with the provided credentials does not exist. Please check the classrooms details and try again.'}
 
     except Exception as e:
         return {'error': str(e)}
@@ -1486,7 +1486,7 @@ def search_student_attendance(account, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ATTENDANCE', outcome='ERROR', server_response=response, school=requesting_account.school)
             return {'error': response}
 
-        classroom = requesting_account.taught_classrooms.get(classroom_id=details['classroom'], register_classroom=True)
+        classroom = requesting_account.school.classrooms.get(classroom_id=details['classroom'], register_classroom=True)
         student = classroom.students.get(account_id=details['student'])
 
         # Query for the Absent instances where absentes is True
@@ -1510,7 +1510,7 @@ def search_student_attendance(account, role, details):
         return {'records': encoded_attendance_records}
     
     except Classroom.DoesNotExist:
-        return {'error': 'a classroom in your school with the provided credentials does not exist. Please check the classrooms details and try again.'}
+        return {'error': 'Could not process your request, a classroom in your school with the provided credentials does not exist. Please check the classrooms details and try again.'}
                    
     except Student.DoesNotExist:
         # Handle the case where the provided account ID does not exist
