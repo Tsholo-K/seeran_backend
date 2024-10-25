@@ -753,7 +753,13 @@ def search_classroom(account, role, details):
         classroom = requesting_account.school.classrooms.get(classroom_id=details['classroom'])
         serialized_classroom = ClassroomSerializer(classroom).data
 
-        return {"classroom": serialized_classroom}
+        # Compress the serialized data
+        compressed_classroom = zlib.compress(json.dumps(serialized_classroom).encode('utf-8'))
+
+        # Encode compressed data as base64 for safe transport
+        encoded_classroom = base64.b64encode(compressed_classroom).decode('utf-8')
+
+        return {"classroom": encoded_classroom}
     
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
