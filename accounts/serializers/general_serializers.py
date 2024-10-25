@@ -63,7 +63,7 @@ class BasicAccountDetailsSerializer(serializers.ModelSerializer):
 
         if obj.profile_picture:
             singed_url = accounts_utilities.generate_signed_url(obj.profile_picture.name)
-            cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=3600) 
+            cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=86400) 
 
             return singed_url
 
@@ -90,7 +90,7 @@ class BasicAccountDetailsEmailSerializer(serializers.ModelSerializer):
 
         if obj.profile_picture:
             singed_url = accounts_utilities.generate_signed_url(obj.profile_picture.name)
-            cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=3600) 
+            cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=86400) 
 
             return singed_url
 
@@ -117,7 +117,7 @@ class SourceAccountSerializer(serializers.ModelSerializer):
 
         if obj.profile_picture:
             singed_url = accounts_utilities.generate_signed_url(obj.profile_picture.name)
-            cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=3600) 
+            cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=86400) 
 
             return singed_url
 
@@ -146,7 +146,7 @@ class DisplayAccountDetailsSerializer(serializers.ModelSerializer):
 
         if obj.profile_picture:
             singed_url = accounts_utilities.generate_signed_url(obj.profile_picture.name)
-            cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=3600) 
+            cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=86400) 
 
             return singed_url
 
