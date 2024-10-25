@@ -20,7 +20,7 @@ from timetables.models import Timetable
 from student_activities.models import StudentActivity
 
 # serilializers
-from accounts.serializers.students.serializers import StudentBasicAccountDetailsEmailSerializer
+from accounts.serializers.students.serializers import StudentSourceAccountSerializer
 from accounts.serializers.parents.serializers import ParentAccountSerializer
 from student_subject_performances.serializers import StudentPerformanceSerializer
 from school_announcements.serializers import AnnouncementSerializer
@@ -390,8 +390,8 @@ def search_student_attendance(account, role, details):
 
         # Query for the Absent instances where absentes is True
         attendances = []
-        attendances.extend(student.absences.all())
         days_absent = student.absences.count()
+        attendances.extend(student.absences.all())
         attendances.extend(student.late_arrivals.all())
 
         # Now sort the combined attendances list by 'timestamp'
@@ -667,7 +667,7 @@ def search_student_classroom_card(account, role, details):
         # retrieve the students activities 
         activities = requested_account.my_activities.filter(classroom=classroom)
         
-        serialized_student = StudentBasicAccountDetailsEmailSerializer(instance=requested_account).data
+        serialized_student = StudentSourceAccountSerializer(instance=requested_account).data
         serialized_activities = ActivitiesSerializer(activities, many=True).data
 
         return {"student": serialized_student, 'activities': serialized_activities}
