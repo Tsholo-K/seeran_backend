@@ -116,7 +116,13 @@ def form_data_for_creating_classroom(user, role, details):
         # Serialize the list of teachers
         serialized_teachers = TeacherAccountSerializer(teachers, many=True).data
 
-        return {"teachers": serialized_teachers}
+        # Compress the serialized data
+        compressed_teachers = zlib.compress(json.dumps(serialized_teachers).encode('utf-8'))
+
+        # Encode compressed data as base64 for safe transport
+        encoded_teachers = base64.b64encode(compressed_teachers).decode('utf-8')
+
+        return {"teachers": encoded_teachers}
         
     except Subject.DoesNotExist:
         return {'error': 'a subject in your school with the provided credentials does not exist, please check the subject details and try again'}
