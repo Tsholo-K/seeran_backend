@@ -354,7 +354,7 @@ def delete_classroom(account, role, details):
         subject = classroom.subject
 
         with transaction.atomic():
-            response = f"grade {classroom.grade.grade} classroom deleted successfully, the classroom will no longer be accessible or available in your schools data"
+            response = f"grade {grade.grade} classroom deleted successfully, the classroom will no longer be accessible or available in your schools data"
             audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='DELETED', server_response=response, school=requesting_account.school,)
 
             classroom.delete()
