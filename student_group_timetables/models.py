@@ -13,7 +13,7 @@ class StudentGroupTimetable(models.Model):
 
     subscribers = models.ManyToManyField('accounts.Student', related_name='timetables')
     
-    students_count = models.PositiveIntegerField(default=0)
+    student_count = models.PositiveIntegerField(default=0)
     timetables_count = models.PositiveIntegerField(default=0)
  
     grade = models.ForeignKey('grades.Grade', on_delete=models.CASCADE, related_name='group_timetables')
