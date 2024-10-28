@@ -10,5 +10,5 @@ class GradesConfig(AppConfig):
         The ready method is called when Django starts and after all models have been loaded, 
         so it`s a good place to import your signal receivers
     """
-    def ready(self):
-        import grades.signals
+    # def ready(self):
+    #     import grades.signals
