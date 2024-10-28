@@ -84,7 +84,13 @@ def search_audit_entries(user, role, details):
         entries = requesting_account.school.audit_logs.only('actor__name', 'actor__surname', 'outcome', 'target_model', 'timestamp', 'audit_entry_id').filter(action=details['action'])
         serialized_entries = AuditEntriesSerializer(entries, many=True).data
 
-        return {"entries": serialized_entries}
+        # Compress the serialized data
+        compressed_entries = zlib.compress(json.dumps(serialized_entries).encode('utf-8'))
+
+        # Encode compressed data as base64 for safe transport
+        encoded_entries = base64.b64encode(compressed_entries).decode('utf-8')
+
+        return {"entries": encoded_entries}
 
     except Exception as e:
         # Handle any unexpected errors with a general error message
