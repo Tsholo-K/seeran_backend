@@ -37,6 +37,10 @@ from school_announcements.serializers import AnnouncementCreationSerializer
 from accounts import utils as accounts_utilities
 from account_permissions import utils as permissions_utilities
 from audit_logs import utils as audits_utilities
+from schools import utils as schools_utilities
+from grades import utils as grades_utilities
+from subjects import utils as subjects_utilities
+from classrooms import utils as classrooms_utilities
 
 
 @database_sync_to_async
@@ -51,13 +55,27 @@ def create_account(account, role, details):
 
         if details['role'] == 'ADMIN' and role == 'ADMIN':
             response = f'could not proccess your request, your accounts role does not have enough permissions to perform this action.'
-            audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', outcome='DENIED', server_response=response, school=requesting_account.school)
+            audits_utilities.log_audit(
+                actor=requesting_account, 
+                action='DELETE', 
+                target_model='ACCOUNT', 
+                outcome='DENIED', 
+                server_response=response, 
+                school=requesting_account.school
+            )
             return {'error': response}
 
         # Check if the user has permission to create a grade
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'ACCOUNT'):
             response = f'could not proccess your request, you do not have the necessary permissions to delete a classroom'
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', outcome='DENIED', server_response=response, school=requesting_account.school)
+            audits_utilities.log_audit(
+                actor=requesting_account, 
+                action='CREATE', 
+                target_model='ACCOUNT', 
+                outcome='DENIED', 
+                server_response=response, 
+                school=requesting_account.school
+            )
             return {'error': response}
         
         if details['role'] == 'STUDENT':
@@ -93,16 +111,39 @@ def create_account(account, role, details):
                 else:
                     response = f"A new {details['role'].lower()} account has been successfully created for your school. Depending on the validity of the provided email address (if applicable), a confirmation email has been sent to their inbox, the account holder can now sign-in and activate their account."
 
-                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id) if created_account else 'N/A', outcome='CREATED', server_response=response, school=requesting_account.school)
+                schools_utilities.update_school_role_counts(
+                    school=requesting_account.school, 
+                    role=details['role']
+                )
+                audits_utilities.log_audit(
+                    actor=requesting_account, 
+                    action='CREATE', 
+                    target_model='ACCOUNT', 
+                    target_object_id=str(created_account.account_id) if created_account else 'N/A', 
+                    outcome='CREATED', 
+                    server_response=response, 
+                    school=requesting_account.school
+                )
 
-            if details['role'] == 'STUDENT' and not details.get('email_address'):
-                return {'message' : 'A new student account has been successfully created, unfortunately accounts with no linked email addresses cannot access the system. You can always update hteir email address later per their consent'}
+                if details['role'] == 'STUDENT':
+                    grades_utilities.update_grade_student_count(grade=grade)
+
+            if not details.get('email_address'):
+                return {'message' : 'A new student account has been successfully created, unfortunately accounts with no linked email addresses cannot access the system. You can always update their email address later per their consent.'}
             
             return {'account' : created_account}
             
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id) if created_account else 'N/A', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
+        audits_utilities.log_audit(
+            actor=requesting_account, 
+            action='CREATE', 
+            target_model='ACCOUNT', 
+            target_object_id=str(created_account.account_id) if created_account else 'N/A', 
+            outcome='ERROR', 
+            server_response=f'Validation failed: {error_response}', 
+            school=requesting_account.school
+        )
         return {"error": error_response}
         
     except Grade.DoesNotExist:
@@ -111,12 +152,28 @@ def create_account(account, role, details):
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id) if created_account else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(
+            actor=requesting_account, 
+            action='CREATE', 
+            target_model='ACCOUNT', 
+            target_object_id=str(created_account.account_id) if created_account else 'N/A', 
+            outcome='ERROR', 
+            server_response=error_message, 
+            school=requesting_account.school
+        )
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ACCOUNT', target_object_id=str(created_account.account_id) if created_account else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(
+            actor=requesting_account, 
+            action='CREATE', 
+            target_model='ACCOUNT', 
+            target_object_id=str(created_account.account_id) if created_account else 'N/A', 
+            outcome='ERROR', 
+            server_response=error_message, 
+            school=requesting_account.school
+        )
         return {'error': error_message}
 
 
@@ -130,18 +187,39 @@ def create_permission_group(account, role, details):
         # Check if the user has permission to create a grade
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'PERMISSION'):
             response = f'could not proccess your request, you do not have the necessary permissions to create permission groups. please contact your principal to adjust you permissions for creating permission groups.'
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='PERMISSION', outcome='DENIED', server_response=response, school=requesting_account.school)
+            audits_utilities.log_audit(
+                actor=requesting_account, 
+                action='CREATE', 
+                target_model='PERMISSION', 
+                outcome='DENIED', 
+                server_response=response, 
+                school=requesting_account.school
+            )
             return {'error': response}
         
         # Check if the 'permissions' key is provided and not empty
         if 'permissions' not in details or not details['permissions']:
             response = ('could not process your request, no permissions have been provided. Please specify the permissions you want to assign to the group and try again.')
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='PERMISSION', outcome='ERROR', server_response=response, school=requesting_account.school)
+            audits_utilities.log_audit(
+                actor=requesting_account, 
+                action='CREATE', 
+                target_model='PERMISSION', 
+                outcome='ERROR', 
+                server_response=response, 
+                school=requesting_account.school
+            )
             return {'error': response}
         
         elif 'group' not in details or details['group'] not in ['admin', 'teacher']:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid group (admin or teacher) for which the permission group is for and try again'
-            audits_utilities.log_audit(actor=requesting_account, action='VIEW', target_model='ASSESSMENT', outcome='ERROR', server_response=response, school=requesting_account.school)
+            audits_utilities.log_audit(
+                actor=requesting_account, 
+                action='VIEW', 
+                target_model='ASSESSMENT', 
+                outcome='ERROR', 
+                server_response=response, 
+                school=requesting_account.school
+            )
             return {'error': response}
 
         details['school'] = requesting_account.school.id
@@ -186,26 +264,55 @@ def create_permission_group(account, role, details):
                 permission_group.update_counts()
                 
                 response = f"{details['group']} permission group with the name, {details['group_name']}, has been successfully created. you can now subscribe {details['group']}'s to the group to provide them with the specified permissions"
-                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='PERMISSION', target_object_id=str(permission_group.permission_group_id), outcome='CREATED', server_response=response, school=requesting_account.school)
+                audits_utilities.log_audit(
+                    actor=requesting_account, 
+                    action='CREATE', 
+                    target_model='PERMISSION', 
+                    target_object_id=str(permission_group.permission_group_id), 
+                    outcome='CREATED', 
+                    server_response=response, 
+                    school=requesting_account.school
+                )
 
             return {'message' : response}
             
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='PERMISSION', target_object_id=str(permission_group.permission_group_id) if permission_group else 'N/A', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
-
+        audits_utilities.log_audit(
+            actor=requesting_account, 
+            action='CREATE', 
+            target_model='PERMISSION', 
+            target_object_id=str(permission_group.permission_group_id) if permission_group else 'N/A', 
+            outcome='ERROR', 
+            server_response=f'Validation failed: {error_response}', 
+            school=requesting_account.school
+        )
         return {"error": error_response}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='PERMISSION', target_object_id=str(permission_group.permission_group_id) if permission_group else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(
+            actor=requesting_account, 
+            action='CREATE', 
+            target_model='PERMISSION', 
+            target_object_id=str(permission_group.permission_group_id) if permission_group else 'N/A', 
+            outcome='ERROR', 
+            server_response=error_message, 
+            school=requesting_account.school
+        )
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='PERMISSION', target_object_id=str(permission_group.permission_group_id) if permission_group else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(
+            actor=requesting_account, 
+            action='CREATE', 
+            target_model='PERMISSION', 
+            target_object_id=str(permission_group.permission_group_id) if permission_group else 'N/A', 
+            outcome='ERROR', 
+            server_response=error_message, 
+            school=requesting_account.school
+        )
         return {'error': error_message}
 
 
@@ -219,7 +326,14 @@ def create_announcement(account, role, details):
         # Check if the user has permission to create a group schedule
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'ANNOUNCEMENT'):
             response = 'could not process your request, you do not have the necessary permissions to create announcements.'
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', outcome='DENIED', server_response=response, school=requesting_account.school)
+            audits_utilities.log_audit(
+                actor=requesting_account, 
+                action='CREATE', 
+                target_model='ANNOUNCEMENT', 
+                outcome='DENIED', 
+                server_response=response, 
+                school=requesting_account.school
+            )
             return {'error': response}
 
         # Add user and school information to the announcement details
@@ -232,22 +346,54 @@ def create_announcement(account, role, details):
                 announcement = Announcement.objects.create(**serializer.validated_data)
 
                 response = 'the announcement is now available to all users in the school and the parents linked to them.'
-                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', target_object_id=str(announcement.announcement_id) if announcement else 'N/A', outcome='CREATED', server_response=response, school=requesting_account.school)
+                audits_utilities.log_audit(
+                    actor=requesting_account, 
+                    action='CREATE', 
+                    target_model='ANNOUNCEMENT', 
+                    target_object_id=str(announcement.announcement_id) if announcement else 'N/A', 
+                    outcome='CREATED', 
+                    server_response=response, 
+                    school=requesting_account.school
+                )
 
             return {'message': response}
 
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', target_object_id=str(announcement.announcement_id) if announcement else 'N/A', outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
+        audits_utilities.log_audit(
+            actor=requesting_account, 
+            action='CREATE', 
+            target_model='ANNOUNCEMENT', 
+            target_object_id=str(announcement.announcement_id) if announcement else 'N/A', 
+            outcome='ERROR', 
+            server_response=f'Validation failed: {error_response}', 
+            school=requesting_account.school
+        )
         return {"error": error_response}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', target_object_id=str(announcement.announcement_id) if announcement else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(
+            actor=requesting_account, 
+            action='CREATE', 
+            target_model='ANNOUNCEMENT', 
+            target_object_id=str(announcement.announcement_id) if announcement else 'N/A', 
+            outcome='ERROR', 
+            server_response=error_message, 
+            school=requesting_account.school
+        )
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='ANNOUNCEMENT', target_object_id=str(announcement.announcement_id) if announcement else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
+        audits_utilities.log_audit(
+            actor=requesting_account, 
+            action='CREATE', 
+            target_model='ANNOUNCEMENT', 
+            target_object_id=str(announcement.announcement_id) if announcement else 'N/A', 
+            outcome='ERROR', 
+            server_response=error_message, 
+            school=requesting_account.school
+        )
         return {'error': error_message}
 
 
@@ -261,7 +407,14 @@ def create_grade(account, role, details):
         # Check if the user has permission to create a grade
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'GRADE'):
             response = f'could not proccess your request, you do not have the necessary permissions to create a grade'
-            audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GRADE', outcome='DENIED', server_response=response, school=requesting_account.school)
+            audits_utilities.log_audit(
+                actor=requesting_account, 
+                action='CREATE', 
+                target_model='GRADE', 
+                outcome='DENIED', 
+                server_response=response, 
+                school=requesting_account.school
+            )
             return {'error': response}
 
         # Set the school field in the details to the user's school ID
@@ -275,26 +428,55 @@ def create_grade(account, role, details):
                 grade = Grade.objects.create(**serializer.validated_data)
 
                 response = f'grade {grade.grade} has been successfully created for your school. you can now add students, subjects, classes and start tracking attendance and performnace'
-                audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GRADE', target_object_id=str(grade.grade_id), outcome='CREATED', server_response=response, school=requesting_account.school,)
+                audits_utilities.log_audit(
+                    actor=requesting_account, 
+                    action='CREATE', 
+                    target_model='GRADE', 
+                    target_object_id=str(grade.grade_id), 
+                    outcome='CREATED', 
+                    server_response=response, 
+                    school=requesting_account.school
+                )
 
             return {'message' : response}
                 
         # Return serializer errors if the data is not valid, format it as a string
         error_response = '; '.join([f"{key}: {', '.join(value)}" for key, value in serializer.errors.items()])
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GRADE', target_object_id=str(grade.grade_id), outcome='ERROR', server_response=f'Validation failed: {error_response}', school=requesting_account.school)
-
+        audits_utilities.log_audit(
+            actor=requesting_account, 
+            action='CREATE', 
+            target_model='GRADE', 
+            target_object_id=str(grade.grade_id), 
+            outcome='ERROR', 
+            server_response=f'Validation failed: {error_response}', 
+            school=requesting_account.school
+        )
         return {"error": error_response}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GRADE', target_object_id=str(grade.grade_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(
+            actor=requesting_account, 
+            action='CREATE', 
+            target_model='GRADE', 
+            target_object_id=str(grade.grade_id), 
+            outcome='ERROR', 
+            server_response=error_message, 
+            school=requesting_account.school
+        )
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
-        audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='GRADE', target_object_id=str(grade.grade_id), outcome='ERROR', server_response=error_message, school=requesting_account.school)
-
+        audits_utilities.log_audit(
+            actor=requesting_account, 
+            action='CREATE', 
+            target_model='GRADE', 
+            target_object_id=str(grade.grade_id), 
+            outcome='ERROR', 
+            server_response=error_message, 
+            school=requesting_account.school
+        )
         return {'error': error_message}
 
 
@@ -309,7 +491,6 @@ def create_term(account, role, details):
         if role != 'PRINCIPAL' and not permissions_utilities.has_permission(requesting_account, 'CREATE', 'TERM'):
             response = f'could not proccess your request, you do not have the necessary permissions to create a term'
             audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', outcome='DENIED', server_response=response, school=requesting_account.school)
-
             return {'error': response}
         
         # Check if the 'permissions' key is provided and not empty
@@ -331,6 +512,7 @@ def create_term(account, role, details):
             with transaction.atomic():
                 # Create the new term using the validated data
                 term = requesting_account.school.terms.create(**serializer.validated_data)
+                grades_utilities.update_grade_term_count(grade=grade)
 
                 response = f"A new term, {term.term_name}, for your schools grade {grade.grade} has been successfully created."
                 audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='CREATED', server_response=response, school=requesting_account.school)
@@ -388,6 +570,7 @@ def create_subject(account, role, details):
             # Create the grade within a transaction to ensure atomicity
             with transaction.atomic():
                 subject = requesting_account.school.subjects.create(**serializer.validated_data)
+                grades_utilities.update_grade_subject_count(grade=grade)
 
                 response = f"A new {subject.subject.lower()} subject has been successfully created for your schools grade {grade.grade}. You can now create classrooms, assign teachers, add students and start tracking performance."
                 audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='CREATED', server_response=response, school=requesting_account.school,)
@@ -453,8 +636,8 @@ def create_classroom(account, role, details):
             response = f"A new classroom, group {details['group']}, for your schools grade {grade.grade} {subject.subject.lower()} subject has been successfully created. You can now {'assign a teacher to the classroom,' if not details.get('teacher') else None} add students and track performance."
 
         # Set the school and grade fields
-        school= requesting_account.school
-        grade= grade
+        school = requesting_account.school
+        grade = grade
 
         # If a teacher is specified, update the teacher for the class
         if details.get('teacher'):
@@ -464,9 +647,18 @@ def create_classroom(account, role, details):
         # Serialize and validate the data
         serializer = ClassroomCreationSerializer(data=details)
         if serializer.is_valid():
-            # Create the class within a transaction
+            # Create the classroom within a transaction
             with transaction.atomic():
                 classroom = Classroom.objects.create(**serializer.validated_data, register_classroom=register_classroom, subject=subject, grade=grade, school=school)
+                grades_utilities.update_grade_classrooms_count(grade=grade)
+
+                if details.get('teacher'):
+                    if details.get('subject'):
+                        subjects_utilities.update_subject_teacher_count(subject=subject)
+                    grades_utilities.update_grade_teacher_count(grade=grade)
+
+                if details.get('subject'):
+                    subjects_utilities.update_subject_classrooms_count(subject=subject)
 
                 audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='CREATED', server_response=response, school=requesting_account.school,)
 
@@ -738,8 +930,7 @@ def create_timetable(account, role, details):
                 # Create a new timetable
                 timetable = requesting_account.school.timetables.create(day_of_week=day_of_week, day_of_week_order=Timetable.DAY_OF_THE_WEEK_ORDER[day_of_week], student_group_timetable=group_timetable)
                 
-                group_timetable.timetables_count = group_timetable.timetables.count()
-                group_timetable.save()
+                group_timetable.update_timetables_count()
 
                 response = f'A new timetable has been added to the group\'s weekly schedules. All subscribed students should be able to view the sessions in the timetable when they check their timetables again.'
 
@@ -750,9 +941,6 @@ def create_timetable(account, role, details):
 
                 # Create a new timetable
                 timetable = requesting_account.school.timetables.create(day_of_week=day_of_week, day_of_week_order=Timetable.DAY_OF_THE_WEEK_ORDER[day_of_week], teacher_timetable=teacher_timetable)
-                
-                teacher_timetable.timetables_count = teacher_timetable.timetables.count()
-                teacher_timetable.save()
 
                 response = f'A new timetable has been added to the teacher\'s weekly schedules. They should be able to view the sessions in the schedule when they check their timetables again.'
 

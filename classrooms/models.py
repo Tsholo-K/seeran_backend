@@ -12,6 +12,12 @@ from schools.models import School
 from grades.models import Grade
 from subjects.models import Subject
 
+# utility functions
+from schools import utils as schools_utilities
+from grades import utils as grades_utilities
+from subjects import utils as subjects_utilities
+from classrooms import utils as classrooms_utilities
+
 
 class Classroom(models.Model):
     """
@@ -138,13 +144,11 @@ class Classroom(models.Model):
                 self.save()
 
                 # Update the students count in the class
-                self.student_count = self.students.count()
-                self.save()  # Save again to update students_count field
+                classrooms_utilities.update_classroom_student_count(classroom=self)
 
                 if self.subject:
                     # Update the subject student count
-                    self.subject.student_count = self.grade.classrooms.filter(subject=self.subject).aggregate(student_count=models.Count('students'))['student_count'] or 0
-                    self.subject.save()
+                    subjects_utilities.update_subject_student_count(subject=self.subject)
             else:
                 raise ValidationError("could not proccess your request, no students were provided to be added or removed from the classroom. please provide a valid list of students and try again")
         except Exception as e:
@@ -174,11 +178,12 @@ class Classroom(models.Model):
             # Save the classroom instance with the updated teacher
             self.save()
             
+            grades_utilities.update_grade_teacher_count(grade=self.grade)
+            
             # Update the teacher count in the subject if applicable
             if self.subject:
                 # Count unique teachers assigned to classrooms for this subject
-                self.subject.teacher_count =  self.grade.classrooms.filter(subject=self.subject).exclude(teacher=None).values_list('teacher', flat=True).distinct().count()
-                self.subject.save()
+                subjects_utilities.update_subject_teacher_count(subject=self.subject)
 
         except Teacher.DoesNotExist:
             raise ValidationError("a teacher account in your school with the provided credentials does not exist. please check the teachers details and try again")

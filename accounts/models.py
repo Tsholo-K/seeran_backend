@@ -456,3 +456,17 @@ class Parent(BaseAccount):
         # If validation passes, add the child
         self.children.add(child)
 
+"""
+    Here's a list of some name and surname combinations for dummy data:
+
+        Name: Ethan, Surname: Brooks
+        Name: Maya, Surname: Patel
+        Name: Liam, Surname: O'Connor
+        Name: Sophia, Surname: Zhang
+        Name: Noah, Surname: Ali
+        Name: Chloe, Surname: Sinclair
+        Name: Lucas, Surname: Takahashi
+        Name: Ava, Surname: Ndlovu
+        Name: Benjamin, Surname: Martinez
+        Name: Mia, Surname: Kaur
+"""

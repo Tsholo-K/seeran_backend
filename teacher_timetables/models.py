@@ -12,8 +12,6 @@ from accounts.models import Teacher
 
 class TeacherTimetable(models.Model):
     teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE, related_name='teacher_timetable')
-    
-    timetables_count = models.PositiveIntegerField(default=0)
 
     # Foreign key linking to the school where the assessment took place.
     school = models.ForeignKey('schools.School', on_delete=models.CASCADE, related_name='teacher_timetables')

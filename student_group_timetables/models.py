@@ -31,6 +31,23 @@ class StudentGroupTimetable(models.Model):
     def __str__(self):
         return self.group_timetable_id
     
+    def save(self, *args, **kwargs):
+        """
+        Overrides the default save method to implement custom validation 
+        and ensure unique permission groups for each school.
+        """
+        self.clean()  # Calls the clean method to validate the instance
+        try:
+            super().save(*args, **kwargs)  # Calls the parent class's save method
+        except Exception as e:
+            raise ValidationError(_(str(e)))
+
+    def clean(self):
+        """
+        Custom validation method to ensure the integrity of the model's data.
+        """
+        self.timetables_count = self.timetables.count()
+
     def update_subscribers(self, student_ids=None, subscribe=False):
         try:
             if student_ids:
@@ -67,7 +84,6 @@ class StudentGroupTimetable(models.Model):
                 raise ValidationError(f"Could not proccess your request, no students were provided to be {'subscribed to' if subscribe else 'unsubscribed from'} the group timetable. please provide a valid list of students and try again")
         except Exception as e:
             raise ValidationError(_(str(e)))  # Catch and raise any exceptions as validation errors
-        
 
 
 
