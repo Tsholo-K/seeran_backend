@@ -68,6 +68,7 @@ class AdminPermissionGroup(models.Model):
         if len(self.group_name) > 64:  # Ensure group name length is valid
             raise ValidationError(_('Could not process your request, the maximum group name length is 64 characters. Please update the name of the group to fall under this length and try again.'))
         
+        self.subscribers_count = self.subscribers.count()
         self.permissions_count = self.permissions.count()
 
     def update_subscribers(self, subscribers_list=None, subscribe=False):
@@ -82,19 +83,18 @@ class AdminPermissionGroup(models.Model):
                             raise ValidationError(f'Could not process your request, the following admins are already assigned to this permission group: {", ".join(subscriber_names)}.')
                         
                     # Retrieve CustomUser instances corresponding to the account_ids
-                    subscribers = self.school.admins.filter(account_id__in=subscribers_list)
+                    subscribers = self.school.admins.filter(account_id__in=subscribers_list).values_list('id', flat=True)
                     self.subscribers.add(*subscribers)
 
                 else:
                     # Check if students to be removed are actually in the class
-                    subscribers = self.subscribers.filter(account_id__in=subscribers_list).values_list('account_id', flat=True)
+                    subscribers = self.subscribers.filter(account_id__in=subscribers_list).values_list('id', flat=True)
                     if not subscribers:
                         raise ValidationError("could not proccess your request, cannot remove accounts from the group. None of the provided admins are part of this permission group.")
 
                     self.subscribers.remove(*subscribers)
 
                 # Save the classroom instance first to ensure student changes are persisted
-                self.subscribers_count = self.subscribers.count()
                 self.save()
                 
             else:
