@@ -13,7 +13,7 @@ class StudentGroupTimetable(models.Model):
 
     subscribers = models.ManyToManyField('accounts.Student', related_name='timetables')
     
-    student_count = models.PositiveIntegerField(default=0)
+    students_count = models.PositiveIntegerField(default=0)
     timetables_count = models.PositiveIntegerField(default=0)
  
     grade = models.ForeignKey('grades.Grade', on_delete=models.CASCADE, related_name='group_timetables')
@@ -78,7 +78,7 @@ class StudentGroupTimetable(models.Model):
                 self.save()
 
                 # Update the students count in the class
-                self.student_count = self.subscribers.count()
+                self.students_count = self.subscribers.count()
                 self.save()  # Save again to update students_count field
             else:
                 raise ValidationError(f"Could not proccess your request, no students were provided to be {'subscribed to' if subscribe else 'unsubscribed from'} the group timetable. please provide a valid list of students and try again")
