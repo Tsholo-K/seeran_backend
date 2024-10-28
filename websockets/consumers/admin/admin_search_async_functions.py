@@ -26,7 +26,7 @@ from timetables.models import Timetable
 from student_group_timetables.models import StudentGroupTimetable
 
 # serilializers
-from accounts.serializers.general_serializers import BasicAccountDetailsEmailSerializer
+from accounts.serializers.general_serializers import SourceAccountSerializer
 from accounts.serializers.principals.serializers import PrincipalAccountSerializer
 from accounts.serializers.students.serializers import StudentSourceAccountSerializer
 from accounts.serializers.admins.serializers import AdminAccountSerializer
@@ -238,7 +238,7 @@ def search_permission_group_subscribers(user, role, details):
             group = requesting_account.school.teacher_permission_groups.prefetch_related('subscribers').get(permission_group_id=details['permission_group'])
             subscribers = group.subscribers.only('name', 'surname', 'email_address', 'profile_picture')
 
-        serialized_subscribers = BasicAccountDetailsEmailSerializer(subscribers, many=True).data
+        serialized_subscribers = SourceAccountSerializer(subscribers, many=True).data
 
         # Compress the serialized data
         compressed_subscribers = zlib.compress(json.dumps(serialized_subscribers).encode('utf-8'))
