@@ -10,6 +10,17 @@ def update_subject_counts(subject):
     subject.save(update_fields=['classrooms_count', 'teacher_count', 'student_count'])
 
 
+def update_subject_role_counts(subject, role):
+    grade = subject.grade
+    
+    if role == 'STUDENT':
+        subject.student_count = grade.classrooms.filter(subject=subject).aggregate(student_count=models.Count('students'))['student_count'] or 0
+    elif role == 'TEACHER':
+        subject.teacher_count = grade.classrooms.filter(subject=subject).exclude(teacher=None).values_list('teacher', flat=True).distinct().count()
+
+    subject.save(update_fields=['teacher_count', 'student_count'])
+
+
 def update_subject_classrooms_count(subject):
     grade = subject.grade
         

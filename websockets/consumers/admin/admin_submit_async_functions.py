@@ -14,7 +14,6 @@ from accounts.models import BaseAccount, Student
 from classrooms.models import Classroom
 from school_attendances.models import ClassroomAttendanceRegister
 from assessments.models import Assessment
-from assessment_transcripts.models import AssessmentTranscript
 
 # serilializers
 from assessment_transcripts.serializers import TranscriptUpdateSerializer

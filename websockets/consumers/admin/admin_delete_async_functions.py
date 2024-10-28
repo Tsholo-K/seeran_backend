@@ -6,7 +6,6 @@ from django.db import transaction
 from django.core.exceptions import ValidationError
 
 # models 
-from accounts.models import Principal, Admin, Teacher, Student
 from permission_groups.models import AdminPermissionGroup, TeacherPermissionGroup
 from grades.models import Grade
 from terms.models import Term
@@ -23,6 +22,9 @@ from accounts.checks import permission_checks
 from accounts import utils as accounts_utilities
 from account_permissions import utils as permissions_utilities
 from audit_logs import utils as audits_utilities
+from schools import utils as schools_utilities
+from grades import utils as grades_utilities
+from subjects import utils as subjects_utilities
 
 # tasks
 from term_subject_performances import tasks as  term_subject_performances_tasks
@@ -145,10 +147,32 @@ def delete_account(account, role, details):
             if permission_error:
                 return permission_error
 
+            if details['role'] == 'STUDENT':
+                grade = requested_account.grade
+                subjects = requesting_account.school.subjects.filter(id__in=requested_account.enrolled_classrooms.exclude(subject=None).values_list('subject', flat=True).distinct())
+
+            if details['role'] == 'TEACHER':
+                grades = requesting_account.school.grades.filter(grade_id__in=requested_account.taught_classrooms.values_list('grade__grade_id', flat=True).distinct())
+                subjects = requesting_account.school.subjects.filter(id__in=requested_account.taught_classrooms.exclude(subject=None).values_list('subject', flat=True).distinct())
+
             with transaction.atomic():
                 response = f"Account with account ID: {requested_account.account_id} and role, {details['role'].lower()}, has been successfully deleted and removed from your schools system. The account and all it's related related data will be purged from the system, effective immediately."
+
                 audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='ACCOUNT', target_object_id=str(requested_account.account_id), outcome='DELETED', server_response=response, school=requesting_account.school)
                 requested_account.delete()
+
+                schools_utilities.update_school_role_counts(school=requesting_account.school, role=details['role'])
+
+                if details['role'] == 'STUDENT':
+                    grades_utilities.update_grade_role_counts(grade=grade, role='STUDENT')
+                    for subject in subjects:
+                        subjects_utilities.update_subject_role_counts(subject=subject, role='STUDENT')
+
+                elif details['role'] == 'TEACHER':
+                    for grade in grades:
+                        grades_utilities.update_grade_role_counts(grade=grade, role='TEACHER')
+                    for subject in subjects:
+                        subjects_utilities.update_subject_role_counts(subject=subject, role='TEACHER')
 
             return {"message" : response}
 
@@ -232,6 +256,7 @@ def delete_subject(account, role, details):
             return {'error': response}
 
         subject = requesting_account.school.subjects.get(subject_id=details['subject'])
+        grade = subject.grade
 
         # Create the grade within a transaction to ensure atomicity
         with transaction.atomic():
@@ -239,6 +264,7 @@ def delete_subject(account, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='SUBJECT', target_object_id=str(subject.subject_id) if subject else 'N/A', outcome='DELETED', server_response=response, school=requesting_account.school,)
             
             subject.delete()
+            grades_utilities.update_grade_counts(grade=grade)
 
         return {'message' : response}
     
@@ -277,12 +303,15 @@ def delete_term(user, role, details):
             return {'error': response}
 
         term = requesting_account.school.terms.get(term_id=details['term'])
+        grade = term.grade
 
         # Create the grade within a transaction to ensure atomicity
         with transaction.atomic():
             response = f"A term in your school with the term ID {term.term_id} has been successfully deleted. The term and all it's associated data will be purged from the system, effective immediately."
             audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TERM', target_object_id=str(term.term_id), outcome='DELETED', server_response=response, school=requesting_account.school,)
             term.delete()
+
+            grades_utilities.update_grade_term_count(grade=grade)
 
         return {'message' : response}
     
@@ -321,12 +350,20 @@ def delete_classroom(account, role, details):
             return {'error': response}
 
         classroom = requesting_account.school.classrooms.select_related('grade').only('grade__grade').get(classroom_id=details['classroom'])
-        
+        grade = classroom.grade
+        subject = classroom.subject
+
         with transaction.atomic():
             response = f"grade {classroom.grade.grade} classroom deleted successfully, the classroom will no longer be accessible or available in your schools data"
             audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='DELETED', server_response=response, school=requesting_account.school,)
 
             classroom.delete()
+
+            grades_utilities.update_grade_classrooms_count(grade=grade)
+            grades_utilities.update_grade_teacher_count(grade=grade)
+
+            if subject:
+                subjects_utilities.update_subject_counts(subject=subject)
 
         return {'message': response}
 
@@ -337,13 +374,11 @@ def delete_classroom(account, role, details):
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
         audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
-
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
         audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
-
         return {'error': error_message}
 
 
@@ -429,8 +464,6 @@ def delete_timetable(account, role, details):
             audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TIMETABLE', target_object_id=str(timetable.timetable_id), outcome='DELETED', server_response=response, school=requesting_account.school)
 
             timetable.delete()
-
-            linked_timetable.timetables_count = linked_timetable.timetables.count()
             linked_timetable.save()
 
         return {'message': response}
@@ -442,13 +475,11 @@ def delete_timetable(account, role, details):
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
         audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TIMETABLE', target_object_id=str(timetable.timetable_id) if timetable else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
-
         return {"error": error_message}
 
     except Exception as e:
         error_message = str(e)
         audits_utilities.log_audit(actor=requesting_account, action='DELETE', target_model='TIMETABLE', target_object_id=str(timetable.timetable_id) if timetable else 'N/A', outcome='ERROR', server_response=error_message, school=requesting_account.school)
-
         return {'error': error_message}
 
 

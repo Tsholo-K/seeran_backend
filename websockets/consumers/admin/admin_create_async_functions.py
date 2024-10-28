@@ -40,7 +40,6 @@ from audit_logs import utils as audits_utilities
 from schools import utils as schools_utilities
 from grades import utils as grades_utilities
 from subjects import utils as subjects_utilities
-from classrooms import utils as classrooms_utilities
 
 
 @database_sync_to_async
