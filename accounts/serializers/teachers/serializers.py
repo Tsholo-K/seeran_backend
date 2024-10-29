@@ -44,6 +44,14 @@ class TeacherSecurityInformationSerializer(serializers.ModelSerializer):
         fields = ['multifactor_authentication']
     
 
+class TeacherFullNameSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Teacher
+        fields = ['name', 'surname']
+            
+
+
 class TeacherBasicAccountDetailsEmailSerializer(serializers.ModelSerializer):
 
     image = serializers.SerializerMethodField()

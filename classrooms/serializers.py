@@ -6,7 +6,7 @@ from rest_framework.validators import UniqueTogetherValidator
 from .models import Classroom
 
 # serilializers
-from accounts.serializers.teachers.serializers import TeacherAccountSerializer
+from accounts.serializers.teachers.serializers import TeacherAccountSerializer, TeacherFullNameSerializer
 from accounts.serializers.students.serializers import StudentSourceAccountSerializer
 
 
@@ -49,7 +49,7 @@ class ClassroomSerializer(serializers.ModelSerializer):
 
     def get_teacher(self, obj):
         if obj.teacher:
-            return TeacherAccountSerializer(obj.teacher).data
+            return TeacherFullNameSerializer(obj.teacher).data
         return None
             
     def get_subject(self, obj):
@@ -84,7 +84,7 @@ class ClassesSerializer(serializers.ModelSerializer):
 
     def get_teacher(self, obj):
         if obj.teacher:
-            return f'{obj.teacher.surname} {obj.teacher.name}'
+            return TeacherAccountSerializer(obj.teacher).data
         else:
             return None
 
