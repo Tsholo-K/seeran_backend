@@ -25,7 +25,7 @@ from accounts.serializers.parents.serializers import ParentAccountSerializer
 from student_subject_performances.serializers import StudentPerformanceSerializer
 from school_announcements.serializers import AnnouncementSerializer
 from terms.serializers import  TermsSerializer
-from classrooms.serializers import ClassroomSerializer, ClassroomsSerializer
+from classrooms.serializers import ClassroomSerializer, ClassroomsSerializer, StudentClassroomSerializer
 from school_attendances.serializers import StudentAttendanceSerializer
 from assessment_transcripts.serializers import DetailedTranscriptSerializer
 from timetables.serializers import TimetableSerializer
@@ -372,10 +372,10 @@ def search_student_classroom_card(account, role, details):
         # retrieve the students activities 
         activities = requested_account.my_activities.filter(classroom=classroom)
         
-        serialized_student = StudentBasicAccountDetailsEmailSerializer(instance=requested_account).data
+        serialized_classroom = StudentClassroomSerializer(classroom).data
         serialized_activities = ActivitiesSerializer(activities, many=True).data
 
-        return {"student": serialized_student, 'activities': serialized_activities}
+        return {"classroom": serialized_classroom, 'activities': serialized_activities}
 
     except Classroom.DoesNotExist:
         # Handle case where the classroom does not exist
