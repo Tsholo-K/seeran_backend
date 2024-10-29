@@ -59,6 +59,7 @@ class StudentClassroomSerializer(serializers.ModelSerializer):
 
     teacher = serializers.SerializerMethodField()
     subject = serializers.SerializerMethodField()
+    grade = serializers.SerializerMethodField()
 
     class Meta:
         model = Classroom
