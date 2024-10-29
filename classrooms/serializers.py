@@ -51,13 +51,9 @@ class ClassroomSerializer(serializers.ModelSerializer):
         if obj.teacher:
             return TeacherAccountSerializer(obj.teacher).data
         return None
-            
+
     def get_subject(self, obj):
-        if  obj.register_classroom:
-            return 'Register Class'
-        if obj.subject:
-            return f'{obj.subject.subject}'.title()
-        return None
+        return obj.subject.subject if obj.subject else None
 
 
 class ClassroomDetailsSerializer(serializers.ModelSerializer):
