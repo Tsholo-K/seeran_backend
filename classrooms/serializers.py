@@ -49,7 +49,7 @@ class ClassroomSerializer(serializers.ModelSerializer):
 
     def get_teacher(self, obj):
         if obj.teacher:
-            return TeacherFullNameSerializer(obj.teacher).data
+            return TeacherAccountSerializer(obj.teacher).data
         return None
             
     def get_subject(self, obj):
@@ -70,7 +70,7 @@ class ClassroomDetailsSerializer(serializers.ModelSerializer):
 
     def get_teacher(self, obj):
         if obj.teacher:
-            return TeacherAccountSerializer(obj.teacher).data
+            return TeacherFullNameSerializer(obj.teacher).data
         return None
 
 
@@ -84,7 +84,7 @@ class ClassesSerializer(serializers.ModelSerializer):
 
     def get_teacher(self, obj):
         if obj.teacher:
-            return TeacherAccountSerializer(obj.teacher).data
+            return TeacherFullNameSerializer(obj.teacher).data
         else:
             return None
 
