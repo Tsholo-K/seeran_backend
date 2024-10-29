@@ -39,13 +39,18 @@ class UpdateClassroomSerializer(serializers.ModelSerializer):
 
 class ClassroomSerializer(serializers.ModelSerializer):
 
-    teacher = TeacherAccountSerializer()
+    teacher = serializers.SerializerMethodField()
     students = StudentSourceAccountSerializer(many=True)
     subject = serializers.SerializerMethodField()
 
     class Meta:
         model = Classroom
         fields = ['classroom_number', 'group', 'subject', 'student_count', 'students', 'teacher']
+
+    def get_teacher(self, obj):
+        if obj.teacher:
+            return TeacherAccountSerializer(obj.teacher).data
+        return None
             
     def get_subject(self, obj):
         if  obj.register_classroom:
@@ -57,11 +62,16 @@ class ClassroomSerializer(serializers.ModelSerializer):
 
 class ClassroomDetailsSerializer(serializers.ModelSerializer):
 
-    teacher = TeacherAccountSerializer()
+    teacher = serializers.SerializerMethodField()
 
     class Meta:
         model = Classroom
         fields = ['classroom_number', 'group', 'student_count', 'teacher']
+
+    def get_teacher(self, obj):
+        if obj.teacher:
+            return TeacherAccountSerializer(obj.teacher).data
+        return None
 
 
 class ClassesSerializer(serializers.ModelSerializer):
