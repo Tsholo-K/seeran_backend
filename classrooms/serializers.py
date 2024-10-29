@@ -6,7 +6,7 @@ from rest_framework.validators import UniqueTogetherValidator
 from .models import Classroom
 
 # serilializers
-from accounts.serializers.teachers.serializers import TeacherBasicAccountDetailsEmailSerializer
+from accounts.serializers.teachers.serializers import TeacherAccountSerializer
 from accounts.serializers.students.serializers import StudentSourceAccountSerializer
 
 
@@ -39,18 +39,13 @@ class UpdateClassroomSerializer(serializers.ModelSerializer):
 
 class ClassroomSerializer(serializers.ModelSerializer):
 
-    teacher = serializers.SerializerMethodField()
+    teacher = TeacherAccountSerializer()
     students = StudentSourceAccountSerializer(many=True)
     subject = serializers.SerializerMethodField()
 
     class Meta:
         model = Classroom
         fields = ['classroom_number', 'group', 'subject', 'student_count', 'students', 'teacher']
-
-    def get_teacher(self, obj):
-        if obj.teacher:
-            return f'{obj.teacher.surname} {obj.teacher.name}'.title()
-        return None
             
     def get_subject(self, obj):
         if  obj.register_classroom:
@@ -62,16 +57,11 @@ class ClassroomSerializer(serializers.ModelSerializer):
 
 class ClassroomDetailsSerializer(serializers.ModelSerializer):
 
-    teacher = serializers.SerializerMethodField()
+    teacher = TeacherAccountSerializer()
 
     class Meta:
         model = Classroom
         fields = ['classroom_number', 'group', 'student_count', 'teacher']
-
-    def get_teacher(self, obj):
-        if obj.teacher:
-            return TeacherBasicAccountDetailsEmailSerializer(obj.teacher).data
-        return None
 
 
 class ClassesSerializer(serializers.ModelSerializer):
@@ -84,7 +74,7 @@ class ClassesSerializer(serializers.ModelSerializer):
 
     def get_teacher(self, obj):
         if obj.teacher:
-            return f'{obj.teacher.surname} {obj.teacher.name}'.title()
+            return f'{obj.teacher.surname} {obj.teacher.name}'
         else:
             return None
 
