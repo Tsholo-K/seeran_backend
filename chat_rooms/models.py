@@ -1,8 +1,10 @@
 # python 
 import uuid
+from enum import Enum
 
 # django 
 from django.db import models, IntegrityError
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
 
@@ -11,48 +13,87 @@ from accounts.models import BaseAccount
 
 
 class PrivateChatRoom(models.Model):
-    participant_one  = models.ForeignKey(BaseAccount, on_delete=models.CASCADE, related_name='participant_one')
-    participant_two = models.ForeignKey(BaseAccount, on_delete=models.CASCADE, related_name='participant_two')
-
-    last_updated = models.DateTimeField(auto_now=True)
-    latest_message_timestamp = models.DateTimeField()
-
-    timestamp = models.DateTimeField(auto_now_add=True)
+    participants = models.ManyToManyField('accounts.BaseAccount', related_name='private_chat_rooms')
+    latest_message_timestamp = models.DateTimeField(null=True, blank=True)
     private_chat_room_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
-    def __str__(self):
-        return f"Chat between {self.participant_one.surname + ' ' + self.participant_one.name} and {self.participant_two.surname + ' ' + self.participant_two.name}"
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['participant_one', 'participant_two'], name='unique_private_chat_room_participants')
-        ]
+    def clean(self):
+        # Validate for Private Chat Room
+        participants_count = self.participants.count()
+        if participants_count != 2:
+            raise ValidationError("A private chat room must have exactly two participants.")
 
     def save(self, *args, **kwargs):
-        # Call the clean method to ensure proper validation
-        self.clean()
-        try:
-            # Call the parent class's save method to actually save the instance
-            super().save(*args, **kwargs)
-        except IntegrityError as e:
-            # Handle unique constraint violations (e.g., if a duplicate transcript exists)
-            if 'unique constraint' in str(e).lower():
-                raise ValidationError('Could not process your request, could not create a private chat room betwenn you and the provided account. A private chat room between you and the provided account already exists.')
-            raise
-        except Exception as e:
-            # Catch all other exceptions and raise them as validation errors
-            raise ValidationError(_(str(e).lower()))
+        if self.pk is None:
+            self.latest_message_timestamp = timezone.now()
+        super().save(*args, **kwargs)
+
+    def remove_participant(self, participant):
+        if participant in self.participants.all():
+            self.participants.remove(participant)
+            # If only one participant is left, mark messages from the removed participant as null
+            if self.participants.count() == 1:
+                # Mark the removed participant's messages or manage their presence in the room
+                self.purge_messages(participant)  # Optionally remove messages, or just mark them as from None
+
+    def purge_messages(self, participant):
+        # Handle logic for purging messages or changing author to None
+        messages = self.messages.filter(author=participant)
+        # Here you can decide to either delete them or set their author to None
+        for message in messages:
+            message.author = None  # Or delete the message if you prefer
+            message.save()
+
+# @receiver(pre_delete, sender='accounts.BaseAccount')
+def handle_account_deletion(sender, instance, **kwargs):
+    # Handle account deletion in PrivateChatRoom
+    private_chat_rooms = PrivateChatRoom.objects.filter(participants=instance)
+    for chat_room in private_chat_rooms:
+        chat_room.remove_participant(instance)  # Use the participant removal logic
+
+class GroupChatRoom(models.Model):
+
+    participants = models.ManyToManyField('accounts.BaseAccount', related_name='group_chat_rooms')
+    admin = models.ForeignKey('accounts.BaseAccount', on_delete=models.CASCADE, related_name='admin_chat_rooms')
+
+    group_chat_room_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     def clean(self):
-        """
-        Ensure participant_one always has a lower ID than participant_two.
-        This ensures that the order doesn't matter when creating the chat room.
-        """
-        if self.participant_one == self.participant_two:
-            raise ValidationError('Could not process your request, an account cannot have a private chat with themselves.')
+        # Validate for Group Chat Room
+        participants_count = self.participants.count()
+        if participants_count < 1:
+            raise ValidationError("A group chat room must have at least one participant (the admin).")
 
-        # Sort participants by their IDs to enforce uniqueness without order
-        if self.participant_one.id > self.participant_two.id:
-            self.participant_one, self.participant_two = self.participant_two, self.participant_one
+    def save(self, *args, **kwargs):
+        if self.pk is None:
+            self.latest_message_timestamp = timezone.now()
+        super().save(*args, **kwargs)
 
+    def add_participant(self, user):
+        # Admin can add a participant
+        if self.admin == user:
+            self.participants.add(user)
 
+    def remove_participant(self, user):
+        # Admin can remove a participant, but cannot remove themselves
+        if self.admin == user:
+            raise ValidationError("Admin cannot remove themselves.")
+        self.participants.remove(user)
+
+    def appoint_admin(self, new_admin):
+        # Admin can appoint another participant as admin
+        if new_admin in self.participants.all():
+            self.admin = new_admin
+            self.save()
+        else:
+            raise ValidationError("User must be a participant to be appointed as admin.")
+
+    def revoke_admin(self, admin_to_revoke):
+        # Admin can revoke another participant's admin status
+        if admin_to_revoke == self.admin:
+            raise ValidationError("Cannot revoke the original admin.")
+        # Logic to ensure the admin is still in the group
+        if admin_to_revoke in self.participants.all():
+            # Here you could implement logic to reassign admin or handle as needed
+            self.admin = self.participants.first()  # Or some other logic
+            self.save()

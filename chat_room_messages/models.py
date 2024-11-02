@@ -10,6 +10,7 @@ from django.core.exceptions import ValidationError
 
 class PrivateMessage(models.Model):
     chat_room = models.ForeignKey('chat_rooms.PrivateChatRoom', on_delete=models.CASCADE, related_name='messages')
+    unread_by = models.ManyToManyField('accounts.BaseAccount', related_name="unread_messages")
     
     author = models.ForeignKey('accounts.BaseAccount', on_delete=models.DO_NOTHING)
     message_content = models.TextField(max_length=1024)
@@ -25,7 +26,7 @@ class PrivateMessage(models.Model):
     private_chat_room_message_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     def save(self, *args, **kwargs):
-        if not self.id:
+        if self.pk is None:
             self.chat_room.latest_message_timestamp = self.timestamp = timezone.now()
             self.chat_room.save(update_fields=['latest_message_timestamp'])
 

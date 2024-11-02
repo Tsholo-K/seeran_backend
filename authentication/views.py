@@ -257,7 +257,7 @@ def signin(request):
         # if everything checks out without an error 
         # create an otp for the user
         otp, hashed_otp, salt = generate_otp()
-        email_response = send_otp_email(requesting_user, otp, reason="We are pleased to have you trying out our service, this OTP was generated in response to your account activation request..")
+        email_response = send_otp_email(requesting_user, otp, reason="We are pleased to have you trying out our service, this OTP was generated in response to your account activation request.")
         
         if email_response['status'] == 'success':
             cache.set(requesting_user.email_address+'signin_otp', (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
