@@ -15,6 +15,7 @@ class AuditLog(models.Model):
         ('ASSIGN', 'Assign'),
         ('DELETE', 'Delete'),
         ('SUBMIT', 'Submit'),
+        ('COLLECT', 'Collect'),
         ('GENERATE', 'Generate'),
         ('LINK', 'Link'),
         ('UNLINK', 'Unlink'),
@@ -44,6 +45,7 @@ class AuditLog(models.Model):
         ('ASSIGNED', 'Assigned'),
         ('DELETED', 'Deleted'),
         ('SUBMITTED', 'Submitted'),
+        ('COLLECTED', 'Collected'),     # Permission to collect assessments
         ('GENERATED', 'Generated'),
         ('LINKED', 'Linked'),
         ('UNLINKED', 'Unlinked'),
