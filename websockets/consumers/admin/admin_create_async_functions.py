@@ -100,7 +100,7 @@ def create_account(account, role, details):
                             "update": ["ASSESSMENT"], 
                             "view": ["ACCOUNT", "PROGRESS_REPORT", "CLASSROOM", "ATTENDANCE", "ACTIVITY", "ASSESSMENT", "TRANSCRIPT", "TIMETABLE", "TEACHER_TIMETABLE", "GROUP_TIMETABLE"], 
                             "delete": ["ASSESSMENT"], 
-                            "submit": ["ATTENDANCE"], 
+                            "submit": ["ATTENDANCE", "ASSESSMENT"], 
                             "collect": ["ASSESSMENT"], 
                             "generate": ["PROGRESS_REPORT"]
                         }.items():
