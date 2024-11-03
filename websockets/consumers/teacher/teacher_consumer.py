@@ -261,11 +261,11 @@ class TeacherConsumer(AsyncWebsocketConsumer):
 
             'update_multi_factor_authentication': general_update_async_functions.update_multi_factor_authentication,
 
-            # 'update_assessment' : teacher_update_async_functions.update_assessment,
-            # 'update_assessment_as_collected' : teacher_update_async_functions.update_assessment_as_collected,
-            # 'update_assessment_as_graded' : teacher_update_async_functions.update_assessment_as_graded,
+            'update_assessment' : teacher_update_async_functions.update_assessment,
+            'update_assessment_as_collected' : teacher_update_async_functions.update_assessment_as_collected,
+            'update_assessment_as_graded' : teacher_update_async_functions.update_assessment_as_graded,
 
-            # 'update_student_grade' : teacher_update_async_functions.update_student_transcript_score,
+            'update_student_grade' : teacher_update_async_functions.update_student_assessment_transcript,
             
             'update_messages_as_read': general_update_async_functions.update_messages_as_read,
         }
