@@ -102,24 +102,23 @@ def submit_assessment_submissions(account, role, details):
         requesting_account = accounts_utilities.get_account_and_linked_school(account, role)
 
         # Check if the user has permission to create an assessment
-        if not permissions_utilities.has_permission(requesting_account, 'SUBMIT', 'ASSESSMENT'):
+        if not permissions_utilities.has_permission(requesting_account, 'COLLECT', 'ASSESSMENT'):
             response = f'could not proccess your request, you do not have the necessary permissions to collect assessments.'
             audits_utilities.log_audit(
                 actor=requesting_account, 
-                action='SUBMIT', 
+                action='COLLECT', 
                 target_model='ASSESSMENT', 
                 outcome='DENIED', 
                 server_response=response, 
                 school=requesting_account.school
             )
-
             return {'error': response}
         
         if 'assessment' not in details:
             response = f'could not proccess your request, the provided information is invalid for the action you are trying to perform. please make sure to provide a valid assessment ID and try again'
             audits_utilities.log_audit(
                 actor=requesting_account, 
-                action='SUBMIT', 
+                action='COLLECT', 
                 target_model='ASSESSMENT',
                 outcome='ERROR', 
                 server_response=response, 
@@ -134,7 +133,7 @@ def submit_assessment_submissions(account, role, details):
             response = f'could not proccess your request, you do not have the necessary permissions to collect this assessment. only the assessments assessor or moderator can collect the assessment.'
             audits_utilities.log_audit(
                 actor=requesting_account, 
-                action='SUBMIT', 
+                action='COLLECT', 
                 target_model='ASSESSMENT', 
                 target_object_id=str(assessment.assessment_id) if assessment else 'N/A', 
                 outcome='DENIED', 
@@ -148,7 +147,7 @@ def submit_assessment_submissions(account, role, details):
             assessment.collect_submissions(school=requesting_account.school, students=students)
 
             response = f"{len(students)} submissions successfully collected from students for an assessment in your school with assessment ID: {assessment.assessment_id}."
-            audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='SUBMITTED', server_response=response, school=assessment.school)
+            audits_utilities.log_audit(actor=requesting_account, action='COLLECT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id), outcome='COLLECTED', server_response=response, school=assessment.school)
 
         return {"message": response}
 
@@ -160,7 +159,7 @@ def submit_assessment_submissions(account, role, details):
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
         audits_utilities.log_audit(
             actor=requesting_account, 
-            action='SUBMIT', 
+            action='COLLECT', 
             target_model='ASSESSMENT', 
             target_object_id=str(assessment.assessment_id) if assessment else 'N/A', 
             outcome='ERROR', 
@@ -173,7 +172,7 @@ def submit_assessment_submissions(account, role, details):
         error_message = str(e)
         audits_utilities.log_audit(
             actor=requesting_account, 
-            action='SUBMIT', 
+            action='COLLECT', 
             target_model='ASSESSMENT', 
             target_object_id=str(assessment.assessment_id) if assessment else 'N/A', 
             outcome='ERROR', 
