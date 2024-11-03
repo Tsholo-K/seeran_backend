@@ -198,13 +198,19 @@ def form_data_for_collecting_assessment_submissions(account, role, details):
             return {'error': response}
 
         # Fetch the assessment from the requesting user's school
-        assessment = requesting_account.taught_classrooms.assessments.select_related('classroom', 'grade').get(assessment_id=details['assessment'])
+        assessment = requesting_account.school.assessments.select_related('classroom', 'grade').get(assessment_id=details['assessment'])
 
         # Get the list of students who have already submitted the assessment
         submitted_student_ids = assessment.submissions.values_list('student__id', flat=True)
 
-        # Fetch students in the classroom who haven't submitted
-        students = assessment.classroom.students.only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').exclude(id__in=submitted_student_ids)
+        if assessment.classroom:
+            # Fetch students in the classroom who haven't submitted
+            students = assessment.classroom.students.only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').exclude(id__in=submitted_student_ids)
+        elif assessment.grade:
+            # Fetch students in the grade who haven't submitted
+            students = assessment.grade.students.only('name', 'surname', 'id_number', 'passport_number', 'account_id', 'profile_picture').exclude(id__in=submitted_student_ids)
+        else:
+            return {'error': 'No valid classroom or grade found for the assessment.'}
         
         # Serialize the student data
         serialized_students = StudentSourceAccountSerializer(students, many=True).data

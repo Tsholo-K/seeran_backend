@@ -311,9 +311,9 @@ class TeacherConsumer(AsyncWebsocketConsumer):
 
     async def handle_submit(self, description, details, account, role, access_token):
         submit_map = {
-            # 'submit_assessment_submissions' : teacher_submit_async_functions.submit_assessment_submissions,
-
             'submit_attendance_register': teacher_submit_async_functions.submit_attendance_register,
+
+            'submit_assessment_submissions' : teacher_submit_async_functions.submit_assessment_submissions,
 
             'submit_log_out_request': general_submit_async_functions.submit_log_out_request,
         }

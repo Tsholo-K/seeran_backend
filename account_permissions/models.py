@@ -22,6 +22,7 @@ class AdminAccountPermission(models.Model):
         ('ASSIGN', 'Assign'),       # Permission to assign an entity to another entity
         ('DELETE', 'Delete'),       # Permission to remove an entity
         ('SUBMIT', 'Submit'),       # Permission to finalize an entry
+        ('COLLECT', 'Collect'),     # Permission to collect assessments
         ('GENERATE', 'Generate'),   # Permission to create reports or documents
         ('LINK', 'Link'),           # Permission to associate related entities
         ('UNLINK', 'Unlink'),       # Permission to remove associations between entities
@@ -107,6 +108,7 @@ class TeacherAccountPermission(models.Model):
         ('VIEW', 'View'),      # Permission to view assessments or records
         ('DELETE', 'Delete'),  # Permission to remove assessments or records
         ('SUBMIT', 'Submit'),  # Permission to finalize and submit records
+        ('COLLECT', 'Collect'),     # Permission to collect assessments
         ('GENERATE', 'Generate'),   # Permission to create reports or documents
     ]
 
