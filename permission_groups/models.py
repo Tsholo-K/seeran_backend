@@ -72,6 +72,10 @@ class AdminPermissionGroup(models.Model):
         if self.pk:
             self.subscribers_count = self.subscribers.count()
             self.permissions_count = self.permissions.count()
+    
+    def update_counts(self):
+        self.subscribers_count = self.subscribers.count()
+        self.permissions_count = self.permissions.count()
 
     def update_subscribers(self, subscribers_list=None, subscribe=False):
         try:
@@ -170,6 +174,10 @@ class TeacherPermissionGroup(models.Model):
         if self.pk:
             self.subscribers_count = self.subscribers.count()
             self.permissions_count = self.permissions.count()
+    
+    def update_counts(self):
+        self.subscribers_count = self.subscribers.count()
+        self.permissions_count = self.permissions.count()
 
     def update_subscribers(self, subscribers_list=None, subscribe=False):
         try:
