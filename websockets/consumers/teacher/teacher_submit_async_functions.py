@@ -1,3 +1,6 @@
+# python
+from decimal import Decimal
+
 # channels
 from channels.db import database_sync_to_async
 
@@ -8,16 +11,18 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
 
 # models 
-from accounts.models import BaseAccount
+from accounts.models import BaseAccount, Student
 from classrooms.models import Classroom
 from school_attendances.models import ClassroomAttendanceRegister
 from assessments.models import Assessment
+
+# serilializers
+from assessment_transcripts.serializers import TranscriptUpdateSerializer
 
 # utility functions 
 from accounts import utils as accounts_utilities
 from account_permissions import utils as permissions_utilities
 from audit_logs import utils as audits_utilities
-
 
 
 @database_sync_to_async
@@ -153,7 +158,7 @@ def submit_assessment_submissions(account, role, details):
 
     except Assessment.DoesNotExist:
         # Handle the case where the provided account ID does not exist
-        return {'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
+        return {'error': 'could not proccess your request, an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()
@@ -207,7 +212,15 @@ def submit_student_transcript_score(account, role, details):
         # Check if the user has permission to grade the assessment
         if (assessment.assessor and account != assessment.assessor.account_id) and (assessment.moderator and account != assessment.moderator.account_id):
             response = f'could not proccess your request, you do not have the necessary permissions to grade this assessment. only the assessments assessor or moderator can assign scores to the assessment.'
-            audits_utilities.log_audit(actor=requesting_account, action='SUBMIT', target_model='ASSESSMENT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='DENIED', server_response=response, school=requesting_account.school)
+            audits_utilities.log_audit(
+                actor=requesting_account, 
+                action='SUBMIT', 
+                target_model='ASSESSMENT', 
+                target_object_id=str(assessment.assessment_id) if assessment else 'N/A', 
+                outcome='DENIED', 
+                server_response=response, 
+                school=requesting_account.school
+            )
             return {'error': response}
 
         student = requesting_account.school.students.get(account_id=details['student'])
@@ -231,11 +244,11 @@ def submit_student_transcript_score(account, role, details):
 
     except Assessment.DoesNotExist:
         # Handle the case where the provided assessment ID does not exist
-        return {'error': 'an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
+        return {'error': 'could not proccess your request, an assessment in your school with the provided credentials does not exist, please check the assessment details and try again'}
 
     except Student.DoesNotExist:
         # Handle the case where the provided account ID does not exist
-        return {'error': 'a student account with the provided credentials does not exist, please check the accounts details and try again'}
+        return {'error': 'could not proccess your request, a student account with the provided credentials does not exist, please check the accounts details and try again'}
 
     except ValidationError as e:
         error_message = e.messages[0].lower() if isinstance(e.messages, list) and e.messages else str(e).lower()

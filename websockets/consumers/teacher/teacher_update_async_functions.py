@@ -187,7 +187,15 @@ def update_student_assessment_transcript(account, role, details):
         # Check if the user has permission to grade the assessment
         if (assessment.assessor and account != assessment.assessor.account_id) and (assessment.moderator and account != assessment.moderator.account_id):
             response = f'Could not proccess your request, you do not have the necessary permissions to update this transcrpit. only the assessments assessor or moderator can update scores of this transcrpit.'
-            audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='TRANSCRPIT', target_object_id=str(assessment.assessment_id) if assessment else 'N/A', outcome='DENIED', response=response, school=requesting_account.school)
+            audits_utilities.log_audit(
+                actor=requesting_account, 
+                action='UPDATE', 
+                target_model='TRANSCRPIT', 
+                target_object_id=str(assessment.assessment_id) if assessment else 'N/A', 
+                outcome='DENIED', 
+                response=response, 
+                school=requesting_account.school
+            )
             return {'error': response}
 
         transcript = assessment.transcripts.get(student__account_id=details['student'])
