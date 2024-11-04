@@ -60,7 +60,7 @@ GS_CREDENTIALS = config('GS_CREDENTIALS')
 
 
 # logging
-LOGS_DIR = BASE_DIR / 'logs'
+LOGS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'logs')
 if not os.path.exists(LOGS_DIR):
     os.makedirs(LOGS_DIR) # script to ensure it's created if it doesn't exist
 

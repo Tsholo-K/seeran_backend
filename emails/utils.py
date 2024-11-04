@@ -1,7 +1,6 @@
 # python
 import hmac
 import hashlib
-import requests
 
 # decode
 from decouple import config
