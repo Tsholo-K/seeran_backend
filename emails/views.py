@@ -49,4 +49,4 @@ def parse_email(request):
         return JsonResponse({"error": "Could not process your request, invalid signature"}, status=403)
     
     # Process each email (you can use your existing parsing logic here)
-    emails_utilities.process_email(request.POST)
+    return emails_utilities.process_email(request.POST)
