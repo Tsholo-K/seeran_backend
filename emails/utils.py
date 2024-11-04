@@ -22,12 +22,16 @@ def verify_mailgun_signature(timestamp, token, signature):
     # Prepare the string to sign
     signed_string = f"{timestamp}{token}"
 
-    # Create a HMAC SHA256 signature using the Mailgun secret
-    computed_signature = base64.b64encode(
-        hmac.new(config('MAILGUN_SIGNING_KEY').encode(), signed_string.encode(), hashlib.sha256).digest()
-    ).decode()
+    # Compute the HMAC SHA256 hash
+    computed_signature = hmac.new(
+        config('MAILGUN_SIGNING_KEY').encode(),
+        signed_string.encode(),
+        hashlib.sha256
+    ).hexdigest()
+    
+    # Compare the computed signature with the provided signature
+    return computed_signature == signature
 
-    return hmac.compare_digest(computed_signature, signature)
 
 def determine_case_type(recipient):
     """
