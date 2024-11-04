@@ -1,6 +1,7 @@
 # python
-import hashlib
 import hmac
+import hashlib
+import base64
 
 # decode
 from decouple import config
@@ -19,18 +20,14 @@ def verify_mailgun_signature(timestamp, token, signature):
         bool: True if the signature is valid, False otherwise.
     """
     # Prepare the string to sign
-    data = f"{timestamp}{token}"
+    signed_string = f"{timestamp}{token}"
 
-    # Generate HMAC SHA256 signature with Mailgun API key
-    hmac_digest = hmac.new(
-        key=config('MAILGUN_API_KEY').encode(),
-        msg=data.encode(),
-        digestmod=hashlib.sha256
-    ).hexdigest()
+    # Create a HMAC SHA256 signature using the Mailgun secret
+    computed_signature = base64.b64encode(
+        hmac.new(config('MAILGUN_API_KEY').encode(), signed_string.encode(), hashlib.sha256).digest()
+    ).decode()
 
-    # Compare generated signature to the signature from Mailgun
-    return hmac.compare_digest(hmac_digest, signature)
-
+    return hmac.compare_digest(computed_signature, signature)
 
 def determine_case_type(recipient):
     """
