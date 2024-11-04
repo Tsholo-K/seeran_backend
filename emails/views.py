@@ -44,6 +44,8 @@ def parse_email(request):
     if request.method != 'POST':
         emails_logger.warning("Invalid request method: only POST requests are allowed.")
         return JsonResponse({"error": "Could not process your request, only POST requests are allowed at this endpoint"}, status=405)
+    
+    print(request.POST)
 
     # Verify Mailgun signature
     timestamp = request.POST.get('timestamp')
