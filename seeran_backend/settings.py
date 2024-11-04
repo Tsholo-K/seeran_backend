@@ -81,13 +81,13 @@ LOGGING = {
         'email_logfile': {
             'level': 'ERROR',
             'class': 'logging.FileHandler',
-            'filename': LOGS_DIR / 'emails_errors.log',
+            'filename': os.path.join(LOGS_DIR, 'emails_errors.log'),
             'formatter': 'verbose',
         },
         'case_logfile': {
             'level': 'ERROR',
             'class': 'logging.FileHandler',
-            'filename': LOGS_DIR / 'email_cases_errors.log',
+            'filename': os.path.join(LOGS_DIR, 'email_cases_errors.log'),
             'formatter': 'verbose',
         },
         # 'general_logfile': {
