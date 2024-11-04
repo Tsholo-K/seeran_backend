@@ -174,6 +174,9 @@ INSTALLED_APPS = [
     'emergencies',
 
     'uploads',
+
+    'emails',
+    'email_cases',
     
     # third party apps
     'corsheaders', # handle cors 
