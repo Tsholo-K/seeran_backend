@@ -4,7 +4,12 @@ import ssl
 from pathlib import Path
 from datetime import timedelta
 from decouple import config
+
+# sentry
 import sentry_sdk
+
+# celery
+from celery.schedules import crontab
 
 
 # sentry monitoring system
@@ -53,6 +58,8 @@ GS_CREDENTIALS = config('GS_CREDENTIALS')
 # Set a timeout for connecting to the storage backend
 # GS_EXPIRATION = 3600  # 1 hour expiration for pre-signed URLs (adjust as needed)
 
+
+# logging
 LOGS_DIR = BASE_DIR / 'logs'
 if not os.path.exists(LOGS_DIR):
     os.makedirs(LOGS_DIR) # script to ensure it's created if it doesn't exist
@@ -352,6 +359,14 @@ DATABASES = {
 # }
 
 
+# celery config
+CELERY_BEAT_SCHEDULE = {
+    'fetch-emails-every-5-minutes': {
+        'task': 'emails.tasks.fetch_and_process_emails',
+        'schedule': crontab(minute='*/5'),  # Every 5 minutes
+    },
+}
+
 CELERY_IMPORTS = (
     'term_subject_performances.tasks',
     'student_subject_performances.tasks',
@@ -383,26 +398,6 @@ CELERY_TIMEZONE = 'UTC'
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True  # Propagate exceptions
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'root': {
-        'handlers': ['console'],
-        'level': 'DEBUG',
-    },
-    'loggers': {
-        'celery': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': True,
-        },
-    },
-}
 
 
 # ssl config
