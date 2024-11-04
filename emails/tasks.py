@@ -36,9 +36,9 @@ def fetch_and_process_emails():
         if len(emails) == 5:
             fetch_and_process_emails.apply_async(countdown=5)  # Delay next call by 5 seconds
 
-        emails_logger.info(f"Emails fetched and processed successfully.")
+        return emails_logger.info(f"Emails fetched and processed successfully.")
 
     else:
         # Handle error (log it, raise an exception, etc.)
-        emails_logger.info(f'Error fetching emails: {response.status_code} - {response.text}')
+        return emails_logger.info(f'Error fetching emails: {response.status_code} - {response.text}')
 
