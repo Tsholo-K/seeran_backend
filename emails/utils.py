@@ -24,7 +24,7 @@ def verify_mailgun_signature(timestamp, token, signature):
 
     # Create a HMAC SHA256 signature using the Mailgun secret
     computed_signature = base64.b64encode(
-        hmac.new(config('MAILGUN_API_KEY').encode(), signed_string.encode(), hashlib.sha256).digest()
+        hmac.new(config('MAILGUN_SIGNING_KEY').encode(), signed_string.encode(), hashlib.sha256).digest()
     ).decode()
 
     return hmac.compare_digest(computed_signature, signature)
