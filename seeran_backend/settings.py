@@ -53,6 +53,62 @@ GS_CREDENTIALS = config('GS_CREDENTIALS')
 # Set a timeout for connecting to the storage backend
 # GS_EXPIRATION = 3600  # 1 hour expiration for pre-signed URLs (adjust as needed)
 
+LOGS_DIR = BASE_DIR / 'logs'
+if not os.path.exists(LOGS_DIR):
+    os.makedirs(LOGS_DIR) # script to ensure it's created if it doesn't exist
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'email_logfile': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': LOGS_DIR / 'emails_errors.log',
+            'formatter': 'verbose',
+        },
+        'case_logfile': {
+            'level': 'ERROR',
+            'class': 'logging.FileHandler',
+            'filename': LOGS_DIR / 'email_cases_errors.log',
+            'formatter': 'verbose',
+        },
+        # 'general_logfile': {
+        #     'level': 'ERROR',
+        #     'class': 'logging.FileHandler',
+        #     'filename': LOGS_DIR / 'general_errors.log',
+        #     'formatter': 'verbose',
+        # },
+    },
+    'loggers': {
+        'emails_logger': {
+            'handlers': ['email_logfile'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'email_cases_logger': {
+            'handlers': ['case_logfile'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        # 'general': {
+        #     'handlers': ['general_logfile'],
+        #     'level': 'ERROR',
+        #     'propagate': False,
+        # },
+    },
+}
+
 
 # Application definition
 # a list of all installed apps
