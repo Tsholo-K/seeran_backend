@@ -19,7 +19,7 @@ email_cases_logger = logging.getLogger('email_cases_logger')
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def fetch_and_process_emails():
+def fetch_and_process_emails(*args, **kwargs):
     # Fetch emails from Mailgun
     response = requests.get(
         f"https://api.mailgun.net/v3/{config('MAILGUN_DOMAIN')}/messages/?limit=5",  # Limit to 5 emails at a time
