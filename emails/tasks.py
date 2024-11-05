@@ -22,7 +22,7 @@ email_cases_logger = logging.getLogger('email_cases_logger')
 def fetch_and_process_emails():
     # Fetch emails from Mailgun
     response = requests.get(
-        f'{f'https://api.mailgun.net/v3/{config('MAILGUN_DOMAIN')}/messages'}/?limit=5',  # Limit to 5 emails at a time
+        f'https://api.mailgun.net/v3/{config('MAILGUN_DOMAIN')}/messages/?limit=5',  # Limit to 5 emails at a time
         auth=('api', config('MAILGUN_API_KEY'))
     )
 
