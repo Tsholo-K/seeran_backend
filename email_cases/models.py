@@ -25,6 +25,7 @@ class Case(models.Model):
         ('SUPPORT', 'Support'),       # Cases related to technical or account support
         ('ENQUIRY', 'Enquiry'),       # General inquiries or questions
         ('BILLING', 'Billing'),  # Announcements or non-interactive communication
+        ('MARKETING', 'Marketing'),  # Announcements or non-interactive communication
         # Add more case types as needed
     ]
     

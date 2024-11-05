@@ -192,9 +192,12 @@ class FounderConsumer(AsyncWebsocketConsumer):
 # SUBMIT
 
     async def handle_submit(self, description, details, account, role, access_token):
+        if description == 'submit_case_response':
+            return await general_submit_async_functions.submit_case_response(details)
+
         if description == 'submit_log_out_request':
             return await general_submit_async_functions.submit_log_out_request(access_token)
-        
+
         return {'error': 'Could not process your request, an invalid submit description was provided. If this problem persist open a bug report ticket.'}
 
 # DELETE

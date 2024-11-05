@@ -1,9 +1,13 @@
 # python
 import hmac
 import hashlib
+import httpx
 
 # decode
 from decouple import config
+
+# asgiref
+from asgiref.sync import sync_to_async
 
 # django
 from django.db import transaction
@@ -150,3 +154,4 @@ def determine_case_type(recipient):
 
     # Return the case type based on the subdomain, defaulting to 'Enquiry' if unknown
     return case_type_mappings.get(subdomain, 'SUPPORT')
+

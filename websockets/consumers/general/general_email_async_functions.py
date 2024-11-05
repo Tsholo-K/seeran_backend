@@ -14,10 +14,7 @@ from authentication.utils import generate_otp
 
 
 async def send_account_confirmation_email(account):
-    
     try:
-        mailgun_api_url = "https://api.eu.mailgun.net/v3/" + config('MAILGUN_DOMAIN') + "/messages"
-        
         email_data = {
             "from": "seeran grades <accounts@" + config('MAILGUN_DOMAIN') + ">",
             "to": account.surname.title() + " " + account.name.title() + "<" + account.email_address + ">",
@@ -31,8 +28,8 @@ async def send_account_confirmation_email(account):
         }
         
         async with httpx.AsyncClient() as client:
-            response = await client.post( mailgun_api_url, headers=headers, data=email_data )
-            
+            response = await client.post(f"https://api.eu.mailgun.net/v3/{config('MAILGUN_DOMAIN')}/messages", headers=headers, data=email_data)
+
         if response.status_code == 200:
             return {"message": f"account successfully created, an account confirmation email has been sent to the accounts email address. the user can now sign-in and activate the account"}
         elif response.status_code in [400, 401, 402, 403, 404]:
@@ -47,12 +44,8 @@ async def send_account_confirmation_email(account):
 
 
 async def send_one_time_pin_email(user, reason):
-    
     try:
         otp, hashed_otp, salt = generate_otp()
-
-        # Define your Mailgun API URL
-        mailgun_api_url = "https://api.eu.mailgun.net/v3/" + config('MAILGUN_DOMAIN') + "/messages"
 
         # Define your email data
         email_data = {
@@ -72,7 +65,7 @@ async def send_one_time_pin_email(user, reason):
 
         # Send the email via Mailgun
         async with httpx.AsyncClient() as client:
-            response = await client.post( mailgun_api_url, headers=headers, data=email_data )
+            response = await client.post(f"https://api.eu.mailgun.net/v3/{config('MAILGUN_DOMAIN')}/messages", headers=headers, data=email_data )
 
         if response.status_code == 200:
                 
@@ -96,12 +89,8 @@ async def send_one_time_pin_email(user, reason):
 
 
 async def send_email_revalidation_one_time_pin_email(user):
-    
     try:
         otp, hashed_otp, salt = generate_otp()
-
-        # Define your Mailgun API URL
-        mailgun_api_url = "https://api.eu.mailgun.net/v3/" + config('MAILGUN_DOMAIN') + "/messages"
 
         # Define your email data
         email_data = {
@@ -121,7 +110,7 @@ async def send_email_revalidation_one_time_pin_email(user):
 
         # Send the email via Mailgun
         async with httpx.AsyncClient() as client:
-            response = await client.post( mailgun_api_url, headers=headers, data=email_data )
+            response = await client.post(f"https://api.eu.mailgun.net/v3/{config('MAILGUN_DOMAIN')}/messages", headers=headers, data=email_data )
 
         if response.status_code == 200:
                 
