@@ -18,7 +18,7 @@ emails_logger = logging.getLogger('emails_logger')
 email_cases_logger = logging.getLogger('email_cases_logger')
 
 
-@shared_task
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def fetch_and_process_emails():
     # Fetch emails from Mailgun
     response = requests.get(

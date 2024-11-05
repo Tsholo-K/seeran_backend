@@ -372,6 +372,7 @@ CELERY_IMPORTS = (
     'student_subject_performances.tasks',
     'classrooms.tasks',
     'assessments.tasks',
+    'emails.tasks',
     # Add other app tasks here
 )
 
