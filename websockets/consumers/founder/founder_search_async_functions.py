@@ -49,7 +49,7 @@ def search_threads(details):
 def search_thread(details):
     try:
         # Fetch all School records from the database
-        thread = Case.objects.filter(type=details.get('type').upper(), case_id=details.get('thread'))
+        thread = Case.objects.get(type=details.get('type').upper(), case_id=details.get('thread'))
         
         # Serialize the fetched schools data
         serialized_threads = EmailCaseSerializer(thread).data
@@ -62,6 +62,9 @@ def search_thread(details):
 
         # Return the serialized data in a dictionary
         return {'thread': encoded_thread}
+    
+    except Case.DoesNotExist:
+        return {"error": "a email case with the provided credentials can not be found"}
 
     except Exception as e:
         # Handle any unexpected errors and return a general error message
