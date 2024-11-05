@@ -4,14 +4,33 @@ from channels.db import database_sync_to_async
 # models 
 from accounts.models import Principal
 from schools.models import School
+from emails.models import Email
+from email_cases.models import Case
 from invoices.models import Invoice
 from bug_reports.models import BugReport
 
 # serializers
 from accounts.serializers.principals.serializers import PrincipalAccountSerializer, PrincipalAccountDetailsSerializer
-from schools.serializers import SchoolSerializer, SchoolDetailsSerializer
+from schools.serializers import SchoolsSerializer, SchoolSerializer, SchoolDetailsSerializer
 from invoices.serializers import InvoiceSerializer, InvoicesSerializer
 from bug_reports.serializers import BugReportsSerializer, BugReportSerializer
+
+
+@database_sync_to_async
+def search_threads(details):
+    try:
+        # Fetch all School records from the database
+        schools = Case.objects.filter(type=details.get('type').upper(), status=details.get('status').upper())
+        
+        # Serialize the fetched schools data
+        serialized_schools = SchoolsSerializer(schools, many=True).data
+
+        # Return the serialized data in a dictionary
+        return {'schools': serialized_schools}
+
+    except Exception as e:
+        # Handle any unexpected errors and return a general error message
+        return {'error': str(e)}
 
     
 @database_sync_to_async
@@ -47,7 +66,7 @@ def search_school_details(details):
     except Exception as e:
         # Handle any unexpected errors with a general error message
         return {'error': str(e)}
-
+    
 
 @database_sync_to_async
 def search_principal_profile(details):

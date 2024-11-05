@@ -34,7 +34,7 @@ class Case(models.Model):
     type = models.CharField(
         max_length=50,
         choices=CASE_TYPES,
-        default='support'
+        default='SUPPORT'
     )
 
     status = models.CharField(

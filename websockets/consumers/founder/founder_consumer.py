@@ -115,7 +115,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         
         elif description == 'view_schools':
             return await founder_view_async_functions.view_schools()
-        
+
         return {'error': 'Could not process your request, an invalid view description was provided. If this problem persist open a bug report ticket.'}
         
 # SEARCH
@@ -124,6 +124,8 @@ class FounderConsumer(AsyncWebsocketConsumer):
         search_map = {
             'school': founder_search_async_functions.search_school,
             'school_details': founder_search_async_functions.search_school_details,
+
+            'search_threads': founder_search_async_functions.search_threads,
 
             'principal_profile': founder_search_async_functions.search_principal_profile,
             'principal_details': founder_search_async_functions.search_principal_details,

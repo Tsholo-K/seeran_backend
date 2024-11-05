@@ -1,10 +1,10 @@
 # channels
 from channels.db import database_sync_to_async
 
-# django
-
-# models 
+# models
 from schools.models import School
+from emails.models import Email
+from email_cases.models import Case
 
 # serializers
 from schools.serializers import SchoolsSerializer
