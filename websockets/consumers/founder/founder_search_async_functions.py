@@ -1,3 +1,8 @@
+# python
+import base64
+import zlib
+import json
+
 # channels
 from channels.db import database_sync_to_async
 
@@ -11,7 +16,8 @@ from bug_reports.models import BugReport
 
 # serializers
 from accounts.serializers.principals.serializers import PrincipalAccountSerializer, PrincipalAccountDetailsSerializer
-from schools.serializers import SchoolsSerializer, SchoolSerializer, SchoolDetailsSerializer
+from schools.serializers import SchoolSerializer, SchoolDetailsSerializer
+from email_cases.serializers import EmailCasesSerializer
 from invoices.serializers import InvoiceSerializer, InvoicesSerializer
 from bug_reports.serializers import BugReportsSerializer, BugReportSerializer
 
@@ -20,13 +26,19 @@ from bug_reports.serializers import BugReportsSerializer, BugReportSerializer
 def search_threads(details):
     try:
         # Fetch all School records from the database
-        schools = Case.objects.filter(type=details.get('type').upper(), status=details.get('status').upper())
+        threads = Case.objects.filter(type=details.get('type').upper(), status=details.get('status').upper())
         
         # Serialize the fetched schools data
-        serialized_schools = SchoolsSerializer(schools, many=True).data
+        serialized_threads = EmailCasesSerializer(threads, many=True).data
+
+        # Compress the serialized data
+        compressed_threads = zlib.compress(json.dumps(serialized_threads).encode('utf-8'))
+
+        # Encode compressed data as base64 for safe transport
+        encoded_threads = base64.b64encode(compressed_threads).decode('utf-8')
 
         # Return the serialized data in a dictionary
-        return {'schools': serialized_schools}
+        return {'threads': encoded_threads}
 
     except Exception as e:
         # Handle any unexpected errors and return a general error message

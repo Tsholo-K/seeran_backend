@@ -43,3 +43,10 @@ class FounderSecurityInformationSerializer(serializers.ModelSerializer):
         model = Founder
         fields = ['multifactor_authentication']
 
+
+class FounderAccountNamesSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Founder
+        fields = ['name', 'surname']
+
