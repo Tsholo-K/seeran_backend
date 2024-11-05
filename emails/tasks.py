@@ -22,8 +22,9 @@ email_cases_logger = logging.getLogger('email_cases_logger')
 def fetch_and_process_emails(*args, **kwargs): # accept any arguments Celery might send, even if you’re not expecting any
     # Fetch emails from Mailgun
     response = requests.get(
-        f"https://api.mailgun.net/v3/{config('MAILGUN_DOMAIN')}/messages/?limit=5",  # Limit to 5 emails at a time
-        auth=('api', config('MAILGUN_API_KEY'))
+        f"https://api.mailgun.net/v3/{config('MAILGUN_DOMAIN')}/messages",  
+        auth=('api', config('MAILGUN_API_KEY')),
+        params={"limit": 5}  # Limit to 5 emails at a time
     )
 
     if response.status_code == 200:

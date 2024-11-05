@@ -50,3 +50,28 @@ class FounderAccountNamesSerializer(serializers.ModelSerializer):
         model = Founder
         fields = ['name', 'surname']
 
+
+class FounderDisplayAccountDetailsSerializer(serializers.ModelSerializer):
+
+    image = serializers.SerializerMethodField()
+    identifier = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Founder
+        fields = ['name', 'surname', 'identifier', 'image']
+    
+    def get_identifier(self, obj):
+        return obj.email_address
+    
+    def get_image(self, obj):
+        existing_signed_url = cache.get(str(obj.account_id) + 'profile_picture')
+        if existing_signed_url:
+            return existing_signed_url
+
+        if obj.profile_picture:
+            singed_url = accounts_utilities.generate_signed_url(obj.profile_picture.name)
+            cache.set(str(obj.account_id) + 'profile_picture', singed_url, timeout=86400) 
+
+            return singed_url
+
+        return '/default-user-icon.svg'

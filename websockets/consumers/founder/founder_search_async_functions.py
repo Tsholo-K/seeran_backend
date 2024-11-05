@@ -17,7 +17,7 @@ from bug_reports.models import BugReport
 # serializers
 from accounts.serializers.principals.serializers import PrincipalAccountSerializer, PrincipalAccountDetailsSerializer
 from schools.serializers import SchoolSerializer, SchoolDetailsSerializer
-from email_cases.serializers import EmailCasesSerializer
+from email_cases.serializers import EmailCasesSerializer, EmailCaseSerializer
 from invoices.serializers import InvoiceSerializer, InvoicesSerializer
 from bug_reports.serializers import BugReportsSerializer, BugReportSerializer
 
@@ -39,6 +39,29 @@ def search_threads(details):
 
         # Return the serialized data in a dictionary
         return {'threads': encoded_threads}
+
+    except Exception as e:
+        # Handle any unexpected errors and return a general error message
+        return {'error': str(e)}
+
+
+@database_sync_to_async
+def search_thread(details):
+    try:
+        # Fetch all School records from the database
+        thread = Case.objects.filter(type=details.get('type').upper(), case_id=details.get('case'))
+        
+        # Serialize the fetched schools data
+        serialized_threads = EmailCaseSerializer(thread).data
+
+        # Compress the serialized data
+        compressed_thread = zlib.compress(json.dumps(serialized_threads).encode('utf-8'))
+
+        # Encode compressed data as base64 for safe transport
+        encoded_thread = base64.b64encode(compressed_thread).decode('utf-8')
+
+        # Return the serialized data in a dictionary
+        return {'thread': encoded_thread}
 
     except Exception as e:
         # Handle any unexpected errors and return a general error message

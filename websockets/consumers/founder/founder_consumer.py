@@ -126,6 +126,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
             'school_details': founder_search_async_functions.search_school_details,
 
             'search_threads': founder_search_async_functions.search_threads,
+            'search_thread': founder_search_async_functions.search_thread,
 
             'principal_profile': founder_search_async_functions.search_principal_profile,
             'principal_details': founder_search_async_functions.search_principal_details,
