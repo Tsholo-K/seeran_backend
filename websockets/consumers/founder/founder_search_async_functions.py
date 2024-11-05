@@ -49,7 +49,7 @@ def search_threads(details):
 def search_thread(details):
     try:
         # Fetch all School records from the database
-        thread = Case.objects.filter(type=details.get('type').upper(), case_id=details.get('case'))
+        thread = Case.objects.filter(type=details.get('type').upper(), case_id=details.get('thread'))
         
         # Serialize the fetched schools data
         serialized_threads = EmailCaseSerializer(thread).data
