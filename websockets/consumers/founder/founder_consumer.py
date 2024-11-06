@@ -208,7 +208,6 @@ class FounderConsumer(AsyncWebsocketConsumer):
                 response = await founder_verify_async_functions.verify_thread_response(account, details)
                 if response.get('case'):
                     response = await func(
-                        account=account, 
                         case=response.get('case'), 
                         initial_email=response.get('initial_email'), 
                         recipient=response.get('recipient'), 

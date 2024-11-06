@@ -42,6 +42,7 @@ async def send_thread_response(case, initial_email, recipient, message):
             "h:In-Reply-To": initial_email.message_id,  # Include In-Reply-To header
             "h:References": initial_email.message_id,   # Include References header
         }
+        print("prepared mailgun API data")
 
         # Send the email
         async with httpx.AsyncClient() as client:
@@ -52,6 +53,7 @@ async def send_thread_response(case, initial_email, recipient, message):
             )
 
         if response.status_code == 200:
+            print("sent email")
             message_id = response.headers.get("Message-ID")
             return {
                 "case_id": case.case_id, 
@@ -60,13 +62,13 @@ async def send_thread_response(case, initial_email, recipient, message):
                 "email_type": case.type, 
                 "recipient": recipient
             }
-
+        
         elif response.status_code in [400, 401, 402, 403, 404]:
-            return {"error": f"Error sending response email. Status code: {response.status_code}"}
+            return {"error": f"account successfully created, but there was an error sending an account confirmation email to the accounts email address. please open a new bug ticket with the issue, error code {response.status_code}"}
         elif response.status_code == 429:
-            return {"error": "Rate limit exceeded. Try again later."}
+            return {"error": "account successfully created, but there was an error sending an account confirmation email to the accounts email address, the status code recieved could indicate a rate limit issue so please wait some few minutes before creating a new account"}
         else:
-            return {"error": "Error sending response email."}
+            return {"error": "account successfully created, but there was an error sending an account confirmation email to the accounts email address."}
 
     except httpx.RequestError as e:
         print(f"Error sending thread response email via Mailgun: {str(e)}")
@@ -75,7 +77,6 @@ async def send_thread_response(case, initial_email, recipient, message):
     except Exception as e:
         print(f"Unexpected error sending thread response email: {str(e)}")
         return {"error": str(e)}
-
 
 
 async def send_marketing_case_and_send_initial_email(details):
@@ -96,12 +97,12 @@ async def send_marketing_case_and_send_initial_email(details):
                 title='The Future of School Management',
                 type='MARKETING',
                 initial_email=None,  # Will be set after sending the email
-                description="marketing case initialized with the first email"
+                description="Marketing case initialized with the first email"
             )
 
             # Prepare headers for the initial email
             headers = {
-                "X-Case-ID": case.case_id,  # Custom header for tracking
+                # Note: No need for X-Case-ID, we rely on the email thread via In-Reply-To
             }
 
             # Prepare Mailgun API data for sending the email
@@ -110,7 +111,6 @@ async def send_marketing_case_and_send_initial_email(details):
                 "to": details.get('recipient'),
                 "subject": 'The All-In-One School Management Solution for Real-Time Engagement',
                 "template": "marketing email",
-                "h:X-Case-ID": headers["X-Case-ID"],
             }
 
             # Send the initial email using Mailgun's API

@@ -37,14 +37,16 @@ def verify_thread_response(account, details):
             print(f"Could not process your request, this thread is assigned to someone else. You are not allowed to respond to this thread.")
             return {"error": f"Could not process your request, this thread is assigned to someone else. You are not allowed to respond to this thread."}
         
-        print("verified assigned to")
+        print("verified thread assigned to")
 
         # Determine the correct recipient based on whether the initial email is incoming
         if initial_email.is_incoming:
             recipient = initial_email.sender
         else:
             recipient = initial_email.recipient
-        
+
+        print("got recipient")
+
         return {"case": case, "initial_email": initial_email, "recipient": recipient, "message": details.get('message')}
     
     except BaseAccount.DoesNotExist:
