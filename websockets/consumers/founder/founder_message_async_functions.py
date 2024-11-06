@@ -1,11 +1,7 @@
-# python
-import httpx
-
 # decode
 from decouple import config
 
 # django
-from django.db import transaction
 from django.utils import timezone
 
 # models
