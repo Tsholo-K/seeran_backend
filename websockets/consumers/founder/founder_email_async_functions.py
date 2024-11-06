@@ -31,6 +31,7 @@ async def send_thread_response(details):
         type: Type of email (e.g., response, update).
     """
     try:
+        print("sendind email in a bit")
         async with transaction.atomic():
             # Fetch the case and initial email
             case = await Case.objects.select_for_update().aget(case_id=details.get('thread'), type=details.get('type').upper())
