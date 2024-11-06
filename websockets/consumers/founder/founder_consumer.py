@@ -203,7 +203,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
         func = message_map.get(description)
         if func:
-            response = await func({details: {**details, 'sender': account}})
+            response = await func({**details, 'sender': account})
             if response.get('case'):
                 await connection_manager.send_message(
                     account, 
