@@ -43,14 +43,14 @@ async def send_account_confirmation_email(account):
         return {"error": str(e)}
 
 
-async def send_one_time_pin_email(user, reason):
+async def send_one_time_pin_email(account, reason):
     try:
         otp, hashed_otp, salt = generate_otp()
 
         # Define your email data
         email_data = {
             "from": "seeran grades <authorization@" + config('MAILGUN_DOMAIN') + ">",
-            "to": user.surname.title() + " " + user.name.title() + "<" + user.email_address + ">",
+            "to": account.surname.title() + " " + account.name.title() + "<" + account.email_address + ">",
             "subject": "One Time Passcode",
             "template": "one-time passcode",
             "v:onetimecode": otp,
@@ -71,7 +71,7 @@ async def send_one_time_pin_email(user, reason):
                 
             # if the email was successfully delivered cache the hashed otp against the users 'email' address for 5 mins( 300 seconds)
             # this is cached to our redis database for faster retrieval when we verify the otp
-            cache.set(user.email + 'account_otp', (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
+            cache.set(account.email + 'account_otp', (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
             
             return {"message": "a new OTP has been sent to your email address"}
         
@@ -88,14 +88,14 @@ async def send_one_time_pin_email(user, reason):
         return {"error": str(e)}
 
 
-async def send_email_revalidation_one_time_pin_email(user):
+async def send_email_revalidation_one_time_pin_email(account):
     try:
         otp, hashed_otp, salt = generate_otp()
 
         # Define your email data
         email_data = {
             "from": "seeran grades <authorization@" + config('MAILGUN_DOMAIN') + ">",
-            "to": user.surname.title() + " " + user.name.title() + "<" + user.email_address + ">",
+            "to": account.surname.title() + " " + account.name.title() + "<" + account.email_address + ">",
             "subject": "One Time Passcode",
             "template": "one-time passcode",
             "v:onetimecode": otp,
@@ -116,7 +116,7 @@ async def send_email_revalidation_one_time_pin_email(user):
                 
             # if the email was successfully delivered cache the hashed otp against the users 'email' address for 5 mins( 300 seconds)
             # this is cached to our redis database for faster retrieval when we verify the otp
-            cache.set(user.email + 'email_revalidation_otp', (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
+            cache.set(account.email + 'email_revalidation_otp', (hashed_otp, salt), timeout=300)  # 300 seconds = 5 mins
             
             return {"message": "email sent"}
         
