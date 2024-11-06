@@ -1,7 +1,8 @@
 # python
 import hmac
 import hashlib
-import httpx
+import re
+from html import unescape
 
 # decode
 from decouple import config
@@ -38,9 +39,10 @@ def process_email(email):
             sender = email.get('sender')
             recipient = email.get('recipient')
             subject = email.get('subject', 'No Subject')
-            body = email.get('body-plain', '')
+            body = clean_plain_text(email.get('body-plain', ''))
             received_at = timezone.now()
             case_id = email.get('X-Case-ID')  # Custom header from Mailgun, if exists
+
 
             # Determine case type based on recipient subdomain
             case_type = emails_utilities.determine_case_type(recipient)
@@ -102,6 +104,19 @@ def process_email(email):
         # Rollback the transaction in case of any error and log the exception
         emails_logger.error(f"Error processing email from {sender}: {str(e)}")
         return JsonResponse({"error": str(e)}, status=500)
+
+
+def clean_plain_text(body):
+    # Unescape any HTML entities in the body (e.g., &amp; -> &)
+    body = unescape(body)
+    
+    # Remove HTML tags
+    body = re.sub(r'<[^>]+>', '', body)
+    
+    # Optional: further clean up any leftover whitespace
+    body = re.sub(r'\s+', ' ', body).strip()
+    
+    return body
 
 
 def verify_mailgun_signature(timestamp, token, signature):
