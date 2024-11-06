@@ -60,7 +60,8 @@ async def send_thread_response(case, initial_email, recipient, message):
                 "message_id": message_id, 
                 "subject": initial_email.subject, 
                 "email_type": case.type, 
-                "recipient": recipient
+                "recipient": recipient,
+                "message": message
             }
         
         elif response.status_code in [400, 401, 402, 403, 404]:
