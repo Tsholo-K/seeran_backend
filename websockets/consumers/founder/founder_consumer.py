@@ -214,6 +214,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
                         message=response.get('message')
                     )
                     if response.get('case_id'):
+                        print("running thread reply")
                         response = await founder_message_async_functions.thread_reply(
                             case_id=response.get('case_id'), 
                             message_id=response.get('message_id'), 
