@@ -30,6 +30,7 @@ async def thread_reply(case_id, message_id, subject, email_type, recipient, send
     try:
         # Fetch the case and initial email
         case = Case.objects.get(case_id=case_id, type=email_type)
+        print("retrieved case")
 
         # Save the outgoing email in the database
         Email.objects.acreate(
@@ -42,6 +43,7 @@ async def thread_reply(case_id, message_id, subject, email_type, recipient, send
             case=case,
             is_incoming=False
         )
+        print("created email object")
 
         # Assign to the user if the case has no assigned user
         if not case.assigned_to:
@@ -49,6 +51,7 @@ async def thread_reply(case_id, message_id, subject, email_type, recipient, send
             account = Founder.objects.aget(account_id=sender)
             case.assigned_to = account  # Set the actual account object
             case.save(update_fields=['assigned_to'])
+        print("checked thread assigned_to")
 
         return {"case_id": case_id, "message": message}
 
