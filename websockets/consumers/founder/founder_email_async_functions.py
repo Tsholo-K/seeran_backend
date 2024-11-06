@@ -107,15 +107,15 @@ async def send_thread_response(details):
             return {"case": case.case_id, "message": details.get('message')}
 
     except Case.DoesNotExist:
-        print(f"Case not found for ID: {case.case_id}.")
+        print(f"Case not found for ID: {case.case_id if case else details.get('thread')}.")
         return {"error": "Case not found"}
 
     except httpx.RequestError as e:
-        print(f"Error sending email via Mailgun for case {case.case_id}: {str(e)}")
+        print(f"Error sending email via Mailgun for case {case.case_id if case else details.get('thread')}: {str(e)}")
         return {"error": f"Mailgun request failed: {str(e)}"}
 
     except Exception as e:
-        print(f"Unexpected error for case {case.case_id}: {str(e)}")
+        print(f"Unexpected error for case {case.case_id if case else details.get('thread')}: {str(e)}")
         return {"error": str(e)}
 
 
