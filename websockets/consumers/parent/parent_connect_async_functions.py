@@ -27,17 +27,17 @@ def account_details(account, role):
             return {"denied": "Could not process your request, all of the children linked to your account have their accounts deactivated. For more information about this you can read our Termination Policy for why you're seeing this."}
 
         # Fetch unread messages for the user
-        unread_messages_count = PrivateMessage.objects.filter(
-            Q(chat_room__participant_one=requesting_account) | Q(chat_room__participant_two=requesting_account),
-            read_receipt=False
-        ).exclude(author=requesting_account).count()
+        # unread_messages_count = PrivateMessage.objects.filter(
+        #     Q(chat_room__participant_one=requesting_account) | Q(chat_room__participant_two=requesting_account),
+        #     read_receipt=False
+        # ).exclude(author=requesting_account).count()
 
         Serializer = serializer_mappings.account_details[role]
         # Serialize the user
         serialized_account = Serializer(instance=requesting_account).data
 
         # Return the serialized account details along with unread counts
-        return {'websocket_authenticated' : {'account': serialized_account, 'messages': unread_messages_count}}
+        return {'websocket_authenticated' : {'account': serialized_account, 'messages': 0}}
     
     except Exception as e:
         return {'error': str(e)}
