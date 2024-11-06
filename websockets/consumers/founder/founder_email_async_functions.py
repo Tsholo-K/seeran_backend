@@ -39,10 +39,10 @@ async def send_thread_response(case, initial_email, recipient, message):
             "subject": initial_email.subject,
             "v:agent": 'Tsholo Koketso',
             "v:response": message,
-            "h:In-Reply-To": initial_email.message_id,  # Include In-Reply-To header
-            "h:References": initial_email.message_id,   # Include References header
+            "h:In-Reply-To": initial_email.message_id,
+            "h:References": initial_email.message_id,
         }
-        print("prepared mailgun API data")
+        print("Prepared Mailgun API data")
 
         # Send the email
         async with httpx.AsyncClient() as client:
@@ -53,10 +53,10 @@ async def send_thread_response(case, initial_email, recipient, message):
             )
 
         if response.status_code == 200:
-            print("sent email")
-            print("Response headers:", response.headers)
-            print("Response body:", response.json())
-            message_id = response.headers.get("Message-ID")
+            print("Email sent")
+            # Extract Message-ID from the response body
+            response_data = response.json()
+            message_id = response_data.get("id")  # This is the Message-ID
             return {
                 "case_id": case.case_id, 
                 "message_id": message_id, 
@@ -67,11 +67,11 @@ async def send_thread_response(case, initial_email, recipient, message):
             }
         
         elif response.status_code in [400, 401, 402, 403, 404]:
-            return {"error": f"account successfully created, but there was an error sending an account confirmation email to the accounts email address. please open a new bug ticket with the issue, error code {response.status_code}"}
+            return {"error": f"Account successfully created, but there was an error sending an account confirmation email to the account's email address. Please open a new bug ticket with the issue, error code {response.status_code}."}
         elif response.status_code == 429:
-            return {"error": "account successfully created, but there was an error sending an account confirmation email to the accounts email address, the status code recieved could indicate a rate limit issue so please wait some few minutes before creating a new account"}
+            return {"error": "Account successfully created, but there was an error sending an account confirmation email to the account's email address. The status code received could indicate a rate limit issue, so please wait a few minutes before creating a new account."}
         else:
-            return {"error": "account successfully created, but there was an error sending an account confirmation email to the accounts email address."}
+            return {"error": "Account successfully created, but there was an error sending an account confirmation email to the account's email address."}
 
     except httpx.RequestError as e:
         print(f"Error sending thread response email via Mailgun: {str(e)}")
@@ -80,6 +80,7 @@ async def send_thread_response(case, initial_email, recipient, message):
     except Exception as e:
         print(f"Unexpected error sending thread response email: {str(e)}")
         return {"error": str(e)}
+
 
 
 async def send_marketing_case_and_send_initial_email(details):
