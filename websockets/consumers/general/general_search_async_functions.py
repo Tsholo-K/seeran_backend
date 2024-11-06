@@ -81,7 +81,7 @@ def search_chat_room(account, role, details):
     except Exception as e:
         # Handle any other unexpected errors
         return {'error': str(e)}
-    
+
 
 @database_sync_to_async
 def search_chat_room_messages(user, details):

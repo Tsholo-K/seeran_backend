@@ -128,6 +128,8 @@ class FounderConsumer(AsyncWebsocketConsumer):
             'search_threads': founder_search_async_functions.search_threads,
             'search_thread': founder_search_async_functions.search_thread,
 
+            'search_thread_messages': founder_search_async_functions.search_thread_messages,
+
             'principal_profile': founder_search_async_functions.search_principal_profile,
             'principal_details': founder_search_async_functions.search_principal_details,
 

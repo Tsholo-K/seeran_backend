@@ -17,6 +17,7 @@ from bug_reports.models import BugReport
 # serializers
 from accounts.serializers.principals.serializers import PrincipalAccountSerializer, PrincipalAccountDetailsSerializer
 from schools.serializers import SchoolSerializer, SchoolDetailsSerializer
+from emails.serializers import EmailMessagesSerializer
 from email_cases.serializers import EmailCasesSerializer, EmailCaseSerializer
 from invoices.serializers import InvoiceSerializer, InvoicesSerializer
 from bug_reports.serializers import BugReportsSerializer, BugReportSerializer
@@ -69,8 +70,43 @@ def search_thread(details):
     except Exception as e:
         # Handle any unexpected errors and return a general error message
         return {'error': str(e)}
-
     
+
+@database_sync_to_async
+def search_thread_messages(details):
+    try:
+        # Check if a chat room exists between the two users
+        case = Case.objects.get(type=details.get('type').upper(), case_id=details.get('thread'))
+        
+        if details.get('cursor'):
+            # Fetch messages before the cursor with a limit of 20
+            messages = case.messages.filter(timestamp__lt=details['cursor']).order_by('-timestamp')[:20]
+        else:
+            # Fetch the latest 20 messages
+            messages = case.messages.order_by('-timestamp')[:20]
+
+        if not messages.exists():
+            return {'messages': [], 'next_cursor': None}
+
+        # Convert messages to a list and reverse for correct ascending order
+        messages = list(messages)[::-1]
+
+        # Serialize the messages
+        serialized_messages = EmailMessagesSerializer(messages, many=True).data
+        
+        # Determine the next cursor
+        next_cursor = messages[0].received_at.isoformat() if len(messages) > 19 else None
+        
+        # Handle the case where no messages need to be updated
+        return {'messages': serialized_messages, 'next_cursor': next_cursor}
+    
+    except Case.DoesNotExist:
+        return {"error": "a email case with the provided credentials can not be found"}
+    
+    except Exception as e:
+        return {'error': str(e)}
+
+
 @database_sync_to_async
 def search_school(details):
     try:
