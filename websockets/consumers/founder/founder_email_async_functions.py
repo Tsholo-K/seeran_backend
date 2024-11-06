@@ -37,13 +37,13 @@ async def send_thread_response(details):
 
             # Assign to the user if the case has no assigned user
             if case.assigned_to and case.assigned_to.account_id != details.get('sender'):
-                emails_logger.error(f"Could not process your request, this thread is assigned to someone else. You are not allowed to respond to this thread.")
+                print(f"Could not process your request, this thread is assigned to someone else. You are not allowed to respond to this thread.")
                 return {"error": f"Could not process your request, this thread is assigned to someone else. You are not allowed to respond to this thread."}
 
             initial_email = case.initial_email
 
             if not initial_email:
-                emails_logger.error(f"Could not process your request, this thread does not have an initial email. Cannnot reply to an unknown sender or recipient.")
+                print(f"Could not process your request, this thread does not have an initial email. Cannnot reply to an unknown sender or recipient.")
                 return {"error": f"Could not process your request, this thread does not have an initial email. Cannnot reply to an unknown sender or recipient."}
 
             # Determine the correct recipient based on whether the initial email is incoming
@@ -103,19 +103,19 @@ async def send_thread_response(details):
                 case.assigned_to = account  # Set the actual account object
                 await case.asave(update_fields=['assigned_to'])
             
-            emails_logger.info(f"Reply email sent and saved for case: {case.case_id}.")
+            print(f"Reply email sent and saved for case: {case.case_id}.")
             return {"case": case.case_id, "message": details.get('message')}
 
     except Case.DoesNotExist:
-        emails_logger.error(f"Case not found for ID: {case.case_id}.")
+        print(f"Case not found for ID: {case.case_id}.")
         return {"error": "Case not found"}
 
     except httpx.RequestError as e:
-        emails_logger.error(f"Error sending email via Mailgun for case {case.case_id}: {str(e)}")
+        print(f"Error sending email via Mailgun for case {case.case_id}: {str(e)}")
         return {"error": f"Mailgun request failed: {str(e)}"}
 
     except Exception as e:
-        emails_logger.error(f"Unexpected error for case {case.case_id}: {str(e)}")
+        print(f"Unexpected error for case {case.case_id}: {str(e)}")
         return {"error": str(e)}
 
 
