@@ -55,7 +55,7 @@ async def send_thread_response(case, initial_email, recipient, message):
         if response.status_code == 200:
             print("sent email")
             print("Response headers:", response.headers)
-            print("Response:", response)
+            print("Response body:", response.json())
             message_id = response.headers.get("Message-ID")
             return {
                 "case_id": case.case_id, 
