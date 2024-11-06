@@ -40,7 +40,11 @@ class Case(models.Model):
 
     status = models.CharField(
         max_length=50,
-        choices=[('OPEN', 'Open'), ('CLOSED', 'Closed'), ('PENDING', 'Pending')],
+        choices=[
+            ('OPEN', 'Open'), 
+            ('CLOSED', 'Closed'), 
+            ('PENDING', 'Pending')
+        ],
         default='OPEN'
     )
 
