@@ -36,7 +36,7 @@ async def thread_reply(case_id, message_id, subject, email_type, recipient, send
         case = Case.objects.get(case_id=case_id, type=email_type)
 
         # Save the outgoing email in the database
-        await Email.objects.acreate(
+        Email.objects.acreate(
             message_id=message_id,
             sender=f"{email_type}@{config('MAILGUN_DOMAIN')}",
             recipient=recipient,
@@ -50,9 +50,9 @@ async def thread_reply(case_id, message_id, subject, email_type, recipient, send
         # Assign to the user if the case has no assigned user
         if not case.assigned_to:
             # Fetch the Account object based on account_id
-            account = await Founder.objects.aget(account_id=sender)
+            account = Founder.objects.aget(account_id=sender)
             case.assigned_to = account  # Set the actual account object
-            await case.save(update_fields=['assigned_to'])
+            case.save(update_fields=['assigned_to'])
 
         return {"case_id": case_id, "message": message}
 
