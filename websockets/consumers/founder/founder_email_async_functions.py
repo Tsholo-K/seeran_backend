@@ -20,7 +20,7 @@ emails_logger = logging.getLogger('emails_logger')
 email_cases_logger = logging.getLogger('email_cases_logger')
 
 
-async def send_case_response(details):
+async def send_thread_response(details):
     """
     Send a reply to a case through Mailgun, ensuring data integrity with atomic transaction.
     Args:
@@ -32,7 +32,7 @@ async def send_case_response(details):
     try:
         async with transaction.atomic():
             # Fetch the case and initial email
-            case = await Case.objects.select_for_update().aget(case_id=details.get('case'))
+            case = await Case.objects.select_for_update().aget(case_id=details.get('thread'), type=details.get('type').upper())
             initial_email = case.initial_email
 
             # Determine the correct recipient based on whether the initial email is incoming
@@ -53,7 +53,7 @@ async def send_case_response(details):
                 "from": f"seeran grades <{case.type.lower()}@{config('MAILGUN_DOMAIN')}>",
                 "to": recipient,
                 "subject": initial_email.subject,
-                "text": details.get('body'),
+                "text": details.get('message'),
                 "h:In-Reply-To": headers["In-Reply-To"],
                 "h:References": headers["References"],
                 "h:X-Case-ID": headers["X-Case-ID"],
@@ -71,19 +71,19 @@ async def send_case_response(details):
             message_id = response.headers.get("Message-ID")
 
             # Save the outgoing email in the database
-            email = await Email.objects.acreate(
+            await Email.objects.acreate(
                 message_id=message_id,
                 sender=f"{case.type.lower()}@{config('MAILGUN_DOMAIN')}",
                 recipient=recipient,
                 subject=initial_email.subject,
-                body=details.get('body'),
+                body=details.get('message'),
                 received_at=timezone.now(),
                 case=case,
                 is_incoming=False
             )
 
             emails_logger.info(f"Reply email sent and saved for case: {case.case_id}.")
-            return {"status": "Reply sent successfully", "email_id": email.id}
+            return {"case": case.case_id, "message": details.get('message')}
 
     except Case.DoesNotExist:
         emails_logger.error(f"Case not found for ID: {case.case_id}.")

@@ -15,6 +15,8 @@ from . import founder_connect_async_functions
 from . import founder_create_async_functions
 from . import founder_delete_async_functions
 from . import founder_search_async_functions
+from . import founder_message_async_functions
+from . import founder_email_async_functions
 from . import founder_update_async_functions
 from . import founder_view_async_functions
 
@@ -190,6 +192,25 @@ class FounderConsumer(AsyncWebsocketConsumer):
             return await founder_update_async_functions.update_school_account_details(details)
         
         return {'error': 'Could not process your request, an invalid update description was provided. If this problem persist open a bug report ticket.'}
+
+# MESSAGE
+
+    async def handle_message(self, description, details, account, role, access_token):
+        message_map = {
+            'send_thread_response': founder_email_async_functions.send_thread_response,
+        }
+
+        func = message_map.get(description)
+        if func:
+            response = await func(details)
+            if response.get('case'):
+                await connection_manager.send_message(account, json.dumps({'description': 'message_fan', 'message': response['message'], 'case': response['case']}))
+
+                return {'status': 'thread response successfully sent'}
+            return response
+
+        return {'error': 'Could not process your request, an invalid message description was provided. If this problem persist open a bug report ticket.'}
+
 
 # SUBMIT
 
