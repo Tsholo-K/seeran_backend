@@ -31,8 +31,18 @@ async def send_thread_response(details):
         type: Type of email (e.g., response, update).
     """
     try:
-        print("fetching thread case and sending email in a bit")
+        print("About to fetch thread case and send email")
+        # Ensure 'thread' and 'type' are present in details and are valid
+        thread_id = details.get('thread')
+        email_type = details.get('type')
+
+        if not thread_id or not email_type:
+            print(f"Missing thread ID or email type. thread_id: {thread_id}, email_type: {email_type}")
+            return {"error": "Invalid input data: missing thread ID or email type."}
+
+        # Perform the database query
         async with transaction.atomic():
+            print("Attempting to fetch the case and email...")
             # Fetch the case and initial email
             case = await Case.objects.select_for_update().aget(case_id=details.get('thread'), type=details.get('type').upper())
             print("fetched thread")
