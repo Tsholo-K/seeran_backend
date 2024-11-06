@@ -31,15 +31,18 @@ async def send_thread_response(details):
         type: Type of email (e.g., response, update).
     """
     try:
-        print("sendind email in a bit")
+        print("fetching thread case and sending email in a bit")
         async with transaction.atomic():
             # Fetch the case and initial email
             case = await Case.objects.select_for_update().aget(case_id=details.get('thread'), type=details.get('type').upper())
+            print("fetched thread")
 
             # Assign to the user if the case has no assigned user
             if case.assigned_to and case.assigned_to.account_id != details.get('sender'):
                 print(f"Could not process your request, this thread is assigned to someone else. You are not allowed to respond to this thread.")
                 return {"error": f"Could not process your request, this thread is assigned to someone else. You are not allowed to respond to this thread."}
+            
+            print("verified assigned to")
 
             initial_email = case.initial_email
 
