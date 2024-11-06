@@ -42,11 +42,15 @@ async def send_thread_response(details):
 
             initial_email = case.initial_email
 
+            if not initial_email:
+                emails_logger.error(f"Could not process your request, this thread does not have an initial email. Cannnot reply to an unknown sender or recipient.")
+                return {"error": f"Could not process your request, this thread does not have an initial email. Cannnot reply to an unknown sender or recipient."}
+
             # Determine the correct recipient based on whether the initial email is incoming
-            if initial_email and initial_email.is_incoming:
+            if initial_email.is_incoming:
                 recipient = initial_email.sender
             else:
-                recipient = case.recipient_email
+                recipient = initial_email.recipient
 
             # Prepare headers for reply tracking
             headers = {
