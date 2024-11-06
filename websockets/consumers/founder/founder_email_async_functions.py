@@ -21,7 +21,7 @@ emails_logger = logging.getLogger('emails_logger')
 email_cases_logger = logging.getLogger('email_cases_logger')
 
 
-async def send_thread_response(account, case, initial_email, recipient, message):
+async def send_thread_response(case, initial_email, recipient, message):
     """
     Send a reply to a case through Mailgun, ensuring data integrity with atomic transaction.
     Args:
@@ -31,14 +31,6 @@ async def send_thread_response(account, case, initial_email, recipient, message)
         type: Type of email (e.g., response, update).
     """
     try:
-
-        # Prepare headers for reply tracking
-        headers = {
-            "In-Reply-To": initial_email.message_id if initial_email else "",
-            "References": initial_email.message_id if initial_email else "",
-            "X-Case-ID": case.case_id,
-        }
-
         # Prepare Mailgun API data
         data = {
             "from": f"seeran grades <{case.type.lower()}@{config('MAILGUN_DOMAIN')}>",
@@ -47,9 +39,8 @@ async def send_thread_response(account, case, initial_email, recipient, message)
             "subject": initial_email.subject,
             "v:agent": 'Tsholo Koketso',
             "v:response": message,
-            "h:In-Reply-To": headers["In-Reply-To"],
-            "h:References": headers["References"],
-            "h:X-Case-ID": headers["X-Case-ID"],
+            "h:In-Reply-To": initial_email.message_id,  # Include In-Reply-To header
+            "h:References": initial_email.message_id,   # Include References header
         }
 
         # Send the email
@@ -69,12 +60,13 @@ async def send_thread_response(account, case, initial_email, recipient, message)
                 "email_type": case.type, 
                 "recipient": recipient
             }
+
         elif response.status_code in [400, 401, 402, 403, 404]:
-            return {"error": f"account successfully created, but there was an error sending an account confirmation email to the accounts email address. please open a new bug ticket with the issue, error code {response.status_code}"}
+            return {"error": f"Error sending response email. Status code: {response.status_code}"}
         elif response.status_code == 429:
-            return {"error": "account successfully created, but there was an error sending an account confirmation email to the accounts email address, the status code recieved could indicate a rate limit issue so please wait some few minutes before creating a new account"}
+            return {"error": "Rate limit exceeded. Try again later."}
         else:
-            return {"error": "account successfully created, but there was an error sending an account confirmation email to the accounts email address."}
+            return {"error": "Error sending response email."}
 
     except httpx.RequestError as e:
         print(f"Error sending thread response email via Mailgun: {str(e)}")
@@ -83,6 +75,7 @@ async def send_thread_response(account, case, initial_email, recipient, message)
     except Exception as e:
         print(f"Unexpected error sending thread response email: {str(e)}")
         return {"error": str(e)}
+
 
 
 async def send_marketing_case_and_send_initial_email(details):

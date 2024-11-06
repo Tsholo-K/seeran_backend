@@ -41,9 +41,11 @@ def process_email(email):
             subject = email.get('subject', 'No Subject')
             body = clean_plain_text(email.get('body-plain', ''))
             received_at = timezone.now()
-            case_id = email.get('X-Case-ID')  # Custom header from Mailgun, if exists
-
-
+            
+            # Extract headers related to threading
+            in_reply_to = email.get('In-Reply-To')  # This should be the Message-ID of the email you're replying to
+            references = email.get('References')  # This can include a chain of Message-IDs
+            
             # Determine case type based on recipient subdomain
             case_type = emails_utilities.determine_case_type(recipient)
 
@@ -52,23 +54,29 @@ def process_email(email):
                 emails_logger.info(f"Duplicate email ignored: {message_id} from {sender}.")
                 return JsonResponse({"status": "Duplicate message ignored"}, status=200)
 
-            # Identify or create a Case
-            if case_id:
+            # Identify or create a Case based on In-Reply-To or References headers
+            case = None
+            if in_reply_to:
                 try:
-                    # Attempt to retrieve the existing case using the case_id from the custom header
-                    case = Case.objects.get(case_id=case_id)
-                    emails_logger.info(f"Case found: {case_id} for email from {sender}.")
-                except Case.DoesNotExist:
-                    # If no case is found with the provided case_id, create a new case
-                    case = Case.objects.create(
-                        title=subject,
-                        type=case_type,
-                        initial_email=None,
-                        description=f"Auto-generated {case_type.lower()} case for incoming email."
-                    )
-                    emails_logger.info(f"Created new case: {case.case_id} for email from {sender}.")
-            else:
-                # If no case_id in the header, create a new case
+                    # Try to find the case from the email being replied to
+                    email_thread = Email.objects.get(message_id=in_reply_to)
+                    case = email_thread.case
+                    emails_logger.info(f"Found case {case.case_id} from in_reply_to header.")
+                except Email.DoesNotExist:
+                    emails_logger.info(f"Email in_reply_to {in_reply_to} not found. Creating new case.")
+            
+            if not case and references:
+                try:
+                    # If no case found, check References (it could be a chain)
+                    email_thread = Email.objects.filter(message_id__in=references.split())
+                    if email_thread.exists():
+                        case = email_thread.first().case
+                        emails_logger.info(f"Found case {case.case_id} from references header.")
+                except Email.DoesNotExist:
+                    emails_logger.info(f"Emails in references {references} not found. Creating new case.")
+            
+            # If no case found by references or in_reply_to, create a new case
+            if not case:
                 case = Case.objects.create(
                     title=subject,
                     type=case_type,
@@ -76,9 +84,9 @@ def process_email(email):
                     description=f"Auto-generated {case_type.lower()} case for incoming email."
                 )
                 emails_logger.info(f"Created new case: {case.case_id} for email from {sender}.")
-
+            
             # Create a new Email entry in the database, linking to the identified or created case
-            email = Email.objects.create(
+            email_entry = Email.objects.create(
                 message_id=message_id,
                 sender=sender,
                 recipient=recipient,
@@ -92,7 +100,7 @@ def process_email(email):
 
             # If this is the first email in the case, set it as the initial_email
             if not case.initial_email:
-                case.initial_email = email
+                case.initial_email = email_entry
                 case.save(update_fields=['initial_email'])
                 emails_logger.info(f"Set initial email for case: {case.case_id}.")
 
