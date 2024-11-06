@@ -80,10 +80,10 @@ def search_thread_messages(details):
         
         if details.get('cursor'):
             # Fetch messages before the cursor with a limit of 20
-            messages = case.messages.filter(timestamp__lt=details['cursor']).order_by('-timestamp')[:20]
+            messages = case.emails.filter(timestamp__lt=details['cursor']).order_by('-timestamp')[:20]
         else:
             # Fetch the latest 20 messages
-            messages = case.messages.order_by('-timestamp')[:20]
+            messages = case.emails.order_by('-timestamp')[:20]
 
         if not messages.exists():
             return {'messages': [], 'next_cursor': None}
