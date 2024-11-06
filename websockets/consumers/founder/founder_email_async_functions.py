@@ -21,7 +21,7 @@ emails_logger = logging.getLogger('emails_logger')
 email_cases_logger = logging.getLogger('email_cases_logger')
 
 
-async def send_thread_response(details):
+async def send_thread_response(account, case, initial_email, recipient, message):
     """
     Send a reply to a case through Mailgun, ensuring data integrity with atomic transaction.
     Args:
@@ -31,105 +31,57 @@ async def send_thread_response(details):
         type: Type of email (e.g., response, update).
     """
     try:
-        print("About to fetch thread case and send email")
-        # Ensure 'thread' and 'type' are present in details and are valid
-        thread_id = details.get('thread')
-        email_type = details.get('type')
 
-        if not thread_id or not email_type:
-            print(f"Missing thread ID or email type. thread_id: {thread_id}, email_type: {email_type}")
-            return {"error": "Invalid input data: missing thread ID or email type."}
+        # Prepare headers for reply tracking
+        headers = {
+            "In-Reply-To": initial_email.message_id if initial_email else "",
+            "References": initial_email.message_id if initial_email else "",
+            "X-Case-ID": case.case_id,
+        }
 
-        # Perform the database query
-        async with transaction.atomic():
-            print("Attempting to fetch the case and email...")
-            # Fetch the case and initial email
-            case = await Case.objects.select_for_update().aget(case_id=details.get('thread'), type=details.get('type').upper())
-            print("fetched thread")
+        # Prepare Mailgun API data
+        data = {
+            "from": f"seeran grades <{case.type.lower()}@{config('MAILGUN_DOMAIN')}>",
+            "to": recipient,
+            "template": "support response email",
+            "subject": initial_email.subject,
+            "v:agent": 'Tsholo Koketso',
+            "v:response": message,
+            "h:In-Reply-To": headers["In-Reply-To"],
+            "h:References": headers["References"],
+            "h:X-Case-ID": headers["X-Case-ID"],
+        }
 
-            # Assign to the user if the case has no assigned user
-            if case.assigned_to and case.assigned_to.account_id != details.get('sender'):
-                print(f"Could not process your request, this thread is assigned to someone else. You are not allowed to respond to this thread.")
-                return {"error": f"Could not process your request, this thread is assigned to someone else. You are not allowed to respond to this thread."}
-            
-            print("verified assigned to")
-
-            initial_email = case.initial_email
-
-            if not initial_email:
-                print(f"Could not process your request, this thread does not have an initial email. Cannnot reply to an unknown sender or recipient.")
-                return {"error": f"Could not process your request, this thread does not have an initial email. Cannnot reply to an unknown sender or recipient."}
-
-            # Determine the correct recipient based on whether the initial email is incoming
-            if initial_email.is_incoming:
-                recipient = initial_email.sender
-            else:
-                recipient = initial_email.recipient
-
-            # Prepare headers for reply tracking
-            headers = {
-                "In-Reply-To": initial_email.message_id if initial_email else "",
-                "References": initial_email.message_id if initial_email else "",
-                "X-Case-ID": case.case_id,
-            }
-
-            # Prepare Mailgun API data
-            data = {
-                "from": f"seeran grades <{case.type.lower()}@{config('MAILGUN_DOMAIN')}>",
-                "to": recipient,
-                "template": "support response email",
-                "subject": initial_email.subject,
-                "text": details.get('message'),
-                "v:agent": 'Tsholo Koketso',
-                "v:response": details.get('message'),
-                "h:In-Reply-To": headers["In-Reply-To"],
-                "h:References": headers["References"],
-                "h:X-Case-ID": headers["X-Case-ID"],
-            }
-
-            # Send the email
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"https://api.eu.mailgun.net/v3/{config('MAILGUN_DOMAIN')}/messages",
-                    auth=("api", config('MAILGUN_API_KEY')),
-                    data=data
-                )
-
-            response.raise_for_status()
-            message_id = response.headers.get("Message-ID")
-
-            # Save the outgoing email in the database
-            await Email.objects.acreate(
-                message_id=message_id,
-                sender=f"{case.type.lower()}@{config('MAILGUN_DOMAIN')}",
-                recipient=recipient,
-                subject=initial_email.subject,
-                body=details.get('message'),
-                received_at=timezone.now(),
-                case=case,
-                is_incoming=False
+        # Send the email
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"https://api.eu.mailgun.net/v3/{config('MAILGUN_DOMAIN')}/messages",
+                auth=("api", config('MAILGUN_API_KEY')),
+                data=data
             )
 
-            # Assign to the user if the case has no assigned user
-            if not case.assigned_to:
-                # Fetch the Account object based on account_id
-                account = await Founder.objects.aget(account_id=details.get('sender'))
-                case.assigned_to = account  # Set the actual account object
-                await case.asave(update_fields=['assigned_to'])
-            
-            print(f"Reply email sent and saved for case: {case.case_id}.")
-            return {"case": case.case_id, "message": details.get('message')}
-
-    except Case.DoesNotExist:
-        print(f"Case not found for ID: {case.case_id if case else details.get('thread')}.")
-        return {"error": "Case not found"}
+        if response.status_code == 200:
+            message_id = response.headers.get("Message-ID")
+            return {
+                "case_id": case.case_id, 
+                "message_id": message_id, 
+                "subject": initial_email.subject, 
+                "email_type": case.type, 
+                "recipient": recipient
+            }
+        elif response.status_code in [400, 401, 402, 403, 404]:
+            return {"error": f"account successfully created, but there was an error sending an account confirmation email to the accounts email address. please open a new bug ticket with the issue, error code {response.status_code}"}
+        elif response.status_code == 429:
+            return {"error": "account successfully created, but there was an error sending an account confirmation email to the accounts email address, the status code recieved could indicate a rate limit issue so please wait some few minutes before creating a new account"}
+        else:
+            return {"error": "account successfully created, but there was an error sending an account confirmation email to the accounts email address."}
 
     except httpx.RequestError as e:
-        print(f"Error sending email via Mailgun for case {case.case_id if case else details.get('thread')}: {str(e)}")
+        print(f"Error sending thread response email via Mailgun: {str(e)}")
         return {"error": f"Mailgun request failed: {str(e)}"}
 
     except Exception as e:
-        print(f"Unexpected error for case {case.case_id if case else details.get('thread')}: {str(e)}")
+        print(f"Unexpected error sending thread response email: {str(e)}")
         return {"error": str(e)}
 
 

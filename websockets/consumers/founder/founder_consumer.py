@@ -15,6 +15,7 @@ from . import founder_connect_async_functions
 from . import founder_create_async_functions
 from . import founder_delete_async_functions
 from . import founder_search_async_functions
+from . import founder_verify_async_functions
 from . import founder_message_async_functions
 from . import founder_email_async_functions
 from . import founder_update_async_functions
@@ -203,19 +204,38 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
         func = message_map.get(description)
         if func:
-            response = await func(details)
-            if response.get('case'):
-                await connection_manager.send_message(
-                    account, 
-                    json.dumps({
-                        'description': 'message_fan', 
-                        'message': response['message'], 
-                        'case': response['case']
-                    })
-                )
+            if description == 'send_thread_response':
+                response = await founder_verify_async_functions.verify_thread_response(account, details)
+                if response.get('case'):
+                    response = await func(
+                        account=account, 
+                        case=response.get('case'), 
+                        initial_email=response.get('initial_email'), 
+                        recipient=response.get('recipient'), 
+                        message=response.get('message')
+                    )
+                    if response.get('case_id'):
+                        response = await founder_message_async_functions.thread_reply(
+                            case_id=response.get('case_id'), 
+                            message_id=response.get('message_id'), 
+                            subject=response.get('subject'), 
+                            email_type=response.get('email_type'), 
+                            recipient=response.get('recipient'), 
+                            sender=account, 
+                            message=response.get('message')
+                        )
+                        await connection_manager.send_message(
+                                account, 
+                                json.dumps({
+                                    'description': 'message_fan', 
+                                    'message': response['message'], 
+                                    'case': response['case_id']
+                                })
+                            )
 
-                return {'status': 'thread response successfully sent'}
-            return response
+                        return {'status': 'thread response successfully sent'}
+
+                return response
 
         return {'error': 'Could not process your request, an invalid message description was provided. If this problem persist open a bug report ticket.'}
 
