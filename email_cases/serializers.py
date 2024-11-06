@@ -29,10 +29,18 @@ class EmailCasesSerializer(serializers.ModelSerializer):
 class EmailCaseSerializer(serializers.ModelSerializer):
 
     assigned_to = serializers.SerializerMethodField()
+    email_address = serializers.SerializerMethodField()
 
     class Meta:
         model = Case
-        fields = ['title', 'description', 'status', 'created_at', 'updated_at', 'assigned_to']
+        fields = ['title', 'description', 'status', 'created_at', 'updated_at', 'email_address', 'assigned_to']
 
     def get_assigned_to(self, obj):
         return FounderDisplayAccountDetailsSerializer(obj.assigned_to).data if obj.assigned_to else None
+    
+    def get_email_address(self, obj):
+        if obj.initial_email:
+            if obj.initial_email.is_incoming:
+                return obj.initial_email.sender
+            else:
+                return obj.initial_email.recipient_email                

@@ -62,7 +62,7 @@ def process_email(email):
                         title=subject,
                         type=case_type,
                         initial_email=None,
-                        description="Auto-generated case for email without matching Case ID"
+                        description=f"Auto-generated {case_type.lower()} case for incoming email."
                     )
                     emails_logger.info(f"Created new case: {case.case_id} for email from {sender}.")
             else:
@@ -71,7 +71,7 @@ def process_email(email):
                     title=subject,
                     type=case_type,
                     initial_email=None,
-                    description="Auto-generated case for email without Case ID"
+                    description=f"Auto-generated {case_type.lower()} case for incoming email."
                 )
                 emails_logger.info(f"Created new case: {case.case_id} for email from {sender}.")
 

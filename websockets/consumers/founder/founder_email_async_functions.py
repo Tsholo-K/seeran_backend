@@ -9,6 +9,7 @@ from django.db import transaction
 from django.utils import timezone
 
 # models
+from accounts.models import Founder
 from emails.models import Email
 from email_cases.models import Case
 
@@ -33,6 +34,12 @@ async def send_thread_response(details):
         async with transaction.atomic():
             # Fetch the case and initial email
             case = await Case.objects.select_for_update().aget(case_id=details.get('thread'), type=details.get('type').upper())
+
+            # Assign to the user if the case has no assigned user
+            if case.assigned_to and case.assigned_to.account_id != details.get('sender'):
+                emails_logger.error(f"Could not process your request, this thread is assigned to someone else. You are not allowed to respond to this thread.")
+                return {"error": f"Could not process your request, this thread is assigned to someone else. You are not allowed to respond to this thread."}
+
             initial_email = case.initial_email
 
             # Determine the correct recipient based on whether the initial email is incoming
@@ -52,8 +59,11 @@ async def send_thread_response(details):
             data = {
                 "from": f"seeran grades <{case.type.lower()}@{config('MAILGUN_DOMAIN')}>",
                 "to": recipient,
+                "template": "support response email",
                 "subject": initial_email.subject,
                 "text": details.get('message'),
+                "v:agent": 'Tsholo Koketso',
+                "v:response": details.get('message'),
                 "h:In-Reply-To": headers["In-Reply-To"],
                 "h:References": headers["References"],
                 "h:X-Case-ID": headers["X-Case-ID"],
@@ -82,6 +92,13 @@ async def send_thread_response(details):
                 is_incoming=False
             )
 
+            # Assign to the user if the case has no assigned user
+            if not case.assigned_to:
+                # Fetch the Account object based on account_id
+                account = await Founder.objects.aget(account_id=details.get('sender'))
+                case.assigned_to = account  # Set the actual account object
+                await case.asave(update_fields=['assigned_to'])
+            
             emails_logger.info(f"Reply email sent and saved for case: {case.case_id}.")
             return {"case": case.case_id, "message": details.get('message')}
 
@@ -159,7 +176,14 @@ async def send_marketing_case_and_send_initial_email(details):
 
             # Update the case with the initial email reference
             case.initial_email = email
-            await case.asave(update_fields=['initial_email'])
+
+            # Assign to the user if the case has no assigned user
+            if not case.assigned_to:
+                # Fetch the Account object based on account_id
+                account = await Founder.objects.aget(account_id=details.get('sender'))
+                case.assigned_to = account  # Set the actual account object
+
+            await case.asave(update_fields=['initial_email', 'assigned_to'])
 
             # Log success
             emails_logger.info(f"Case created and initial email sent for case: {case.case_id}.")

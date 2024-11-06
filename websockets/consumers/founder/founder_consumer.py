@@ -202,9 +202,16 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
         func = message_map.get(description)
         if func:
-            response = await func(details)
+            response = await func({**details, 'sender': account})
             if response.get('case'):
-                await connection_manager.send_message(account, json.dumps({'description': 'message_fan', 'message': response['message'], 'case': response['case']}))
+                await connection_manager.send_message(
+                    account, 
+                    json.dumps({
+                        'description': 'message_fan', 
+                        'message': response['message'], 
+                        'case': response['case']
+                    })
+                )
 
                 return {'status': 'thread response successfully sent'}
             return response
