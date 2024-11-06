@@ -1,6 +1,9 @@
 # decode
 from decouple import config
 
+# channels
+from channels.db import database_sync_to_async
+
 # django
 from django.utils import timezone
 
@@ -17,7 +20,8 @@ emails_logger = logging.getLogger('emails_logger')
 email_cases_logger = logging.getLogger('email_cases_logger')
 
 
-async def thread_reply(case_id, message_id, subject, email_type, recipient, sender, message):
+@database_sync_to_async
+def thread_reply(case_id, message_id, subject, email_type, recipient, sender, message):
     """
     Create a new case and send the initial email to the recipient.
 
