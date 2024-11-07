@@ -38,6 +38,8 @@ def fetch_and_process_incoming_emails(self, *args, **kwargs):
                 emails_utilities.process_email(email_data)
                 emails_fetched += 1
 
+                # Delete the blob (email) after successful processing
+                blob.delete()
                 emails_logger.info(f"Successfully processed email: {blob.name}")
 
             except Exception as e:
@@ -51,8 +53,12 @@ def fetch_and_process_incoming_emails(self, *args, **kwargs):
             for blob in blobs:
                 try:
                     email_data = blob.download_as_text()
+                    
                     emails_utilities.process_email(email_data)
                     emails_fetched += 1
+
+                    # Delete the blob (email) after successful processing
+                    blob.delete()
                     emails_logger.info(f"Successfully processed email: {blob.name}")
                 except Exception as e:
                     emails_logger.error(f"Error processing email {blob.name}: {str(e)}")
