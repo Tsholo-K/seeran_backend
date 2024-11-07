@@ -206,16 +206,10 @@ class FounderConsumer(AsyncWebsocketConsumer):
         func = message_map.get(description)
         if func:
             if description == 'email_thread_reply':
-                print("email_thread_reply")
                 response = await func(account, details)
-                if response.get('message'):
-                    # await connection_manager.send_message(account, json.dumps({'description': 'message_fan', 'message': response['message'], 'case': response['case_id']}))
-                    return {'message': response['message']}
                         
             elif description == 'send_marketing_email':
                 response = await func(details)
-                if response.get('email_data'):
-                    response = await founder_message_async_functions.marketing_thread_initialization(account, response.get('email_data'))
 
             return response
 

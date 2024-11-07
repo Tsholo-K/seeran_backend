@@ -21,53 +21,6 @@ emails_logger = logging.getLogger('emails_logger')
 email_cases_logger = logging.getLogger('email_cases_logger')
 
 
-@database_sync_to_async
-def thread_reply(account, email_data):
-    """
-    Create a new case and send the initial email to the recipient.
-
-    Args:
-        recipient: The email address of the recipient.
-        subject: The subject of the initial email.
-        body: The body content of the initial email.
-        case_type: The type of the case being created.
-    """
-    try:
-        with transaction.atomic():
-            # Fetch the case and initial email
-            case = Case.objects.get(
-                case_id=email_data.case_id, 
-                type=email_data.email_type
-            )
-            print("retrieved case")
-
-            # Save the outgoing email in the database
-            Email.objects.create(
-                message_id=email_data.message_id,
-                sender=f"{email_data.email_type}@{config('MAILGUN_DOMAIN')}",
-                recipient=email_data.recipient,
-                subject=email_data.subject,
-                body=email_data.message,
-                received_at=timezone.now(),
-                case=case,
-                is_incoming=False
-            )
-            print("created email object")
-
-            # Assign to the user if the case has no assigned user
-            if not case.assigned_to:
-                # Fetch the Account object based on account_id
-                account = Founder.objects.get(account_id=account)
-                case.assigned_to = account  # Set the actual account object
-                case.save(update_fields=['assigned_to'])
-            print("checked thread assigned_to")
-
-        return {"message": "Thread reply has been successfully sent."}
-
-    except Exception as e:
-        emails_logger.error(f"Error creating case and sending email: {str(e)}")
-        return {"error": str(e)}   
-
 
 @database_sync_to_async
 def marketing_thread_initialization(account, email_data):

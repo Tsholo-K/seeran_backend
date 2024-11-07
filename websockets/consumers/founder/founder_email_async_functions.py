@@ -33,41 +33,74 @@ import logging
 
 emails_logger = logging.getLogger('emails')
 
+
+import logging
+import httpx
+from asgiref.sync import sync_to_async
+from django.utils import timezone
+from django.core.exceptions import ValidationError
+from .models import Founder, Case, Email
+
+# Logger for emails
+emails_logger = logging.getLogger('emails')
+
 async def email_thread_reply(account, details):
+    """
+    Asynchronously handles sending a reply to an email thread.
+
+    This function performs the following:
+    1. Verifies the requesting user’s account.
+    2. Checks the provided details for required fields (thread ID, email type, message).
+    3. Fetches the associated case and initial email.
+    4. Verifies the case assignment, ensuring the user is authorized to respond.
+    5. Sends the reply email using Mailgun.
+    6. Logs the email in the database and assigns the case to the user if unassigned.
+
+    Args:
+        account (str): The account ID of the requesting user.
+        details (dict): Dictionary containing 'thread', 'type', and 'message'.
+
+    Returns:
+        dict: Success message or error details.
+    """
     try:
-        print("Starting email_thread_reply execution.")
+        emails_logger.info("Starting email_thread_reply execution.")
 
-        # Fetch user account and verify permissions
-        print("fetching requesting account")
+        # Step 1: Fetch the requesting user account and verify permissions.
+        emails_logger.debug("Fetching requesting account.")
         requesting_account = await sync_to_async(Founder.objects.get)(account_id=account)
-        print("got requesting account")
+        emails_logger.info(f"Found requesting account: {requesting_account}")
 
-        # Ensure required details are present
+        # Step 2: Ensure required details are provided.
         if not {'thread', 'type', 'message'}.issubset(details):
-            return {'error': 'Invalid request. Provide a valid thread ID, email type, and response message.'}
-        print("validated incoming data")
+            error_message = "Invalid request. Missing required details: 'thread', 'type', or 'message'."
+            emails_logger.error(error_message)
+            return {'error': error_message}
+        emails_logger.info("Validated incoming data.")
 
-        # Fetch case and initial email with select_related to load related data
-        print("fetching case")
+        # Step 3: Fetch the case and related initial email.
+        emails_logger.debug("Fetching case and initial email.")
         case = await sync_to_async(Case.objects.select_related('initial_email', 'assigned_to').get)(
             case_id=details.get('thread'), 
             type=details.get('type').upper()
         )
-        initial_email = case.initial_email  # This will now be preloaded and available directly
-        print("got case")
+        initial_email = case.initial_email  # The initial email is preloaded with select_related
+        emails_logger.info(f"Fetched case with ID: {case.case_id}.")
 
-        # Check initial email and assignment
+        # Step 4: Validate the initial email and case assignment.
         if not initial_email:
-            return {"error": "This thread lacks an initial email, so it cannot be replied to."}
+            error_message = "This thread lacks an initial email, so it cannot be replied to."
+            emails_logger.error(error_message)
+            return {"error": error_message}
 
         if case.assigned_to and str(case.assigned_to.account_id) != account:
-            return {"error": "This thread is assigned to another user."}
-        print("validated initial email and assigned_to")
+            error_message = "Unauthorized action. This thread is assigned to another user."
+            emails_logger.error(error_message)
+            return {"error": error_message}
+        emails_logger.info("Validated initial email and case assignment.")
 
-        # Determine recipient based on initial email
+        # Step 5: Determine recipient and prepare the email data for sending.
         recipient = initial_email.sender if initial_email.is_incoming else initial_email.recipient
-
-        # Prepare email data for Mailgun
         message = details.get('message')
         agent_name = f"{requesting_account.surname} {requesting_account.name}".title()
         email_data = {
@@ -82,8 +115,9 @@ async def email_thread_reply(account, details):
             "h:In-Reply-To": initial_email.message_id,
             "h:References": initial_email.message_id,
         }
+        emails_logger.info(f"Prepared email data for recipient: {recipient}")
 
-        # Send email via Mailgun
+        # Step 6: Send the email via Mailgun.
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"https://api.eu.mailgun.net/v3/{config('MAILGUN_DOMAIN')}/messages",
@@ -91,11 +125,13 @@ async def email_thread_reply(account, details):
                 data=email_data
             )
 
+        # Step 7: Handle Mailgun response and log the email if successful.
         if response.status_code == 200:
             response_data = response.json()
             message_id = response_data.get("id")
+            emails_logger.info(f"Email successfully sent. Mailgun message ID: {message_id}")
 
-            # Log the outgoing email in the database only after successful Mailgun response
+            # Step 8: Log the outgoing email in the database.
             await sync_to_async(Email.objects.create)(
                 message_id=message_id,
                 sender=f"{case.type.lower()}@{config('MAILGUN_DOMAIN')}",
@@ -106,164 +142,171 @@ async def email_thread_reply(account, details):
                 case=case,
                 is_incoming=False
             )
+            emails_logger.info("Outgoing email logged in the database.")
 
-            # Assign case if no user is assigned
+            # Step 9: Assign the case to the requesting user if no user is assigned.
             if not case.assigned_to:
                 case.assigned_to = requesting_account
                 await sync_to_async(case.save)(update_fields=['assigned_to'])
+                emails_logger.info(f"Case assigned to user: {requesting_account}")
 
-            return {"message": "Thread reply successfully sent."}
+            return {"message": message}
 
+        # Handle common error statuses from Mailgun.
         elif response.status_code in [400, 401, 402, 403, 404]:
-            error = f"There was an error sending the thread reply email, error code {response.status_code}."
-            emails_logger.error(error)
-            return {"error": error}
+            error_message = f"Error sending email, status code {response.status_code}. Check Mailgun API keys and permissions."
+            emails_logger.error(error_message)
+            return {"error": error_message}
         elif response.status_code == 429:
-            error = "Rate limit exceeded. Please try again later."
-            emails_logger.error(error)
-            return {"error": error}
+            error_message = "Rate limit exceeded. Please try again later."
+            emails_logger.error(error_message)
+            return {"error": error_message}
         else:
-            error = "An unexpected error occurred while sending the email."
-            emails_logger.error(error)
-            return {"error": error}
+            error_message = "An unexpected error occurred while sending the email."
+            emails_logger.error(error_message)
+            return {"error": error_message}
 
+    # Catch validation errors
     except ValidationError as e:
-        error = f"Validation error: {str(e)}"
-        emails_logger.error(error)
-        return {"error": error}
+        error_message = f"Validation error: {str(e)}"
+        emails_logger.error(error_message)
+        return {"error": error_message}
 
+    # Catch any other unexpected exceptions.
     except Exception as e:
-        error = f"Exception while trying to send thread reply email: {str(e)}"
-        emails_logger.error(error)
-        return {"error": error}
+        error_message = f"Exception while trying to send thread reply email: {str(e)}"
+        emails_logger.error(error_message)
+        return {"error": error_message}
 
 
-
-
-async def send_thread_response(case_data):
+async def send_marketing_email(account, details):
     """
-    Send a reply to a case through Mailgun, ensuring data integrity with atomic transaction.
-    Args:
-        case_id: ID of the case to which the email belongs.
-        recipient: Recipient email address.
-        body: Email body content.
-        type: Type of email (e.g., response, update).
-    """
-    try:
-        validate_email(case_data.recipient)
+    Sends a marketing email and initializes a new case associated with it.
 
-        # Prepare Mailgun API data
-        data = {
-            "from": f"seeran grades <{case_data.case.type.lower()}@{config('MAILGUN_DOMAIN')}>",
-            "to": case_data.recipient,
-            "template": f"{case_data.case.type.lower()} response email",
-            "subject": case_data.initial_email.subject,
-            "v:response": case_data.message,
-            "v:caseid": str(case_data.case.case_id),
-            "v:status": case_data.case.status.title(),
-            "v:agent": case_data.agent,
-            "h:In-Reply-To": case_data.initial_email.message_id,
-            "h:References": case_data.initial_email.message_id,
-        }
-        print("Prepared Mailgun API data")
-
-        # Send the email
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"https://api.eu.mailgun.net/v3/{config('MAILGUN_DOMAIN')}/messages",
-                auth=("api", config('MAILGUN_API_KEY')),
-                data=data
-            )
-
-        if response.status_code == 200:
-            print("Email sent")
-            # Extract Message-ID from the response body
-            response_data = response.json()
-            message_id = response_data.get("id")  # This is the Message-ID
-            return {
-                "email_data" : {
-                    "message_id": message_id, 
-                    "case_id": case_data.case.case_id, 
-                    "subject": case_data.initial_email.subject, 
-                    "email_type": case_data.case.type, 
-                    "recipient": case_data.recipient,
-                    "message": case_data.message
-                }
-            }
-        
-        elif response.status_code in [400, 401, 402, 403, 404]:
-            return {"error": f"Account successfully created, but there was an error sending an account confirmation email to the account's email address. Please open a new bug ticket with the issue, error code {response.status_code}."}
-        elif response.status_code == 429:
-            return {"error": "Account successfully created, but there was an error sending an account confirmation email to the account's email address. The status code received could indicate a rate limit issue, so please wait a few minutes before creating a new account."}
-        else:
-            return {"error": "Account successfully created, but there was an error sending an account confirmation email to the account's email address."}
-
-    except httpx.RequestError as e:
-        print(f"Error sending thread response email via Mailgun: {str(e)}")
-        return {"error": f"Mailgun request failed: {str(e)}"}
-
-    except Exception as e:
-        print(f"Unexpected error sending thread response email: {str(e)}")
-        return {"error": str(e)}
-
-
-async def send_marketing_email(details):
-    """
-    Create a new case and send the initial email to the recipient.
+    This function:
+    1. Validates email and details.
+    2. Sends a marketing email to the specified recipient via Mailgun.
+    3. Creates a new case in the database associated with the sent email.
+    4. Logs the email in the system and assigns it to the requesting account.
 
     Args:
-        recipient: The email address of the recipient.
-        subject: The subject of the initial email.
-        body: The body content of the initial email.
-        case_type: The type of the case being created.
+        account (str): The account ID of the requesting user.
+        details (dict): Dictionary containing 'type' and 'recipient'.
+
+    Returns:
+        dict: Success message or error details.
     """
-    if not (details.get("type") or details.get("recipient")):
-        return {"error": "Could not process your request, invlaid data provided."}
-               
+    # Step 1: Validate required details
+    if not {'type', 'recipient'}.issubset(details):
+        error_message = "Invalid request. Missing required 'type' or 'recipient'."
+        emails_logger.error(error_message)
+        return {"error": error_message}
+
     try:
+        # Step 2: Validate recipient email format
         validate_email(details["recipient"])
 
-        # Prepare Mailgun API data
-        data = {
+        # Prepare Mailgun data
+        email_data = {
             "from": f"seeran grades <{details['type'].lower()}@{config('MAILGUN_DOMAIN')}>",
             "to": details["recipient"],
             "template": "marketing email",
             "subject": "The All-In-One School Management Solution for Real-Time Engagement",
         }
-        print("Prepared Mailgun API data")
+        emails_logger.info("Prepared email data for marketing email.")
 
-        # Send the email
+        # Step 3: Send marketing email through Mailgun
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"https://api.eu.mailgun.net/v3/{config('MAILGUN_DOMAIN')}/messages",
                 auth=("api", config('MAILGUN_API_KEY')),
-                data=data
+                data=email_data
             )
 
+        # Step 4: Handle Mailgun response and initialize a case
         if response.status_code == 200:
-            print("Email sent")
-            # Extract Message-ID from the response body
             response_data = response.json()
-            message_id = response_data.get("id")  # This is the Message-ID
+            message_id = response_data.get("id")
+            emails_logger.info(f"Marketing email successfully sent. Mailgun message ID: {message_id}")
 
-            return {"email_data" : {
-                "message_id": message_id, 
-                "subject": "The All-In-One School Management Solution for Real-Time Engagement", 
-                "email_type": details["type"], 
-                "recipient": details["recipient"], 
-            }}
-        
+            # Step 5: Initialize a marketing case and log the email
+            return await initialize_case(account, {
+                "message_id": message_id,
+                "subject": email_data["subject"],
+                "email_type": details["type"],
+                "recipient": details["recipient"]
+            })
+
         elif response.status_code in [400, 401, 402, 403, 404]:
-            return {"error": f"Account successfully created, but there was an error sending an account confirmation email to the account's email address. Please open a new bug ticket with the issue, error code {response.status_code}."}
+            error_message = f"Error sending marketing email, status code {response.status_code}."
+            emails_logger.error(error_message)
+            return {"error": error_message}
         elif response.status_code == 429:
-            return {"error": "Account successfully created, but there was an error sending an account confirmation email to the account's email address. The status code received could indicate a rate limit issue, so please wait a few minutes before creating a new account."}
+            error_message = "Rate limit exceeded. Please wait and try again later."
+            emails_logger.error(error_message)
+            return {"error": error_message}
         else:
-            return {"error": "Account successfully created, but there was an error sending an account confirmation email to the account's email address."}
+            error_message = "An unexpected error occurred while sending the email."
+            emails_logger.error(error_message)
+            return {"error": error_message}
 
-    except httpx.RequestError as e:
-        print(f"Error sending thread response email via Mailgun: {str(e)}")
-        return {"error": f"Mailgun request failed: {str(e)}"}
+    except ValidationError as e:
+        error_message = f"Validation error: {str(e)}"
+        emails_logger.error(error_message)
+        return {"error": error_message}
+    except Exception as e:
+        error_message = f"Exception while sending marketing email: {str(e)}"
+        emails_logger.error(error_message)
+        return {"error": error_message}
+
+
+@database_sync_to_async
+def initialize_case(account, email_data):
+    """
+    Initializes a new case and logs the email in the database.
+
+    Args:
+        account (str): The account ID of the requesting user.
+        email_data (dict): Data related to the email, including message_id, subject, email_type, and recipient.
+
+    Returns:
+        dict: Success message or error details.
+    """
+    try:
+        with transaction.atomic():
+            # Step 1: Create a new case for the marketing email
+            case = Case.objects.create(
+                title=email_data["subject"],
+                type=email_data["email_type"].upper(),
+                initial_email=None,
+                description="Marketing email sent from our system."
+            )
+            emails_logger.info(f"Created new case: {case.case_id} for email from {email_data['email_type'].lower()}@{config('MAILGUN_DOMAIN')}.")
+
+            # Step 2: Log the outgoing email in the database
+            email_entry = Email.objects.create(
+                message_id=email_data["message_id"],
+                sender=f"{email_data['email_type'].lower()}@{config('MAILGUN_DOMAIN')}",
+                recipient=email_data["recipient"],
+                subject=email_data["subject"],
+                body="We have sent a marketing email to your email address. Please review it and get back to us.",
+                received_at=timezone.now(),
+                case=case,
+                is_incoming=False
+            )
+            emails_logger.info("Logged outgoing marketing email in the database.")
+
+            # Step 3: Assign the case to the requesting account
+            requesting_account = Founder.objects.get(account_id=account)
+            case.assigned_to = requesting_account
+            case.initial_email = email_entry  # Set the email entry as the initial email of the case
+            case.save(update_fields=['assigned_to', 'initial_email'])
+            emails_logger.info(f"Case assigned to user: {requesting_account}, and initial email set for case: {case.case_id}.")
+
+        return {"message": "A marketing email has been sent and the case has been successfully initialized."}
 
     except Exception as e:
-        print(f"Unexpected error sending thread response email: {str(e)}")
-        return {"error": str(e)}
+        error_message = f"Error initializing marketing case: {str(e)}"
+        emails_logger.error(error_message)
+        return {"error": error_message}
+
