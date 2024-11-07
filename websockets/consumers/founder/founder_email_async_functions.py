@@ -35,7 +35,7 @@ async def send_thread_response(case, initial_email, recipient, message, agent):
         data = {
             "from": f"seeran grades <{case.type.lower()}@{config('MAILGUN_DOMAIN')}>",
             "to": recipient,
-            "template": "support response email",
+            "template": f"{case.type.lower()} response email",
             "subject": initial_email.subject,
             "v:response": message,
             "v:caseid": str(case.case_id),
