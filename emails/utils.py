@@ -176,7 +176,7 @@ def determine_case_type(recipient):
     # Define mappings for common case types
     case_type_mappings = {
         'SUPPORT': 'SUPPORT',       # Support cases
-        'ENQUIRY': 'ENQUIRY',       # General inquiries
+        'ENQUIRE': 'ENQUIRE',       # General inquiries
         'BILLING': 'BILLING',       # Billing or account inquiries
         # Add additional mappings as needed
     }

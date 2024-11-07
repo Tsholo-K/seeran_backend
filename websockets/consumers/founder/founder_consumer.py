@@ -244,7 +244,6 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
         return {'error': 'Could not process your request, an invalid message description was provided. If this problem persist open a bug report ticket.'}
 
-
 # SUBMIT
 
     async def handle_submit(self, description, details, account, role, access_token):
@@ -261,10 +260,10 @@ class FounderConsumer(AsyncWebsocketConsumer):
     async def handle_delete(self, description, details, account, role, access_token):
         if description == 'delete_school_account':
             return await founder_delete_async_functions.delete_school_account(details)
-            
+
         elif description == 'delete_principal_account':
             return await founder_delete_async_functions.delete_principal_account(details)
-        
+
         return {'error': 'Could not process your request, an invalid delete description was provided. If this problem persist open a bug report ticket.'}
 
 # UPLOAD

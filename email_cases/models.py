@@ -23,7 +23,7 @@ class Case(models.Model):
     """
     CASE_TYPES = [
         ('SUPPORT', 'Support'),       # Cases related to technical or account support
-        ('ENQUIRY', 'Enquiry'),       # General inquiries or questions
+        ('ENQUIRE', 'Enquire'),       # General inquiries or questions
         ('BILLING', 'Billing'),  # Announcements or non-interactive communication
         ('MARKETING', 'Marketing'),  # Announcements or non-interactive communication
         # Add more case types as needed
