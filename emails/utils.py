@@ -2,6 +2,7 @@
 import hmac
 import hashlib
 import re
+import json
 from html import unescape
 
 # decode
@@ -30,8 +31,10 @@ emails_logger = logging.getLogger('emails_logger')
 email_cases_logger = logging.getLogger('email_cases_logger')
 
 
-def process_email(email):
+def process_email(email_data):
     try:
+        print(email_data)
+        email = json.loads(email_data)
         print(email)
         print(email.get('sender'))
         print(email.get('Message-Id'))
@@ -41,6 +44,7 @@ def process_email(email):
         print(email.get('body-plain'))
         print(email.get('In-Reply-To'))
         print(email.get('References'))
+        print('hmmm')
         with transaction.atomic():  # Start a transaction block for data integrity
             
             # Extract email data from request
