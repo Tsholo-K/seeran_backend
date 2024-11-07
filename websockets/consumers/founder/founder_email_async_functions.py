@@ -212,7 +212,7 @@ async def send_marketing_email(details):
 
         # Prepare Mailgun API data
         data = {
-            "from": f"seeran grades <{details["type"].lower()}@{config('MAILGUN_DOMAIN')}>",
+            "from": f"seeran grades <{details['type'].lower()}@{config('MAILGUN_DOMAIN')}>",
             "to": details["recipient"],
             "template": "marketing email",
             "subject": "The All-In-One School Management Solution for Real-Time Engagement",
