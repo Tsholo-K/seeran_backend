@@ -82,7 +82,6 @@ async def send_thread_response(case, initial_email, recipient, message):
         return {"error": str(e)}
 
 
-
 async def send_marketing_case_and_send_initial_email(details):
     """
     Create a new case and send the initial email to the recipient.

@@ -1,5 +1,5 @@
-# python
-import requests
+# google
+from google.cloud import storage
 
 # celery
 from celery import shared_task
@@ -15,31 +15,55 @@ import logging
 
 # Get loggers
 emails_logger = logging.getLogger('emails_logger')
-email_cases_logger = logging.getLogger('email_cases_logger')
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def fetch_and_process_emails(*args, **kwargs): # accept any arguments Celery might send, even if you’re not expecting any
-    # Fetch emails from Mailgun
-    response = requests.get(
-        f"https://api.mailgun.net/v3/{config('MAILGUN_DOMAIN')}/messages",  
-        auth=('api', config('MAILGUN_API_KEY')),
-        params={"limit": 5}  # Limit to 5 emails at a time
-    )
+def fetch_and_process_incoming_emails(self, *args, **kwargs):
+    try:
+        # Initialize the Google Cloud Storage client and get the bucket
+        storage_client = storage.Client()
+        bucket = storage_client.get_bucket(config('GS_EMAIL_BUCKET_NAME'))
 
-    if response.status_code == 200:
-        emails = response.json().get('items', [])
-        for email in emails:
-            # Process each email (you can use your existing parsing logic here)
-            emails_utilities.process_email(email)
+        # List blobs (emails) from the bucket with a specific prefix
+        blobs = bucket.list_blobs(max_results=5)
+        emails_fetched = 0  # Counter to track how many emails have been processed
 
-        # If there are more emails, call this task again
-        if len(emails) == 5:
-            fetch_and_process_emails.apply_async(countdown=5)  # Delay next call by 5 seconds
+        # Process the blobs (emails)
+        for blob in blobs:
+            try:
+                # Download the email data as text
+                email_data = blob.download_as_text()
 
-        return emails_logger.info(f"Emails fetched and processed successfully.")
+                # Process the email data (implement your email parsing logic)
+                emails_utilities.process_email(email_data)
+                emails_fetched += 1
 
-    else:
-        # Handle error (log it, raise an exception, etc.)
-        return emails_logger.info(f'Error fetching emails: {response.status_code} - {response.text}')
+                emails_logger.info(f"Successfully processed email: {blob.name}")
 
+            except Exception as e:
+                # Log any errors that occur while processing individual emails
+                emails_logger.error(f"Error processing email {blob.name}: {str(e)}")
+                continue  # Skip to the next email
+
+        # Check if there are more emails using the pagination token
+        while blobs.next_page_token:
+            blobs = bucket.list_blobs(max_results=5, page_token=blobs.next_page_token)
+            for blob in blobs:
+                try:
+                    email_data = blob.download_as_text()
+                    emails_utilities.process_email(email_data)
+                    emails_fetched += 1
+                    emails_logger.info(f"Successfully processed email: {blob.name}")
+                except Exception as e:
+                    emails_logger.error(f"Error processing email {blob.name}: {str(e)}")
+                    continue
+
+        emails_logger.info(f"{emails_fetched} emails fetched and processed successfully.")
+        return {"status": "success", "emails_fetched": emails_fetched}
+
+    except Exception as e:
+        # Log any errors that occur during the overall execution of the task
+        emails_logger.error(f"Error in fetch_emails_from_gcs task: {str(e)}")
+
+        # Retry the task if an exception occurs (Celery will handle the retry mechanism)
+        raise self.retry(exc=e)

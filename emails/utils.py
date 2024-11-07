@@ -45,7 +45,11 @@ def process_email(email):
             # Extract headers related to threading
             in_reply_to = email.get('In-Reply-To')  # This should be the Message-ID of the email you're replying to
             references = email.get('References')  # This can include a chain of Message-IDs
-            
+                        
+            # Handle multiple recipients: just take the first recipient
+            recipients = recipient.split(',')  # Split by comma to handle multiple recipients
+            recipient = recipients[0].strip()  # Take the first recipient and strip any surrounding spaces
+
             # Determine case type based on recipient subdomain
             case_type = emails_utilities.determine_case_type(recipient)
 

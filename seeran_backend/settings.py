@@ -362,7 +362,7 @@ DATABASES = {
 # celery config
 CELERY_BEAT_SCHEDULE = {
     'fetch-emails-every-5-minutes': {
-        'task': 'emails.tasks.fetch_and_process_emails',
+        'task': 'emails.tasks.fetch_and_process_incoming_emails',
         'schedule': crontab(minute='*/5'),  # Every 5 minutes
     },
 }
