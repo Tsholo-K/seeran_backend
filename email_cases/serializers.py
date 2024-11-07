@@ -11,19 +11,21 @@ from accounts.serializers.founders.serializers import FounderAccountNamesSeriali
 class EmailCasesSerializer(serializers.ModelSerializer):
 
     assigned_to = serializers.SerializerMethodField()
+    email_address = serializers.SerializerMethodField()
 
     class Meta:
         model = Case
-        fields = ['title', 'created_at', 'updated_at', 'assigned_to', 'case_id']
+        fields = ['title', 'email_address', 'updated_at', 'assigned_to', 'case_id']
 
     def get_assigned_to(self, obj):
         return FounderAccountNamesSerializer(obj.assigned_to).data if obj.assigned_to else None
-
-    # def __init__(self, *args, **kwargs):
-    #     super(EmailCasesSerializer, self).__init__(*args, **kwargs)
-    #     # Remove the unique together validator that's added by DRF
-    #     self.fields['email_address'].validators = []
-    #     self.fields['contact_number'].validators = []
+    
+    def get_email_address(self, obj):
+        if obj.initial_email:
+            if obj.initial_email.is_incoming:
+                return obj.initial_email.sender
+            else:
+                return obj.initial_email.recipient_email                
 
 
 class EmailCaseSerializer(serializers.ModelSerializer):
