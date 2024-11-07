@@ -183,6 +183,7 @@ async def send_marketing_email(account, details):
     if not {'type', 'recipient'}.issubset(details):
         error_message = "Invalid request. Missing required 'type' or 'recipient'."
         emails_logger.error(error_message)
+        print(error_message)
         return {"error": error_message}
 
     try:
@@ -197,6 +198,7 @@ async def send_marketing_email(account, details):
             "subject": "The All-In-One School Management Solution for Real-Time Engagement",
         }
         emails_logger.info("Prepared email data for marketing email.")
+        print("Prepared email data for marketing email.")
 
         # Step 3: Send marketing email through Mailgun
         async with httpx.AsyncClient() as client:
@@ -211,6 +213,7 @@ async def send_marketing_email(account, details):
             response_data = response.json()
             message_id = response_data.get("id")
             emails_logger.info(f"Marketing email successfully sent. Mailgun message ID: {message_id}")
+            print(f"Marketing email successfully sent. Mailgun message ID: {message_id}")
 
             # Step 5: Initialize a marketing case and log the email
             return await initialize_case(account, {

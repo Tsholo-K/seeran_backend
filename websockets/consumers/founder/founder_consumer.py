@@ -207,8 +207,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
         if func:
             if description == ['email_thread_reply', 'send_marketing_email']:
                 response = await func(account, details)
-
-            return response
+                return response
 
         return {'error': 'Could not process your request, an invalid message description was provided. If this problem persist open a bug report ticket.'}
 
