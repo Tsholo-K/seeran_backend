@@ -28,7 +28,6 @@ email_cases_logger = logging.getLogger('email_cases_logger')
 
 
 @database_sync_to_async
-@transaction.atomic
 async def email_thread_reply(account, details):
     try:
         print("fetching requesting account")
@@ -76,50 +75,52 @@ async def email_thread_reply(account, details):
             "h:In-Reply-To": initial_email.message_id,
             "h:References": initial_email.message_id,
         }
+        # Transaction context within async function scope
+        with transaction.atomic():
 
-        # Send email via Mailgun
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"https://api.eu.mailgun.net/v3/{config('MAILGUN_DOMAIN')}/messages",
-                auth=("api", config('MAILGUN_API_KEY')),
-                data=email_data
-            )
+            # Send email via Mailgun
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"https://api.eu.mailgun.net/v3/{config('MAILGUN_DOMAIN')}/messages",
+                    auth=("api", config('MAILGUN_API_KEY')),
+                    data=email_data
+                )
 
-        if response.status_code == 200:
-            response_data = response.json()
-            message_id = response_data.get("id")
+            if response.status_code == 200:
+                response_data = response.json()
+                message_id = response_data.get("id")
 
-            # Log the outgoing email in the database
-            Email.objects.create(
-                message_id=message_id,
-                sender=f"{case.type.lower()}@{config('MAILGUN_DOMAIN')}",
-                recipient=recipient,
-                subject=initial_email.subject,
-                body=message,
-                received_at=timezone.now(),
-                case=case,
-                is_incoming=False
-            )
+                # Log the outgoing email in the database
+                Email.objects.create(
+                    message_id=message_id,
+                    sender=f"{case.type.lower()}@{config('MAILGUN_DOMAIN')}",
+                    recipient=recipient,
+                    subject=initial_email.subject,
+                    body=message,
+                    received_at=timezone.now(),
+                    case=case,
+                    is_incoming=False
+                )
 
-            # Assign case if no user is assigned
-            if not case.assigned_to:
-                case.assigned_to = requesting_account
-                case.save(update_fields=['assigned_to'])
+                # Assign case if no user is assigned
+                if not case.assigned_to:
+                    case.assigned_to = requesting_account
+                    case.save(update_fields=['assigned_to'])
 
-            return {"message": "Thread reply successfully sent."}
+                return {"message": "Thread reply successfully sent."}
 
-        elif response.status_code in [400, 401, 402, 403, 404]:
-            error = f"Account successfully created, but there was an error sending thread reply email to the email address. Please open a new bug ticket with the issue, error code {response.status_code}."
-            emails_logger.error(error)
-            return {"error": error}
-        elif response.status_code == 429:
-            error = f"Account successfully created, but there was an error sending thread reply email to the email address. The status code received could indicate a rate limit issue, so please wait a few minutes before creating a new account."
-            emails_logger.error(error)
-            return {"error": error}
-        else:
-            error = f"Account successfully created, but there was an error sending thread reply email to the email address."
-            emails_logger.error(error)
-            return {"error": error}
+            elif response.status_code in [400, 401, 402, 403, 404]:
+                error = f"Account successfully created, but there was an error sending thread reply email to the email address. Please open a new bug ticket with the issue, error code {response.status_code}."
+                emails_logger.error(error)
+                return {"error": error}
+            elif response.status_code == 429:
+                error = f"Account successfully created, but there was an error sending thread reply email to the email address. The status code received could indicate a rate limit issue, so please wait a few minutes before creating a new account."
+                emails_logger.error(error)
+                return {"error": error}
+            else:
+                error = f"Account successfully created, but there was an error sending thread reply email to the email address."
+                emails_logger.error(error)
+                return {"error": error}
 
     except Founder.DoesNotExist:
         return {'error': 'Could not process your request, invalid account credentials.'}
