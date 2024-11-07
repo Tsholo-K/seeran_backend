@@ -228,17 +228,17 @@ class FounderConsumer(AsyncWebsocketConsumer):
                             sender=account, 
                             message=response.get('message')
                         )
-                        if response.get('case_id'):
-                            await connection_manager.send_message(
-                                    account, 
-                                    json.dumps({
-                                        'description': 'message_fan', 
-                                        'message': response['message'], 
-                                        'case': response['case_id']
-                                    })
-                            )
+                        if response.get('message'):
+                            # await connection_manager.send_message(
+                            #         account, 
+                            #         json.dumps({
+                            #             'description': 'message_fan', 
+                            #             'message': response['message'], 
+                            #             'case': response['case_id']
+                            #         })
+                            # )
 
-                            return {'status': 'thread response successfully sent'}
+                            return {'message': response['message']}
 
                 return response
 
