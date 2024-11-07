@@ -214,7 +214,8 @@ class FounderConsumer(AsyncWebsocketConsumer):
                         case=response.get('case'), 
                         initial_email=response.get('initial_email'), 
                         recipient=response.get('recipient'), 
-                        message=response.get('message')
+                        message=response.get('message'), 
+                        agent=response.get('agent') 
                     )
                     if response.get('case_id'):
                         print("running thread reply")

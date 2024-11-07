@@ -21,7 +21,7 @@ emails_logger = logging.getLogger('emails_logger')
 email_cases_logger = logging.getLogger('email_cases_logger')
 
 
-async def send_thread_response(case, initial_email, recipient, message):
+async def send_thread_response(case, initial_email, recipient, message, agent):
     """
     Send a reply to a case through Mailgun, ensuring data integrity with atomic transaction.
     Args:
@@ -37,8 +37,10 @@ async def send_thread_response(case, initial_email, recipient, message):
             "to": recipient,
             "template": "support response email",
             "subject": initial_email.subject,
-            "v:agent": 'Tsholo Koketso',
             "v:response": message,
+            "v:caseid": str(case.case_id),
+            "v:status": case.status.title(),
+            "v:agent": agent,
             "h:In-Reply-To": initial_email.message_id,
             "h:References": initial_email.message_id,
         }

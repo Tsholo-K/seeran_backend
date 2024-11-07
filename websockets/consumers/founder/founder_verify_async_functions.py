@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext as _
 
 # models 
-from accounts.models import BaseAccount
+from accounts.models import BaseAccount, Founder
 from email_cases.models import Case
 
 
@@ -15,8 +15,10 @@ def verify_thread_response(account, details):
 
     try:        
         # print("About to fetch thread case and send email")
+        # Retrieve the Principal instance by account_id from the provided details
+        requesting_account = Founder.objects.get(account_id=account)
+
         # Ensure 'thread' and 'type' are present in details and are valid
-        
         if not {'thread', 'type', 'message'}.issubset(details):
             response = f'Could not process your request, the provided information is invalid for the action you are trying to perform. Please make sure to provide a valid thread ID, email type, response message and try again'
             return {'error': response}
@@ -47,7 +49,7 @@ def verify_thread_response(account, details):
 
         print("got recipient")
 
-        return {"case": case, "initial_email": initial_email, "recipient": recipient, "message": details.get('message')}
+        return {"case": case, "initial_email": initial_email, "recipient": recipient, "message": details.get('message'), "agent" : f"{requesting_account.surname} {requesting_account.name}".title()}
     
     except BaseAccount.DoesNotExist:
         return {'error': 'invalid email address'}
