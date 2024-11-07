@@ -199,48 +199,24 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
     async def handle_message(self, description, details, account, role, access_token):
         message_map = {
-            'send_thread_response': founder_email_async_functions.send_thread_response,
+            'email_thread_reply': founder_email_async_functions.email_thread_reply,
+            'send_marketing_email': founder_email_async_functions.send_marketing_email,
         }
 
         func = message_map.get(description)
         if func:
             if description == 'send_thread_response':
-                response = await founder_verify_async_functions.verify_thread_response(
-                    account, 
-                    details
-                )
-                if response.get('case'):
-                    response = await func(
-                        case=response.get('case'), 
-                        initial_email=response.get('initial_email'), 
-                        recipient=response.get('recipient'), 
-                        message=response.get('message'), 
-                        agent=response.get('agent') 
-                    )
-                    if response.get('case_id'):
-                        print("running thread reply")
-                        response = await founder_message_async_functions.thread_reply(
-                            case_id=response.get('case_id'), 
-                            message_id=response.get('message_id'), 
-                            subject=response.get('subject'), 
-                            email_type=response.get('email_type'), 
-                            recipient=response.get('recipient'), 
-                            sender=account, 
-                            message=response.get('message')
-                        )
-                        if response.get('message'):
-                            # await connection_manager.send_message(
-                            #         account, 
-                            #         json.dumps({
-                            #             'description': 'message_fan', 
-                            #             'message': response['message'], 
-                            #             'case': response['case_id']
-                            #         })
-                            # )
+                response = await func(account, details)
+                if response.get('message'):
+                    # await connection_manager.send_message(account, json.dumps({'description': 'message_fan', 'message': response['message'], 'case': response['case_id']}))
+                    return {'message': response['message']}
+                        
+            elif description == 'send_marketing_email':
+                response = await func(details)
+                if response.get('email_data'):
+                    response = await founder_message_async_functions.marketing_thread_initialization(account, response.get('email_data'))
 
-                            return {'message': response['message']}
-
-                return response
+            return response
 
         return {'error': 'Could not process your request, an invalid message description was provided. If this problem persist open a bug report ticket.'}
 

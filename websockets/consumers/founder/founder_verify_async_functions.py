@@ -49,7 +49,7 @@ def verify_thread_response(account, details):
 
         print("got recipient")
 
-        return {"case": case, "initial_email": initial_email, "recipient": recipient, "message": details.get('message'), "agent" : f"{requesting_account.surname} {requesting_account.name}".title()}
+        return {"case_data": {"case": case, "initial_email": initial_email, "recipient": recipient, "message": details.get('message'), "agent" : f"{requesting_account.surname} {requesting_account.name}".title()}}
     
     except BaseAccount.DoesNotExist:
         return {'error': 'invalid email address'}
