@@ -25,7 +25,7 @@ class EmailCasesSerializer(serializers.ModelSerializer):
             if obj.initial_email.is_incoming:
                 return obj.initial_email.sender
             else:
-                return obj.initial_email.recipient_email                
+                return obj.initial_email.recipient              
 
 
 class EmailCaseSerializer(serializers.ModelSerializer):
