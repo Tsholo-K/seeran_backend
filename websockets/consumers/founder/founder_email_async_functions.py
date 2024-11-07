@@ -31,19 +31,24 @@ email_cases_logger = logging.getLogger('email_cases_logger')
 @transaction.atomic
 async def email_thread_reply(account, details):
     try:
+        print("fetching requesting account")
         # Verify user account
         requesting_account = Founder.objects.get(account_id=account)
+        print("got requesting account")
 
         # Ensure required details are present
         if not {'thread', 'type', 'message'}.issubset(details):
             return {'error': 'Invalid request. Provide a valid thread ID, email type, and response message.'}
+        print("validated incoming data")
 
+        print("fetching case")
         # Fetch case and initial email
         case = Case.objects.get(
             case_id=details.get('thread'), 
             type=details.get('type').upper()
         )
         initial_email = case.initial_email
+        print("got case")
 
         # Check initial email and assignment
         if not initial_email:
@@ -51,6 +56,7 @@ async def email_thread_reply(account, details):
 
         if case.assigned_to and str(case.assigned_to.account_id) != account:
             return {"error": "This thread is assigned to another user."}
+        print("validated initial email and assigned_to")
 
         # Determine recipient based on initial email
         recipient = initial_email.sender if initial_email.is_incoming else initial_email.recipient
