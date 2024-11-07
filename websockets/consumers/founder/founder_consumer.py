@@ -228,7 +228,7 @@ class FounderConsumer(AsyncWebsocketConsumer):
                             sender=account, 
                             message=response.get('message')
                         )
-                        if response.get('case'):
+                        if response.get('case_id'):
                             await connection_manager.send_message(
                                     account, 
                                     json.dumps({
