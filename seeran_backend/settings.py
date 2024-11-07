@@ -79,13 +79,13 @@ LOGGING = {
     },
     'handlers': {
         'email_logfile': {
-            'level': 'ERROR',
+            'level': 'DEBUG',  # Ensure the level is set to INFO or lower(DEBUG) during development, higher(WARNING or ERROR) in production
             'class': 'logging.FileHandler',
             'filename': os.path.join(LOGS_DIR, 'emails_errors.log'),
             'formatter': 'verbose',
         },
         'case_logfile': {
-            'level': 'ERROR',
+            'level': 'DEBUG',  # Ensure the level is set to INFO or lower(DEBUG) during development, higher(WARNING or ERROR) in production
             'class': 'logging.FileHandler',
             'filename': os.path.join(LOGS_DIR, 'email_cases_errors.log'),
             'formatter': 'verbose',
@@ -100,12 +100,12 @@ LOGGING = {
     'loggers': {
         'emails_logger': {
             'handlers': ['email_logfile'],
-            'level': 'ERROR',
+            'level': 'DEBUG',  # Ensure the level is set to INFO or lower(DEBUG) during development, higher(WARNING or ERROR) in production
             'propagate': False,
         },
         'email_cases_logger': {
             'handlers': ['case_logfile'],
-            'level': 'ERROR',
+            'level': 'DEBUG',  # Ensure the level is set to INFO or lower(DEBUG) during development, higher(WARNING or ERROR) in production
             'propagate': False,
         },
         # 'general': {

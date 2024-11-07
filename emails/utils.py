@@ -33,18 +33,7 @@ email_cases_logger = logging.getLogger('email_cases_logger')
 
 def process_email(email_data):
     try:
-        print(email_data)
         email = json.loads(email_data)
-        print(email)
-        print(email.get('sender'))
-        print(email.get('Message-Id'))
-        print(email.get('sender'))
-        print(email.get('recipient'))
-        print(email.get('subject'))
-        print(email.get('body-plain'))
-        print(email.get('In-Reply-To'))
-        print(email.get('References'))
-        print('hmmm')
         with transaction.atomic():  # Start a transaction block for data integrity
             
             # Extract email data from request
