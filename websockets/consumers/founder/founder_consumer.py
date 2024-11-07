@@ -205,7 +205,10 @@ class FounderConsumer(AsyncWebsocketConsumer):
         func = message_map.get(description)
         if func:
             if description == 'send_thread_response':
-                response = await founder_verify_async_functions.verify_thread_response(account, details)
+                response = await founder_verify_async_functions.verify_thread_response(
+                    account, 
+                    details
+                )
                 if response.get('case'):
                     response = await func(
                         case=response.get('case'), 

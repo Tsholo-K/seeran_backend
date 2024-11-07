@@ -14,30 +14,30 @@ from email_cases.models import Case
 def verify_thread_response(account, details):
 
     try:        
-        print("About to fetch thread case and send email")
+        # print("About to fetch thread case and send email")
         # Ensure 'thread' and 'type' are present in details and are valid
         
         if not {'thread', 'type', 'message'}.issubset(details):
             response = f'Could not process your request, the provided information is invalid for the action you are trying to perform. Please make sure to provide a valid thread ID, email type, response message and try again'
             return {'error': response}
 
-        print("Attempting to fetch the case and email...")
+        # print("Attempting to fetch the case and email...")
         # Fetch the case and initial email
         case = Case.objects.get(case_id=details.get('thread'), type=details.get('type').upper())
-        print("fetched thread")
+        # print("fetched thread")
 
         initial_email = case.initial_email
 
         if not initial_email:
-            print(f"Could not process your request, this thread does not have an initial email. Cannnot reply to an unknown sender or recipient.")
+            # print(f"Could not process your request, this thread does not have an initial email. Cannnot reply to an unknown sender or recipient.")
             return {"error": f"Could not process your request, this thread does not have an initial email. Cannnot reply to an unknown sender or recipient."}
 
         # Assign to the user if the case has no assigned user
-        if case.assigned_to and case.assigned_to.account_id != account:
-            print(f"Could not process your request, this thread is assigned to someone else. You are not allowed to respond to this thread.")
+        if case.assigned_to and str(case.assigned_to.account_id) != account:
+            # print(f"Could not process your request, this thread is assigned to someone else. You are not allowed to respond to this thread.")
             return {"error": f"Could not process your request, this thread is assigned to someone else. You are not allowed to respond to this thread."}
         
-        print("verified thread assigned to")
+        # print("verified thread assigned to")
 
         # Determine the correct recipient based on whether the initial email is incoming
         if initial_email.is_incoming:
