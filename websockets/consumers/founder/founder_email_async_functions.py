@@ -47,13 +47,13 @@ async def email_thread_reply(account, details):
             return {'error': 'Invalid request. Provide a valid thread ID, email type, and response message.'}
         print("validated incoming data")
 
-        # Fetch case and initial email
+        # Fetch case and initial email with select_related to load related data
         print("fetching case")
-        case = await sync_to_async(Case.objects.get)(
+        case = await sync_to_async(Case.objects.select_related('initial_email', 'assigned_to').get)(
             case_id=details.get('thread'), 
             type=details.get('type').upper()
         )
-        initial_email = case.initial_email
+        initial_email = case.initial_email  # This will now be preloaded and available directly
         print("got case")
 
         # Check initial email and assignment
