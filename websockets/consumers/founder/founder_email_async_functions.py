@@ -27,29 +27,12 @@ emails_logger = logging.getLogger('emails_logger')
 email_cases_logger = logging.getLogger('email_cases_logger')
 
 
-import httpx
-from django.core.exceptions import ValidationError
-import logging
-
-emails_logger = logging.getLogger('emails')
-
-
-import logging
-import httpx
-from asgiref.sync import sync_to_async
-from django.utils import timezone
-from django.core.exceptions import ValidationError
-from .models import Founder, Case, Email
-
-# Logger for emails
-emails_logger = logging.getLogger('emails')
-
 async def email_thread_reply(account, details):
     """
     Asynchronously handles sending a reply to an email thread.
 
     This function performs the following:
-    1. Verifies the requesting user’s account.
+    1. Verifies the requesting user's account.
     2. Checks the provided details for required fields (thread ID, email type, message).
     3. Fetches the associated case and initial email.
     4. Verifies the case assignment, ensuring the user is authorized to respond.
