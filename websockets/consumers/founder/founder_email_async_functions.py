@@ -27,34 +27,11 @@ emails_logger = logging.getLogger('emails_logger')
 email_cases_logger = logging.getLogger('email_cases_logger')
 
 
-@database_sync_to_async
-def fetch_requesting_account(account):
-    return Founder.objects.get(account_id=account)
+import httpx
+from django.core.exceptions import ValidationError
+import logging
 
-@database_sync_to_async
-def fetch_case(details):
-    return Case.objects.get(
-        case_id=details.get('thread'), 
-        type=details.get('type').upper()
-    )
-
-@database_sync_to_async
-def log_outgoing_email(message_id, case, recipient, subject, message):
-    return Email.objects.create(
-        message_id=message_id,
-        sender=f"{case.type.lower()}@{config('MAILGUN_DOMAIN')}",
-        recipient=recipient,
-        subject=subject,
-        body=message,
-        received_at=timezone.now(),
-        case=case,
-        is_incoming=False
-    )
-
-@database_sync_to_async
-def assign_case_to_user(case, user):
-    case.assigned_to = user
-    case.save(update_fields=['assigned_to'])
+emails_logger = logging.getLogger('emails')
 
 async def email_thread_reply(account, details):
     try:
@@ -62,7 +39,7 @@ async def email_thread_reply(account, details):
 
         # Fetch user account and verify permissions
         print("fetching requesting account")
-        requesting_account = await fetch_requesting_account(account)
+        requesting_account = await sync_to_async(Founder.objects.get)(account_id=account)
         print("got requesting account")
 
         # Ensure required details are present
@@ -72,7 +49,10 @@ async def email_thread_reply(account, details):
 
         # Fetch case and initial email
         print("fetching case")
-        case = await fetch_case(details)
+        case = await sync_to_async(Case.objects.get)(
+            case_id=details.get('thread'), 
+            type=details.get('type').upper()
+        )
         initial_email = case.initial_email
         print("got case")
 
@@ -116,11 +96,21 @@ async def email_thread_reply(account, details):
             message_id = response_data.get("id")
 
             # Log the outgoing email in the database only after successful Mailgun response
-            await log_outgoing_email(message_id, case, recipient, initial_email.subject, message)
+            await sync_to_async(Email.objects.create)(
+                message_id=message_id,
+                sender=f"{case.type.lower()}@{config('MAILGUN_DOMAIN')}",
+                recipient=recipient,
+                subject=initial_email.subject,
+                body=message,
+                received_at=timezone.now(),
+                case=case,
+                is_incoming=False
+            )
 
             # Assign case if no user is assigned
             if not case.assigned_to:
-                await assign_case_to_user(case, requesting_account)
+                case.assigned_to = requesting_account
+                await sync_to_async(case.save)(update_fields=['assigned_to'])
 
             return {"message": "Thread reply successfully sent."}
 
@@ -146,6 +136,7 @@ async def email_thread_reply(account, details):
         error = f"Exception while trying to send thread reply email: {str(e)}"
         emails_logger.error(error)
         return {"error": error}
+
 
 
 
