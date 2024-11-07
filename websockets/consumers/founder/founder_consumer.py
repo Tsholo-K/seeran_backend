@@ -205,11 +205,8 @@ class FounderConsumer(AsyncWebsocketConsumer):
 
         func = message_map.get(description)
         if func:
-            if description == 'email_thread_reply':
+            if description == ['email_thread_reply', 'send_marketing_email']:
                 response = await func(account, details)
-                        
-            elif description == 'send_marketing_email':
-                response = await func(details)
 
             return response
 
