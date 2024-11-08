@@ -77,6 +77,7 @@ def search_thread_messages(details):
     try:
         # Check if a chat room exists between the two users
         case = Case.objects.get(case_id=details.get('thread'), type=details.get('type').upper())
+        read_emails = case.unread_emails
         
         if details.get('cursor'):
             # Fetch messages before the cursor with a limit of 20
@@ -88,29 +89,27 @@ def search_thread_messages(details):
         if not messages.exists():
             return {'messages': [], 'next_cursor': None}
 
-        unread_emails = case.unread_emails
+        # Mark unread messages as read and count them in one query
+        unread_emails = messages.filter(read_receipt=False).exclude(is_incoming=False)
 
         # Convert messages to a list and reverse for correct ascending order
         messages = list(messages)[::-1]
 
         # Serialize the messages
-        serialized_messages = EmailMessagesSerializer(messages, many=True).data
+        serialized_emails = EmailMessagesSerializer(messages, many=True).data
         
         # Determine the next cursor
         next_cursor = messages[0].received_at.isoformat() if len(messages) > 19 else None
 
-        # Mark unread messages as read and count them in one query
-        unread_messages = messages.filter(read_receipt=False).exclude(is_incoming=False)
-
         # Check if there are any messages that match the criteria
-        unread_count = unread_messages.count()
+        unread_count = unread_emails.count()
         if unread_count > 0:
             # Mark the messages as read
-            unread_messages.update(read_receipt=True)
-            return {'messages': serialized_messages, 'next_cursor': next_cursor, 'read_emails': unread_emails}
+            unread_emails.update(read_receipt=True)
+            return {'messages': serialized_emails, 'next_cursor': next_cursor, 'read_emails': read_emails}
         
         # Handle the case where no messages need to be updated
-        return {'messages': serialized_messages, 'next_cursor': next_cursor}
+        return {'messages': serialized_emails, 'next_cursor': next_cursor}
     
     except Case.DoesNotExist:
         return {"error": "a email case with the provided credentials can not be found"}
