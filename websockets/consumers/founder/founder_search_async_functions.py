@@ -89,9 +89,6 @@ def search_thread_messages(details):
         if not messages.exists():
             return {'messages': [], 'next_cursor': None}
 
-        # Mark unread messages as read and count them in one query
-        unread_emails = messages.filter(read_receipt=False).exclude(is_incoming=False)
-
         # Convert messages to a list and reverse for correct ascending order
         messages = list(messages)[::-1]
 
@@ -101,11 +98,9 @@ def search_thread_messages(details):
         # Determine the next cursor
         next_cursor = messages[0].received_at.isoformat() if len(messages) > 19 else None
 
-        # Check if there are any messages that match the criteria
-        unread_count = unread_emails.count()
-        if unread_count > 0:
+        if read_emails > 0:
             # Mark the messages as read
-            unread_emails.update(read_receipt=True)
+            case.emails.filter(read_receipt=False).exclude(is_incoming=False).update(read_receipt=True)
             return {'messages': serialized_emails, 'next_cursor': next_cursor, 'read_emails': read_emails}
         
         # Handle the case where no messages need to be updated
