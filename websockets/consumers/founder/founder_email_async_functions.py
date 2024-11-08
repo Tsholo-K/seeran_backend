@@ -63,7 +63,7 @@ async def email_thread_reply(account, details):
 
         # Step 3: Fetch the case and related initial email.
         emails_logger.debug("Fetching case and initial email.")
-        case = await sync_to_async(Case.objects.select_related('initial_email', 'assigned_to').get)(
+        case = await sync_to_async(Case.objects.select_related('initial_email', 'agent').get)(
             case_id=details.get('thread'), 
             type=details.get('type').upper()
         )
@@ -76,7 +76,7 @@ async def email_thread_reply(account, details):
             emails_logger.error(error_message)
             return {"error": error_message}
 
-        if case.assigned_to and str(case.assigned_to.account_id) != account:
+        if case.agent and str(case.agent.account_id) != account:
             error_message = "Unauthorized action. This thread is assigned to another user."
             emails_logger.error(error_message)
             return {"error": error_message}
@@ -285,9 +285,9 @@ def initialize_case(account, email_data):
 
             # Step 3: Assign the case to the requesting account
             requesting_account = Founder.objects.get(account_id=account)
-            case.assigned_to = requesting_account
+            case.agent = requesting_account
             case.initial_email = email_entry  # Set the email entry as the initial email of the case
-            case.save(update_fields=['assigned_to', 'initial_email'])
+            case.save(update_fields=['agent', 'initial_email'])
             emails_logger.info(f"Case assigned to user: {requesting_account}, and initial email set for case: {case.case_id}.")
 
         return {"message": "A marketing email has been sent and the case has been successfully initialized."}
