@@ -16,14 +16,13 @@ class Email(models.Model):
         received_at (DateTimeField): Timestamp when the email was received by the server.
         is_incoming (BooleanField): Flag indicating if the email is incoming (True) or outgoing (False).
         case (ForeignKey): Reference to the associated Case, ensuring each email is part of a case.
-        in_reply_to (ForeignKey): Self-referential field for tracking reply chains within a case.
     """
     case = models.ForeignKey('email_cases.Case', on_delete=models.CASCADE, related_name='emails')
 
-    in_reply_to = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='replies')
-
     sender = models.EmailField()
     recipient = models.EmailField()
+
+    read_reciept = models.BooleanField(default=False)
 
     subject = models.CharField(max_length=255)
     body = models.TextField()

@@ -32,11 +32,8 @@ class Case(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
 
-    type = models.CharField(
-        max_length=50,
-        choices=CASE_TYPES,
-        default='SUPPORT'
-    )
+    type = models.CharField(max_length=50, choices=CASE_TYPES, default='SUPPORT')
+    unread_emails = models.PositiveIntegerField(default=0)
 
     status = models.CharField(
         max_length=50,
@@ -48,7 +45,7 @@ class Case(models.Model):
         default='OPEN'
     )
 
-    assigned_to = models.ForeignKey(
+    agent = models.ForeignKey(
         'accounts.Founder', 
         null=True, 
         blank=True, 

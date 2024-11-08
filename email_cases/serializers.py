@@ -10,15 +10,15 @@ from accounts.serializers.founders.serializers import FounderAccountNamesSeriali
 
 class EmailCasesSerializer(serializers.ModelSerializer):
 
-    assigned_to = serializers.SerializerMethodField()
+    agent = serializers.SerializerMethodField()
     email_address = serializers.SerializerMethodField()
 
     class Meta:
         model = Case
-        fields = ['title', 'email_address', 'updated_at', 'assigned_to', 'case_id']
+        fields = ['title', 'email_address', 'updated_at', 'unread_emails',  'agent', 'case_id']
 
-    def get_assigned_to(self, obj):
-        return FounderAccountNamesSerializer(obj.assigned_to).data if obj.assigned_to else None
+    def get_agent(self, obj):
+        return FounderAccountNamesSerializer(obj.agent).data if obj.agent else None
     
     def get_email_address(self, obj):
         if obj.initial_email:
@@ -30,15 +30,15 @@ class EmailCasesSerializer(serializers.ModelSerializer):
 
 class EmailCaseSerializer(serializers.ModelSerializer):
 
-    assigned_to = serializers.SerializerMethodField()
+    agent = serializers.SerializerMethodField()
     email_address = serializers.SerializerMethodField()
 
     class Meta:
         model = Case
-        fields = ['title', 'description', 'status', 'created_at', 'updated_at', 'email_address', 'assigned_to']
+        fields = ['title', 'description', 'status', 'created_at', 'updated_at', 'unread_emails', 'email_address', 'agent']
 
-    def get_assigned_to(self, obj):
-        return FounderDisplayAccountDetailsSerializer(obj.assigned_to).data if obj.assigned_to else None
+    def get_agent(self, obj):
+        return FounderDisplayAccountDetailsSerializer(obj.agent).data if obj.agent else None
     
     def get_email_address(self, obj):
         if obj.initial_email:

@@ -107,8 +107,10 @@ def process_email(email_data):
             # If this is the first email in the case, set it as the initial_email
             if not case.initial_email:
                 case.initial_email = email_entry
-                case.save(update_fields=['initial_email'])
                 emails_logger.info(f"Set initial email for case: {case.case_id}.")
+            
+            case.unread_emails = case.emails.filter(read_receipt=False).exclude(is_incoming=False).count()
+            case.save(update_fields=['initial_email', 'unread_emails'])
 
         # Commit transaction and respond with success
         emails_logger.info(f"Email processed successfully: {message_id}.")
