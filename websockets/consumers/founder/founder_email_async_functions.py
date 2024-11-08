@@ -130,8 +130,9 @@ async def email_thread_reply(account, details):
             # Step 9: Assign the case to the requesting user if no user is assigned.
             if not case.assigned_to:
                 case.assigned_to = requesting_account
-                await sync_to_async(case.save)(update_fields=['assigned_to'])
-                emails_logger.info(f"Case assigned to user: {requesting_account}")
+
+            await sync_to_async(case.save)(update_fields=['assigned_to'])
+            emails_logger.info(f"Case assigned to user: {requesting_account}")
 
             return {"message": message}
 
