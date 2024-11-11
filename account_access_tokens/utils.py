@@ -39,7 +39,7 @@ def manage_user_sessions(account, token, max_sessions=3):
         access_tokens_count = account.access_tokens.count()
 
         if access_tokens_count >= max_sessions:
-            return Response({"error": "You have reached the maximum number of connected devices. Please disconnect another device to proceed"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"error": "Could not process your request, you have reached the maximum number of access tokens for your account. Please logout from one of your other devices to proceed."}, status=status.HTTP_403_FORBIDDEN)
         
         # Create a new access token record
         with transaction.atomic():
