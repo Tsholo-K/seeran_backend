@@ -19,6 +19,9 @@ from accounts.models import Founder
 from emails.models import Email
 from email_cases.models import Case
 
+# serializers
+from emails.serializers import EmailMessagesSerializer
+
 # logging
 import logging
 
@@ -115,7 +118,7 @@ async def email_thread_reply(account, details):
             emails_logger.info(f"Email successfully sent. Mailgun message ID: {message_id}")
 
             # Step 8: Log the outgoing email in the database.
-            await sync_to_async(Email.objects.create)(
+            email_entry = await sync_to_async(Email.objects.create)(
                 message_id=message_id,
                 sender=f"{case.type.lower()}@{config('MAILGUN_DOMAIN')}",
                 recipient=recipient,
@@ -134,7 +137,9 @@ async def email_thread_reply(account, details):
             await sync_to_async(case.save)(update_fields=['agent'])
             emails_logger.info(f"Case assigned to user: {requesting_account}")
 
-            return {"message": message}
+            serialized_email = EmailMessagesSerializer(email_entry).data
+
+            return {"message": serialized_email}
 
         # Handle common error statuses from Mailgun.
         elif response.status_code in [400, 401, 402, 403, 404]:
