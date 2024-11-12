@@ -74,7 +74,7 @@ def login(request):
 
                     # Set access token cookie with custom expiration (24 hours)
                     response = Response({"message": "You will have access to your dashboard for the next 24 hours, until your session ends", "alert" : "Your email address has been blacklisted", "role" : requesting_user.role.title()}, status=status.HTTP_200_OK)
-                    response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
+                    response.set_cookie('access_token', token['access'], httponly=True, max_age=86400)
 
                     return response
                 
@@ -91,8 +91,8 @@ def login(request):
                 cache.set(email_address + 'multi_factor_authentication_login_authorization_otp', (hashed_login_authorization_otp, authorization_salt), timeout=300)  # Cache auth OTP for 5 mins
 
                 response = Response({"multifactor_authentication": "You have successufully authenticated using your email address and password, a new login OTP has been sent to your email address. Please check your inbox for the email."}, status=status.HTTP_200_OK)
-                response.set_cookie('multi_factor_authentication_login_authorization_otp', login_authorization_otp, domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=300)  # Set auth OTP cookie (5 mins)
-                response.set_cookie('multi_factor_authentication_login_email_address', email_address, domain='.seeran-grades.cloud', samesite='None', secure=True, max_age=300)
+                response.set_cookie('multi_factor_authentication_login_authorization_otp', login_authorization_otp, httponly=True, max_age=300)  # Set auth OTP cookie (5 mins)
+                response.set_cookie('multi_factor_authentication_login_email_address', email_address, max_age=300)
 
                 return response
             else:
@@ -107,8 +107,8 @@ def login(request):
             response = Response({"message": "You will have access to your dashboard for the next 24 hours, until your session ends", "role" : requesting_user.role}, status=status.HTTP_200_OK)
         
             # Set access token cookie with custom expiration (24 hours)
-            response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
-            response.set_cookie('session_authenticated', 'The session is still valid.', domain='.seeran-grades.cloud', samesite='None', secure=True, max_age=86400)
+            response.set_cookie('access_token', token['access'], httponly=True, max_age=86400)
+            response.set_cookie('session_authenticated', 'The session is still valid.', max_age=86400)
        
         else:
             response = Response({"error": "Server error.. Could not generate access token for your account, please try again in a moment"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -174,8 +174,8 @@ def multi_factor_authentication_login(request):
                     
                     # set access token cookie with custom expiration (5 mins)
                     response = Response({"message": "you will have access to your dashboard for the next 24 hours, until your session ends", "role" : requesting_user.role.title()}, status=status.HTTP_200_OK)
-                    response.set_cookie('access_token', token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
-                    response.set_cookie('session_authenticated', 'The session is still valid.', domain='.seeran-grades.cloud', samesite='None', secure=True, max_age=86400)
+                    response.set_cookie('access_token', token['access'], httponly=True, max_age=86400)
+                    response.set_cookie('session_authenticated', 'The session is still valid.', max_age=86400)
 
                     return response
                 
@@ -188,8 +188,8 @@ def multi_factor_authentication_login(request):
             cache.delete(requesting_user.email_address + 'multi_factor_authentication_login_otp_hash_and_salt')
             cache.delete(requesting_user.email_address + 'multi_factor_authentication_login_authorization_otp')
 
-            response.delete_cookie('multi_factor_authentication_login_authorization_otp', domain='.seeran-grades.cloud')
-            response.delete_cookie('multi_factor_authentication_login_email_address', domain='.seeran-grades.cloud')
+            response.delete_cookie('multi_factor_authentication_login_authorization_otp')
+            response.delete_cookie('multi_factor_authentication_login_email_address')
             return response
 
         attempts = cache.get(email_address + 'multi_factor_authentication_login_failed_otp_attempts', 3)
@@ -335,14 +335,15 @@ def activate_account(request):
 
             response = Response({"message": "You have successully activated your account. Welcome to seeran grades.", "role": account.role}, status=status.HTTP_200_OK)
             # set access/refresh token cookies
-            response.set_cookie('access_token', account_access_token['access'], domain='.seeran-grades.cloud', samesite='None', secure=True, httponly=True, max_age=86400)
-            
+            response.set_cookie('access_token', account_access_token['access'], httponly=True, max_age=86400)
+            response.set_cookie('session_authenticated', 'The session is still valid.', max_age=86400)
+
             return response
 
         response = Response({"denied": "Your requests authorization OTP is invalid.. request forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
 
         cache.delete(email_address + 'signin_authorization_otp')
-        response.delete_cookie('signin_authorization_otp', domain='.seeran-grades.cloud')
+        response.delete_cookie('signin_authorization_otp')
         return response
 
     except BaseAccount.DoesNotExist:
