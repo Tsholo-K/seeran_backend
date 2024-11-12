@@ -39,7 +39,7 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG')
 
 
-SESSION_COOKIE_DOMAIN = 'localhost'  # Shared across subdomains
+SESSION_COOKIE_DOMAIN = '.localhost'  # Shared across subdomains
 
 # What it does: Ensures that cookies with the session data are only sent over HTTPS.
 # Why it's important: Protects session data from being intercepted.
