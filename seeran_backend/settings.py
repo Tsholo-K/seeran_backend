@@ -38,8 +38,8 @@ SECRET_KEY = config('SECRET_KEY')
 # activates debug mode for the application
 DEBUG = config('DEBUG')
 
-
-SESSION_COOKIE_DOMAIN = '.localhost'  # Shared across subdomains
+# Specifies the domain for which the session cookie is valid. If you want to share cookies across subdomains, you can set this to your domain, like .example.com.
+SESSION_COOKIE_DOMAIN = '.seeran-grades.cloud'  # Shared across subdomains
 
 # What it does: Ensures that cookies with the session data are only sent over HTTPS.
 # Why it's important: Protects session data from being intercepted.
@@ -87,9 +87,6 @@ SECURE_HSTS_PRELOAD = True
 # ssl config
 # configures the application to commmunicate in https
 if not DEBUG:
-    # Specifies the domain for which the session cookie is valid. If you want to share cookies across subdomains, you can set this to your domain, like .example.com.
-    SESSION_COOKIE_DOMAIN = '.seeran-grades.cloud'  # Shared across subdomains
-
     # Controls the SameSite attribute. Options are 'Lax', 'Strict', or 'None'.
     SESSION_COOKIE_SAMESITE = 'Strict'  # For cross-site requests; requires `SESSION_COOKIE_SECURE = True`
 
