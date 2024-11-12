@@ -520,7 +520,7 @@ def password_reset_otp_verification(request):
                 password_reset_authorization_otp, password_reset_hashed_authorization_otp, password_reset_salt = generate_otp()
                 cache.set(email_address + 'password_reset_hashed_authorization_otp_and_salt', (password_reset_hashed_authorization_otp, password_reset_salt), timeout=300)  # 300 seconds = 5 mins
 
-                response = Response({"message": "OTP verified successfully"}, status=status.HTTP_200_OK)
+                response = Response({"message": "Password reset one time passcode successfully verified. You will be redirected to the reset password page where you will be able to update your password."}, status=status.HTTP_200_OK)
 
                 response.delete_cookie('multi_factor_authentication_password_reset_authorization_otp', domain=settings.SESSION_COOKIE_DOMAIN)
                 response.delete_cookie('multi_factor_authentication_password_reset_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
@@ -619,7 +619,7 @@ def reset_password(request):
         requesting_user.set_password(new_password)
         requesting_user.save()
     
-        response = Response({"message": "your accounts password has been changed successfully.. you can now login with your new credentials"}, status=200)
+        response = Response({"message": "Your seeran grades account password has been updated successfully, you can now login using your new credentials."}, status=200)
         
         cache.delete(email_address + 'password_reset_hashed_authorization_otp_and_salt')
 
