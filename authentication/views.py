@@ -596,7 +596,7 @@ def reset_password(request):
         # get authorization otp from cache and verify provided otp
         hashed_authorization_otp_and_salt = cache.get(email_address + 'password_reset_hashed_authorization_otp_and_salt')
         if not hashed_authorization_otp_and_salt:
-            response = Response({"denied": "no password reset authorization OTP for account on record.. process forrbiden"}, status=status.HTTP_403_FORBIDDEN)
+            response = Response({"denied": "No password reset authorization OTP for account on record.. process forrbiden"}, status=status.HTTP_403_FORBIDDEN)
 
             response.delete_cookie('password_reset_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
             response.delete_cookie('password_reset_authorization_otp', domain=settings.SESSION_COOKIE_DOMAIN)
@@ -604,30 +604,30 @@ def reset_password(request):
             return response
 
         if verify_user_otp(account_otp=password_reset_otp, stored_hashed_otp_and_salt=hashed_authorization_otp_and_salt):
-            response = Response({"denied": "requests provided authorization OTP is invalid.. process forrbiden"}, status=status.HTTP_403_FORBIDDEN)
+            password_validation.validate_password(new_password)
+
+            # update the user's password
+            requesting_user.set_password(new_password)
+            requesting_user.save()
         
+            response = Response({"message": "Your seeran grades account password has been updated successfully, you can now login using your new credentials."}, status=200)
+            
             cache.delete(email_address + 'password_reset_hashed_authorization_otp_and_salt')
 
             response.delete_cookie('password_reset_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
             response.delete_cookie('password_reset_authorization_otp', domain=settings.SESSION_COOKIE_DOMAIN)
-           
+
             return response
-
-        password_validation.validate_password(new_password)
-
-        # update the user's password
-        requesting_user.set_password(new_password)
-        requesting_user.save()
-    
-        response = Response({"message": "Your seeran grades account password has been updated successfully, you can now login using your new credentials."}, status=200)
         
+        response = Response({"denied": "Could not process your request, the provided password reset authorization OTP is invalid. Process forrbiden."}, status=status.HTTP_403_FORBIDDEN)
+    
         cache.delete(email_address + 'password_reset_hashed_authorization_otp_and_salt')
 
         response.delete_cookie('password_reset_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
         response.delete_cookie('password_reset_authorization_otp', domain=settings.SESSION_COOKIE_DOMAIN)
-
+        
         return response
-    
+
     except BaseAccount.DoesNotExist:
         # if theres no user with the provided email return an error
         return Response({"denied": "an account with the provided credentials does not exist. please check the account details and try again"}, status=status.HTTP_404_NOT_FOUND)
