@@ -44,7 +44,7 @@ DEBUG = config('DEBUG')
 # configures the application to commmunicate in https
 if not DEBUG:
     # Specifies the domain for which the session cookie is valid. If you want to share cookies across subdomains, you can set this to your domain, like .example.com.
-    SESSION_COOKIE_DOMAIN = '.seeran-grades.cloud'  # Shared across subdomains
+    SESSION_COOKIE_DOMAIN = 'localhost'  # Shared across subdomains
 
     # Ensures the cookie is only sent over HTTPS.
     SESSION_COOKIE_SECURE = True  # Use HTTPS
