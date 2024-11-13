@@ -215,14 +215,14 @@ def account_activation_credentials_verification(request):
 
         # if there's a missing credential return an error
         if not full_names or not email_address:
-            return Response({"error": "sign-in credentials are incomplete. please provide all required information"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Could not process your request, sign-in credentials are incomplete. Please provide all required information"}, status=status.HTTP_400_BAD_REQUEST)
     
         # validate email format
         validate_email(email_address)
 
         # validate provided names
         if not validate_names(full_names):
-            return Response({"error": "please enter only your first name and surname"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Could not process your request, Please enter only your first name and surname"}, status=status.HTTP_400_BAD_REQUEST)
 
         # try to validate the credentials by getting a user with the provided credentials 
         requesting_user = BaseAccount.objects.get(email_address=email_address)
@@ -231,7 +231,7 @@ def account_activation_credentials_verification(request):
         name, surname = full_names.split(' ', 1)
 
         if not ((requesting_user.name.casefold() == name.casefold() and requesting_user.surname.casefold() == surname.casefold()) or (requesting_user.name.casefold() == surname.casefold() and requesting_user.surname.casefold() == name.casefold())):
-            return Response({"error": "the credentials you entered are invalid. please check your full name and email and try again"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Could not process your request, the credentials you entered are invalid. Please check your full name and email address and try again"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Access control based on user role and school compliance
         if requesting_user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:

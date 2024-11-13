@@ -239,7 +239,7 @@ class AuthenticationEndpointsIPThrottlingMiddleware:
 
             # Create a response indicating that the rate limit has been exceeded
             response = JsonResponse(
-                {'error': 'Too many requests. Please try again later.'},
+                {'error': 'Could not process your request, too many requests received from your IP address. Please try again later.'},
                 status=status.HTTP_429_TOO_MANY_REQUESTS
             )
 
