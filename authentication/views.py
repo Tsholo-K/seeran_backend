@@ -614,7 +614,7 @@ def password_reset_otp_verification(request):
         attempts -= 1
         cache.set(email_address + 'multi_factor_authentication_password_reset_failed_otp_attempts', attempts, timeout=300)  # Update attempts with expiration
 
-        return Response({"error": f"incorrect OTP.. {attempts} remaining"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": f"The provided OTP is incorrect, you have {attempts} attempts remaining."}, status=status.HTTP_400_BAD_REQUEST)
     
     except BaseAccount.DoesNotExist:
         # Handle the case where the provided email does not exist
