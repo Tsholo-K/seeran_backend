@@ -72,7 +72,7 @@ class CustomIPRateThrottle(AnonRateThrottle):
 
         # If there are 5 or more requests in the last hour, block the request
         if len(self.history) >= 5:
-            return False  # Rate limit exceeded, block the request
+            return self.throttle_failure()  # Call throttle_failure to return a custom response
 
         # Otherwise, add the current request timestamp to the history
         self.history.append(self.now)  # Use current timestamp
@@ -88,6 +88,7 @@ class CustomIPRateThrottle(AnonRateThrottle):
 
         # Custom response when the rate limit is exceeded
         return Response({"error": "Could not process your request, too many requests received from your IP address. Please try again later."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+
 
 @api_view(['POST'])
 @throttle_classes([CustomIPRateThrottle])
