@@ -1,3 +1,7 @@
+# django
+import time
+import re
+
 # simlpe jwt
 from rest_framework_simplejwt.tokens import AccessToken
 
@@ -5,6 +9,8 @@ from rest_framework_simplejwt.tokens import AccessToken
 from channels.db import database_sync_to_async
 
 # djnago
+from django.http import JsonResponse
+from django.conf import settings
 from django.core.cache import cache
 
 # models
@@ -139,6 +145,145 @@ class TokenAuthMiddleware:
         scope['authentication_error'] = 'Could not process your request, no access token was provided.'
         # Call the next application/middleware in the stack
         return await self.app(scope, receive, send)
+
+
+class AuthnticationEndpointsIPThrottlingMiddleware:
+    """
+    Custom middleware for rate-limiting requests based on IP address for specific endpoints.
+    This middleware allows only a specified number of requests (e.g., 5 requests) 
+    from an IP address within a given time window (e.g., 1 hour) for the following endpoints:
+    - /api/auth/login/
+    - /api/auth/account-activation-credentials-verification/
+    - /api/auth/password-reset-email-verification/
+
+    Configuration:
+    - rate_limit: Maximum number of requests allowed per IP within the time window.
+    - time_window: The time window (in seconds) within which the requests are counted.
+    """
+    
+    # Configuration: Max requests allowed and the time window in seconds (1 hour = 3600 seconds)
+    rate_limit = 5  # Max number of requests allowed within the time window
+    time_window = 3600  # Time window for rate-limiting in seconds (1 hour = 3600 seconds)
+
+    # List of endpoints to apply the rate-limiting middleware
+    target_endpoints = [
+        '/api/auth/login/',
+        '/api/auth/account-activation-credentials-verification/',
+        '/api/auth/password-reset-email-verification/'
+    ]
+
+    def __init__(self, get_response):
+        """
+        Initialize the middleware with the 'get_response' callable.
+        The 'get_response' will be used to call the next middleware or view.
+
+        Args:
+            get_response (callable): The next callable in the middleware chain.
+        """
+        self.get_response = get_response
+
+    def __call__(self, request):
+        """
+        Handle the request by checking if it exceeds the rate limit for specific endpoints.
+
+        This method is called on every request. It checks the IP address of the
+        client and determines if the request exceeds the rate limit. If the
+        rate limit is exceeded for one of the target endpoints, it responds with an
+        error message and sets a cookie indicating when the user can retry their request.
+
+        Args:
+            request (HttpRequest): The incoming HTTP request to process.
+
+        Returns:
+            HttpResponse: The response after processing the request.
+        """
+        # Only apply rate-limiting for specific endpoints
+        if request.path not in self.target_endpoints:
+            return self.get_response(request)
+
+        # Get the IP address of the client
+        ip_address = self.get_ip_address(request)
+        
+        # If no IP address is found, skip the throttling logic and return the response
+        if not ip_address:
+            return self.get_response(request)
+
+        # Generate a unique cache key using the IP address to track the request history
+        cache_key = f"throttle_ip_{ip_address}"
+
+        # Retrieve the request history (list of timestamps) from the cache
+        history = cache.get(cache_key, [])
+        
+        # If the history is not a list (corrupted or empty), reset it to an empty list
+        if not isinstance(history, list):
+            history = []
+
+        # Get the current time (in seconds since the epoch)
+        now = time.time()
+
+        # Clean the history by removing timestamps that are older than the time window
+        # (e.g., keep only requests that happened in the last hour)
+        history = [timestamp for timestamp in history if timestamp > (now - self.time_window)]
+
+        # If the number of requests in the history exceeds the allowed rate limit, throttle the request
+        if len(history) >= self.rate_limit:
+            wait_time = now - history[0]  # Time the user needs to wait before making another request
+
+            # Get the requested URL (endpoint) for use in the error message and cookie
+            endpoint = request.path
+            # Sanitize the endpoint to create a valid cookie name (avoid special characters)
+            sanitized_endpoint = re.sub(r'[^a-zA-Z0-9_-]', '_', endpoint)
+
+            # Create a response indicating that the rate limit has been exceeded
+            response = JsonResponse({'error': 'Too many requests. Please try again later.'})
+            
+            # Set a cookie to inform the user of the throttle status and provide the wait time
+            response.set_cookie(
+                f'throttle_{sanitized_endpoint}',  # The cookie name is based on the sanitized endpoint
+                f'Device throttled from sending requests to endpoint: {endpoint}',  # Cookie value with throttle message
+                domain=settings.SESSION_COOKIE_DOMAIN,  # Ensure the cookie is set for the correct domain
+                samesite=settings.SESSION_COOKIE_SAMESITE,  # Set the SameSite policy for security
+                max_age=wait_time,  # Cookie expires after the wait time (in seconds)
+                secure=True  # Ensures the cookie is only sent over HTTPS
+            )
+            
+            # Store the updated request history in the cache
+            cache.set(cache_key, history, timeout=self.time_window)
+            
+            # Return the response with the throttle message and the cookie
+            return response
+
+        # If the rate limit is not exceeded, allow the request to proceed
+        # Add the current timestamp to the history to track the request
+        history.append(now)
+
+        # Save the updated request history back to the cache (with an expiration time of 1 hour)
+        cache.set(cache_key, history, timeout=self.time_window)
+        
+        # Call the next middleware or the view itself
+        return self.get_response(request)
+
+    def get_ip_address(self, request):
+        """
+        Helper method to extract the client's IP address from the request.
+        This checks both the 'X-Forwarded-For' header (for reverse proxies)
+        and the 'REMOTE_ADDR' header to get the IP address.
+
+        Args:
+            request (HttpRequest): The incoming HTTP request to extract the IP address from.
+
+        Returns:
+            str: The IP address of the client, or None if not found.
+        """
+        # Get the 'X-Forwarded-For' header which may contain the real client IP if behind a proxy
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        
+        if x_forwarded_for:
+            # If the header exists, the first IP is the real client IP (in case of proxy)
+            return x_forwarded_for.split(',')[0]
+        
+        # Otherwise, use the 'REMOTE_ADDR' header for the IP address
+        return request.META.get('REMOTE_ADDR')
 
 
 class ConnectionManager:

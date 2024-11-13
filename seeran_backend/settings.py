@@ -254,7 +254,12 @@ MIDDLEWARE = [
     # cors headers middleware
     'corsheaders.middleware.CorsMiddleware',
 
+
     # django middleware
+    # These headers are important because they:
+    # Prevent attacks: Help mitigate common vulnerabilities like XSS, clickjacking, and data injection.
+    # Enforce security policies: Ensure that your application is accessed in a secure manner.
+    # Enhance trust: Signal to users and browsers that your site is committed to security best practices.
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -262,22 +267,12 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     
     # project middleware
-    # none
+    'seeran_backend.middleware.AuthnticationEndpointsIPThrottlingMiddleware'
     
     # django middleware
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
-# These headers are important because they:
-# Prevent attacks: Help mitigate common vulnerabilities like XSS, clickjacking, and data injection.
-# Enforce security policies: Ensure that your application is accessed in a secure manner.
-# Enhance trust: Signal to users and browsers that your site is committed to security best practices.
-MIDDLEWARE += [
-    'django.middleware.security.SecurityMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-]
-
 
 
 # Purpose: This setting is used to specify which domains are allowed to make cross-origin requests to your Django application.
