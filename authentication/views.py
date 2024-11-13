@@ -5,7 +5,7 @@ from django.conf import settings
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, throttle_classes
-from rest_framework.throttling import UserRateThrottle
+from rest_framework.throttling import AnonRateThrottle
 
 # django
 from django.db import transaction
@@ -29,18 +29,24 @@ from .decorators import token_required
 from accounts import utils as accounts_utilities
 
 
-class CustomRateThrottle(UserRateThrottle):
-    rate = '5/hour'
-    
+class CustomIPRateThrottle(AnonRateThrottle):
+    rate = '5/hour'  # Limit to 5 requests per hour per IP
+
+    def get_cache_key(self, request, view):
+        # Use the client's IP address for rate limiting
+        ip_address = self.get_ident(request)
+        
+        # Construct a unique cache key using the IP and User-Agent
+        return f"throttle_ip_address_{ip_address}"
+
     def throttle_failure(self):
-        """
-        Custom response for rate limit exceeded.
-        """
-        return Response({"error": "too many login attempts. please try again later."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+        # Custom response when rate limit is exceeded
+        return Response({"error": "Could not process your request, too many requests recieved from your IP address. Try again in an hour."},status=status.HTTP_429_TOO_MANY_REQUESTS)
+
     
 
 @api_view(['POST'])
-@throttle_classes([CustomRateThrottle])
+@throttle_classes([CustomIPRateThrottle])
 def login(request):
     try:
         email_address = request.data.get('email_address')
@@ -130,7 +136,7 @@ def login(request):
 
 
 @api_view(['POST'])
-@throttle_classes([CustomRateThrottle])
+@throttle_classes([CustomIPRateThrottle])
 def multi_factor_authentication_login(request):
     # try to get the user object using the provided email address
     try:
@@ -221,7 +227,7 @@ def multi_factor_authentication_login(request):
 
 
 @api_view(['POST'])
-@throttle_classes([CustomRateThrottle])
+@throttle_classes([CustomIPRateThrottle])
 def account_activation_credentials_verification(request):
     try:
         full_names = request.data.get('full_names')
@@ -417,14 +423,14 @@ def activate_account(request):
 
 # validate email before password reset
 @api_view(['POST'])
-@throttle_classes([CustomRateThrottle])
+@throttle_classes([CustomIPRateThrottle])
 def password_reset_email_verification(request):
     
     try:
         # check for sent email
         email_address = request.data.get('email_address')
         if not email_address:
-            return Response({"error": "request error, no email address provided.. email address is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Could not process your request,  no email address provided. Email address is required."}, status=status.HTTP_400_BAD_REQUEST)
         
         # try to get the user with the provided email
         requesting_user = BaseAccount.objects.get(email_address=email_address)
@@ -439,11 +445,11 @@ def password_reset_email_verification(request):
             
         # check if the account is activated 
         if requesting_user.activated == False:
-            return Response({"error": "action forbidden for account with provided credentials"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"error": "Could not process your request, action forbidden for account with provided credentials"}, status=status.HTTP_403_FORBIDDEN)
         
         # check if the email is banned 
         if requesting_user.email_banned:
-            return Response({ "error" : "your email address has been banned, failed to send OTP.. you can visit your school to have it changed"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({ "error" : "Could not process your request, your email address has been banned, failed to send OTP.. you can visit your school to have it changed"}, status=status.HTTP_400_BAD_REQUEST)
         
         # validate email format
         validate_email(email_address)
@@ -470,16 +476,17 @@ def password_reset_email_verification(request):
     
     except BaseAccount.DoesNotExist:
         # if theres no user with the provided email return an error
-        return Response({"error": "an account with the provided credentials does not exist. please check the account details and try again"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error": "Could not process your request, an account with the provided credentials does not exist. please check the account details and try again"}, status=status.HTTP_404_NOT_FOUND)
             
     except ValidationError:
-        return Response({"error": "the provided email address is not in a valid format. please correct the email address and try again"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "Could not process your request, the provided email address is not in a valid format. please correct the email address and try again"}, status=status.HTTP_400_BAD_REQUEST)
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST'])
+@throttle_classes([CustomIPRateThrottle])
 def password_reset_otp_verification(request):
     
     try:
@@ -574,6 +581,7 @@ def password_reset_otp_verification(request):
 
 # reset password  used when user has forgotten their password
 @api_view(['POST'])
+@throttle_classes([CustomIPRateThrottle])
 def reset_password(request):
     try:
         # Get the new password and confirm password from the request data, and authorization otp from the cookies
