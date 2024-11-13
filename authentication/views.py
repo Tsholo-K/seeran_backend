@@ -53,6 +53,9 @@ class CustomIPRateThrottle(AnonRateThrottle):
             return False  # Block the request
         return True
 
+    def throttle_failure(self):
+        # Custom response when the rate limit is exceeded
+        return Response({"error": "Could not process your request, too many requests received from your IP address. Please try again later."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
 @api_view(['POST'])
 @throttle_classes([CustomIPRateThrottle])
