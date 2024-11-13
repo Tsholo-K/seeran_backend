@@ -209,7 +209,7 @@ class AuthnticationEndpointsIPThrottlingMiddleware:
             return self.get_response(request)
 
         # Generate a unique cache key using the IP address to track the request history
-        cache_key = f"throttle_ip_{ip_address}"
+        cache_key = f"throttle_ip_address_{ip_address}"
 
         # Retrieve the request history (list of timestamps) from the cache
         history = cache.get(cache_key, [])

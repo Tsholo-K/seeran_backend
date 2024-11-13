@@ -1,18 +1,12 @@
-# python
-import time
-import re
-
 # settings
 from django.conf import settings
 
 # rest framework
 from rest_framework import status
 from rest_framework.response import Response
-from rest_framework.decorators import api_view, throttle_classes
-from rest_framework.throttling import AnonRateThrottle
+from rest_framework.decorators import api_view
 
 # django
-from django.http import JsonResponse
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.contrib.auth import authenticate as authenticate_user, password_validation
@@ -34,69 +28,7 @@ from .decorators import token_required
 from accounts import utils as accounts_utilities
 
 
-class CustomIPRateThrottle(AnonRateThrottle):
-    rate = '5/hour'  # Limit to 5 requests per hour per IP
-
-    def get_cache_key(self, request, view):
-        # Use the client's IP address for rate limiting
-        ip_address = self.get_ident(request)
-        
-        # Log the IP address for debugging
-        print(f"Throttle check for IP: {ip_address}")
-
-        # Construct a unique cache key using the IP address
-        if ip_address:
-            return f"throttle_ip_address_{ip_address}"
-        return None
-    
-    def allow_request(self, request, view):
-        # Retrieve the IP address
-        ip_address = self.get_ident(request)
-        cache_key = self.get_cache_key(request, view)
-
-        if not cache_key:
-            return True  # If no cache key is generated, allow the request
-
-        # Get the requested URL (endpoint)
-        endpoint = request.path
-        # Sanitize the endpoint to make it a valid cookie name
-        sanitized_endpoint = re.sub(r'[^a-zA-Z0-9_-]', '_', endpoint)  # Replace invalid characters with '_'
-
-        # Retrieve the current request history from cache (list of timestamps)
-        history = cache.get(cache_key, [])
-
-        if not isinstance(history, list):
-            history = []  # If history is not a list, reset it to an empty list
-
-        # Ensure that 'history' exists as an attribute
-        self.history = history
-        self.now = time.time()  # Set 'now' to current time
-
-        print(f"Request history for IP {ip_address}: {self.history}")
-
-        # Remove requests older than 1 hour
-        self.history = [timestamp for timestamp in self.history if timestamp > (self.now - 3600)]
-
-        # If there are 5 or more requests in the last hour, block the request
-        if len(self.history) >= 5:
-            wait_time = (self.now - self.history[0])  # Calculate the wait time from the first timestamp
-            response = JsonResponse({'error': 'Could not process your request, too many requests received from your IP address. Please try again later.'})
-
-            # Set a cookie with the throttle wait time, specific to the endpoint
-            response.set_cookie(f'throttle_{sanitized_endpoint}', f'Device throttled from sending requests to endpoint: {endpoint}', domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, max_age=wait_time, secure=True)
-            return response  # Return a response with the cookie set
-
-        # Otherwise, add the current request timestamp to the history
-        self.history.append(self.now)  # Use current timestamp
-
-        # Store the updated history in the cache (with 1-hour expiry)
-        cache.set(cache_key, self.history, timeout=3600)
-
-        return True  # Allow the request
-
-
 @api_view(['POST'])
-@throttle_classes([CustomIPRateThrottle])
 def login(request):
     try:
         email_address = request.data.get('email_address')
@@ -276,7 +208,6 @@ def multi_factor_authentication_login(request):
 
 
 @api_view(['POST'])
-@throttle_classes([CustomIPRateThrottle])
 def account_activation_credentials_verification(request):
     try:
         full_names = request.data.get('full_names')
@@ -472,7 +403,6 @@ def activate_account(request):
 
 # validate email before password reset
 @api_view(['POST'])
-@throttle_classes([CustomIPRateThrottle])
 def password_reset_email_verification(request):
     
     try:
