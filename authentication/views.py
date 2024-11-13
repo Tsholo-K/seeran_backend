@@ -57,6 +57,10 @@ class CustomIPRateThrottle(AnonRateThrottle):
 
         # Retrieve the current request history from cache (list of timestamps)
         history = cache.get(cache_key, [])
+
+        if not isinstance(history, list):
+            history = []  # If history is not a list, reset it to an empty list
+
         print(f"Request history for IP {ip_address}: {history}")
 
         # Remove requests older than 1 hour
