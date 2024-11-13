@@ -266,7 +266,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     
     # project middleware
-    'seeran_backend.middleware.AuthenticationEndpointsIPThrottlingMiddleware',
+    # 'seeran_backend.middleware.AuthenticationEndpointsIPThrottlingMiddleware', # rate limits all authentication endpoints
     
     # django middleware
     'django.contrib.messages.middleware.MessageMiddleware',
