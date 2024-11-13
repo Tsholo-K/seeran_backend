@@ -61,20 +61,23 @@ class CustomIPRateThrottle(AnonRateThrottle):
         if not isinstance(history, list):
             history = []  # If history is not a list, reset it to an empty list
 
-        print(f"Request history for IP {ip_address}: {history}")
+        # Ensure that 'history' exists as an attribute
+        self.history = history
+
+        print(f"Request history for IP {ip_address}: {self.history}")
 
         # Remove requests older than 1 hour
-        history = [timestamp for timestamp in history if timestamp > (time.time() - 3600)]
+        self.history = [timestamp for timestamp in self.history if timestamp > (time.time() - 3600)]
 
         # If there are 5 or more requests in the last hour, block the request
-        if len(history) >= 5:
+        if len(self.history) >= 5:
             return False  # Rate limit exceeded, block the request
 
         # Otherwise, add the current request timestamp to the history
-        history.append(time.time())  # Use current timestamp
+        self.history.append(time.time())  # Use current timestamp
 
         # Store the updated history in the cache (with 1-hour expiry)
-        cache.set(cache_key, history, timeout=3600)
+        cache.set(cache_key, self.history, timeout=3600)
 
         return True  # Allow the request
 
