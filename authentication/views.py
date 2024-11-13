@@ -51,18 +51,21 @@ class CustomIPRateThrottle(AnonRateThrottle):
         ip_address = self.get_ident(request)
         cache_key = self.get_cache_key(request, view)
 
-        # Check if the cache key exists and if the rate limit has been exceeded
-        if cache_key:
-            current_requests = cache.get(cache_key, 0)
-            print(f"Current requests for IP {ip_address}: {current_requests}")
+        if not cache_key:
+            return True  # If no cache key is generated, just allow the request
 
-            if current_requests >= 5:
-                # If rate limit exceeded, log and return False to block request
-                print("Rate limit exceeded, blocking request")
-                return False  # This should block the request
+        # Retrieve the current count from cache (default to 0 if not found)
+        current_requests = cache.get(cache_key, 0)
+        print(f"Current requests for IP {ip_address}: {current_requests}")
 
-        # Allow the request if not rate-limited
-        return super().allow_request(request, view)
+        if current_requests >= 5:
+            # If the rate limit is exceeded, log and block the request
+            print("Rate limit exceeded, blocking request")
+            return False  # Block the request
+
+        # If the request is allowed, increment the count and update the cache
+        cache.set(cache_key, current_requests + 1, timeout=3600)  # 1 hour timeout
+        return True  # Allow the request
 
     def throttle_failure(self):
         # Log the IP address for debugging
