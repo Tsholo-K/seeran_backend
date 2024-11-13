@@ -11,6 +11,7 @@ from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.throttling import AnonRateThrottle
 
 # django
+from django.http import JsonResponse
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.contrib.auth import authenticate as authenticate_user, password_validation
@@ -55,6 +56,9 @@ class CustomIPRateThrottle(AnonRateThrottle):
         if not cache_key:
             return True  # If no cache key is generated, allow the request
 
+        # Get the requested URL (endpoint)
+        endpoint = request.path
+
         # Retrieve the current request history from cache (list of timestamps)
         history = cache.get(cache_key, [])
 
@@ -72,7 +76,12 @@ class CustomIPRateThrottle(AnonRateThrottle):
 
         # If there are 5 or more requests in the last hour, block the request
         if len(self.history) >= 5:
-            return False
+            wait_time = (self.now - self.history[0])  # Calculate the wait time from the first timestamp
+            response = JsonResponse({'error': 'Could not process your request, too many requests received from your IP address. Please try again later.'})
+
+            # Set a cookie with the throttle wait time, specific to the endpoint
+            response.set_cookie(f'throttle_wait_time_{endpoint}', wait_time, max_age=wait_time, httponly=True)
+            return response  # Return a response with the cookie set
 
         # Otherwise, add the current request timestamp to the history
         self.history.append(self.now)  # Use current timestamp
