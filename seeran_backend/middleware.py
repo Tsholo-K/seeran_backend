@@ -150,9 +150,8 @@ class TokenAuthMiddleware:
 
 class AuthenticationEndpointsIPThrottlingMiddleware:
     """
-    Custom middleware for rate-limiting requests based on IP address for specific endpoints.
-    This middleware allows only a specified number of requests (e.g., 5 requests) 
-    from an IP address within a given time window (e.g., 1 hour) for the following endpoints:
+    Custom middleware for rate-limiting requests based on IP address for specific authentication-related endpoints.
+    This middleware allows different rate limits for different endpoints, such as:
     - /api/auth/login/
     - /api/auth/account-activation-credentials-verification/
     - /api/auth/password-reset-email-verification/
@@ -161,17 +160,14 @@ class AuthenticationEndpointsIPThrottlingMiddleware:
     - rate_limit: Maximum number of requests allowed per IP within the time window.
     - time_window: The time window (in seconds) within which the requests are counted.
     """
-    
-    # Configuration: Max requests allowed and the time window in seconds (1 hour = 3600 seconds)
-    rate_limit = 5  # Max number of requests allowed within the time window
-    time_window = 3600  # Time window for rate-limiting in seconds (1 hour = 3600 seconds)
 
-    # List of endpoints to apply the rate-limiting middleware
-    target_endpoints = [
-        '/api/auth/login/',
-        '/api/auth/account-activation-credentials-verification/',
-        '/api/auth/password-reset-email-verification/'
-    ]
+    # Dictionary for storing the rate limits and time windows for each endpoint
+    rate_limits = {
+        '/api/auth/login/': {'rate_limit': 5, 'time_window': 3600},  # 5 requests per hour for login
+        '/api/auth/account-activation-credentials-verification/': {'rate_limit': 5, 'time_window': 3600},  # 5 requests per hour for account activation
+        '/api/auth/password-reset-email-verification/': {'rate_limit': 5, 'time_window': 3600},  # 5 requests per hour for password reset
+        # Add more endpoints as needed
+    }
 
     def __init__(self, get_response):
         """
@@ -190,7 +186,7 @@ class AuthenticationEndpointsIPThrottlingMiddleware:
         This method is called on every request. It checks the IP address of the
         client and determines if the request exceeds the rate limit. If the
         rate limit is exceeded for one of the target endpoints, it responds with an
-        error message and sets a cookie indicating when the user can retry their request.
+        error message and sets cookies indicating when the user can retry their requests.
 
         Args:
             request (HttpRequest): The incoming HTTP request to process.
@@ -198,9 +194,14 @@ class AuthenticationEndpointsIPThrottlingMiddleware:
         Returns:
             HttpResponse: The response after processing the request.
         """
-        # Only apply rate-limiting for specific endpoints
-        if request.path not in self.target_endpoints:
-            return self.get_response(request)
+        # Check if the requested endpoint has a rate limit defined
+        endpoint = request.path
+        if endpoint not in self.rate_limits:
+            return self.get_response(request)  # No rate limit for this endpoint
+
+        # Get the rate limit and time window for this endpoint
+        rate_limit = self.rate_limits[endpoint]['rate_limit']
+        time_window = self.rate_limits[endpoint]['time_window']
 
         # Get the IP address of the client
         ip_address = self.get_ip_address(request)
@@ -210,7 +211,7 @@ class AuthenticationEndpointsIPThrottlingMiddleware:
             return self.get_response(request)
 
         # Generate a unique cache key using the IP address to track the request history
-        cache_key = f"throttle_ip_address_{ip_address}"
+        cache_key = f"throttle_ip_address_{ip_address}_{endpoint}"
 
         # Retrieve the request history (list of timestamps) from the cache
         history = cache.get(cache_key, [])
@@ -223,44 +224,54 @@ class AuthenticationEndpointsIPThrottlingMiddleware:
         now = time.time()
 
         # Clean the history by removing timestamps that are older than the time window
-        # (e.g., keep only requests that happened in the last hour)
-        history = [timestamp for timestamp in history if timestamp > (now - self.time_window)]
+        history = [timestamp for timestamp in history if timestamp > (now - time_window)]
 
         # If the number of requests in the history exceeds the allowed rate limit, throttle the request
-        if len(history) >= self.rate_limit:
-            wait_time = now - history[0]  # Time the user needs to wait before making another request
+        if len(history) >= rate_limit:
+            wait_time = time_window - (now - history[0])  # Time the user needs to wait before making another request
 
-            # Get the requested URL (endpoint) for use in the error message and cookie
-            endpoint = request.path
             # Sanitize the endpoint to create a valid cookie name (avoid special characters)
             sanitized_endpoint = re.sub(r'[^a-zA-Z0-9_-]', '_', endpoint)
 
+            # Create the throttle cookie
+            throttle_cookie_name = f'throttle{sanitized_endpoint}'
+            throttle_cookie_value = f'Device throttled from sending requests to endpoint: {endpoint}'
+
             # Create a response indicating that the rate limit has been exceeded
-            response = JsonResponse({'error': 'Could not process your request, too many requests received from your IP address. Please try again later.'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
-            
-            # Set a cookie to inform the user of the throttle status and provide the wait time
-            response.set_cookie(
-                f'throttle{sanitized_endpoint}',  # The cookie name is based on the sanitized endpoint
-                f'Device throttled from sending requests to endpoint: {endpoint}',  # Cookie value with throttle message
-                domain=settings.SESSION_COOKIE_DOMAIN,  # Ensure the cookie is set for the correct domain
-                samesite=settings.SESSION_COOKIE_SAMESITE,  # Set the SameSite policy for security
-                max_age=wait_time,  # Cookie expires after the wait time (in seconds)
-                secure=True  # Ensures the cookie is only sent over HTTPS
+            response = JsonResponse(
+                {'error': 'Too many requests. Please try again later.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
             )
-            
-            # Store the updated request history in the cache
-            cache.set(cache_key, history, timeout=self.time_window)
-            
-            # Return the response with the throttle message and the cookie
+
+            # Set the throttle cookie in the response
+            response.set_cookie(
+                throttle_cookie_name,
+                throttle_cookie_value,
+                domain=settings.SESSION_COOKIE_DOMAIN,
+                samesite=settings.SESSION_COOKIE_SAMESITE,
+                max_age=int(wait_time),  # Cookie expires after the wait time (in seconds)
+                secure=True
+            )
+
+            # Add existing cookies from the request to the response, preserving any that were sent
+            for cookie_name, cookie_value in request.COOKIES.items():
+                if cookie_name != throttle_cookie_name:  # Avoid replacing the throttle cookie
+                    response.set_cookie(
+                        cookie_name,
+                        cookie_value,
+                        domain=settings.SESSION_COOKIE_DOMAIN,
+                        samesite=settings.SESSION_COOKIE_SAMESITE,
+                        secure=True
+                    )
+
+            # Return the response with all cookies set
             return response
 
         # If the rate limit is not exceeded, allow the request to proceed
         # Add the current timestamp to the history to track the request
         history.append(now)
+        cache.set(cache_key, history, timeout=time_window)
 
-        # Save the updated request history back to the cache (with an expiration time of 1 hour)
-        cache.set(cache_key, history, timeout=self.time_window)
-        
         # Call the next middleware or the view itself
         return self.get_response(request)
 
@@ -278,13 +289,12 @@ class AuthenticationEndpointsIPThrottlingMiddleware:
         """
         # Get the 'X-Forwarded-For' header which may contain the real client IP if behind a proxy
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        
         if x_forwarded_for:
             # If the header exists, the first IP is the real client IP (in case of proxy)
             return x_forwarded_for.split(',')[0]
-        
         # Otherwise, use the 'REMOTE_ADDR' header for the IP address
         return request.META.get('REMOTE_ADDR')
+
 
 
 class ConnectionManager:
