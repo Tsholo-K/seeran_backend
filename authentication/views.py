@@ -72,7 +72,8 @@ class CustomIPRateThrottle(AnonRateThrottle):
 
         # If there are 5 or more requests in the last hour, block the request
         if len(self.history) >= 5:
-            return self.throttle_failure()  # Call throttle_failure to return a custom response
+            self.throttle_failure()  # Call throttle_failure to return a custom response
+            return False 
 
         # Otherwise, add the current request timestamp to the history
         self.history.append(self.now)  # Use current timestamp
