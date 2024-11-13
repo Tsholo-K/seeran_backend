@@ -267,10 +267,10 @@ def account_activation_credentials_verification(request):
     
     except BaseAccount.DoesNotExist:
         # if there's no user with the provided credentials return an error 
-        return Response({"error": "the credentials you entered are invalid. please check your full name and email and try again"}, status=status.HTTP_404_NOT_FOUND)
+        return Response({"error": "Could not process your request, the credentials you entered are invalid. Please check your full name and email address and try again"}, status=status.HTTP_404_NOT_FOUND)
     
     except ValidationError:
-        return Response({"error": "the provided email address is not in a valid format. please correct the email address and try again"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "Could not process your request, the provided email address is not in a valid format. Please correct the email address and try again"}, status=status.HTTP_400_BAD_REQUEST)
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
