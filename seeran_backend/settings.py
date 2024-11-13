@@ -176,7 +176,6 @@ INSTALLED_APPS = [
     "daphne",
     
     # django apps
-    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
