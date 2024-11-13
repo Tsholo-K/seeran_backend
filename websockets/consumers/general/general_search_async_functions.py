@@ -9,12 +9,12 @@ from django.utils.translation import gettext as _
 # models 
 from accounts.models import BaseAccount
 from email_address_bans.models import EmailAddressBan
-from chat_rooms.models import PrivateChatRoom
+from private_chat_rooms.models import PrivateChatRoom
 
 # serializers
 from accounts.serializers.general_serializers import DisplayAccountDetailsSerializer
 from email_address_bans.serializers import EmailBanSerializer
-from chat_room_messages.serializers import PrivateChatRoomMessageSerializer
+from private_chat_room_messages.serializers import PrivateChatRoomMessageSerializer
 
 # utility functions 
 from accounts import utils as accounts_utilities

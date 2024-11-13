@@ -8,12 +8,12 @@ from django.utils import timezone
 
 # models 
 from accounts.models import BaseAccount
-from chat_rooms.models import PrivateChatRoom
-from chat_room_messages.models import  PrivateMessage
+from private_chat_rooms.models import PrivateChatRoom
+from private_chat_room_messages.models import  PrivateMessage
 
 # serializers
 from accounts.serializers.general_serializers import BareAccountDetailsSerializer
-from chat_room_messages.serializers import PrivateChatRoomMessageSerializer
+from private_chat_room_messages.serializers import PrivateChatRoomMessageSerializer
 
 # checks
 from accounts.checks import permission_checks

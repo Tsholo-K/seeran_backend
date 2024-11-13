@@ -6,7 +6,7 @@ from .models import PrivateChatRoom
 
 # serializers
 from accounts.serializers.general_serializers import BasicAccountDetailsSerializer
-from chat_room_messages.serializers import PrivateChatRoomMessageSerializer
+from private_chat_room_messages.serializers import PrivateChatRoomMessageSerializer
 
 
 class PrivateChatRoomsSerializer(serializers.ModelSerializer):

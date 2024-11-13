@@ -2,7 +2,7 @@
 from channels.db import database_sync_to_async
 
 # models
-from chat_room_messages.models import PrivateMessage
+from private_chat_room_messages.models import PrivateMessage
 
 # utility functions 
 from accounts import utils as accounts_utilities
