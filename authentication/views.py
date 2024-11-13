@@ -1,5 +1,6 @@
 # python
 import time
+import re
 
 # settings
 from django.conf import settings
@@ -58,6 +59,8 @@ class CustomIPRateThrottle(AnonRateThrottle):
 
         # Get the requested URL (endpoint)
         endpoint = request.path
+        # Sanitize the endpoint to make it a valid cookie name
+        sanitized_endpoint = re.sub(r'[^a-zA-Z0-9_-]', '_', endpoint)  # Replace invalid characters with '_'
 
         # Retrieve the current request history from cache (list of timestamps)
         history = cache.get(cache_key, [])
@@ -80,7 +83,7 @@ class CustomIPRateThrottle(AnonRateThrottle):
             response = JsonResponse({'error': 'Could not process your request, too many requests received from your IP address. Please try again later.'})
 
             # Set a cookie with the throttle wait time, specific to the endpoint
-            response.set_cookie(f'throttle_{endpoint}', f'Device throttled from sending requests to endpoint: {endpoint}', domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, max_age=wait_time, secure=True)
+            response.set_cookie(f'throttle_{sanitized_endpoint}', f'Device throttled from sending requests to endpoint: {endpoint}', domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, max_age=wait_time, secure=True)
             return response  # Return a response with the cookie set
 
         # Otherwise, add the current request timestamp to the history
