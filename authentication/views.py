@@ -1,3 +1,6 @@
+# python
+import time
+
 # settings
 from django.conf import settings
 
@@ -45,26 +48,30 @@ class CustomIPRateThrottle(AnonRateThrottle):
         return None
     
     def allow_request(self, request, view):
-        # Log eligibility check
-        print(f"Checking eligibility")
-
+        # Retrieve the IP address
         ip_address = self.get_ident(request)
         cache_key = self.get_cache_key(request, view)
 
         if not cache_key:
-            return True  # If no cache key is generated, just allow the request
+            return True  # If no cache key is generated, allow the request
 
-        # Retrieve the current count from cache (default to 0 if not found)
-        current_requests = cache.get(cache_key, 0)
-        print(f"Current requests for IP {ip_address}: {current_requests}")
+        # Retrieve the current request history from cache (list of timestamps)
+        history = cache.get(cache_key, [])
+        print(f"Request history for IP {ip_address}: {history}")
 
-        if current_requests >= 5:
-            # If the rate limit is exceeded, log and block the request
-            print("Rate limit exceeded, blocking request")
-            return False  # Block the request
+        # Remove requests older than 1 hour
+        history = [timestamp for timestamp in history if timestamp > (time.time() - 3600)]
 
-        # If the request is allowed, increment the count and update the cache
-        cache.set(cache_key, current_requests + 1, timeout=3600)  # 1 hour timeout
+        # If there are 5 or more requests in the last hour, block the request
+        if len(history) >= 5:
+            return False  # Rate limit exceeded, block the request
+
+        # Otherwise, add the current request timestamp to the history
+        history.append(time.time())  # Use current timestamp
+
+        # Store the updated history in the cache (with 1-hour expiry)
+        cache.set(cache_key, history, timeout=3600)
+
         return True  # Allow the request
 
     def throttle_failure(self):
