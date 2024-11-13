@@ -236,7 +236,7 @@ class AuthenticationEndpointsIPThrottlingMiddleware:
             sanitized_endpoint = re.sub(r'[^a-zA-Z0-9_-]', '_', endpoint)
 
             # Create a response indicating that the rate limit has been exceeded
-            response = JsonResponse({'error': 'Too many requests. Please try again later.'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+            response = JsonResponse({'error': 'Could not process your request, too many requests received from your IP address. Please try again later.'}, status=status.HTTP_429_TOO_MANY_REQUESTS)
             
             # Set a cookie to inform the user of the throttle status and provide the wait time
             response.set_cookie(
