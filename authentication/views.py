@@ -36,14 +36,21 @@ class CustomIPRateThrottle(AnonRateThrottle):
         # Use the client's IP address for rate limiting
         ip_address = self.get_ident(request)
         
-        # Construct a unique cache key using the IP and User-Agent
-        return f"throttle_ip_address_{ip_address}"
+        # Log the IP address for debugging
+        print(f"Throttle check for IP: {ip_address}")
+
+        # Construct a unique cache key using the IP address
+        if ip_address:
+            return f"throttle_ip_address_{ip_address}"
+        return None
 
     def throttle_failure(self):
+        # Log throttle failure for debugging
+        print("Rate limit exceeded for IP address")
+
         # Custom response when rate limit is exceeded
         return Response({"error": "Could not process your request, too many requests recieved from your IP address. Try again in an hour."},status=status.HTTP_429_TOO_MANY_REQUESTS)
 
-    
 
 @api_view(['POST'])
 @throttle_classes([CustomIPRateThrottle])
@@ -136,7 +143,6 @@ def login(request):
 
 
 @api_view(['POST'])
-@throttle_classes([CustomIPRateThrottle])
 def multi_factor_authentication_login(request):
     # try to get the user object using the provided email address
     try:
@@ -471,8 +477,7 @@ def password_reset_email_verification(request):
             response.set_cookie('multi_factor_authentication_password_reset_email_address', email_address, domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, max_age=300)
             return response
         
-        else:
-            return Response({"error": email_response['message']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({"error": email_response['message']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     except BaseAccount.DoesNotExist:
         # if theres no user with the provided email return an error
@@ -486,7 +491,6 @@ def password_reset_email_verification(request):
 
 
 @api_view(['POST'])
-@throttle_classes([CustomIPRateThrottle])
 def password_reset_otp_verification(request):
     
     try:
@@ -581,7 +585,6 @@ def password_reset_otp_verification(request):
 
 # reset password  used when user has forgotten their password
 @api_view(['POST'])
-@throttle_classes([CustomIPRateThrottle])
 def reset_password(request):
     try:
         # Get the new password and confirm password from the request data, and authorization otp from the cookies
