@@ -147,7 +147,7 @@ class TokenAuthMiddleware:
         return await self.app(scope, receive, send)
 
 
-class AuthnticationEndpointsIPThrottlingMiddleware:
+class AuthenticationEndpointsIPThrottlingMiddleware:
     """
     Custom middleware for rate-limiting requests based on IP address for specific endpoints.
     This middleware allows only a specified number of requests (e.g., 5 requests) 
