@@ -45,6 +45,9 @@ class CustomIPRateThrottle(AnonRateThrottle):
         return None
     
     def allow_request(self, request, view):
+        # Log the IP address for debugging
+        print(f"Checking eligebility")
+
         # Call the superclass method to check if the request should be allowed
         return super().allow_request(request, view)
 
