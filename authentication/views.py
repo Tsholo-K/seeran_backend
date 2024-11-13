@@ -46,14 +46,12 @@ class CustomIPRateThrottle(AnonRateThrottle):
     
     def allow_request(self, request, view):
         # Call the superclass method to check if the request should be allowed
-        if not super().allow_request(request, view):
-            # Log and call custom failure response if the rate limit is exceeded
-            print("Rate limit exceeded for IP address")
-            self.throttle_failure()
-            return False  # Block the request
-        return True
+        return super().allow_request(request, view)
 
     def throttle_failure(self):
+        # Log the IP address for debugging
+        print(f"Modifying response message")
+
         # Custom response when the rate limit is exceeded
         return Response({"error": "Could not process your request, too many requests received from your IP address. Please try again later."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
