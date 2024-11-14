@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 
 
 class PrivateMessage(models.Model):
-    chat_room = models.ForeignKey('chat_rooms.PrivateChatRoom', on_delete=models.CASCADE, related_name='messages')
+    chat_room = models.ForeignKey('private_chat_rooms.PrivateChatRoom', on_delete=models.CASCADE, related_name='messages')
     unread_by = models.ManyToManyField('accounts.BaseAccount', related_name="unread_messages")
     
     author = models.ForeignKey('accounts.BaseAccount', on_delete=models.DO_NOTHING)
