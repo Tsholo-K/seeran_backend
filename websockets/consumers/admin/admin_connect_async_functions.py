@@ -24,14 +24,15 @@ def account_details(account, role):
         unread_announcements_count = requesting_account.school.announcements.exclude(accounts_reached=requesting_account).count()
 
         # Fetch unread messages for the user
-        unread_messages_count = PrivateMessage.objects.filter(read_receipt=False).exclude(author=requesting_account).count()
+        # unread_messages_count = PrivateMessage.objects.filter(read_receipt=False).exclude(author=requesting_account).count()
         
         Serializer = serializer_mappings.account_details[role]
         # Serialize the user
         serialized_account = Serializer(instance=requesting_account).data
 
         # Return the serialized account details along with unread counts
-        return {'websocket_authenticated' : {'account': serialized_account, 'messages': unread_messages_count, 'announcements': unread_announcements_count}}
+        # return {'websocket_authenticated' : {'account': serialized_account, 'messages': unread_messages_count, 'announcements': unread_announcements_count}}
+        return {'websocket_authenticated' : {'account': serialized_account, 'announcements': unread_announcements_count}}
     
     except Exception as e:
         return {'error': str(e)}
