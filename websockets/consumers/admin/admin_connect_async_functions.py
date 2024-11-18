@@ -24,7 +24,7 @@ def account_details(account, role):
         unread_announcements_count = requesting_account.school.announcements.exclude(accounts_reached=requesting_account).count()
 
         # Fetch unread messages for the user
-        unread_messages_count = requesting_account.private_chat_rooms.messages.filter(read_receipt=False).exclude(author=requesting_account).count()
+        unread_messages_count = PrivateMessage.objects.filter(read_receipt=False).exclude(author=requesting_account).count()
         
         Serializer = serializer_mappings.account_details[role]
         # Serialize the user
