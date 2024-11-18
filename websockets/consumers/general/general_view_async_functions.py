@@ -96,9 +96,7 @@ def view_chat_rooms(account):
         
         # Step 2: Fetch chat rooms where the user is involved either as participant_one or participant_two.
         # Order the results by the latest message timestamp (if available), otherwise by the room's creation timestamp.
-        chat_rooms = PrivateChatRoom.objects.select_related('participant_one', 'participant_two').filter(
-            models.Q(participant_one=requesting_user) | models.Q(participant_two=requesting_user)
-        ).order_by('-latest_message_timestamp')
+        chat_rooms = requesting_user.private_chat_rooms.order_by('-latest_message_timestamp')
 
         # Step 3: Serialize the chat rooms using a serializer to prepare the data for the API or frontend
         serialized_chat_rooms = PrivateChatRoomsSerializer(chat_rooms, many=True, context={'account': account}).data

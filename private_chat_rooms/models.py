@@ -9,8 +9,12 @@ from django.core.exceptions import ValidationError
 
 
 class PrivateChatRoom(models.Model):
-    # Unique identifier for the chat room
-    private_chat_room_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    # Many-to-Many relationship with the 'BaseAccount' model using a custom through model
+    participants = models.ManyToManyField(
+        'accounts.BaseAccount',
+        related_name='private_chat_rooms',
+        through='PrivateChatRoomMembership'  # Use 'PrivateChatRoomMembership' as the through model
+    )
 
     # Timestamp of the latest message sent in this chat room
     latest_message_timestamp = models.DateTimeField(null=True, blank=True)
@@ -18,12 +22,8 @@ class PrivateChatRoom(models.Model):
     # Boolean flag indicating if there is only one participant left in the chat room
     has_single_participant = models.BooleanField(default=False)
 
-    # Many-to-Many relationship with the 'BaseAccount' model using a custom through model
-    participants = models.ManyToManyField(
-        'accounts.BaseAccount',
-        related_name='private_chat_rooms',
-        through='PrivateChatRoomMembership'  # Use 'PrivateChatRoomMembership' as the through model
-    )
+    # Unique identifier for the chat room
+    private_chat_room_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     def clean(self):
         """
