@@ -29,8 +29,6 @@ class PrivateChatRoom(models.Model):
         """
         Custom validation logic to ensure the integrity of the chat room.
         """
-        super().clean()
-
         if self.pk:
             # Only perform validations if the instance is already saved
             participants = list(self.participants.all())
@@ -72,8 +70,6 @@ class PrivateChatRoom(models.Model):
         and automatically purge the chat room if necessary.
         """
         # Save the instance first to ensure it has a primary key
-        super().save(*args, **kwargs)
-
         if self.pk:
             # Perform additional checks only after the instance is saved
             participants = list(self.participants.all())
