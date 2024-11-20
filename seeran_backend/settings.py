@@ -12,6 +12,8 @@ import sentry_sdk
 from celery.schedules import crontab
 
 
+PAYSTACK_SECRET_KEY = config('PAYSTACK_SECRET_KEY')
+
 # sentry monitoring system
 sentry_sdk.init(
     dsn=config('SENTRY_DSN'),
