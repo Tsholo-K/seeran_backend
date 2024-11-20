@@ -27,7 +27,7 @@ def message_private(account, role, details):
     try:
         # Validate users
         if account == details.get('account'):
-            return {"error": "Validation error: You cannot send a message to yourself. This violates database constraints and is not allowed."}
+            return {"error": "Validation error: You cannot send a message to yourself."}
 
         # Retrieve the requesting user's account and related attributes
         requesting_account = accounts_utilities.get_account_and_permission_check_attr(account, role)
@@ -46,14 +46,17 @@ def message_private(account, role, details):
             participants=requesting_account
         ).filter(participants=requested_user).first()
 
+        # Start transaction
         with transaction.atomic():
             timestamp = timezone.now()
 
             if not chat_room:
-                # Create the new chat room
-                chat_room = PrivateChatRoom.objects.create(latest_message_timestamp=timestamp)
+                # Create a new chat room with participants
+                chat_room = PrivateChatRoom(latest_message_timestamp=timestamp)
+                chat_room.save()
+
                 # Add participants using the through model
-                PrivateChatRoomMembership.objects.create(chat_room=chat_room, participant=requesting_account),
+                PrivateChatRoomMembership.objects.create(chat_room=chat_room, participant=requesting_account)
                 PrivateChatRoomMembership.objects.create(chat_room=chat_room, participant=requested_user)
 
             # Check if the latest message in the chat room is from the same sender and update it
@@ -84,6 +87,7 @@ def message_private(account, role, details):
 
     except Exception as e:
         return {'error': str(e)}
+
 
 
 
