@@ -54,6 +54,9 @@ def message_private(account, role, details):
                 # Create a new chat room with participants
                 chat_room = PrivateChatRoom.objects.create(latest_message_timestamp=timestamp)
 
+                # Save the chat room first to ensure it has a primary key
+                chat_room.save()
+
                 # Add participants using the through model
                 PrivateChatRoomMembership.objects.create(chat_room=chat_room, participant=requesting_account)
                 PrivateChatRoomMembership.objects.create(chat_room=chat_room, participant=requested_user)
@@ -86,6 +89,7 @@ def message_private(account, role, details):
 
     except Exception as e:
         return {'error': str(e)}
+
 
 
 
