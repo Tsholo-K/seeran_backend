@@ -55,10 +55,8 @@ def message_private(account, role, details):
                 # Save the chat room before adding participants
                 chat_room.save()
                 # Add participants using the through model
-                PrivateChatRoomMembership.objects.bulk_create([
-                    PrivateChatRoomMembership(chat_room=chat_room, participant=requesting_account),
-                    PrivateChatRoomMembership(chat_room=chat_room, participant=requested_user)
-                ])
+                PrivateChatRoomMembership.objects.create(chat_room=chat_room, participant=requesting_account),
+                PrivateChatRoomMembership.objects.create(chat_room=chat_room, participant=requested_user)
 
             # Check if the latest message in the chat room is from the same sender and update it
             last_message = chat_room.messages.order_by('-timestamp').first()
