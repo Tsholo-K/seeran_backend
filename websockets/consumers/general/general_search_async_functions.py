@@ -46,93 +46,96 @@ def search_email_ban(details):
 
 @database_sync_to_async
 def search_chat_room(account, role, details):
+    """
+    Check if a private chat room exists between two users and return relevant data.
+    """
     try:
-        # Retrieve the account making the request
-        # requesting_user = BaseAccount.objects.get(account_id=account)
-
-        # Build the queryset for the requesting account with the necessary related fields.
+        # Retrieve the requesting account and check permissions
         requesting_account = accounts_utilities.get_account_and_permission_check_attr(account=account, role=role)
 
         # Retrieve the requested user's account
         requested_user = BaseAccount.objects.get(account_id=details.get('account'))
-
-        # Build the queryset for the requested account with the necessary related fields.
         requested_account = accounts_utilities.get_account_and_permission_check_attr(account=details.get('account'), role=requested_user.role)
-        
-        # Check permissions
+
+        # Perform permission checks
         permission_error = permission_checks.message(requesting_account, requested_account)
         if permission_error:
             return {'error': permission_error}
-        
-        # Check if a chat room exists between the two users
-        chat_room = PrivateChatRoom.objects.filter(Q(participant_one=requesting_account, participant_two=requested_user) | Q(participant_one=requested_user, participant_two=requesting_account)).first()
-        
+
+        # Find if a chat room exists between the two participants
+        chat_room = PrivateChatRoom.objects.filter(
+            participants=requesting_account
+        ).filter(participants=requested_user).first()
+
         chat_room_exists = bool(chat_room)
-        
-        serializerd_user = DisplayAccountDetailsSerializer(requested_user).data
 
         # Serialize the requested user's data
-        return {'user': serializerd_user, 'chat': chat_room_exists}
+        serialized_user = DisplayAccountDetailsSerializer(requested_user).data
+
+        return {'user': serialized_user, 'chat': chat_room_exists}
 
     except BaseAccount.DoesNotExist:
         # Handle case where the user does not exist
-        return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
-    
+        return {'error': 'An account with the provided credentials does not exist. Please check the details and try again.'}
+
     except Exception as e:
-        # Handle any other unexpected errors
+        # Catch-all for any unexpected errors
         return {'error': str(e)}
+
 
 
 @database_sync_to_async
 def search_chat_room_messages(user, details):
     try:
-        # Retrieve the account making the request
+        # Retrieve the accounts of the requesting and requested users
         requesting_user = BaseAccount.objects.get(account_id=user)
         requested_user = BaseAccount.objects.get(account_id=details.get('account'))
         
-        # Check if a chat room exists between the two users
-        chat_room = PrivateChatRoom.objects.filter(Q(participant_one=requesting_user, participant_two=requested_user) | Q(participant_one=requested_user, participant_two=requesting_user)).select_related('participant_one', 'participant_two').first()
-        
+        # Find the chat room with both participants
+        chat_room = PrivateChatRoom.objects.filter(
+            participants=requesting_user
+        ).filter(participants=requested_user).first()
+
         if not chat_room:
             return {"not_found": 'No such chat room exists'}
-        
+
+        # Fetch messages with optional cursor-based pagination
         if details.get('cursor'):
-            # Fetch messages before the cursor with a limit of 20
             messages = chat_room.messages.filter(timestamp__lt=details['cursor']).order_by('-timestamp')[:20]
         else:
-            # Fetch the latest 20 messages
             messages = chat_room.messages.order_by('-timestamp')[:20]
 
         if not messages.exists():
             return {'messages': [], 'next_cursor': None, 'unread_messages': 0}
 
-        # Convert messages to a list and reverse for correct ascending order
+        # Reverse messages for correct ascending order
         messages = list(messages)[::-1]
 
-        # Serialize the messages
+        # Serialize messages
         serialized_messages = PrivateChatRoomMessageSerializer(messages, many=True, context={'participant': user}).data
-        
-        # Determine the next cursor
+
+        # Determine the next cursor for pagination
         next_cursor = messages[0].timestamp.isoformat() if len(messages) > 19 else None
 
-        # Mark unread messages as read and count them in one query
+        # Mark unread messages as read
         unread_messages = chat_room.messages.filter(read_receipt=False).exclude(author=requesting_user)
-
-        # Check if there are any messages that match the criteria
         unread_count = unread_messages.count()
+
         if unread_count > 0:
-            # Mark the messages as read
             unread_messages.update(read_receipt=True)
-            return {'messages': serialized_messages, 'next_cursor': next_cursor, 'unread_messages': unread_count, 'user': str(requested_user.account_id), 'chat': str(requesting_user.account_id)}
-        
-        else:
-            # Handle the case where no messages need to be updated
-            return {'messages': serialized_messages, 'next_cursor': next_cursor, 'unread_messages': 0}
+
+        return {
+            'messages': serialized_messages,
+            'next_cursor': next_cursor,
+            'unread_messages': unread_count,
+            'user': str(requested_user.account_id),
+            'chat': str(requesting_user.account_id),
+        }
 
     except BaseAccount.DoesNotExist:
-        # Handle case where the user does not exist
         return {'error': 'An account with the provided credentials does not exist. Please check the account details and try again.'}
     
     except Exception as e:
         return {'error': str(e)}
+
 
