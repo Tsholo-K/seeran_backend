@@ -163,8 +163,10 @@ def update_messages_as_read(account, details):
         # Retrieve the requested user's account
         requested_user = BaseAccount.objects.get(account_id=details.get('account'))
         
-        # Check if a chat room exists between the two users
-        chat_room = PrivateChatRoom.objects.get(Q(participant_one=requesting_user, participant_two=requested_user) | Q(participant_one=requested_user, participant_two=requesting_user))
+        # Find if a chat room exists between the two participants
+        chat_room = PrivateChatRoom.objects.filter(
+            participants=requesting_user
+        ).filter(participants=requested_user).first()
 
         if chat_room:
             # Query for messages that need to be marked as read
