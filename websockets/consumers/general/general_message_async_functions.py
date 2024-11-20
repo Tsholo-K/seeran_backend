@@ -52,8 +52,6 @@ def message_private(account, role, details):
             if not chat_room:
                 # Create the new chat room
                 chat_room = PrivateChatRoom.objects.create(latest_message_timestamp=timestamp)
-                # Save the chat room before adding participants
-                chat_room.save()
                 # Add participants using the through model
                 PrivateChatRoomMembership.objects.bulk_create([
                     PrivateChatRoomMembership(chat_room=chat_room, participant=requesting_account),

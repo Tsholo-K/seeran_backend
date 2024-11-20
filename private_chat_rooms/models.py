@@ -30,60 +30,64 @@ class PrivateChatRoom(models.Model):
         Custom validation logic to ensure the integrity of the chat room.
         """
         super().clean()
-        
-        # Retrieve all participants in the chat room and count them
-        participants = list(self.participants.all())
-        participants_count = len(participants)
 
-        # Validation: Ensure the chat room does not have more than two participants
-        if participants_count > 2:
-            raise ValidationError("A private chat room must have exactly two participants.")
+        if self.pk:
+            # Only perform validations if the instance is already saved
+            participants = list(self.participants.all())
+            participants_count = len(participants)
 
-        # Validation: If there are exactly two participants, ensure they are not the same user
-        if participants_count == 2:
-            if participants[0] == participants[1]:
-                raise ValidationError("A user cannot have a private chat room with themselves.")
+            # Validation: Ensure the chat room does not have more than two participants
+            if participants_count > 2:
+                raise ValidationError("A private chat room must have exactly two participants.")
 
-        # Set the 'has_single_participant' flag if there is only one participant
-        if participants_count == 1:
-            self.has_single_participant = True
-        else:
-            self.has_single_participant = False
+            # Validation: If there are exactly two participants, ensure they are not the same user
+            if participants_count == 2:
+                if participants[0] == participants[1]:
+                    raise ValidationError("A user cannot have a private chat room with themselves.")
 
-        # Validation: Prevent adding a new participant if the chat room has only one participant
-        if self.has_single_participant and participants_count > 1:
-            raise ValidationError("No additional participants can be added to this chat room.")
+            # Set the 'has_single_participant' flag if there is only one participant
+            self.has_single_participant = participants_count == 1
 
-        # Validation: Ensure the latest message timestamp is not set to a future date
-        if self.latest_message_timestamp and self.latest_message_timestamp > timezone.now():
-            raise ValidationError("The latest message timestamp cannot be in the future.")
+            # Validation: Prevent adding a new participant if the chat room has only one participant
+            if self.has_single_participant and participants_count > 1:
+                raise ValidationError("No additional participants can be added to this chat room.")
 
-        # Validation: Check for duplicate chat rooms with the same two participants
-        if participants_count == 2:
-            # Query for any existing room with the same participants, excluding the current instance
-            existing_room = PrivateChatRoom.objects.filter(
-                participants=participants[0]
-            ).filter(participants=participants[1]).exclude(pk=self.pk)
-            
-            if existing_room.exists():
-                raise ValidationError("A chat room with these participants already exists.")
+            # Validation: Ensure the latest message timestamp is not set to a future date
+            if self.latest_message_timestamp and self.latest_message_timestamp > timezone.now():
+                raise ValidationError("The latest message timestamp cannot be in the future.")
+
+            # Validation: Check for duplicate chat rooms with the same two participants
+            if participants_count == 2:
+                # Query for any existing room with the same participants, excluding the current instance
+                existing_room = PrivateChatRoom.objects.filter(
+                    participants=participants[0]
+                ).filter(participants=participants[1]).exclude(pk=self.pk)
+                
+                if existing_room.exists():
+                    raise ValidationError("A chat room with these participants already exists.")
 
     def save(self, *args, **kwargs):
         """
         Custom save method to enforce restrictions on participant modifications
         and automatically purge the chat room if necessary.
         """
+        # Save the instance first to ensure it has a primary key
+        super().save(*args, **kwargs)
+
+        # Perform additional checks only after the instance is saved
+        participants = list(self.participants.all())
+        participants_count = len(participants)
+
         # If the chat room has no participants, delete it
-        if self.participants.count() == 0:
+        if participants_count == 0:
             self.delete()
-        else:
-            # Prevent modifications to participants if the chat room already exists
-            if self.pk:  # Check if the instance is already saved in the database
-                original = PrivateChatRoom.objects.get(pk=self.pk)
-                # Compare the original set of participants with the current set
-                if set(original.participants.all()) != set(self.participants.all()):
-                    raise ValidationError("Participants cannot be modified after the chat room is created.")
-            super().save(*args, **kwargs)
+
+        # Prevent modifications to participants if the chat room already exists
+        elif self.pk:  # Instance is already saved
+            original = PrivateChatRoom.objects.get(pk=self.pk)
+            if set(original.participants.all()) != set(participants):
+                raise ValidationError("Participants cannot be modified after the chat room is created.")
+
 
 
 class PrivateChatRoomMembership(models.Model):
