@@ -74,20 +74,20 @@ class PrivateChatRoom(models.Model):
         # Save the instance first to ensure it has a primary key
         super().save(*args, **kwargs)
 
-        # Perform additional checks only after the instance is saved
-        participants = list(self.participants.all())
-        participants_count = len(participants)
+        if self.pk:
+            # Perform additional checks only after the instance is saved
+            participants = list(self.participants.all())
+            participants_count = len(participants)
 
-        # If the chat room has no participants, delete it
-        if participants_count == 0:
-            self.delete()
+            # If the chat room has no participants, delete it
+            if participants_count == 0:
+                self.delete()
 
-        # Prevent modifications to participants if the chat room already exists
-        elif self.pk:  # Instance is already saved
-            original = PrivateChatRoom.objects.get(pk=self.pk)
-            if set(original.participants.all()) != set(participants):
-                raise ValidationError("Participants cannot be modified after the chat room is created.")
-
+            # Prevent modifications to participants if the chat room already exists
+            else:  # Instance is already saved
+                original = PrivateChatRoom.objects.get(pk=self.pk)
+                if set(original.participants.all()) != set(participants):
+                    raise ValidationError("Participants cannot be modified after the chat room is created.")
 
 
 class PrivateChatRoomMembership(models.Model):
