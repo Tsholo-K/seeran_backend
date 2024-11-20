@@ -41,19 +41,17 @@ def message_private(account, role, details):
         if permission_error:
             return {'error': permission_error}
 
+        # Retrieve or create the chat room with the participants
+        chat_room = PrivateChatRoom.objects.filter(
+            participants=requesting_account
+        ).filter(participants=requested_user).first()
+
         with transaction.atomic():
             timestamp = timezone.now()
-
-            # Retrieve or create the chat room with the participants
-            chat_room = PrivateChatRoom.objects.filter(
-                participants=requesting_account
-            ).filter(participants=requested_user).first()
 
             if not chat_room:
                 # Create the new chat room
                 chat_room = PrivateChatRoom.objects.create(latest_message_timestamp=timestamp)
-                # Save the chat room before adding participants
-                chat_room.save()
                 # Add participants using the through model
                 PrivateChatRoomMembership.objects.create(chat_room=chat_room, participant=requesting_account),
                 PrivateChatRoomMembership.objects.create(chat_room=chat_room, participant=requested_user)
