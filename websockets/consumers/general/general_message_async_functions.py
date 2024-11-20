@@ -50,8 +50,11 @@ def message_private(account, role, details):
             ).filter(participants=requested_user).first()
 
             if not chat_room:
-                # Create the new chat room and add participants
+                # Create the new chat room
                 chat_room = PrivateChatRoom.objects.create(latest_message_timestamp=timestamp)
+                # Save the chat room before adding participants
+                chat_room.save()
+                # Add participants using the through model
                 PrivateChatRoomMembership.objects.bulk_create([
                     PrivateChatRoomMembership(chat_room=chat_room, participant=requesting_account),
                     PrivateChatRoomMembership(chat_room=chat_room, participant=requested_user)
@@ -85,6 +88,7 @@ def message_private(account, role, details):
 
     except Exception as e:
         return {'error': str(e)}
+
 
 
     
