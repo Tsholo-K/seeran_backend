@@ -52,7 +52,7 @@ def message_private(account, role, details):
 
             if not chat_room:
                 # Create a new chat room with participants
-                chat_room = PrivateChatRoom.objects.create(latest_message_timestamp=timestamp)
+                chat_room = PrivateChatRoom(latest_message_timestamp=timestamp)
 
                 # Save the chat room first to ensure it has a primary key
                 chat_room.save()
