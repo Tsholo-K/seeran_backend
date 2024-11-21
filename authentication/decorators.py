@@ -16,6 +16,9 @@ from rest_framework_simplejwt.tokens import AccessToken
 # utility functions 
 from authentication import utils as authentication_utilities
 
+# models
+from accounts.models import BaseAccount
+
 # logging
 import logging
 
@@ -28,18 +31,18 @@ def token_required(view_func):
         try:
             # Get access token from cookies
             access_token = request.COOKIES.get('access_token')
-            # if not access_token:
-            #     return authentication_utilities.remove_authorization_cookies(JsonResponse(
-            #         {'error': 'Request not authenticated.. access denied'},
-            #         status=status.HTTP_401_UNAUTHORIZED
-            #     ))
+            if not access_token:
+                return authentication_utilities.remove_authorization_cookies(JsonResponse(
+                    {'error': 'Request not authenticated.. access denied'},
+                    status=status.HTTP_401_UNAUTHORIZED
+                ))
 
-            # # Check if the token is blacklisted
-            # if cache.get(access_token):
-            #     return authentication_utilities.remove_authorization_cookies(JsonResponse(
-            #         {'error': 'The provided access token has been blacklisted.. request revoked'},
-            #         status=status.HTTP_400_BAD_REQUEST
-            #     ))
+            # Check if the token is blacklisted
+            if cache.get(access_token):
+                return authentication_utilities.remove_authorization_cookies(JsonResponse(
+                    {'error': 'The provided access token has been blacklisted.. request revoked'},
+                    status=status.HTTP_400_BAD_REQUEST
+                ))
 
             # Decode and verify the access token
             verified_access_token = authentication_utilities.validate_access_token(access_token)
@@ -59,6 +62,17 @@ def token_required(view_func):
             if remaining_lifespan <= 0:
                 return authentication_utilities.remove_authorization_cookies(JsonResponse(
                     {'error': 'Could not process your request, your access credentials have expired.. request revoked'},
+                    status=status.HTTP_401_UNAUTHORIZED
+                ))
+            
+            # Retrieve and set the authenticated user
+            try:
+                requesting_account = BaseAccount.objects.get(pk=decoded_token['user_id'])
+                request.user = requesting_account
+
+            except BaseAccount.DoesNotExist:
+                return authentication_utilities.remove_authorization_cookies(JsonResponse(
+                    {'error': 'Could not process your request, an account with the provided access credentials does not exist.. request revoked'},
                     status=status.HTTP_401_UNAUTHORIZED
                 ))
 
