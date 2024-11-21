@@ -1,7 +1,11 @@
+# python 
+import time
+
 # settings
 from django.conf import settings
 
-# rest framework
+# simple jwt
+from rest_framework_simplejwt.tokens import AccessToken as decode, TokenError
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
@@ -18,14 +22,12 @@ from accounts.models import BaseAccount
 from account_access_tokens.models import AccountAccessToken
 
 # utility functions 
-from .utils import generate_token, generate_otp, verify_user_otp, validate_names, send_otp_email
+from authentication import utils as authentication_utilities
+from accounts import utils as accounts_utilities
 from account_access_tokens.utils import manage_user_sessions
 
 # custom decorators
 from .decorators import token_required
-
-# utility functions 
-from accounts import utils as accounts_utilities
 
 
 @api_view(['POST'])
@@ -48,7 +50,7 @@ def login(request):
                 return Response({"denied": "access denied"}, status=status.HTTP_403_FORBIDDEN)
             
         # generate an access token for the user 
-        token = generate_token(requesting_user)
+        token = authentication_utilities.generate_token(requesting_user)
 
         # Handle multi-factor authentication (MFA) if enabled for the user
         if requesting_user.multifactor_authentication:
@@ -75,11 +77,11 @@ def login(request):
                 return Response({"error": "Server error.. Could not generate access token for your account"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
             # Generate OTP and send to user's email for MFA
-            otp, hashed_otp, salt = generate_otp()
-            email_response = send_otp_email(requesting_user, otp, reason="Your account has multi-factor authentication toggled on, this OTP was generated in response to your login request.")
+            otp, hashed_otp, salt = authentication_utilities.generate_otp()
+            email_response = authentication_utilities.send_otp_email(requesting_user, otp, reason="Your account has multi-factor authentication toggled on, this OTP was generated in response to your login request.")
             
             if email_response['status'] == 'success':
-                login_authorization_otp, hashed_login_authorization_otp, authorization_salt = generate_otp()
+                login_authorization_otp, hashed_login_authorization_otp, authorization_salt = authentication_utilities.generate_otp()
 
                 cache.set(email_address + 'multi_factor_authentication_login_otp_hash_and_salt', (hashed_otp, salt), timeout=300)  # Cache OTP for 5 mins
                 cache.set(email_address + 'multi_factor_authentication_login_authorization_otp', (hashed_login_authorization_otp, authorization_salt), timeout=300)  # Cache auth OTP for 5 mins
@@ -150,15 +152,15 @@ def multi_factor_authentication_login(request):
             return Response({"denied": "Your accounts multi-factor authentication login OTP has expired, to generate a new one you will have to re-authenticate from the login page."}, status=status.HTTP_400_BAD_REQUEST)
     
         # if everything above checks out verify the provided otp against the stored otp
-        if verify_user_otp(account_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
+        if authentication_utilities.verify_user_otp(account_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
             # provided otp is verified successfully
-            if verify_user_otp(account_otp=authorization_otp, stored_hashed_otp_and_salt=hashed_authorization_otp_and_salt):
+            if authentication_utilities.verify_user_otp(account_otp=authorization_otp, stored_hashed_otp_and_salt=hashed_authorization_otp_and_salt):
                 # if there's no error till here verification is successful, delete all cached otps
                 cache.delete(email_address + 'multi_factor_authentication_login_otp_hash_and_salt')
                 cache.delete(email_address + 'multi_factor_authentication_login_failed_otp_attempts')
                 
                 # then generate an access and refresh token for the user 
-                token = generate_token(requesting_user)
+                token = authentication_utilities.generate_token(requesting_user)
                 
                 if 'access' in token:
                     session_response = manage_user_sessions(requesting_user, token)
@@ -221,7 +223,7 @@ def account_activation_credentials_verification(request):
         validate_email(email_address)
 
         # validate provided names
-        if not validate_names(full_names):
+        if not authentication_utilities.validate_names(full_names):
             return Response({"error": "Could not process your request, Please enter only your first name and surname"}, status=status.HTTP_400_BAD_REQUEST)
 
         # try to validate the credentials by getting a user with the provided credentials 
@@ -255,11 +257,11 @@ def account_activation_credentials_verification(request):
     
         # if everything checks out without an error 
         # create an otp for the user
-        account_activation_otp, hashed_account_activation_otp, account_activation_salt = generate_otp()
-        email_response = send_otp_email(requesting_user, account_activation_otp, reason="We're thrilled to have you on board and excited for you to explore all we have to offer. Here's your one-time passcode (OTP), freshly baked just for your account activation request. Use it to unlock the door to your new adventure with us—let's get started!")
+        account_activation_otp, hashed_account_activation_otp, account_activation_salt = authentication_utilities.generate_otp()
+        email_response = authentication_utilities.send_otp_email(requesting_user, account_activation_otp, reason="We're thrilled to have you on board and excited for you to explore all we have to offer. Here's your one-time passcode (OTP), freshly baked just for your account activation request. Use it to unlock the door to your new adventure with us—let's get started!")
         
         if email_response['status'] == 'success':
-            account_activation_authorization_otp, hashed_account_activation_authorization_otp, account_activation_authorization_salt = generate_otp()
+            account_activation_authorization_otp, hashed_account_activation_authorization_otp, account_activation_authorization_salt = authentication_utilities.generate_otp()
 
             cache.set(email_address + 'multi_factor_authentication_account_activation_otp_hash_and_salt', (hashed_account_activation_otp, account_activation_salt), timeout=300)  # Cache OTP for 5 mins
             cache.set(email_address + 'multi_factor_authentication_account_activation_authorization_otp_hash_and_salt', (hashed_account_activation_authorization_otp, account_activation_authorization_salt), timeout=300)  # Cache auth OTP for 5 mins
@@ -314,16 +316,16 @@ def account_activation_otp_verification(request):
             return Response({"denied": "Your accounts multi-factor authentication login OTP has expired, to generate a new one you will have to re-authenticate from the login page."}, status=status.HTTP_400_BAD_REQUEST)
 
         # if everything above checks out verify the provided otp against the stored otp
-        if verify_user_otp(account_otp=otp, stored_hashed_otp_and_salt=stored_hashed_account_activation_otp_and_salt):
+        if authentication_utilities.verify_user_otp(account_otp=otp, stored_hashed_otp_and_salt=stored_hashed_account_activation_otp_and_salt):
             # provided otp is verified successfully
-            if verify_user_otp(account_otp=authorization_otp, stored_hashed_otp_and_salt=stored_hashed_account_activation_authorization_otp_and_salt):
+            if authentication_utilities.verify_user_otp(account_otp=authorization_otp, stored_hashed_otp_and_salt=stored_hashed_account_activation_authorization_otp_and_salt):
 
                 # OTP is verified, prompt the user to set their password
                 cache.delete(email_address + 'multi_factor_authentication_account_activation_otp_hash_and_salt')
                 cache.delete(email_address + 'multi_factor_authentication_account_activation_authorization_otp_hash_and_salt')
                 cache.delete(email_address + 'account_activation_otp_failed_attempts')
 
-                activate_account_authorization_otp, hashed_activate_account_authorization_otp, activate_account_salt = generate_otp()
+                activate_account_authorization_otp, hashed_activate_account_authorization_otp, activate_account_salt = authentication_utilities.generate_otp()
 
                 cache.set(email_address + 'activate_account_authorization_otp_hash_and_salt', (hashed_activate_account_authorization_otp, activate_account_salt), timeout=300)  # 300 seconds = 5 mins
                 
@@ -415,13 +417,13 @@ def activate_account(request):
             response.delete_cookie('activate_account_authorization_otp', domain=settings.SESSION_COOKIE_DOMAIN)
             return response
 
-        if verify_user_otp(account_otp=authorization_otp, stored_hashed_otp_and_salt=stored_activate_account_hashed_otp_and_salt):
+        if authentication_utilities.verify_user_otp(account_otp=authorization_otp, stored_hashed_otp_and_salt=stored_activate_account_hashed_otp_and_salt):
             # activate users account
             with transaction.atomic():
                 account = BaseAccount.objects.activate(email_address=email_address, password=password)
 
                 # generate an access and refresh token for the user 
-                account_access_token = generate_token(account=account)
+                account_access_token = authentication_utilities.generate_token(account=account)
                 AccountAccessToken.objects.create(account=account, access_token_string=account_access_token['access'])
 
             cache.delete(email_address + 'activate_account_authorization_otp_hash_and_salt')
@@ -488,11 +490,11 @@ def password_reset_email_verification(request):
         
         # if everything checks out without an error 
         # create an otp for the user
-        password_reset_otp, hashed_password_reset_otp, password_reset_salt = generate_otp()
-        email_response = send_otp_email(requesting_user, password_reset_otp, reason="We recieved a password reset request, looks like you're ready for a fresh start, we've got you covered! Use the OTP below to securely reset your password.")
+        password_reset_otp, hashed_password_reset_otp, password_reset_salt = authentication_utilities.generate_otp()
+        email_response = authentication_utilities.send_otp_email(requesting_user, password_reset_otp, reason="We recieved a password reset request, looks like you're ready for a fresh start, we've got you covered! Use the OTP below to securely reset your password.")
         
         if email_response['status'] == 'success':
-            password_reset_authorization_otp, hashed_password_reset_authorization_otp, password_reset_authorization_salt = generate_otp()
+            password_reset_authorization_otp, hashed_password_reset_authorization_otp, password_reset_authorization_salt = authentication_utilities.generate_otp()
 
             cache.set(email_address + 'multi_factor_authentication_password_reset_otp_hash_and_salt', (hashed_password_reset_otp, password_reset_salt), timeout=300)  # Cache OTP for 5 mins
             cache.set(email_address + 'multi_factor_authentication_password_reset_authorization_otp_hash_and_salt', (hashed_password_reset_authorization_otp, password_reset_authorization_salt), timeout=300)  # Cache auth OTP for 5 mins
@@ -547,14 +549,14 @@ def password_reset_otp_verification(request):
             return Response({"denied": "Could not process your request, your authorization credentials have expired."}, status=status.HTTP_400_BAD_REQUEST)
     
         # if everything above checks out verify the provided otp against the stored otp
-        if verify_user_otp(account_otp=password_reset_otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
+        if authentication_utilities.verify_user_otp(account_otp=password_reset_otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
             # provided otp is verified successfully
-            if verify_user_otp(account_otp=password_reset_authorization_otp, stored_hashed_otp_and_salt=multi_factor_authentication_password_reset_hashed_authorization_otp_and_salt):
+            if authentication_utilities.verify_user_otp(account_otp=password_reset_authorization_otp, stored_hashed_otp_and_salt=multi_factor_authentication_password_reset_hashed_authorization_otp_and_salt):
             
                 cache.delete(email_address + 'multi_factor_authentication_password_reset_otp_hash_and_salt')
                 cache.delete(email_address + 'multi_factor_authentication_password_reset_authorization_otp_hash_and_salt')
 
-                password_reset_authorization_otp, password_reset_hashed_authorization_otp, password_reset_salt = generate_otp()
+                password_reset_authorization_otp, password_reset_hashed_authorization_otp, password_reset_salt = authentication_utilities.generate_otp()
                 cache.set(email_address + 'password_reset_hashed_authorization_otp_and_salt', (password_reset_hashed_authorization_otp, password_reset_salt), timeout=300)  # 300 seconds = 5 mins
 
                 response = Response({"message": "Password reset one time passcode successfully verified. You will be redirected to the reset password page where you will be able to update your password."}, status=status.HTTP_200_OK)
@@ -640,7 +642,7 @@ def reset_password(request):
            
             return response
 
-        if verify_user_otp(account_otp=password_reset_otp, stored_hashed_otp_and_salt=hashed_authorization_otp_and_salt):
+        if authentication_utilities.verify_user_otp(account_otp=password_reset_otp, stored_hashed_otp_and_salt=hashed_authorization_otp_and_salt):
             password_validation.validate_password(new_password)
 
             # update the user's password
@@ -707,3 +709,32 @@ def authenticate(request):
     else:
         return Response({"error" : "request not authenticated.. access denied",}, status=status.HTTP_403_FORBIDDEN)
 
+
+@api_view(["POST"])
+@token_required
+def log_out(request):    
+    try:
+        access_token = request.COOKIES.get('password_reset_authorization_otp')
+
+        # Decode the token
+        token = decode(access_token)
+        
+        # Calculate the remaining time for the token to expire
+        expiration_time = token.payload['exp'] - int(time.time())
+        
+        if expiration_time > 0:
+            cache.set(access_token, 'blacklisted', timeout=expiration_time)
+    
+        # delete token from database
+        AccountAccessToken.objects.filter(access_token_string=str(access_token)).delete()
+
+        response = Response({'message': "Your current session has been logged out successfully and access token has been blacklisted for the remainder of it's lifespan."}, status=status.HTTP_200_OK)
+        response = authentication_utilities.remove_authorization_cookies(response)
+
+        return response
+    
+    except TokenError as e:
+        return Response({"error": "There was an error decoding your provided access token. If this error persists please open a bug report with the following error trail: " + str(e)}, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_200_OK)

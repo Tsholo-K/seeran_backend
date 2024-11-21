@@ -6,9 +6,15 @@ import base64
 import requests
 from decouple import config
 
+# settings
+from django.conf import settings
+
 # restframework
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
+
+# models
+from accounts.models import BaseAccount
 
 
 def send_otp_email(user, otp, reason):
@@ -52,11 +58,21 @@ def send_otp_email(user, otp, reason):
 def validate_access_token(access_token):
     try:
         AccessToken(access_token).verify()
-        # Access token is valid
+
+        decoded_token = AccessToken(access_token)
+        BaseAccount.objects.get(id=decoded_token['user_id'])
+
         return access_token
-    except TokenError:
-        # Access token is invalid, try refreshing
+
+    except (TokenError, BaseAccount.DoesNotExist):
         return None
+
+
+def remove_authorization_cookies(response):
+    response.delete_cookie('access_token', domain=settings.SESSION_COOKIE_DOMAIN)
+    response.delete_cookie('session_authenticated', domain=settings.SESSION_COOKIE_DOMAIN)
+
+    return response
 
 
 # otp generation function

@@ -315,8 +315,6 @@ class TeacherConsumer(AsyncWebsocketConsumer):
 
             'submit_assessment_submissions' : teacher_submit_async_functions.submit_assessment_submissions,
             'submit_student_transcript_score' : teacher_submit_async_functions.submit_student_transcript_score,
-
-            'submit_log_out_request': general_submit_async_functions.submit_log_out_request,
         }
 
         func = submit_map.get(description)

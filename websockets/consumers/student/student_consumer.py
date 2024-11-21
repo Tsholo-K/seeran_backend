@@ -215,12 +215,12 @@ class StudentConsumer(AsyncWebsocketConsumer):
 
     async def handle_form_data(self, description, details, account, role, access_token):
         return {'error': 'Could not process your request, an invalid form data description was provided. If this problem persist open a bug report ticket.'}
-        form_data_map = {}
+        # form_data_map = {}
 
-        func = form_data_map.get(description)
-        if func:
-            response = await func(account, role, details)
-            return response
+        # func = form_data_map.get(description)
+        # if func:
+        #     response = await func(account, role, details)
+        #     return response
         
 
 # UPDATE
@@ -276,7 +276,6 @@ class StudentConsumer(AsyncWebsocketConsumer):
 
     async def handle_submit(self, description, details, account, role, access_token):
         submit_map = {
-            'submit_log_out_request': general_submit_async_functions.submit_log_out_request,
         }
 
         func = submit_map.get(description)
@@ -289,15 +288,15 @@ class StudentConsumer(AsyncWebsocketConsumer):
 
     async def handle_delete(self, description, details, account, role, access_token):
         return {'error': 'Could not process your request, an invalid delete description was provided. If this problem persist open a bug report ticket.'}
-        delete_map = {}
+        # delete_map = {}
 
-        func = delete_map.get(description)
-        if func:
-            if description in ['delete_school_account']:
-                response = await func(account, role)
-            else:
-                response = await func(account, role, details)            
-            return response
+        # func = delete_map.get(description)
+        # if func:
+        #     if description in ['delete_school_account']:
+        #         response = await func(account, role)
+        #     else:
+        #         response = await func(account, role, details)            
+        #     return response
 
 # UPLOAD
 
@@ -316,14 +315,14 @@ class StudentConsumer(AsyncWebsocketConsumer):
 
     async def handle_create(self, description, details, account, role, access_token):
         return {'error': 'Could not process your request, an invalid create description was provided. If this problem persist open a bug report ticket.'}
-        create_map = {}
+        # create_map = {}
 
-        func = create_map.get(description)
-        if func:
-            response = await func(account, role, details)
-            if description in ['create_account'] and response.get('account'):
-                return await general_email_async_functions.send_account_confirmation_email(response['account'])
-            return response
+        # func = create_map.get(description)
+        # if func:
+        #     response = await func(account, role, details)
+        #     if description in ['create_account'] and response.get('account'):
+        #         return await general_email_async_functions.send_account_confirmation_email(response['account'])
+        #     return response
         
 
 

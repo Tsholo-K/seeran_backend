@@ -21,7 +21,7 @@ from accounts.models import BaseAccount
 from authentication.utils import validate_access_token
 
 
-class TokenAuthMiddleware:
+class WebsocketTokenAuthenticationMiddleware:
     """
     Middleware for WebSocket authentication using JWT tokens stored in cookies.
 
@@ -148,7 +148,7 @@ class TokenAuthMiddleware:
         return await self.app(scope, receive, send)
 
 
-class AuthenticationEndpointsIPThrottlingMiddleware:
+class IPThrottledEndpointsMiddleware:
     """
     Custom middleware for rate-limiting requests based on IP address for specific authentication-related endpoints.
     This middleware allows different rate limits for different endpoints, such as:
@@ -294,7 +294,6 @@ class AuthenticationEndpointsIPThrottlingMiddleware:
             return x_forwarded_for.split(',')[0]
         # Otherwise, use the 'REMOTE_ADDR' header for the IP address
         return request.META.get('REMOTE_ADDR')
-
 
 
 class ConnectionManager:

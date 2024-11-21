@@ -32,7 +32,7 @@ from websockets.consumers.parent.parent_consumer import ParentConsumer
 from websockets.consumers.student.student_consumer import StudentConsumer
 
 # middleware
-from .middleware import TokenAuthMiddleware
+from .middleware import WebsocketTokenAuthenticationMiddleware
 
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'seeran_backend.settings')
@@ -40,7 +40,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'seeran_backend.settings')
 
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),
-    "websocket": TokenAuthMiddleware(
+    "websocket": WebsocketTokenAuthenticationMiddleware(
         URLRouter([
             path('ws/authentication-error/', UnathenticationError.as_asgi()),
             path('ws/founder/', FounderConsumer.as_asgi()),
