@@ -44,23 +44,23 @@ def token_required(view_func):
             # Decode and verify the access token
             verified_access_token = authentication_utilities.validate_access_token(access_token)
         
-            if verified_access_token == None :
+            if verified_access_token == None:
                 return authentication_utilities.remove_authorization_cookies(JsonResponse(
                     {'error': 'Invalid security credentials.. request revoked'},
                     status=status.HTTP_400_BAD_REQUEST
                 ))
 
-            # Calculate remaining lifespan of the token
-            decoded_token = AccessToken(verified_access_token)
-            expiry_timestamp = decoded_token['exp']  # Expiration time in UNIX timestamp
-            current_timestamp = timezone.now().timestamp()
-            remaining_lifespan = int(expiry_timestamp - current_timestamp)  # In seconds
+            # # Calculate remaining lifespan of the token
+            # decoded_token = AccessToken(verified_access_token)
+            # expiry_timestamp = decoded_token['exp']  # Expiration time in UNIX timestamp
+            # current_timestamp = timezone.now().timestamp()
+            # remaining_lifespan = int(expiry_timestamp - current_timestamp)  # In seconds
 
-            if remaining_lifespan <= 0:
-                return authentication_utilities.remove_authorization_cookies(JsonResponse(
-                    {'error': 'Could not process your request, your access credentials have expired.. request revoked'},
-                    status=status.HTTP_401_UNAUTHORIZED
-                ))
+            # if remaining_lifespan <= 0:
+            #     return authentication_utilities.remove_authorization_cookies(JsonResponse(
+            #         {'error': 'Could not process your request, your access credentials have expired.. request revoked'},
+            #         status=status.HTTP_401_UNAUTHORIZED
+            #     ))
 
             # Proceed to the view
             response = view_func(request, *args, **kwargs)
@@ -73,7 +73,7 @@ def token_required(view_func):
                 samesite=settings.SESSION_COOKIE_SAMESITE,
                 secure=True,
                 httponly=True,
-                max_age=remaining_lifespan
+                max_age=86400 # remaining_lifespan
             )
 
             return response
