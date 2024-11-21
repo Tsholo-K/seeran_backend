@@ -81,7 +81,7 @@ def token_required(view_func):
         except Exception as e:
             # Log unexpected errors and provide a generic error response
             # emails_logger.error(f"Unexpected error in token validation: {str(e)}")
-            return JsonResponse({'error': 'Could not process your request, an unexpected error occurred while trying to authenticate your access credentails.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return JsonResponse({'error': 'Could not process your request, an unexpected error occurred while trying to authenticate your access credentails. Error:' + str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return _wrapped_view_func
 
