@@ -8,20 +8,13 @@ from html import unescape
 # decode
 from decouple import config
 
-# asgiref
-from asgiref.sync import sync_to_async
-
 # django
 from django.db import transaction
-from django.http import JsonResponse
 from django.utils import timezone
 
 # models
 from .models import Email
 from email_cases.models import Case
-
-# utllity function
-from emails import utils as emails_utilities
 
 # logging
 import logging
@@ -29,6 +22,29 @@ import logging
 # Get loggers
 emails_logger = logging.getLogger('emails_logger')
 email_cases_logger = logging.getLogger('email_cases_logger')
+
+
+def process_blobs(blobs):
+    emails_fetched = 0
+    for blob in blobs:
+        try:
+            email_data = blob.download_as_text()
+            response = process_email(email_data)
+
+            if "status" in response:
+                emails_fetched += 1
+                emails_logger.info(f"Successfully processed and deleted email: {blob.name}")
+
+                blob.delete()
+            else:
+                error_message = response.get("error", "Unknown error")
+                emails_logger.error(f"Failed to process email {blob.name}: {error_message}")
+
+        except Exception as e:
+            emails_logger.error(f"Unexpected error processing email {blob.name}: {str(e)}")
+            continue
+
+    return emails_fetched
 
 
 def process_email(email_data):
@@ -53,12 +69,12 @@ def process_email(email_data):
             recipient = recipients[0].strip()  # Take the first recipient and strip any surrounding spaces
 
             # Determine case type based on recipient subdomain
-            case_type = emails_utilities.determine_case_type(recipient)
+            case_type = determine_case_type(recipient)
 
             # Check if the email message ID is unique (to prevent duplicates)
             if Email.objects.filter(message_id=message_id).exists():
                 emails_logger.info(f"Duplicate email ignored: {message_id} from {sender}.")
-                return JsonResponse({"status": "Duplicate message ignored"}, status=200)
+                return {"status": "Duplicate message ignored"}
 
             # Identify or create a Case based on In-Reply-To or References headers
             case = None
@@ -67,9 +83,9 @@ def process_email(email_data):
                     # Try to find the case from the email being replied to
                     email_thread = Email.objects.get(message_id=in_reply_to)
                     case = email_thread.case
-                    emails_logger.info(f"Found case {case.case_id} from in_reply_to header.")
+                    email_cases_logger.info(f"Found case {case.case_id} from in_reply_to header.")
                 except Email.DoesNotExist:
-                    emails_logger.info(f"Email in_reply_to {in_reply_to} not found. Creating new case.")
+                    email_cases_logger.info(f"Email in_reply_to {in_reply_to} not found. Creating new case.")
             
             if not case and references:
                 try:
@@ -77,9 +93,9 @@ def process_email(email_data):
                     email_thread = Email.objects.filter(message_id__in=references.split())
                     if email_thread.exists():
                         case = email_thread.first().case
-                        emails_logger.info(f"Found case {case.case_id} from references header.")
+                        email_cases_logger.info(f"Found case {case.case_id} from references header.")
                 except Email.DoesNotExist:
-                    emails_logger.info(f"Emails in references {references} not found. Creating new case.")
+                    email_cases_logger.info(f"Emails in references {references} not found. Creating new case.")
             
             # If no case found by references or in_reply_to, create a new case
             if not case:
@@ -89,7 +105,7 @@ def process_email(email_data):
                     initial_email=None,
                     description=f"Auto-generated {case_type.lower()} case for incoming email."
                 )
-                emails_logger.info(f"Created new case: {case.case_id} for email from {sender}.")
+                email_cases_logger.info(f"Created new case: {case.case_id} for email from {sender}.")
             
             # Create a new Email entry in the database, linking to the identified or created case
             email_entry = Email.objects.create(
@@ -107,19 +123,19 @@ def process_email(email_data):
             # If this is the first email in the case, set it as the initial_email
             if not case.initial_email:
                 case.initial_email = email_entry
-                emails_logger.info(f"Set initial email for case: {case.case_id}.")
+                email_cases_logger.info(f"Set initial email for case: {case.case_id}.")
             
             case.unread_emails = case.emails.filter(read_receipt=False).exclude(is_incoming=False).count()
             case.save(update_fields=['initial_email', 'unread_emails'])
 
         # Commit transaction and respond with success
         emails_logger.info(f"Email processed successfully: {message_id}.")
-        return JsonResponse({"status": "Email processed and saved successfully", "case_id": case.case_id}, status=201)
+        return {"status": "Email processed and saved successfully", "case_id": case.case_id}
 
     except Exception as e:
         # Rollback the transaction in case of any error and log the exception
         emails_logger.error(f"Error processing email from {sender}: {str(e)}")
-        return JsonResponse({"error": str(e)}, status=500)
+        return {"error": str(e)}
 
 
 def clean_plain_text(body):
