@@ -21,133 +21,6 @@ from accounts.models import BaseAccount
 from authentication.utils import validate_access_token
 
 
-class WebsocketTokenAuthenticationMiddleware:
-    """
-    Middleware for WebSocket authentication using JWT tokens stored in cookies.
-
-    This middleware extracts the JWT token from the cookie, validates it, 
-    and attaches the authenticated user and their role to the WebSocket scope.
-
-    Attributes:
-        app (ASGI application): The ASGI application instance.
-    """
-
-    def __init__(self, app):
-        """
-        Initializes the middleware with the ASGI application.
-
-        Args:
-            app (ASGI application): The ASGI application instance.
-        """
-        self.app = app
-
-    @database_sync_to_async
-    def get_account(self, account_id):
-        """
-        Fetches the user's account ID and role from the database.
-
-        Args:
-            user_id (int): The ID of the user to fetch.
-
-        Returns:
-            tuple: A tuple containing the user's account ID and role.
-
-        Raises:
-            CustomUser.DoesNotExist: If the user does not exist.
-        """
-        account = BaseAccount.objects.values('account_id', 'role').get(id=account_id)
-        return (str(account['account_id']), account['role'])
-
-    async def __call__(self, scope, receive, send):
-        """
-        Handles the WebSocket connection, authenticating the user via JWT token.
-
-        Args:
-            scope (dict): The connection scope.
-            receive (callable): The receive function to get messages from the client.
-            send (callable): The send function to send messages to the client.
-        """
-        headers = dict(scope['headers'])
-
-        # Default to None for unauthenticated users
-        scope['account'] = None
-        scope['role'] = None
-        scope['authentication_error'] = None
-
-        # Check if the 'cookie' header is present
-        if b'cookie' in headers:
-            try:
-                # Decode the cookies
-                cookies = headers[b'cookie'].decode()
-                cookie_dict = {k: v for k, v in (cookie.split('=') for cookie in cookies.split('; '))}
-                # Retrieve the access token from the cookies
-                access_token = cookie_dict.get('access_token')
-
-                # Check if the access token is in cache (indicating it might be invalid/blacklisted)
-                if not access_token:
-                    # Handle unauthorized roles
-                    scope['path'] = '/ws/authentication-error/'
-                    scope['authentication_error'] = 'Could not process your request, no access token was provided.'
-                    return await self.app(scope, receive, send)
-                
-                elif cache.get(access_token):
-                    # Handle unauthorized roles
-                    scope['path'] = '/ws/authentication-error/'
-                    scope['authentication_error'] = 'Could not process your request, your access token has been blacklisted and cannot be used to access the system.'
-                    return await self.app(scope, receive, send)
-
-                # Validate the access token
-                authorized = validate_access_token(access_token)
-
-                # If the token is not valid, send an error message
-                if authorized is None:
-                    # Handle unauthorized roles
-                    scope['path'] = '/ws/authentication-error/'
-                    scope['authentication_error'] = 'Could not process your request, your access token has expired.'
-                    return await self.app(scope, receive, send)
-
-                # Decode the access token to get the user ID
-                decoded_token = AccessToken(access_token)
-                # Fetch the user and their role from the database
-                scope['account'], scope['role'] = await self.get_account(decoded_token['user_id'])
-                scope['access_token'] = access_token
-
-                # Redirect based on user role
-                if scope['role'] == 'FOUNDER':
-                    scope['path'] = '/ws/founder/'  # Change path for FOUNDER role
-                elif scope['role'] in ['PRINCIPAL', 'ADMIN']:
-                    scope['path'] = '/ws/admin/'  # Change path for ADMIN role
-                elif scope['role'] == 'TEACHER':
-                    scope['path'] = '/ws/teacher/'  # Change path for TEACHER role
-                elif scope['role'] == 'STUDENT':
-                    scope['path'] = '/ws/student/'  # Change path for STUDENT role
-                elif scope['role'] == 'PARENT':
-                    scope['path'] = '/ws/parent/'  # Change path for PARENT role
-
-                # Call the next application/middleware in the stack
-                return await self.app(scope, receive, send)
-
-            except BaseAccount.DoesNotExist:
-                # If the user does not exist, close the connection
-                # Handle unauthorized roles
-                scope['path'] = '/ws/authentication-error/'
-                scope['authentication_error'] = 'An account with the provided credentials does not exists. Please review you account details and try again.'
-                return await self.app(scope, receive, send)
-
-            # If any other exception occurs, close the connection and send the error message
-            except Exception as e:
-                # Handle unauthorized roles
-                scope['path'] = '/ws/authentication-error/'
-                scope['authentication_error'] = str(e)
-                return await self.app(scope, receive, send)
-
-        # Handle unauthorized roles
-        scope['path'] = '/ws/authentication-error/'
-        scope['authentication_error'] = 'Could not process your request, no access token was provided.'
-        # Call the next application/middleware in the stack
-        return await self.app(scope, receive, send)
-
-
 class IPThrottledEndpointsMiddleware:
     """
     Custom middleware for rate-limiting requests based on IP address for specific authentication-related endpoints.
@@ -168,6 +41,26 @@ class IPThrottledEndpointsMiddleware:
         '/api/auth/password-reset-email-verification/': {'rate_limit': 5, 'time_window': 3600},  # 5 requests per hour for password reset
         # Add more endpoints as needed
     }
+
+    def get_ip_address(self, request):
+        """
+        Helper method to extract the client's IP address from the request.
+        This checks both the 'X-Forwarded-For' header (for reverse proxies)
+        and the 'REMOTE_ADDR' header to get the IP address.
+
+        Args:
+            request (HttpRequest): The incoming HTTP request to extract the IP address from.
+
+        Returns:
+            str: The IP address of the client, or None if not found.
+        """
+        # Get the 'X-Forwarded-For' header which may contain the real client IP if behind a proxy
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            # If the header exists, the first IP is the real client IP (in case of proxy)
+            return x_forwarded_for.split(',')[0]
+        # Otherwise, use the 'REMOTE_ADDR' header for the IP address
+        return request.META.get('REMOTE_ADDR')
 
     def __init__(self, get_response):
         """
@@ -275,25 +168,132 @@ class IPThrottledEndpointsMiddleware:
         # Call the next middleware or the view itself
         return self.get_response(request)
 
-    def get_ip_address(self, request):
+
+class WebsocketTokenAuthenticationMiddleware:
+    """
+    Middleware for WebSocket authentication using JWT tokens stored in cookies.
+
+    This middleware extracts the JWT token from the cookie, validates it, 
+    and attaches the authenticated user and their role to the WebSocket scope.
+
+    Attributes:
+        app (ASGI application): The ASGI application instance.
+    """
+
+    @database_sync_to_async
+    def get_account(self, account_id):
         """
-        Helper method to extract the client's IP address from the request.
-        This checks both the 'X-Forwarded-For' header (for reverse proxies)
-        and the 'REMOTE_ADDR' header to get the IP address.
+        Fetches the user's account ID and role from the database.
 
         Args:
-            request (HttpRequest): The incoming HTTP request to extract the IP address from.
+            user_id (int): The ID of the user to fetch.
 
         Returns:
-            str: The IP address of the client, or None if not found.
+            tuple: A tuple containing the user's account ID and role.
+
+        Raises:
+            CustomUser.DoesNotExist: If the user does not exist.
         """
-        # Get the 'X-Forwarded-For' header which may contain the real client IP if behind a proxy
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            # If the header exists, the first IP is the real client IP (in case of proxy)
-            return x_forwarded_for.split(',')[0]
-        # Otherwise, use the 'REMOTE_ADDR' header for the IP address
-        return request.META.get('REMOTE_ADDR')
+        account = BaseAccount.objects.values('account_id', 'role').get(id=account_id)
+        return (str(account['account_id']), account['role'])
+
+    def __init__(self, app):
+        """
+        Initializes the middleware with the ASGI application.
+
+        Args:
+            app (ASGI application): The ASGI application instance.
+        """
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        """
+        Handles the WebSocket connection, authenticating the user via JWT token.
+
+        Args:
+            scope (dict): The connection scope.
+            receive (callable): The receive function to get messages from the client.
+            send (callable): The send function to send messages to the client.
+        """
+        headers = dict(scope['headers'])
+
+        # Default to None for unauthenticated users
+        scope['account'] = None
+        scope['role'] = None
+        scope['authentication_error'] = None
+
+        # Check if the 'cookie' header is present
+        if b'cookie' in headers:
+            try:
+                # Decode the cookies
+                cookies = headers[b'cookie'].decode()
+                cookie_dict = {k: v for k, v in (cookie.split('=') for cookie in cookies.split('; '))}
+                # Retrieve the access token from the cookies
+                access_token = cookie_dict.get('access_token')
+
+                # Check if the access token is in cache (indicating it might be invalid/blacklisted)
+                if not access_token:
+                    # Handle unauthorized roles
+                    scope['path'] = '/ws/authentication-error/'
+                    scope['authentication_error'] = 'Could not process your request, no access token was provided.'
+                    return await self.app(scope, receive, send)
+                
+                elif cache.get(access_token):
+                    # Handle unauthorized roles
+                    scope['path'] = '/ws/authentication-error/'
+                    scope['authentication_error'] = 'Could not process your request, your access token has been blacklisted and cannot be used to access the system.'
+                    return await self.app(scope, receive, send)
+
+                # Validate the access token
+                authorized = validate_access_token(access_token)
+
+                # If the token is not valid, send an error message
+                if authorized is None:
+                    # Handle unauthorized roles
+                    scope['path'] = '/ws/authentication-error/'
+                    scope['authentication_error'] = 'Could not process your request, your access token has expired.'
+                    return await self.app(scope, receive, send)
+
+                # Decode the access token to get the user ID
+                decoded_token = AccessToken(access_token)
+                # Fetch the user and their role from the database
+                scope['account'], scope['role'] = await self.get_account(decoded_token['user_id'])
+                scope['access_token'] = access_token
+
+                # Redirect based on user role
+                if scope['role'] == 'FOUNDER':
+                    scope['path'] = '/ws/founder/'  # Change path for FOUNDER role
+                elif scope['role'] in ['PRINCIPAL', 'ADMIN']:
+                    scope['path'] = '/ws/admin/'  # Change path for ADMIN role
+                elif scope['role'] == 'TEACHER':
+                    scope['path'] = '/ws/teacher/'  # Change path for TEACHER role
+                elif scope['role'] == 'STUDENT':
+                    scope['path'] = '/ws/student/'  # Change path for STUDENT role
+                elif scope['role'] == 'PARENT':
+                    scope['path'] = '/ws/parent/'  # Change path for PARENT role
+
+                # Call the next application/middleware in the stack
+                return await self.app(scope, receive, send)
+
+            except BaseAccount.DoesNotExist:
+                # If the user does not exist, close the connection
+                # Handle unauthorized roles
+                scope['path'] = '/ws/authentication-error/'
+                scope['authentication_error'] = 'An account with the provided credentials does not exists. Please review you account details and try again.'
+                return await self.app(scope, receive, send)
+
+            # If any other exception occurs, close the connection and send the error message
+            except Exception as e:
+                # Handle unauthorized roles
+                scope['path'] = '/ws/authentication-error/'
+                scope['authentication_error'] = str(e)
+                return await self.app(scope, receive, send)
+
+        # Handle unauthorized roles
+        scope['path'] = '/ws/authentication-error/'
+        scope['authentication_error'] = 'Could not process your request, no access token was provided.'
+        # Call the next application/middleware in the stack
+        return await self.app(scope, receive, send)
 
 
 class ConnectionManager:

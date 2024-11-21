@@ -9,12 +9,12 @@ from decouple import config
 # settings
 from django.conf import settings
 
+# djnago
+from django.apps import apps
+
 # restframework
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
-
-# models
-from accounts.models import BaseAccount
 
 
 def send_otp_email(user, otp, reason):
@@ -57,6 +57,9 @@ def send_otp_email(user, otp, reason):
 # validate token
 def validate_access_token(access_token):
     try:
+        # Get the Transcript model dynamically
+        BaseAccount = apps.get_model('accounts', 'BaseAccount')
+
         AccessToken(access_token).verify()
 
         decoded_token = AccessToken(access_token)
