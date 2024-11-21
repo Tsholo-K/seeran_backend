@@ -28,30 +28,30 @@ def token_required(view_func):
         try:
             # Get access token from cookies
             access_token = request.COOKIES.get('access_token')
-            if not access_token:
-                return authentication_utilities.remove_authorization_cookies(JsonResponse(
-                    {'error': 'Request not authenticated.. access denied'},
-                    status=status.HTTP_401_UNAUTHORIZED
-                ))
-
-            # Check if the token is blacklisted
-            if cache.get(access_token):
-                return authentication_utilities.remove_authorization_cookies(JsonResponse(
-                    {'error': 'The provided access token has been blacklisted.. request revoked'},
-                    status=status.HTTP_400_BAD_REQUEST
-                ))
-
-            # Decode and verify the access token
-            # verified_access_token = authentication_utilities.validate_access_token(access_token)
-        
-            # if verified_access_token == None:
+            # if not access_token:
             #     return authentication_utilities.remove_authorization_cookies(JsonResponse(
-            #         {'error': 'Invalid security credentials.. request revoked'},
+            #         {'error': 'Request not authenticated.. access denied'},
+            #         status=status.HTTP_401_UNAUTHORIZED
+            #     ))
+
+            # # Check if the token is blacklisted
+            # if cache.get(access_token):
+            #     return authentication_utilities.remove_authorization_cookies(JsonResponse(
+            #         {'error': 'The provided access token has been blacklisted.. request revoked'},
             #         status=status.HTTP_400_BAD_REQUEST
             #     ))
 
+            # Decode and verify the access token
+            verified_access_token = authentication_utilities.validate_access_token(access_token)
+        
+            if verified_access_token == None:
+                return authentication_utilities.remove_authorization_cookies(JsonResponse(
+                    {'error': 'Invalid security credentials.. request revoked'},
+                    status=status.HTTP_400_BAD_REQUEST
+                ))
+
             # Calculate remaining lifespan of the token
-            decoded_token = AccessToken(access_token)
+            decoded_token = AccessToken(verified_access_token)
             expiry_timestamp = decoded_token['exp']  # Expiration time in UNIX timestamp
             current_timestamp = timezone.now().timestamp()
             remaining_lifespan = int(expiry_timestamp - current_timestamp)  # In seconds
@@ -68,7 +68,7 @@ def token_required(view_func):
             # Set the token back with the calculated lifespan
             response.set_cookie(
                 'access_token',
-                str(access_token),
+                str(verified_access_token),
                 domain=settings.SESSION_COOKIE_DOMAIN,
                 samesite=settings.SESSION_COOKIE_SAMESITE,
                 secure=True,
