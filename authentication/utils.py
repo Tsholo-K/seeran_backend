@@ -63,7 +63,7 @@ def validate_access_token(access_token):
         AccessToken(access_token).verify()
 
         decoded_token = AccessToken(access_token)
-        BaseAccount.objects.get(id=decoded_token['user_id'])
+        # BaseAccount.objects.get(id=decoded_token['user_id'])
 
         return access_token
 
