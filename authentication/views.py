@@ -759,7 +759,7 @@ def authenticate(request):
 @token_required
 def log_out(request):    
     try:
-        access_token = request.COOKIES.get('password_reset_authorization_otp')
+        access_token = request.COOKIES.get('access_token')
 
         # Decode the token
         token = decode(access_token)

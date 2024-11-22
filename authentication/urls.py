@@ -21,7 +21,6 @@ urlpatterns = [
     path('password-reset-otp-verification/', views.password_reset_otp_verification, name='verifies users otp during password reset'),
     path('reset-password/', views.reset_password, name='resets users password'),
 
-
     # logout
     path('logout/', views.log_out, name='logout endpoint'),
 ]
