@@ -39,7 +39,7 @@ def login(request):
         # Verify user credentials
         requesting_user = authenticate_user(email_address=email_address, password=password)
         if requesting_user is None:
-            return Response({"error": "the provided credentials are invalid, please check your email and password and try again"}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({"error": "The provided credentials are invalid, please check your email address and password and try again"}, status=status.HTTP_401_UNAUTHORIZED)
         
         # Access control based on user role and school compliance
         if requesting_user.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
@@ -675,6 +675,51 @@ def reset_password(request):
         return Response({"error": {str(e)}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(["POST"])
+@token_required
+def password_verification(request):    
+    try:
+        password = request.data.get('password')
+        verification_reason = request.data.get('reason')
+
+        if not password:
+            return Response({"error": "Could not process your request, password is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        elif not verification_reason:
+            return Response({"error": "Could not process your request, verification reason is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        elif verification_reason not in ['password update', 'email address update']:
+            return Response({"error": "Could not process your request, the provided verification reason is invalid."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Authenticate the user
+        requesting_user = authenticate_user(email_address=request.user.email_address, password=password)
+
+        if requesting_user is None:
+            return Response({"error": "could not process your request, invalid account password."}, status=401)
+
+        response = Response({'message': "Your account password has been successfully verified."}, status=status.HTTP_200_OK)
+
+        security_credentials_update_otp, security_credentials_update_hashed_otp, security_credentials_update_salt = authentication_utilities.generate_otp()
+
+        if verification_reason == 'password update':
+            cache.set(request.user.email_address + 'password_update_authorization_otp_hash_and_salt', (security_credentials_update_hashed_otp, security_credentials_update_salt), timeout=300)  # Cache OTP for 5 mins
+            response.set_cookie('password_update_authorization_otp', security_credentials_update_otp, domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
+            response.set_cookie('password_update_authorization_otp', security_credentials_update_otp, domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
+        
+        elif verification_reason == 'email address update':
+            cache.set(request.user.email_address + 'email_address_update_authorization_otp_hash_and_salt', (security_credentials_update_hashed_otp, security_credentials_update_salt), timeout=300)  # Cache OTP for 5 mins
+            response.set_cookie('email_address_update_authorization_otp', security_credentials_update_otp, domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
+            response.set_cookie('email_address_update_authorization_otp', security_credentials_update_otp, domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
+
+        return response
+    
+    except TokenError as e:
+        return Response({"error": "There was an error decoding your provided access token. If this error persists please open a bug report with the following error trail: " + str(e)}, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_200_OK)
+
+
 @api_view(["GET"])
 @token_required
 def authenticate(request):
@@ -728,10 +773,9 @@ def log_out(request):
         # delete token from database
         AccountAccessToken.objects.filter(access_token_string=str(access_token)).delete()
 
-        response = Response({'message': "Your current session has been logged out successfully and access token has been blacklisted for the remainder of it's lifespan."}, status=status.HTTP_200_OK)
-        response = authentication_utilities.remove_authorization_cookies(response)
-
-        return response
+        return authentication_utilities.remove_authorization_cookies(
+            Response({'message': "Your current session has been logged out successfully and access token has been blacklisted for the remainder of it's lifespan."}, status=status.HTTP_200_OK)
+        )
     
     except TokenError as e:
         return Response({"error": "There was an error decoding your provided access token. If this error persists please open a bug report with the following error trail: " + str(e)}, status=status.HTTP_200_OK)
