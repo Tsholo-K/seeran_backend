@@ -72,6 +72,8 @@ def message_private(account, role, details):
                 timestamp=timestamp
             )
 
+            new_message.unread_by.add(requested_account)
+
         # Serialize the new message
         serialized_message = PrivateChatRoomMessageSerializer(new_message, context={'participant': account}).data
 

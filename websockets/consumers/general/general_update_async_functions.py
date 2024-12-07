@@ -40,10 +40,10 @@ def update_email_ban_otp_sends(email_ban_id):
         return {"message": "A new OTP has been sent to your email address."}
 
     except EmailAddressBan.DoesNotExist:
-        return {'error': 'Email ban with the provided ID does not exist. Please verify the ID and try again.'}
+        return {'error': 'Could not process your request, email ban with the provided ID does not exist. Please verify the ID and try again.'}
     
     except Exception as e:
-        return {'error': f'An unexpected error occurred while updating OTP sends: {str(e)}'}
+        return {'error': f'Could not process your request, an unexpected error occurred while updating OTP sends: {str(e)}'}
 
 
 @database_sync_to_async
@@ -52,19 +52,19 @@ def update_email_address(user, details, access_token):
         validate_password(details.get('new_email'))
 
         if BaseAccount.objects.filter(email=details.get('new_email')).exists():
-            return {"error": "an account with the provided email address already exists"}
+            return {"error": "Could not process your request, an account with the provided email address already exists."}
 
         account = BaseAccount.objects.get(account_id=user)
         
         if details.get('new_email') == account.email:
-            return {"error": "cannot set current email as new email"}
+            return {"error": "Could not process your request, cannot set current email address as new email address."}
     
         hashed_authorization_otp = cache.get(account.email + 'authorization_otp')
         if not hashed_authorization_otp:
-            return {"denied": "OTP expired, taking you back to email verification.."}
+            return {"denied": "Could not process your request, OTP expired, taking you back to email verification.."}
     
         if not verify_user_otp(details.get('authorization_otp'), hashed_authorization_otp):
-            return {"denied": "incorrect authorization OTP, action forrbiden"}
+            return {"denied": "Could not process your request, incorrect authorization OTP, action forrbiden"}
     
         EmailAddressBan.objects.filter(email=account.email).delete()
         
@@ -87,7 +87,7 @@ def update_email_address(user, details, access_token):
         return {"message": "email changed successfully"}
     
     except BaseAccount.DoesNotExist:
-        return {'error': 'user with the provided credentials does not exist'}
+        return {'error': 'Could not process your request, an account with the provided credentials does not exist, please check the account details and try again.'}
 
     except Exception as e:
         return {"error": str(e)}
@@ -100,10 +100,10 @@ def update_password(user, details, access_token):
 
         hashed_authorization_otp = cache.get(account.email + 'authorization_otp')
         if not hashed_authorization_otp:
-            return {"denied": "OTP expired.. taking you back to password verification.."}
+            return {"denied": "Could not process your request, OTP expired.. taking you back to password verification.."}
     
         if not verify_user_otp(details.get('authorization_otp'), hashed_authorization_otp):
-            return {"denied": "incorrect authorization OTP.. action forrbiden"}
+            return {"denied": "Could not process your request, incorrect authorization OTP.. action forrbiden."}
     
         validate_password(details.get('new_password'))
         
@@ -122,10 +122,10 @@ def update_password(user, details, access_token):
         # delete token from database
         AccountAccessToken.objects.filter(token=str(access_token)).delete()
     
-        return {"message": "password changed successfully"}
+        return {"message": "Your accounts password has been successfully updated, you should use your new credetials to log in into your account."}
     
     except BaseAccount.DoesNotExist:
-        return {'error': 'user with the provided credentials does not exist'}
+        return {'error': 'Could not process your request, an account with the provided credentials does not exist, please check the account details and try again.'}
     
     except ValidationError as e:
         return {"error": str(e)}
@@ -146,10 +146,10 @@ def update_multi_factor_authentication(user, details):
             account.multifactor_authentication = details.get('toggle')
             account.save()
         
-        return {'message': 'Multifactor authentication {} successfully'.format('enabled' if details['toggle'] else 'disabled')}
+        return {'message': 'Your accounts multi-factor authentication status has been successfully toggled {}. Your next login authentication will be subject to these changes.'.format('on' if details['toggle'] else 'off')}
     
     except BaseAccount.DoesNotExist:
-        return {'error': 'an account with the provided credentials does not exist, please check the account details and try again'}
+        return {'error': 'Could not process your request, an account with the provided credentials does not exist, please check the account details and try again.'}
     
     except Exception as e:
         return {'error': str(e)}
@@ -182,11 +182,11 @@ def update_messages_as_read(account, details):
                 # Handle the case where no messages need to be updated (optional)
                 return {"read": True}
         
-        return {"error": 'no such chat room exists'}
+        return {"error": 'Could not process your request, no such chat room exists.'}
 
     except BaseAccount.DoesNotExist:
         # Handle case where the user does not exist
-        return {'error': 'an account with the provided credentials does not exist. please check the account details and try again.'}
+        return {'error': 'Could not process your request, an account with the provided credentials does not exist. please check the account details and try again.'}
         
     except PrivateChatRoom.DoesNotExist:
         return {'error': 'Chat room not found.'}
