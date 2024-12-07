@@ -11,7 +11,6 @@ from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 
 # utility functions
-from authentication.utils import get_upload_path
 from accounts import validators as users_validators
 
 
