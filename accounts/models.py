@@ -66,7 +66,6 @@ class BaseAccountManager(BaseUserManager):
 
         try:
             account = self.get(email_address=email_address)
-            print('got account')
             validate_password(password)  # Ensure the password meets the validation criteria
 
             account.set_password(password)  # Set the password

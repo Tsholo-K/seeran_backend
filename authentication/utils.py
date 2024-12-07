@@ -10,30 +10,38 @@ from decouple import config
 from django.conf import settings
 
 # restframework
+from rest_framework.response import Response
+from rest_framework import status
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 
+# utility functions 
+from accounts import utils as accounts_utilities
 
-def send_otp_email(user, otp, reason):
+
+def send_otp_email(account, otp, reason, email_address):
     """
-    Sends an OTP email to the specified user.
+    Sends an OTP email to the specified account.
 
     Args:
-        user (BaseUser): The user object to whom the OTP is to be sent.
+        account (BaseUser): The user object to whom the OTP is to be sent.
         otp (str): The one-time passcode to be included in the email.
 
     Returns:
         dict: A dictionary containing the response status and any relevant message.
     """
     mailgun_api_url = f"https://api.eu.mailgun.net/v3/{config('MAILGUN_DOMAIN')}/messages"
+
+    recipient_email = email_address or account.email_address
     email_data = {
         "from": f"seeran grades <authorization@{config('MAILGUN_DOMAIN')}>",
-        "to": f"{user.surname.title()} {user.name.title()}<{user.email_address}>",
+        "to": f"{account.surname.title()} {account.name.title()}<{recipient_email}>",
         "subject": "One Time Passcode",
         "template": "one-time passcode",
         "v:onetimecode": otp,
         "v:otpcodereason": reason
     }
+
     headers = {
         "Authorization": "Basic " + base64.b64encode(f"api:{config('MAILGUN_API_KEY')}".encode()).decode(),
         "Content-Type": "application/x-www-form-urlencoded"
@@ -61,11 +69,23 @@ def validate_access_token(access_token):
         return None
 
 
+# remove access credentials from a request
 def remove_authorization_cookies(response):
     response.delete_cookie('access_token', domain=settings.SESSION_COOKIE_DOMAIN)
     response.delete_cookie('session_authenticated', domain=settings.SESSION_COOKIE_DOMAIN)
 
     return response
+
+
+# verifies wether an account can access the system, by checking the compliance status of the linked school account
+def accounts_access_control(account):
+    if account.role in ['PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
+        # Fetch the corresponding child model based on the user's role
+        requesting_account = accounts_utilities.get_account_and_linked_school(account.account_id, account.role)
+
+        if requesting_account.school.none_compliant:
+            return Response({"denied": "Could not process your request, access denied. Your school no longer has an active account on our system."}, status=status.HTTP_403_FORBIDDEN)
+    return None
 
 
 # otp generation function
@@ -99,19 +119,6 @@ def generate_token(account):
 
     # Create a refresh token
     return  {"access" : access_token }
-
-
-def get_upload_path(instance, filename):
-    if instance.role == "PARENT":
-        return 'parents_profile_pictures/{}'.format(filename)
-    elif instance.role == "TEACHER":
-        return 'teachers_profile_pictures/{}'.format(filename)
-    elif instance.role == "ADMIN":
-        return 'admins_profile_pictures/{}'.format(filename)
-    elif instance.role == "FOUNDER":
-        return 'founders_profile_pictures/{}'.format(filename)
-    else:
-        return 'students_profile_pictures/{}'.format(filename)
     
     
 def validate_names(names):
