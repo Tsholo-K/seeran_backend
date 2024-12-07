@@ -121,7 +121,7 @@ class BaseAccount(AbstractBaseUser, PermissionsMixin):
 
     role = models.CharField(choices=ROLE_CHOICES, max_length=16)
 
-    profile_picture = models.ImageField(upload_to=get_upload_path, blank=True, null=True)
+    profile_picture = models.ImageField(blank=True, null=True)
     activated = models.BooleanField(_('account active or not'), default=False)
 
     multifactor_authentication = models.BooleanField(_('multifactor authentication'), default=False)
