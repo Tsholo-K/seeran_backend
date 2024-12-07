@@ -282,7 +282,10 @@ def account_activation_credentials_verification(request):
     
         # create an otp for the user
         account_activation_otp, hashed_account_activation_otp, account_activation_salt = authentication_utilities.generate_otp()
-        email_response = authentication_utilities.send_otp_email(requesting_user, account_activation_otp, reason="We're thrilled to have you on board and excited for you to explore all we have to offer. Here's your one-time passcode (OTP), freshly baked just for your account activation request. Use it to unlock the door to your new adventure with us—let's get started!")
+        email_response = authentication_utilities.send_otp_email(
+            requesting_user, account_activation_otp, 
+            reason="We're thrilled to have you on board and excited for you to explore all we have to offer. Here's your one-time passcode (OTP), freshly baked just for your account activation request. Use it to unlock the door to your new adventure with us—let's get started!"
+        )
         
         if email_response['status'] == 'success':
             account_activation_authorization_otp, hashed_account_activation_authorization_otp, account_activation_authorization_salt = authentication_utilities.generate_otp()

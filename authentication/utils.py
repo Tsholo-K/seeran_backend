@@ -19,7 +19,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 from accounts import utils as accounts_utilities
 
 
-def send_otp_email(account, otp, reason, email_address):
+def send_otp_email(account, otp, reason, email_address=None):
     """
     Sends an OTP email to the specified account.
 
