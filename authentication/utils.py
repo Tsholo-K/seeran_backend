@@ -15,6 +15,9 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 
+# django
+from django.core.cache import cache
+
 # utility functions 
 from accounts import utils as accounts_utilities
 
@@ -64,7 +67,6 @@ def validate_access_token(access_token):
     try:
         AccessToken(access_token).verify()
         return access_token
-
     except TokenError:
         return None
 
@@ -73,7 +75,6 @@ def validate_access_token(access_token):
 def remove_authorization_cookies(response):
     response.delete_cookie('access_token', domain=settings.SESSION_COOKIE_DOMAIN)
     response.delete_cookie('session_authenticated', domain=settings.SESSION_COOKIE_DOMAIN)
-
     return response
 
 
@@ -88,6 +89,24 @@ def accounts_access_control(account):
     return None
 
 
+def set_cookie(response, key, value, httponly=True, max_age=300):
+    response.set_cookie(
+        key,
+        value,
+        domain=settings.SESSION_COOKIE_DOMAIN,
+        samesite=settings.SESSION_COOKIE_SAMESITE,
+        secure=True,
+        httponly=httponly,
+        max_age=max_age,
+    )
+
+
+def generate_and_cache_otp(otp_key, timeout=300):
+    otp, hashed_otp, salt = generate_otp()
+    cache.set(otp_key, (hashed_otp, salt), timeout=timeout)
+    return otp
+
+
 # otp generation function
 def generate_otp():
     otp = str(secrets.randbelow(900000) + 100000)
@@ -95,10 +114,8 @@ def generate_otp():
     salt = secrets.token_bytes(16)
     # Convert the salt to hexadecimal
     salt_hex = salt.hex()
-    
     # Combine the OTP and the salt, then hash them
     hashed_otp = hashlib.sha256((otp + salt_hex).encode()).hexdigest()
-    
     # Return the OTP, hashed OTP, and salt
     return otp, hashed_otp, salt_hex
 
@@ -107,7 +124,6 @@ def generate_otp():
 def verify_user_otp(account_otp, stored_hashed_otp_and_salt):
     stored_hashed_otp, salt_hex = stored_hashed_otp_and_salt
     hashed_user_otp = hashlib.sha256((account_otp + salt_hex).encode()).hexdigest()
-
     return hashed_user_otp == stored_hashed_otp
 
 
@@ -116,31 +132,59 @@ def generate_token(account):
     refresh = RefreshToken.for_user(account)
     # Optionally, access the access token and its payload
     access_token = refresh.access_token
-
     # Create a refresh token
     return  {"access" : access_token }
     
-    
-def validate_names(names):
-    parts = names.split(' ')
-    if len(parts) == 2:
-        return True
 
-    else:
-        return False
+def validate_names(full_name):
+    # Ensure the input is a non-empty string
+    if not full_name or not isinstance(full_name, str):
+        return Response(
+            {"error": "Could not process your request, full name is required and must be a valid string of text containing your name and surname in any order."}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Strip leading and trailing spaces, and split the name into parts
+    parts = full_name.strip().split(' ')
+
+    # Check that there are exactly two parts (name and surname)
+    if len(parts) < 2:
+        return Response(
+            {"error": "Could not process your request, full name must contain at least a first name and a last name (surname)."}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    if len(parts) > 2:
+        return Response(
+            {"error": "Could not process your request, full name must only contain a first name and a last name (surname) separated by whitespace (space)."}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Define a regex pattern for broad human naming conventions
+    # - Allows letters (including accented letters)
+    # - Permits hyphens and apostrophes as internal characters
+    # - Handles names from various languages and scripts
+    name_pattern = re.compile(r"^[\p{L}][\p{L}'\-]*$", re.UNICODE)
+
+    # Validate each part of the name
+    for part in parts:
+        if not name_pattern.match(part):
+            return Response(
+                {"error": f"Could not process your request, Invalid name part: '{part}'. Names can only contain letters, hyphens, or apostrophes."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+    return None
 
 
 def is_valid_human_name(name):
     # Valid characters typically found in human names
     valid_characters = re.compile(r'^[a-zA-Z\-\'\s]+$')
-    
     # Check if the string contains more than one part when split by a space
     parts = name.strip().split(' ')
     if len(parts) > 1:
         return "name should not be splittable. please provide a single full name/surname without spaces"
-    
     # Check if the name contains only valid characters
     if not valid_characters.match(name):
         return "name/surname contains invalid characters"
-    
     return True

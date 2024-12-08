@@ -36,9 +36,9 @@ class IPThrottledEndpointsMiddleware:
 
     # Dictionary for storing the rate limits and time windows for each endpoint
     rate_limits = {
-        '/api/auth/login/': {'rate_limit': 5, 'time_window': 3600},  # 5 requests per hour for login
-        '/api/auth/account-activation-credentials-verification/': {'rate_limit': 5, 'time_window': 3600},  # 5 requests per hour for account activation
-        '/api/auth/password-reset-email-verification/': {'rate_limit': 5, 'time_window': 3600},  # 5 requests per hour for password reset
+        '/api/auth/login/': {'rate_limit': 3, 'time_window': 3600},  # 3 requests per hour for login
+        '/api/auth/account-activation-credentials-verification/': {'rate_limit': 3, 'time_window': 3600},  # 3 requests per hour for account activation
+        '/api/auth/password-reset-email-verification/': {'rate_limit': 3, 'time_window': 3600},  # 3 requests per hour for password reset
         # Add more endpoints as needed
     }
 

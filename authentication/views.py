@@ -14,6 +14,7 @@ from rest_framework.decorators import api_view
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.contrib.auth import authenticate as authenticate_user, password_validation
+from django.contrib.auth.password_validation import validate_password
 from django.core.cache import cache
 from django.core.validators import validate_email
 
@@ -41,7 +42,10 @@ def login(request):
         # Verify user credentials
         requesting_user = authenticate_user(email_address=email_address, password=password)
         if requesting_user is None:
-            return Response({"error": "Could not process your request, the provided credentials are invalid. Please check your email address and password and try again."}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {"error": "Could not process your request, the provided credentials are invalid. Please check your email address and password and try again."}, 
+                status=status.HTTP_401_UNAUTHORIZED
+            )
         
         # Access control based on user role and school compliance
         compliant = authentication_utilities.accounts_access_control(requesting_user)
@@ -65,37 +69,81 @@ def login(request):
                         return session_response
 
                     # Set access token cookie with custom expiration (24 hours)
-                    response = Response({"message": "You will have access to your dashboard for the next 24 hours, until your session ends", "alert" : "Your email address has been blacklisted", "role" : requesting_user.role.title()}, status=status.HTTP_200_OK)
-                    response.set_cookie('banned_email_address_role', requesting_user.role, domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, max_age=300)
+                    response = Response(
+                        {"alert" : "Could not fully process your login request, your email address has been blacklisted. Our system has flagged your email address and banned it from recieving emails from us."}, 
+                        status=status.HTTP_403_FORBIDDEN 
+                    )
 
-                    response.set_cookie('access_token', token['access'], domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, httponly=True, max_age=86400)
-                    response.set_cookie('session_authenticated', 'The session is still valid.', domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, max_age=86400)
+                    authentication_utilities.set_cookie(
+                        response, 
+                        'access_token', 
+                        token['access'], 
+                        max_age=86400
+                    )
+                    authentication_utilities.set_cookie(
+                        response, 
+                        'session_authenticated', 
+                        'This session is valid and active.', 
+                        httponly=False, 
+                        max_age=86400
+                    )
+                    authentication_utilities.set_cookie(
+                        response, 
+                        'banned_email_address_role', 
+                        requesting_user.role, 
+                        httponly=False, 
+                    )
 
                     return response
                 
-                return Response({"error": "Could not process your request, server error. Could not generate access token for your account"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(
+                    {"error": "Could not process your request, server error. Could not generate access token for your account"}, 
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
             
             # Generate OTP and send to user's email for MFA
-            otp, hashed_otp, salt = authentication_utilities.generate_otp()
+            multi_factor_authentication_login_otp, multi_factor_authentication_hashed_otp, multi_factor_authentication_salt = authentication_utilities.generate_otp()
             email_response = authentication_utilities.send_otp_email(
                 requesting_user, 
-                otp, 
+                multi_factor_authentication_login_otp, 
                 reason="Your account has multi-factor authentication toggled on, this OTP was generated in response to your login request."
             )
-            
+
             if email_response['status'] == 'success':
-                login_authorization_otp, hashed_login_authorization_otp, authorization_salt = authentication_utilities.generate_otp()
+                cache.set( # Cache OTP for 5 mins
+                    email_address + 'multi_factor_authentication_login_otp_hash_and_salt', 
+                    (multi_factor_authentication_hashed_otp, multi_factor_authentication_salt), 
+                    timeout=300
+                ) 
 
-                cache.set(email_address + 'multi_factor_authentication_login_otp_hash_and_salt', (hashed_otp, salt), timeout=300)  # Cache OTP for 5 mins
-                cache.set(email_address + 'multi_factor_authentication_login_authorization_otp', (hashed_login_authorization_otp, authorization_salt), timeout=300)  # Cache auth OTP for 5 mins
-
-                response = Response({"multifactor_authentication": "You have successufully authenticated using your email address and password, a new login OTP has been sent to your email address. Please check your inbox for the email."}, status=status.HTTP_200_OK)
-                response.set_cookie('multi_factor_authentication_login_authorization_otp', login_authorization_otp, domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, httponly=True, max_age=300)  # Set auth OTP cookie (5 mins)
-                response.set_cookie('multi_factor_authentication_login_email_address', email_address, domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, max_age=300)
+                response = Response(
+                    {"multifactor_authentication": "You have successufully authenticated using your email address and password, a new login OTP has been sent to your email address. Please check your inbox for the email."}, 
+                    status=status.HTTP_200_OK
+                )
+                
+                multi_factor_authentication_authorization_otp = authentication_utilities.generate_and_cache_otp(
+                    email_address + 'multi_factor_authentication_login_authorization_otp'
+                )
+                authentication_utilities.set_cookie(
+                    response, 
+                    'multi_factor_authentication_login_authorization_otp', 
+                    multi_factor_authentication_authorization_otp, 
+                )
+                authentication_utilities.set_cookie(
+                    response, 
+                    'multi_factor_authentication_login_account_email_address', 
+                    email_address, 
+                )
+                authentication_utilities.set_cookie(
+                    response, 
+                    'request_authorized_for_multi_factor_authentication_login', 
+                    True, 
+                    httponly=False
+                )
 
                 return response
-            else:
-                return Response({"error": email_response['message']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            return Response({"error": email_response['message']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # Handle login without MFA
         if 'access' in token:
@@ -103,36 +151,60 @@ def login(request):
             if session_response:  # If the function returns a response, it indicates an error
                 return session_response
             
-            response = Response({"message": "You will have access to your dashboard for the next 24 hours, until your session ends", "role" : requesting_user.role}, status=status.HTTP_200_OK)
+            response = Response(
+                {"message": "You will have access to your dashboard for the next 24 hours, until your session ends.", "role" : requesting_user.role}, 
+                status=status.HTTP_200_OK
+            )
         
             # Set access token cookie with custom expiration (24 hours)
-            response.set_cookie('access_token', token['access'], domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, httponly=True, max_age=86400)
-            response.set_cookie('session_authenticated', 'The session is still valid.', domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, max_age=86400)
-       
-        else:
-            response = Response({"error": "Could not process your request, server error. Could not generate access token for your account, please try again in a moment."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            authentication_utilities.set_cookie(
+                response, 
+                'access_token', 
+                token['access'], 
+                max_age=86400
+            )
+            authentication_utilities.set_cookie(
+                response, 
+                'session_authenticated', 
+                'This session is valid and active.', 
+                httponly=False, 
+                max_age=86400
+            )
 
-        return response
+            return response
+       
+        return Response(
+            {"error": "Could not process your request, server error. Could not generate access token for your account, please try again in a moment."}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
     
     except BaseAccount.DoesNotExist:
         # Handle the case where the provided account ID does not exist
-        return Response({"error": "Could not process your request, the credentials you entered are invalid. Please check your email and password and try again"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"error": "Could not process your request, the credentials you entered are invalid. Please check your email and password and try again"}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
     
     except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 @api_view(['POST'])
 def multi_factor_authentication_login(request):
     try:
         # retrieve the provided email, otp and the authorization otp in the cookie
-        otp = request.data.get('otp')
-        email_address = request.COOKIES.get('multi_factor_authentication_login_email_address')
+        multi_factor_authentication_login_otp = request.data.get('multi_factor_authentication_login_otp')
         authorization_otp = request.COOKIES.get('multi_factor_authentication_login_authorization_otp')
         
         # if anyone of these is missing return a 400 error
-        if not (email_address or otp or authorization_otp):
-            return Response({"denied": "Could not process your request, missing credentials."}, status=status.HTTP_400_BAD_REQUEST)
-        
+        if not (email_address or multi_factor_authentication_login_otp or authorization_otp):
+            return Response(
+                {"denied": "Could not process your request, your request is missing required authentication credentials to process this request."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         requesting_user = BaseAccount.objects.get(email_address=email_address)
         
         # Access control based on user role and school compliance
@@ -148,12 +220,23 @@ def multi_factor_authentication_login(request):
         
         if not (hashed_authorization_otp_and_salt or stored_hashed_otp_and_salt):
             # if there's no authorization otp in cache( wasn't provided in the first place, or expired since it also has a 5 minute lifespan )
-            return Response({"denied": "Could not process your request, your accounts multi-factor authentication login OTP has expired. To generate a new one you will have to re-authenticate from the login page."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"denied": "Could not process your request, your accounts multi-factor authentication login OTP has expired. To generate a new one you will have to re-authenticate from the login page."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
     
         # if everything above checks out verify the provided otp against the stored otp
-        if authentication_utilities.verify_user_otp(account_otp=otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
+        if authentication_utilities.verify_user_otp(account_otp=multi_factor_authentication_login_otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
             # provided otp is verified successfully
             if authentication_utilities.verify_user_otp(account_otp=authorization_otp, stored_hashed_otp_and_salt=hashed_authorization_otp_and_salt):
+                email_address = request.COOKIES.get('multi_factor_authentication_login_account_email_address') 
+                # if anyone of these is missing return a 400 error
+                if not (email_address or multi_factor_authentication_login_otp or authorization_otp):
+                    return Response(
+                        {"denied": "Could not process your request, your request is missing required information. Request does not provide the accounts email address required to generate access credentials for your account."}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
                 # if there's no error till here verification is successful, delete all cached otps
                 cache.delete(email_address + 'multi_factor_authentication_login_otp_hash_and_salt')
                 cache.delete(email_address + 'multi_factor_authentication_login_failed_otp_attempts')
@@ -167,45 +250,96 @@ def multi_factor_authentication_login(request):
                         return session_response
                     
                     # set access token cookie with custom expiration (5 mins)
-                    response = Response({"message": "you will have access to your dashboard for the next 24 hours, until your session ends", "role" : requesting_user.role.title()}, status=status.HTTP_200_OK)
-                    response.set_cookie('access_token', token['access'], domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, httponly=True, max_age=86400)
-                    response.set_cookie('session_authenticated', 'The session is still valid.', domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, max_age=86400)
+                    response = Response(
+                        {"message": "You will have access to your dashboard for the next 24 hours, until your session ends.", "role" : requesting_user.role}, 
+                        status=status.HTTP_200_OK
+                    )
+
+                    authentication_utilities.set_cookie(
+                        response, 
+                        'access_token', 
+                        token['access'], 
+                        max_age=86400
+                    )
+                    authentication_utilities.set_cookie(
+                        response, 
+                        'session_authenticated', 
+                        'This session is valid and active.', 
+                        httponly=False, 
+                        max_age=86400
+                    )
+
+                    cache.delete(requesting_user.email_address + 'multi_factor_authentication_login_otp_hash_and_salt')
+                    cache.delete(requesting_user.email_address + 'multi_factor_authentication_login_authorization_otp')
+                    cache.delete(email_address + 'multi_factor_authentication_login_failed_otp_attempts')
+
+                    response.delete_cookie('multi_factor_authentication_login_authorization_otp', domain=settings.SESSION_COOKIE_DOMAIN)
+                    response.delete_cookie('multi_factor_authentication_login_account_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
+                    response.delete_cookie('request_authorized_for_multi_factor_authentication_login', domain=settings.SESSION_COOKIE_DOMAIN)
 
                     return response
                 
-                return Response({"error": "Could not process your request, the server could not generate an access token for your account. Please try again in a moment"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(
+                    {"error": "Could not process your request, the server could not generate an access token for your account. Please try again in a moment"}, 
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
             
             # if the authorization otp does'nt match the one stored for the user return an error 
-            response = Response({"denied": "Could not process your request, incorrect authorization OTP. Action forrbiden"}, status=status.HTTP_400_BAD_REQUEST)
+            response = Response(
+                {"denied": "Could not process your request, incorrect authorization OTP. Action forrbiden"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
                         
             # if there's no error till here verification is successful, delete all cached otps
             cache.delete(requesting_user.email_address + 'multi_factor_authentication_login_otp_hash_and_salt')
             cache.delete(requesting_user.email_address + 'multi_factor_authentication_login_authorization_otp')
+            cache.delete(email_address + 'multi_factor_authentication_login_failed_otp_attempts')
 
             response.delete_cookie('multi_factor_authentication_login_authorization_otp', domain=settings.SESSION_COOKIE_DOMAIN)
-            response.delete_cookie('multi_factor_authentication_login_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
+            response.delete_cookie('multi_factor_authentication_login_account_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
+            response.delete_cookie('request_authorized_for_multi_factor_authentication_login', domain=settings.SESSION_COOKIE_DOMAIN)
             return response
 
         attempts = cache.get(email_address + 'multi_factor_authentication_login_failed_otp_attempts', 3)
         
         if attempts <= 0:
-            cache.delete(email_address + 'multi_factor_authentication_login_otp_hash_and_salt')
+            response = Response(
+                {"denied": "Could not process your request, you have exceeded the maximum OTP verification attempts. Returning you to the login page shortly."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+            cache.delete(requesting_user.email_address + 'multi_factor_authentication_login_otp_hash_and_salt')
+            cache.delete(requesting_user.email_address + 'multi_factor_authentication_login_authorization_otp')
             cache.delete(email_address + 'multi_factor_authentication_login_failed_otp_attempts')
-            return Response({"denied": "Could not process your request, maximum OTP verification attempts exceeded."}, status=status.HTTP_400_BAD_REQUEST)
+
+            response.delete_cookie('multi_factor_authentication_login_authorization_otp', domain=settings.SESSION_COOKIE_DOMAIN)
+            response.delete_cookie('multi_factor_authentication_login_account_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
+            response.delete_cookie('request_authorized_for_multi_factor_authentication_login', domain=settings.SESSION_COOKIE_DOMAIN)
+
+            return response
         
         # Incorrect OTP, decrement attempts and handle expiration
         attempts -= 1
         cache.set(email_address + 'multi_factor_authentication_login_failed_otp_attempts', attempts, timeout=300)  # Update attempts with expiration
 
-        return Response({"error": f"Could not process your request, incorrect OTP.. {attempts} remaining"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"error": f"Could not process your request, incorrect OTP.. {attempts} remaining"}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
     
     except BaseAccount.DoesNotExist:
         # Handle the case where the provided email does not exist
-        return {'error': 'Could not process your request, an account with the provided credentials does not exist. Please check the account details and try again.'}
+        return Response(
+            {'error': 'Could not process your request, an account with the provided credentials does not exist. Please check the account details and try again.'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
 
     except Exception as e:
         # if any exceptions rise during return the response return it as the response
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 # authenticate session
@@ -214,11 +348,6 @@ def multi_factor_authentication_login(request):
 @token_required
 def authenticate(request):
     try:
-        role = request.user.role
-
-        if role not in ['FOUNDER', 'PARENT', 'PRINCIPAL', 'ADMIN', 'TEACHER', 'STUDENT']:
-            return Response({"error": "Could not process your request, your account has an invalid role."}, status=status.HTTP_401_UNAUTHORIZED)
-        
         # Access control based on user role and school compliance
         compliant = authentication_utilities.accounts_access_control(request.user)
         if compliant:
@@ -228,7 +357,10 @@ def authenticate(request):
     
     except BaseAccount.DoesNotExist:
         # Handle the case where the provided email does not exist
-        return {'error': 'Could not process your request, request not authenticated. Access denied.'}
+        return Response(
+            {'error': 'Could not process your request, an account with the provided credentials does not exist. Please check the account details and try again.'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
 
     except Exception as e:
         # if any exceptions rise during return the response return it as the response
@@ -240,28 +372,42 @@ def authenticate(request):
 @api_view(['POST'])
 def account_activation_credentials_verification(request):
     try:
-        full_names = request.data.get('full_names')
+        full_name = request.data.get('full_name')
         email_address = request.data.get('email_address')
 
         # if there's a missing credential return an error
-        if not full_names or not email_address:
-            return Response({"error": "Could not process your request, sign-in credentials are incomplete. Please provide all required information"}, status=status.HTTP_400_BAD_REQUEST)
+        if not full_name:
+            return Response(
+                {"error": "Could not process your request, the provided account activation credentials are incomplete. Please provide your full name and try again."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # if there's a missing credential return an error
+        if not email_address:
+            return Response(
+                {"error": "Could not process your request, the provided account activation credentials are incomplete. Please provide your email address and try again."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
     
         # validate email format
         validate_email(email_address)
 
         # validate provided names
-        if not authentication_utilities.validate_names(full_names):
-            return Response({"error": "Could not process your request, Please enter only your first name and surname"}, status=status.HTTP_400_BAD_REQUEST)
+        valid_full_name = authentication_utilities.validate_names(full_name)
+        if valid_full_name:
+            return valid_full_name
 
         # try to validate the credentials by getting a user with the provided credentials 
         requesting_user = BaseAccount.objects.get(email_address=email_address)
             
         # check if the provided name and surname are correct
-        name, surname = full_names.split(' ', 1)
+        name, surname = full_name.strip().split(' ', 1)
 
-        if not ((requesting_user.name.casefold() == name.casefold() and requesting_user.surname.casefold() == surname.casefold()) or (requesting_user.name.casefold() == surname.casefold() and requesting_user.surname.casefold() == name.casefold())):
-            return Response({"error": "Could not process your request, the credentials you entered are invalid. Please check your full name and email address and try again"}, status=status.HTTP_400_BAD_REQUEST)
+        if not (requesting_user.name.casefold() == name.casefold() and requesting_user.surname.casefold() == surname.casefold()) or not (requesting_user.name.casefold() == surname.casefold() and requesting_user.surname.casefold() == name.casefold()):
+            return Response(
+                {"error": "Could not process your request, the account activation credentials you provided are invalid. Please check your full name and email address and try again."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         # Access control based on user role and school compliance
         compliant = authentication_utilities.accounts_access_control(requesting_user)
@@ -270,13 +416,25 @@ def account_activation_credentials_verification(request):
         
         # if there is a user with the provided credentials check if their account has already been activated 
         if requesting_user.activated:
-            return Response({"error": "Could not process your request, access has been denied due to invalid or incomplete information."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"error": "Could not process your request, access has been denied due to invalid or incomplete information."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
         
         # if the users account has'nt been activated yet check if their email address is banned
         if requesting_user.email_banned:
             # if their email address is banned return an error and let the user know and how they can appeal( if they even can )
-            response = Response({"alert" : "Could not process your request, your email address has been blacklisted." })
-            response.set_cookie('banned_email_address_role', requesting_user.role, domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, max_age=300)
+            response = Response(
+                {"alert" : "Could not fully process your login request, your email address has been blacklisted. Our system has flagged your email address and banned it from recieving emails from us."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+            authentication_utilities.set_cookie(
+                response, 
+                'banned_email_address_role', 
+                requesting_user.role, 
+                httponly=False, 
+            )
 
             return response
     
@@ -289,40 +447,74 @@ def account_activation_credentials_verification(request):
         )
         
         if email_response['status'] == 'success':
-            account_activation_authorization_otp, hashed_account_activation_authorization_otp, account_activation_authorization_salt = authentication_utilities.generate_otp()
+            cache.set( # Cache OTP for 5 mins
+                email_address + 'multi_factor_authentication_account_activation_otp_hash_and_salt', 
+                (hashed_account_activation_otp, account_activation_salt), 
+                timeout=300
+            ) 
 
-            cache.set(email_address + 'multi_factor_authentication_account_activation_otp_hash_and_salt', (hashed_account_activation_otp, account_activation_salt), timeout=300)  # Cache OTP for 5 mins
-            cache.set(email_address + 'multi_factor_authentication_account_activation_authorization_otp_hash_and_salt', (hashed_account_activation_authorization_otp, account_activation_authorization_salt), timeout=300)  # Cache auth OTP for 5 mins
+            response = Response(
+                {"message": "A account activation OTP has been generated for your account and sent to your email address. It will be valid for the next 5 minutes.",}, 
+                status=status.HTTP_200_OK
+            )
 
-            response = Response({"message": "A account activation OTP has been generated for your account and sent to your email address. It will be valid for the next 5 minutes.",}, status=status.HTTP_200_OK)
-        
-            response.set_cookie('multi_factor_authentication_account_activation_authorization_otp', account_activation_authorization_otp, domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, httponly=True, max_age=300)  # Set auth OTP cookie (5 mins)
-            response.set_cookie('multi_factor_authentication_account_activation_email_address', email_address, domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, max_age=300)
+            account_activation_authorization_otp = authentication_utilities.generate_and_cache_otp(
+                email_address + 'multi_factor_authentication_account_activation_authorization_otp_hash_and_salt'
+            )
+            authentication_utilities.set_cookie(
+                response, 
+                'multi_factor_authentication_account_activation_authorization_otp', 
+                account_activation_authorization_otp, 
+            )
+            authentication_utilities.set_cookie(
+                response, 
+                'multi_factor_authentication_account_activation_email_address', 
+                email_address, 
+            )
+            authentication_utilities.set_cookie(
+                response, 
+                'request_authorized_for_multi_factor_authentication_account_activation', 
+                True, 
+                httponly=False, 
+            )
 
             return response
 
-        else:
-            return Response({"error": email_response['message']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": email_response['message']}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
     
     except BaseAccount.DoesNotExist:
         # if there's no user with the provided credentials return an error 
-        return Response({"error": "Could not process your request, the credentials you entered are invalid. Please check your full name and email address and try again"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"error": "Could not process your request, the credentials you entered are invalid. Please check your full name and email address and try again"}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
     
     except ValidationError:
-        return Response({"error": "Could not process your request, the provided email address is not in a valid format. Please correct the email address and try again"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"error": "Could not process your request, the provided email address is not in a valid format. Please correct the email address and try again"}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
     except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 @api_view(['POST'])
 def account_activation_otp_verification(request):
     try:
-        otp = request.data.get('otp')
         email_address = request.COOKIES.get('multi_factor_authentication_account_activation_email_address')
         authorization_otp = request.COOKIES.get('multi_factor_authentication_account_activation_authorization_otp')
 
-        if not (email_address or otp or authorization_otp):
-            return Response({"error": "Could not process your request, invalid request. Email and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not (email_address or authorization_otp):
+            return Response(
+                {"denied": "Could not process your request, your request is missing required authentication credentials to process this request."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         requesting_user = BaseAccount.objects.get(email_address=email_address)
         
@@ -338,29 +530,55 @@ def account_activation_otp_verification(request):
         
         if not (stored_hashed_account_activation_authorization_otp_and_salt or stored_hashed_account_activation_otp_and_salt):
             # if there's no authorization otp in cache( wasn't provided in the first place, or expired since it also has a 5 minute lifespan )
-            return Response({"denied": "Could not process your request, your accounts multi-factor authentication login OTP has expired. To generate a new one you will have to re-authenticate from the login page."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"denied": "Could not process your request, your accounts multi-factor authentication login OTP has expired. To generate a new one you will have to re-authenticate from the login page."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # if everything above checks out verify the provided otp against the stored otp
-        if authentication_utilities.verify_user_otp(account_otp=otp, stored_hashed_otp_and_salt=stored_hashed_account_activation_otp_and_salt):
+        if authentication_utilities.verify_user_otp(account_otp=account_activation_otp, stored_hashed_otp_and_salt=stored_hashed_account_activation_otp_and_salt):
             # provided otp is verified successfully
             if authentication_utilities.verify_user_otp(account_otp=authorization_otp, stored_hashed_otp_and_salt=stored_hashed_account_activation_authorization_otp_and_salt):
-
-                # OTP is verified, prompt the user to set their password
-                cache.delete(email_address + 'multi_factor_authentication_account_activation_otp_hash_and_salt')
-                cache.delete(email_address + 'multi_factor_authentication_account_activation_authorization_otp_hash_and_salt')
-                cache.delete(email_address + 'account_activation_otp_failed_attempts')
+                account_activation_otp = request.data.get('account_activation_otp')
+                if not account_activation_otp:
+                    return Response(
+                        {"error": "Could not process your request, your request is missing important authorization credentials needed to process this request. Please provide your account activation One Time Passcode then try again."}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
 
                 activate_account_authorization_otp, hashed_activate_account_authorization_otp, activate_account_salt = authentication_utilities.generate_otp()
 
                 cache.set(email_address + 'activate_account_authorization_otp_hash_and_salt', (hashed_activate_account_authorization_otp, activate_account_salt), timeout=300)  # 300 seconds = 5 mins
                 
-                response = Response({"message": "OTP verified successfully"}, status=status.HTTP_200_OK)
+                response = Response(
+                    {"message": "Your account activation One Time Passcode has been successfully verified, you can create a new password for your account on the next page to fully activate it."}, 
+                    status=status.HTTP_200_OK
+                )
+
+                authentication_utilities.set_cookie(
+                    response, 
+                    'activate_account_authorization_otp', 
+                    activate_account_authorization_otp, 
+                )
+                authentication_utilities.set_cookie(
+                    response, 
+                    'activate_account_email_address', 
+                    email_address, 
+                )
+                authentication_utilities.set_cookie(
+                    response, 
+                    'request_authorized_for_account_activation', 
+                    True, 
+                    httponly=False, 
+                )
 
                 response.delete_cookie('multi_factor_authentication_account_activation_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
                 response.delete_cookie('multi_factor_authentication_account_activation_authorization_otp', domain=settings.SESSION_COOKIE_DOMAIN)
 
-                response.set_cookie('activate_account_authorization_otp', activate_account_authorization_otp, domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
-                response.set_cookie('activate_account_email_address', email_address, domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, max_age=300)  # 300 seconds = 5 mins
+                # OTP is verified, prompt the user to set their password
+                cache.delete(email_address + 'multi_factor_authentication_account_activation_otp_hash_and_salt')
+                cache.delete(email_address + 'multi_factor_authentication_account_activation_authorization_otp_hash_and_salt')
+                cache.delete(email_address + 'account_activation_otp_failed_attempts')
             
                 return response
                         
@@ -383,13 +601,19 @@ def account_activation_otp_verification(request):
             attempts -= 1
             cache.set(email_address + 'account_activation_otp_failed_attempts', attempts, timeout=300)  # Update attempts with expiration
 
-            return Response({"error": f"Could not process your request, the provided account activation OTP is incorrect. You have {attempts} {'attempts' if attempts > 1 else 'attempt'} remaining."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": f"Could not process your request, the provided account activation OTP is incorrect. You have {attempts} {'attempts' if attempts > 1 else 'attempt'} remaining."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         cache.delete(email_address + 'multi_factor_authentication_account_activation_otp_hash_and_salt')
         cache.delete(email_address + 'multi_factor_authentication_account_activation_authorization_otp_hash_and_salt')
         cache.delete(email_address + 'account_activation_otp_failed_attempts')
 
-        response = Response({"denied": "Could not process your request, you have exceeded the maximum number of OTP verification attempts. Generated account activation OTP for your account has been discarded."}, status=status.HTTP_403_FORBIDDEN)
+        response = Response(
+            {"denied": "Could not process your request, you have exceeded the maximum number of OTP verification attempts. Generated account activation OTP for your account has been discarded."}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
         
         response.delete_cookie('multi_factor_authentication_account_activation_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
         response.delete_cookie('multi_factor_authentication_account_activation_authorization_otp', domain=settings.SESSION_COOKIE_DOMAIN)
@@ -397,73 +621,118 @@ def account_activation_otp_verification(request):
 
     except BaseAccount.DoesNotExist:
         # if there's no user with the provided credentials return an error 
-        return Response({"error": "Could not process your request, the credentials you entered are invalid. Please check your full name and email address and try again"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"error": "Could not process your request, the credentials you entered are invalid. Please check your full name and email address and try again"}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
 
     except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 @api_view(['POST'])
 def activate_account(request):
     try:
-        password = request.data.get('password')
         email_address = request.COOKIES.get('activate_account_email_address')
         authorization_otp = request.COOKIES.get('activate_account_authorization_otp')
 
-        if not (email_address or authorization_otp or password):
-            return Response({"error": "Could not process your request, your request is missing important credentials. Make sure to privide all required fields."}, status=status.HTTP_400_BAD_REQUEST)
+        if not (email_address or authorization_otp):
+            return Response(
+                {"denied": "Could not process your request, your request is missing required authentication credentials to process this request."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # get authorization otp 
         stored_activate_account_hashed_otp_and_salt = cache.get(email_address + 'activate_account_authorization_otp_hash_and_salt')
 
         if not stored_activate_account_hashed_otp_and_salt:
-            response = Response({"denied": "Could not process your request, there is no authorization OTP for your account on record. Process forrbiden."}, status=status.HTTP_400_BAD_REQUEST)
+            response = Response(
+                {"denied": "Could not process your request, there is no account activation authorization OTP for your account on record. Your request can therefore not be authorized, returning you back to the account activation page shortly."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
             
             response.delete_cookie('activate_account_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
             response.delete_cookie('activate_account_authorization_otp', domain=settings.SESSION_COOKIE_DOMAIN)
+            response.delete_cookie('request_authorized_for_account_activation', domain=settings.SESSION_COOKIE_DOMAIN)
             return response
 
         if authentication_utilities.verify_user_otp(account_otp=authorization_otp, stored_hashed_otp_and_salt=stored_activate_account_hashed_otp_and_salt):
+            password = request.data.get('password')
+
+            if not password:
+                return Response(
+                    {"error": "Could not process your request, your request is missing important credentials. Make sure to privide your password then try again."}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                ) 
+
             # activate users account
             with transaction.atomic():
                 account = BaseAccount.objects.activate(email_address=email_address, password=password)
-        
+
                 # Access control based on user role and school compliance
                 compliant = authentication_utilities.accounts_access_control(account)
                 if compliant:
                     return compliant
 
                 # generate an access and refresh token for the user 
-                account_access_token = authentication_utilities.generate_token(account=account)
-                AccountAccessToken.objects.create(account=account, access_token_string=account_access_token['access'])
+                token = authentication_utilities.generate_token(account=account)
+                AccountAccessToken.objects.create(account=account, access_token_string=token['access'])
 
             cache.delete(email_address + 'activate_account_authorization_otp_hash_and_salt')
 
-            response = Response({"message": "Congratulations! You have successully activated your account. Welcome to seeran grades.", "role": account.role}, status=status.HTTP_200_OK)
+            response = Response(
+                {"message": "Congratulations! You have successully activated your account. Welcome to seeran grades.", "role": account.role}, 
+                status=status.HTTP_200_OK
+            )
 
             response.delete_cookie('activate_account_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
             response.delete_cookie('activate_account_authorization_otp', domain=settings.SESSION_COOKIE_DOMAIN)
+            response.delete_cookie('request_authorized_for_account_activation', domain=settings.SESSION_COOKIE_DOMAIN)
 
-            # set access/refresh token cookies
-            response.set_cookie('access_token', account_access_token['access'], domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, httponly=True, max_age=86400)
-            response.set_cookie('session_authenticated', 'The session is still valid.', domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, max_age=86400)
+            # Set access token cookie with custom expiration (24 hours)
+            authentication_utilities.set_cookie(
+                response, 
+                'access_token', 
+                token['access'], 
+                max_age=86400
+            )
+            authentication_utilities.set_cookie(
+                response, 
+                'session_authenticated', 
+                'This session is valid and active.', 
+                httponly=False, 
+                max_age=86400
+            )
 
             return response
 
-        response = Response({"denied": "Could not process your request, your requests authorization OTP is invalid. Request forrbiden."}, status=status.HTTP_400_BAD_REQUEST)
+        response = Response(
+            {"denied": "Could not process your request, your requests authorization One Time Passcode is invalid. Request forrbiden."}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
 
         cache.delete(email_address + 'activate_account_authorization_otp_hash_and_salt')
 
         response.delete_cookie('activate_account_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
         response.delete_cookie('activate_account_authorization_otp', domain=settings.SESSION_COOKIE_DOMAIN)
+        response.delete_cookie('request_authorized_for_account_activation', domain=settings.SESSION_COOKIE_DOMAIN)
         return response
 
     except BaseAccount.DoesNotExist:
         # if theres no user with the provided email return an error
-        return Response({"denied": "Could not process your request, an account with the provided credentials does not exist. Please check the account details and try again."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"denied": "Could not process your request, an account with the provided credentials does not exist. Please check the account details and try again."}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
   
     except Exception as e:
         # if any exceptions rise during return the response return it as the response
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 # reset password
@@ -474,132 +743,210 @@ def password_reset_email_verification(request):
         # check for sent email
         email_address = request.data.get('email_address')
         if not email_address:
-            return Response({"error": "Could not process your request, no email address provided. Email address is required."}, status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response(
+                {"error": "Could not process your request, no email address provided. Email address is required."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         # validate email format
         validate_email(email_address)
 
         # try to get the user with the provided email
         requesting_user = BaseAccount.objects.get(email_address=email_address)
-        
+
         # Access control based on user role and school compliance
         compliant = authentication_utilities.accounts_access_control(requesting_user)
         if compliant:
             return compliant
-            
+
         # check if the account is activated 
         if requesting_user.activated == False:
-            return Response({"error": "Could not process your request, action forbidden for account with the provided credentials."}, status=status.HTTP_403_FORBIDDEN)
-        
+            return Response(
+                {"error": "Could not process your request, action forbidden for account with the provided credentials."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         # check if the email is banned 
         if requesting_user.email_banned:
-            return Response({ "error" : "Could not process your request, failed to send OTP email, your email address has been banned. You can contact your school administrators for assistance or to have it updated."}, status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response(
+                { "error" : "Could not process your request, failed to send OTP email, your email address has been banned. You can contact your school administrators for assistance or to have it updated."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         # if everything checks out without an error 
         # create an otp for the user
         password_reset_otp, hashed_password_reset_otp, password_reset_salt = authentication_utilities.generate_otp()
         email_response = authentication_utilities.send_otp_email(
-                requesting_user, 
-                password_reset_otp, 
-                reason="We recieved a password reset request, looks like you're ready for a fresh start, we've got you covered! Use the OTP below to securely reset your password."
-            )
-        
+            requesting_user, 
+            password_reset_otp, 
+            reason="We recieved a password reset request, looks like you're ready for a fresh start, we've got you covered! Use the OTP below to securely reset your password."
+        )
+
         if email_response['status'] == 'success':
-            password_reset_authorization_otp, hashed_password_reset_authorization_otp, password_reset_authorization_salt = authentication_utilities.generate_otp()
-
             cache.set(email_address + 'multi_factor_authentication_password_reset_otp_hash_and_salt', (hashed_password_reset_otp, password_reset_salt), timeout=300)  # Cache OTP for 5 mins
-            cache.set(email_address + 'multi_factor_authentication_password_reset_authorization_otp_hash_and_salt', (hashed_password_reset_authorization_otp, password_reset_authorization_salt), timeout=300)  # Cache auth OTP for 5 mins
 
-            response = Response({"message": "A password reset OTP has been generated and sent to your email address. If you do not see the email check your spam/junk folder.",}, status=status.HTTP_200_OK)
-            
-            response.set_cookie('multi_factor_authentication_password_reset_authorization_otp', password_reset_authorization_otp, domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, httponly=True, max_age=300)  # Set auth OTP cookie (5 mins)
-            response.set_cookie('multi_factor_authentication_password_reset_email_address', email_address, domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, max_age=300)
+            response = Response(
+                {"message": "A password reset One Time Password has been generated and sent to your email address. If you do not see the email check your spam/junk folder.",}, 
+                status=status.HTTP_200_OK
+            )
+
+            password_reset_authorization_otp = authentication_utilities.generate_and_cache_otp(
+                email_address + 'multi_factor_authentication_password_reset_authorization_otp_hash_and_salt'
+            )
+            authentication_utilities.set_cookie(
+                response, 
+                'multi_factor_authentication_password_reset_authorization_otp', 
+                password_reset_authorization_otp, 
+            )
+            authentication_utilities.set_cookie(
+                response, 
+                'multi_factor_authentication_password_reset_account_email_address', 
+                email_address, 
+            )
+            authentication_utilities.set_cookie(
+                response, 
+                'request_authorized_for_multi_factor_authentication_password_reset', 
+                True, 
+                httponly=False, 
+            )
+
             return response
-        
-        return Response({"error": email_response['message']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response(
+            {"error": email_response['message']}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
     
     except BaseAccount.DoesNotExist:
         # if theres no user with the provided email return an error
-        return Response({"error": "Could not process your request, an account with the provided credentials does not exist. Please check the account details and try again"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"error": "Could not process your request, an account with the provided credentials does not exist. Please check the account details and try again"}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
             
     except ValidationError:
-        return Response({"error": "Could not process your request, the provided email address is not in a valid format. Please correct the email address and try again"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"error": "Could not process your request, the provided email address is not in a valid format. Please correct the email address and try again"}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
     except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 @api_view(['POST'])
 def password_reset_otp_verification(request):
-    
     try:
-        password_reset_otp = request.data.get('otp')
-        email_address = request.COOKIES.get('multi_factor_authentication_password_reset_email_address')
+        email_address = request.COOKIES.get('multi_factor_authentication_password_reset_account_email_address')
         password_reset_authorization_otp = request.COOKIES.get('multi_factor_authentication_password_reset_authorization_otp')
 
-        if not (email_address or password_reset_otp or password_reset_authorization_otp):
-            return Response({"error": "Could not process your request, the provided information is invalid. Email address and OTP are required."}, status=status.HTTP_400_BAD_REQUEST)
-        
+        if not (email_address or password_reset_authorization_otp):
+            return Response(
+                {"denied": "Could not process your request, your request is missing required authentication credentials to process this request."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         requesting_user = BaseAccount.objects.get(email_address=email_address)
-        
+
         # Access control based on user role and school compliance
         compliant = authentication_utilities.accounts_access_control(requesting_user)
         if compliant:
             return compliant
-    
+
         # after getting the user object retrieve the stored otp from cache 
         stored_hashed_otp_and_salt = cache.get(email_address + 'multi_factor_authentication_password_reset_otp_hash_and_salt')
-        
+
         # try to get the the authorization otp from cache
         multi_factor_authentication_password_reset_hashed_authorization_otp_and_salt = cache.get(email_address + 'multi_factor_authentication_password_reset_authorization_otp_hash_and_salt')
-        
+
         if not (multi_factor_authentication_password_reset_hashed_authorization_otp_and_salt and stored_hashed_otp_and_salt):
             # if there's no authorization otp in cache( wasn't provided in the first place, or expired since it also has a 5 minute lifespan )
-            return Response({"denied": "Could not process your request, your authorization credentials have expired."}, status=status.HTTP_400_BAD_REQUEST)
-    
+            return Response(
+                {"denied": "Could not process your request, your accounts multi-factor authentication password reset One Time Password has expired. Returning you to the password reset page shortly."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         # if everything above checks out verify the provided otp against the stored otp
         if authentication_utilities.verify_user_otp(account_otp=password_reset_otp, stored_hashed_otp_and_salt=stored_hashed_otp_and_salt):
             # provided otp is verified successfully
             if authentication_utilities.verify_user_otp(account_otp=password_reset_authorization_otp, stored_hashed_otp_and_salt=multi_factor_authentication_password_reset_hashed_authorization_otp_and_salt):
-            
+                password_reset_otp = request.data.get('password_reset_otp')
+
+                if not password_reset_otp:
+                    return Response(
+                        {"error": "Could not process your request, the provided information is invalid. Email address and OTP are required."}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                response = Response(
+                    {"message": "Password reset one time passcode successfully verified. You will be redirected to the reset password page where you will be able to update your password."}, 
+                    status=status.HTTP_200_OK
+                )
+
+                password_reset_authorization_otp = authentication_utilities.generate_and_cache_otp(
+                    email_address + 'password_reset_hashed_authorization_otp_and_salt'
+                )
+                authentication_utilities.set_cookie(
+                    response, 
+                    'password_reset_authorization_otp', 
+                    password_reset_authorization_otp, 
+                )
+                authentication_utilities.set_cookie(
+                    response, 
+                    'password_reset_email_address', 
+                    email_address, 
+                )
+                authentication_utilities.set_cookie(
+                    response, 
+                    'request_authorized_to_reset_account_password', 
+                    email_address, 
+                    httponly=False, 
+                )
+
                 cache.delete(email_address + 'multi_factor_authentication_password_reset_otp_hash_and_salt')
                 cache.delete(email_address + 'multi_factor_authentication_password_reset_authorization_otp_hash_and_salt')
-
-                password_reset_authorization_otp, password_reset_hashed_authorization_otp, password_reset_salt = authentication_utilities.generate_otp()
-                cache.set(email_address + 'password_reset_hashed_authorization_otp_and_salt', (password_reset_hashed_authorization_otp, password_reset_salt), timeout=300)  # 300 seconds = 5 mins
-
-                response = Response({"message": "Password reset one time passcode successfully verified. You will be redirected to the reset password page where you will be able to update your password."}, status=status.HTTP_200_OK)
+                cache.delete(email_address + 'multi_factor_authentication_password_reset_failed_otp_attempts')
 
                 response.delete_cookie('multi_factor_authentication_password_reset_authorization_otp', domain=settings.SESSION_COOKIE_DOMAIN)
-                response.delete_cookie('multi_factor_authentication_password_reset_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
-
-                response.set_cookie('password_reset_authorization_otp', password_reset_authorization_otp, domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, httponly=True, max_age=300)  # 300 seconds = 5 mins
-                response.set_cookie('password_reset_email_address', email_address, domain=settings.SESSION_COOKIE_DOMAIN, samesite=settings.SESSION_COOKIE_SAMESITE, secure=True, max_age=300)  # 300 seconds = 5 mins
+                response.delete_cookie('multi_factor_authentication_password_reset_account_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
+                response.delete_cookie('request_authorized_for_multi_factor_authentication_password_reset', domain=settings.SESSION_COOKIE_DOMAIN)
 
                 return response
-        
+
             # if the authorization otp does'nt match the one stored for the user return an error 
-            response = Response({"denied": "Could not process your request, incorrect authorization OTP. Action forrbiden."}, status=status.HTTP_400_BAD_REQUEST)
-                        
+            response = Response(
+                {"denied": "Could not process your request, incorrect authorization OTP. Action forrbiden."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
             # if there's no error till here verification is successful, delete all cached otps
             cache.delete(email_address + 'multi_factor_authentication_password_reset_otp_hash_and_salt')
             cache.delete(email_address + 'multi_factor_authentication_password_reset_authorization_otp_hash_and_salt')
+            cache.delete(email_address + 'multi_factor_authentication_password_reset_failed_otp_attempts')
 
             response.delete_cookie('multi_factor_authentication_password_reset_authorization_otp', domain=settings.SESSION_COOKIE_DOMAIN)
-            response.delete_cookie('multi_factor_authentication_password_reset_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
+            response.delete_cookie('multi_factor_authentication_password_reset_account_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
+            response.delete_cookie('request_authorized_for_multi_factor_authentication_password_reset', domain=settings.SESSION_COOKIE_DOMAIN)
 
             return response
 
         attempts = cache.get(email_address + 'multi_factor_authentication_password_reset_failed_otp_attempts', 3)
-        
+
         if attempts <= 0:
             cache.delete(email_address + 'multi_factor_authentication_password_reset_otp_hash_and_salt')
             cache.delete(email_address + 'multi_factor_authentication_password_reset_authorization_otp_hash_and_salt')
             cache.delete(email_address + 'multi_factor_authentication_password_reset_failed_otp_attempts')
 
-            response = Response({"denied": "Could not process your request, you have exceeded the maximum number of OTP verification attempts."}, status=status.HTTP_400_BAD_REQUEST)
-        
+            response = Response(
+                {"denied": "Could not process your request, you have exceeded the maximum number of OTP verification attempts."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
             response.delete_cookie('multi_factor_authentication_password_reset_authorization_otp', domain=settings.SESSION_COOKIE_DOMAIN)
-            response.delete_cookie('multi_factor_authentication_password_reset_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
+            response.delete_cookie('multi_factor_authentication_password_reset_account_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
+            response.delete_cookie('request_authorized_for_multi_factor_authentication_password_reset', domain=settings.SESSION_COOKIE_DOMAIN)
 
             return response
 
@@ -607,26 +954,37 @@ def password_reset_otp_verification(request):
         attempts -= 1
         cache.set(email_address + 'multi_factor_authentication_password_reset_failed_otp_attempts', attempts, timeout=300)  # Update attempts with expiration
 
-        return Response({"error": f"Could not process your request, he provided password reset OTP is incorrect. You have {attempts} {'attempts' if attempts > 1 else 'attempt'} remaining."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"error": f"Could not process your request, he provided password reset OTP is incorrect. You have {attempts} {'attempts' if attempts > 1 else 'attempt'} remaining."}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
     
     except BaseAccount.DoesNotExist:
-        # Handle the case where the provided email does not exist
-        return {'error': 'Could not process your request, an account with the provided credentials does not exist. Please check the account details and try again.'}
+        # if theres no user with the provided email return an error
+        return Response(
+            {"error": "Could not process your request, an account with the provided credentials does not exist. Please check the account details and try again"}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
 
     except Exception as e:
         # if any exceptions rise during return the response return it as the response
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
  
 @api_view(['POST'])
 def reset_password(request):
     try:
         # Get the new password and confirm password from the request data, and authorization otp from the cookies
-        new_password = request.data.get('new_password')
         email_address = request.COOKIES.get('password_reset_email_address')
         password_reset_otp = request.COOKIES.get('password_reset_authorization_otp')
         
-        if not (new_password or email_address or password_reset_otp):
-            return Response({"error": "invalid request.. missing credentials"}, status=status.HTTP_400_BAD_REQUEST)    
+        if not (email_address or password_reset_otp):
+            return Response(
+                {"denied": "Could not process your request, your request is missing required authentication credentials to process this request."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )    
     
         requesting_user = BaseAccount.objects.get(email_address=email_address)
         
@@ -638,44 +996,69 @@ def reset_password(request):
         # get authorization otp from cache and verify provided otp
         hashed_authorization_otp_and_salt = cache.get(email_address + 'password_reset_hashed_authorization_otp_and_salt')
         if not hashed_authorization_otp_and_salt:
-            response = Response({"denied": "Could not process your request, there is no password reset authorization OTP for your account on record. Process forrbiden."}, status=status.HTTP_403_FORBIDDEN)
+            response = Response(
+                {"denied": "Could not process your request, there is no password reset authorization One Time Passcode for your account on record. Process forrbiden."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
 
             response.delete_cookie('password_reset_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
             response.delete_cookie('password_reset_authorization_otp', domain=settings.SESSION_COOKIE_DOMAIN)
-           
+            response.delete_cookie('request_authorized_to_reset_account_password', domain=settings.SESSION_COOKIE_DOMAIN)
+
             return response
 
         if authentication_utilities.verify_user_otp(account_otp=password_reset_otp, stored_hashed_otp_and_salt=hashed_authorization_otp_and_salt):
+            new_password = request.data.get('new_password')
+            if not new_password:
+                return Response(
+                    {"error": "Could not process your request, the provided information is invalid. New account password is required."}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )    
+
             password_validation.validate_password(new_password)
 
             # update the user's password
             requesting_user.set_password(new_password)
             requesting_user.save()
         
-            response = Response({"message": "Your seeran grades account password has been updated successfully, you can now login using your new credentials."}, status=200)
+            response = Response(
+                {"message": "Your seeran grades account password has been updated successfully, you can now login using your new credentials."}, 
+                status=status.HTTP_200_OK
+            )
             
             cache.delete(email_address + 'password_reset_hashed_authorization_otp_and_salt')
 
             response.delete_cookie('password_reset_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
             response.delete_cookie('password_reset_authorization_otp', domain=settings.SESSION_COOKIE_DOMAIN)
+            response.delete_cookie('request_authorized_to_reset_account_password', domain=settings.SESSION_COOKIE_DOMAIN)
 
             return response
         
-        response = Response({"denied": "Could not process your request, the provided password reset authorization OTP is invalid. Process forrbiden."}, status=status.HTTP_403_FORBIDDEN)
+        response = Response(
+            {"denied": "Could not process your request, the provided password reset authorization OTP is invalid. Process forrbiden."}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
     
         cache.delete(email_address + 'password_reset_hashed_authorization_otp_and_salt')
 
         response.delete_cookie('password_reset_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
         response.delete_cookie('password_reset_authorization_otp', domain=settings.SESSION_COOKIE_DOMAIN)
+        response.delete_cookie('request_authorized_to_reset_account_password', domain=settings.SESSION_COOKIE_DOMAIN)
         
         return response
 
     except BaseAccount.DoesNotExist:
         # if theres no user with the provided email return an error
-        return Response({"denied": "Could not process your request, an account with the provided credentials does not exist. Please check the account details and try again."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"denied": "Could not process your request, an account with the provided credentials does not exist. Please check the account details and try again."}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
 
     except Exception as e:
-        return Response({"error": {str(e)}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": {str(e)}}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 # update email address
@@ -686,48 +1069,52 @@ def email_address_update_account_password_verification(request): # first step
     try:
         password = request.data.get('password')
         if not password:
-            return Response({"error": "Could not process your request, no password was provided with the request. The account password is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Could not process your request, no password was provided with the request. The current account password is required."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # verify the provided password with the requesting user account..
         requesting_user = authenticate_user(email_address=request.user.email_address, password=password)
         if requesting_user is None:
-            return Response({"error": "Could not process your request, the provided password for the account is invalid. Please check your password and try again."}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {"error": "Could not process your request, the provided current password for the account is invalid. Please check your password and try again."}, 
+                status=status.HTTP_401_UNAUTHORIZED
+            )
 
-        response = Response({'message': "Your account password has been successfully verified. We have sent a One Time Passcode to your email address"}, status=status.HTTP_200_OK)
-
-        email_address_update_otp, email_address_update_hashed_otp, email_address_update_salt = authentication_utilities.generate_otp()
-        cache.set(  # Cache OTP for 5 mins
-            request.user.email_address + 'email_address_update_authorization_otp_hash_and_salt', 
-            (email_address_update_hashed_otp, email_address_update_salt), 
-            timeout=300
+        response = Response(
+            {'message': "Your account password has been successfully verified. Provide your new email address on the next step then verify ownership."}, 
+            status=status.HTTP_200_OK
         )
 
-        response.set_cookie( # 300 seconds = 5 mins
+        email_address_update_otp = authentication_utilities.generate_and_cache_otp(
+            request.user.email_address + 'email_address_update_authorization_otp_hash_and_salt'
+        )
+        authentication_utilities.set_cookie(
+            response, 
             'email_address_update_authorization_otp', 
             email_address_update_otp, 
-            domain=settings.SESSION_COOKIE_DOMAIN, 
-            samesite=settings.SESSION_COOKIE_SAMESITE, 
-            secure=True, 
-            httponly=True, 
-            max_age=300
-        ) 
-
-        response.set_cookie( # 300 seconds = 5 mins
+        )
+        authentication_utilities.set_cookie(
+            response, 
             'email_address_update_reuqest_authorized', 
             True, 
-            domain=settings.SESSION_COOKIE_DOMAIN, 
-            samesite=settings.SESSION_COOKIE_SAMESITE, 
-            secure=True, 
-            max_age=300
-        ) 
+            httponly=False
+        )
 
         return response
 
     except TokenError as e:
-        return Response({"error": "There was an error decoding your provided access token. If this error persists please open a bug report or email our support line with the following error trail: " + str(e)}, status=status.HTTP_200_OK)
+        return Response(
+            {"error": "There was an error decoding your provided access token. If this error persists please open a bug report or email our support line with the following error trail: " + str(e)}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
 
     except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 @api_view(['POST'])
 @token_required
@@ -735,11 +1122,17 @@ def email_address_update_validate_new_email_address(request):
     try:
         email_address_update_authorization_otp = request.COOKIES.get('email_address_update_authorization_otp')
         if not email_address_update_authorization_otp:
-            return Response({"denied": "Could not process your request, the authorization credentials provided are missing. A authorization OTP is required to process this request."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"denied": "Could not process your request, the authorization credentials provided are missing. A authorization OTP is required to process this request."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
     
         email_address_update_authorization_otp_hash_and_salt = cache.get(request.user.email_address + 'email_address_update_authorization_otp_hash_and_salt')
         if not email_address_update_authorization_otp_hash_and_salt:
-            return Response({"denied": "Could not process your request, your authorization credentials have expired. Returning you to the update email address page shortly."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"denied": "Could not process your request, your authorization credentials have expired. Returning you to the update email address page shortly."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         requesting_user = BaseAccount.objects.get(email_address=request.user.email_address)
         
@@ -752,7 +1145,10 @@ def email_address_update_validate_new_email_address(request):
         if authentication_utilities.verify_user_otp(account_otp=email_address_update_authorization_otp, stored_hashed_otp_and_salt=email_address_update_authorization_otp_hash_and_salt):
             new_email_address = request.data.get('new_email_address')
             if not new_email_address:
-                return Response({"error": "Could not process your request, the provided information is invalid. Email address is required, please correct the email address and try again."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "Could not process your request, the provided information is invalid. Email address is required, please correct the email address and try again."}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         
             # validate email format
             validate_email(new_email_address)
@@ -774,41 +1170,27 @@ def email_address_update_validate_new_email_address(request):
                     timeout=300
                 ) 
 
-                cache.set( # Cache auth OTP for 5 mins
-                    new_email_address + 'email_address_update_verify_new_email_address_ownership_authorization_otp_hash_and_salt', 
-                    (hashed_email_address_ownership_authorization_otp, email_address_ownership_authorization_salt), 
-                    timeout=300
-                ) 
-
                 response = Response({"message": "A email address ownership verification OTP has been generated for your account and sent to your email address. It will be valid for the next 5 minutes.",}, status=status.HTTP_200_OK)
             
-                response.set_cookie(  # Set auth OTP cookie (5 mins)
+                email_address_ownership_authorization_otp = authentication_utilities.generate_and_cache_otp(
+                    request.user.email_address + 'email_address_update_verify_new_email_address_ownership_authorization_otp_hash_and_salt'
+                )
+
+                authentication_utilities.set_cookie(
+                    response, 
                     'email_address_update_verify_new_email_address_ownership_authorization_otp', 
                     email_address_ownership_authorization_otp, 
-                    domain=settings.SESSION_COOKIE_DOMAIN, 
-                    samesite=settings.SESSION_COOKIE_SAMESITE, 
-                    secure=True, 
-                    httponly=True, 
-                    max_age=300
                 )
-
-                response.set_cookie(
+                authentication_utilities.set_cookie(
+                    response, 
                     'email_address_update_verify_new_email_address_ownership_email_address', 
                     new_email_address, 
-                    domain=settings.SESSION_COOKIE_DOMAIN, 
-                    samesite=settings.SESSION_COOKIE_SAMESITE, 
-                    secure=True, 
-                    httponly=True, 
-                    max_age=300
                 )
-
-                response.set_cookie(
-                    'email_address_update_verify_new_email_address_ownership_request_authorized', 
-                    True, 
-                    domain=settings.SESSION_COOKIE_DOMAIN, 
-                    samesite=settings.SESSION_COOKIE_SAMESITE, 
-                    secure=True, 
-                    max_age=300
+                authentication_utilities.set_cookie(
+                    response, 
+                    'request_authorized_to_verify_new_email_address_ownership', 
+                    email_address_ownership_authorization_otp, 
+                    httponly=False
                 )
 
                 cache.delete(request.user.email_address + 'email_address_update_authorization_otp_hash_and_salt')
@@ -825,17 +1207,22 @@ def email_address_update_validate_new_email_address(request):
 
                 return response
 
-            return Response({"error": email_response['message']}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": email_response['message']}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        response = Response(
+            {"denied": "Could not process your request, the provided authorization One Time Passcode is incorrect. Action forrbiden."}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
         cache.delete(request.user.email_address + 'email_address_update_authorization_otp_hash_and_salt')
-        
-        response = Response({"denied": "Could not process your request, the provided authorization OTP is incorrect. Action forrbiden."}, status=status.HTTP_400_BAD_REQUEST)
 
         response.delete_cookie(
             'email_address_update_authorization_otp', 
             domain=settings.SESSION_COOKIE_DOMAIN
         )
-
         response.delete_cookie(
             'email_address_update_reuqest_authorized', 
             domain=settings.SESSION_COOKIE_DOMAIN
@@ -845,14 +1232,23 @@ def email_address_update_validate_new_email_address(request):
     
     except BaseAccount.DoesNotExist:
         # if theres no user with the provided email return an error
-        return Response({"denied": "Could not process your request, an account with the provided credentials does not exist. Please check the account details and try again."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"denied": "Could not process your request, an account with the provided credentials does not exist. Please check the account details and try again."}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
             
     except ValidationError:
-        return Response({"error": "Could not process your request, the provided email address is not in a valid format. Please correct the email address and try again"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"error": "Could not process your request, the provided email address is not in a valid format. Please correct the email address and try again"}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
     except Exception as e:
         # if any exceptions rise during return the response return it as the response
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
  
 @api_view(['POST'])
 def email_address_update_verify_new_email_address_ownership(request):
@@ -861,7 +1257,10 @@ def email_address_update_verify_new_email_address_ownership(request):
         email_address_ownership_authorization_otp = request.COOKIES.get('email_address_update_verify_new_email_address_ownership_authorization_otp')
         new_email_address = request.COOKIES.get('email_address_update_verify_new_email_address_ownership_email_address')
         if not (email_address_ownership_authorization_otp or new_email_address):
-            return Response({"denied": "Could not process your request, your request is missing important authorization credentials needed to process this request."}, status=status.HTTP_400_BAD_REQUEST) 
+            return Response(
+                {"denied": "Could not process your request, your request is missing important authorization credentials needed to process this request."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            ) 
     
         requesting_user = BaseAccount.objects.get(email_address=request.user.email_address)
         
@@ -870,9 +1269,12 @@ def email_address_update_verify_new_email_address_ownership(request):
         if compliant:
             return compliant
         
-        email_address_ownership_otp = request.data.get('otp')
+        email_address_ownership_otp = request.data.get('email_address_ownership_otp')
         if not email_address_ownership_otp:
-            return Response({"error": "Could not process your request, your request does not include the email address ownership OTP needed to verify that the email address you provided belongs to you. Please try again."}, status=status.HTTP_400_BAD_REQUEST) 
+            return Response(
+                {"error": "Could not process your request, your request does not include the email address ownership OTP needed to verify that the email address you provided belongs to you. Please try again."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            ) 
 
         # get authorization otp from cache and verify provided otp
         email_address_update_verify_new_email_address_ownership_otp_hash_and_salt = cache.get(request.user.email_address + 'email_address_update_verify_new_email_address_ownership_otp_hash_and_salt')
@@ -904,7 +1306,7 @@ def email_address_update_verify_new_email_address_ownership(request):
                 )
 
                 response.delete_cookie(
-                    'email_address_update_verify_new_email_address_ownership_request_authorized', 
+                    'request_authorized_to_verify_new_email_address_ownership', 
                     domain=settings.SESSION_COOKIE_DOMAIN
                 )
             
@@ -929,7 +1331,7 @@ def email_address_update_verify_new_email_address_ownership(request):
             )
 
             response.delete_cookie(
-                'email_address_update_verify_new_email_address_ownership_request_authorized', 
+                'request_authorized_to_verify_new_email_address_ownership', 
                 domain=settings.SESSION_COOKIE_DOMAIN
             )
 
@@ -942,13 +1344,19 @@ def email_address_update_verify_new_email_address_ownership(request):
             attempts -= 1
             cache.set(request.user.email_address + 'email_address_update_verify_new_email_address_ownership_otp_failed_attempts', attempts, timeout=300)  # Update attempts with expiration
 
-            return Response({"error": f"Could not process your request, the provided email ownership OTP is incorrect. You have {attempts} {'attempts' if attempts > 1 else 'attempt'} remaining."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": f"Could not process your request, the provided email ownership OTP is incorrect. You have {attempts} {'attempts' if attempts > 1 else 'attempt'} remaining."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         cache.delete(request.user.email_address + 'email_address_update_verify_new_email_address_ownership_otp_hash_and_salt')
         cache.delete(request.user.email_address + 'email_address_update_verify_new_email_address_ownership_authorization_otp_hash_and_salt')
         cache.delete(request.user.email_address + 'email_address_update_verify_new_email_address_ownership_otp_failed_attempts')
 
-        response = Response({"denied": "Could not process your request, you have exceeded the maximum number of email ownership OTP verification attempts. Redirecting you to the update email address page shortly."}, status=status.HTTP_403_FORBIDDEN)
+        response = Response(
+            {"denied": "Could not process your request, you have exceeded the maximum number of email ownership OTP verification attempts. Redirecting you to the update email address page shortly."}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
         
         response.delete_cookie(
             'email_address_update_verify_new_email_address_ownership_authorization_otp', 
@@ -961,7 +1369,7 @@ def email_address_update_verify_new_email_address_ownership(request):
         )
 
         response.delete_cookie(
-            'email_address_update_verify_new_email_address_ownership_request_authorized', 
+            'request_authorized_to_verify_new_email_address_ownership', 
             domain=settings.SESSION_COOKIE_DOMAIN
         )
 
@@ -969,10 +1377,16 @@ def email_address_update_verify_new_email_address_ownership(request):
 
     except BaseAccount.DoesNotExist:
         # if theres no user with the provided email return an error
-        return Response({"denied": "Could not process your request, an account with the provided credentials does not exist. Please check the account details and try again."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {"denied": "Could not process your request, an account with the provided credentials does not exist. Please check the account details and try again."}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
 
     except Exception as e:
-        return Response({"error": {str(e)}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": {str(e)}}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 # update account password
@@ -984,24 +1398,66 @@ def password_update_password_verification(request):
         current_password = request.data.get('current_password')
         new_password = request.data.get('new_password')
 
-        if not (current_password or new_password):
-            return Response({"error": "Could not process your request, no password was provided with the request. The account password is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not (current_password):
+            return Response(
+                {"error": "Could not process your request, the accounts current password was not provided. The current password is required to process this request."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not (new_password):
+            return Response(
+                {"error": "Could not process your request, the new password was not provided. The new password is required to process this request."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # verify the provided password with the requesting user account..
         requesting_user = authenticate_user(email_address=request.user.email_address, password=current_password)
         if requesting_user is None:
-            return Response({"error": "Could not process your request, the provided password for the account is invalid. Please check your password and try again."}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {"error": "Could not process your request, the provided current password for the account is invalid. Please check your password and try again."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
         
-        requesting_user.set_password(new_password)
-        requesting_user.save
+        validate_password(new_password)  # Ensure the password meets the validation criteria
 
-        return Response({'message': "Your account password has been successfully updated, use your new credentials on your next authentication into your dashboard."}, status=status.HTTP_200_OK)
+        with transaction.atomic():
+            requesting_user.set_password(new_password)
+            requesting_user.save()
+
+            access_tokens = AccountAccessToken.objects.filter(account=requesting_user)
+
+            for access_token in access_tokens:
+                # Decode the token
+                token = decode(access_token.access_token_string)
+                
+                # Calculate the remaining time for the token to expire
+                expiration_time = token.payload['exp'] - int(time.time())
+                
+                if expiration_time > 0:
+                    cache.set(access_token.access_token_string, 'blacklisted', timeout=expiration_time)
+
+        return Response(
+            {'message': "Your account password has been successfully updated, use your new credentials on your next authentication into your dashboard."}, 
+            status=status.HTTP_200_OK
+        )
 
     except TokenError as e:
-        return Response({"error": "There was an error decoding your provided access token. If this error persists please open a bug report or email our support line with the following error trail: " + str(e)}, status=status.HTTP_200_OK)
+        return Response(
+            {"error": "There was an error decoding your provided access token. If this error persists please open a bug report or email our support line with the following error trail: " + str(e)}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
+    except ValidationError as e:
+        return Response(
+            {"error": e.messages}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
     except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 # logout
@@ -1025,11 +1481,20 @@ def log_out(request):
         AccountAccessToken.objects.filter(access_token_string=str(access_token)).delete()
 
         return authentication_utilities.remove_authorization_cookies(
-            Response({'message': "Your current session has been logged out successfully and access token has been blacklisted for the remainder of it's lifespan."}, status=status.HTTP_200_OK)
+            Response(
+                {'message': "Your current session has been logged out successfully and access token has been blacklisted for the remainder of it's lifespan."}, 
+                status=status.HTTP_200_OK
+            )
         )
     
     except TokenError as e:
-        return Response({"error": "Could not process your request, there was an error decoding your provided access token. If this error persists please open a bug report or email our support line and provide the following error trail: " + str(e)}, status=status.HTTP_200_OK)
+        return Response(
+            {"error": "Could not process your request, there was an error decoding your provided access token. If this error persists please open a bug report or email our support line and provide the following error trail: " + str(e)}, 
+            status=status.HTTP_200_OK
+        )
 
     except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
