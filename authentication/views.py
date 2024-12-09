@@ -24,7 +24,6 @@ from account_access_tokens.models import AccountAccessToken
 
 # utility functions 
 from authentication import utils as authentication_utilities
-from accounts import utils as accounts_utilities
 from account_access_tokens.utils import manage_user_sessions
 
 # custom decorators
@@ -1417,7 +1416,7 @@ def password_update_password_verification(request):
                 {"error": "Could not process your request, the provided current password for the account is invalid. Please check your password and try again."}, 
                 status=status.HTTP_403_FORBIDDEN
             )
-        
+
         validate_password(new_password)  # Ensure the password meets the validation criteria
 
         with transaction.atomic():
@@ -1432,7 +1431,7 @@ def password_update_password_verification(request):
                 
                 # Calculate the remaining time for the token to expire
                 expiration_time = token.payload['exp'] - int(time.time())
-                
+
                 if expiration_time > 0:
                     cache.set(access_token.access_token_string, 'blacklisted', timeout=expiration_time)
 
@@ -1446,7 +1445,7 @@ def password_update_password_verification(request):
             {"error": "There was an error decoding your provided access token. If this error persists please open a bug report or email our support line with the following error trail: " + str(e)}, 
             status=status.HTTP_403_FORBIDDEN
         )
-    
+
     except ValidationError as e:
         return Response(
             {"error": e.messages}, 
