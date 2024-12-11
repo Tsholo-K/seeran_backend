@@ -6,7 +6,7 @@ from rest_framework.validators import UniqueTogetherValidator
 from .models import Classroom
 
 # serilializers
-from accounts.serializers.teachers.serializers import TeacherAccountSerializer, TeacherFullNameSerializer
+from accounts.serializers.teachers.serializers import TeacherAccountSerializer, TeacherFullNameSerializer, TeacherBasicAccountDetailsEmailSerializer
 from accounts.serializers.students.serializers import StudentSourceAccountSerializer
 
 
@@ -87,7 +87,7 @@ class ClassroomDetailsSerializer(serializers.ModelSerializer):
 
     def get_teacher(self, obj):
         if obj.teacher:
-            return TeacherFullNameSerializer(obj.teacher).data
+            return TeacherBasicAccountDetailsEmailSerializer(obj.teacher).data
         return None
 
 

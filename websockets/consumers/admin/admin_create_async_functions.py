@@ -521,7 +521,7 @@ def create_term(account, role, details):
                 term = requesting_account.school.terms.create(**serializer.validated_data)
                 grades_utilities.update_grade_term_count(grade=grade)
 
-                response = f"A new term, {term.term_name}, for your schools grade {grade.grade} has been successfully created."
+                response = f"A new term, {term.term_name}, has been successfully created for Grade {grade.grade} in your school. This term is now ready for you to organize, review and manage assessments for students in this grade."
                 audits_utilities.log_audit(actor=requesting_account, action='CREATE', target_model='TERM', target_object_id=str(term.term_id) if term else 'N/A', outcome='CREATED', server_response=response, school=requesting_account.school)
 
             return {"message": response}
