@@ -1,6 +1,7 @@
 # python 
 import hashlib
 import re
+import regex
 import secrets
 import base64
 import requests
@@ -164,7 +165,7 @@ def validate_names(full_name):
     # - Allows letters (including accented letters)
     # - Permits hyphens and apostrophes as internal characters
     # - Handles names from various languages and scripts
-    name_pattern = re.compile(r"^[\p{L}][\p{L}'\-]*$", re.UNICODE)
+    name_pattern = regex.compile(r"^[\p{L}][\p{L}'\-]*$", regex.UNICODE)
 
     # Validate each part of the name
     for part in parts:
@@ -179,7 +180,7 @@ def validate_names(full_name):
 
 def is_valid_human_name(name):
     # Valid characters typically found in human names
-    valid_characters = re.compile(r'^[a-zA-Z\-\'\s]+$')
+    valid_characters = regex.compile(r'^[a-zA-Z\-\'\s]+$')
     # Check if the string contains more than one part when split by a space
     parts = name.strip().split(' ')
     if len(parts) > 1:
