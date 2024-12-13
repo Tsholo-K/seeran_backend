@@ -60,13 +60,21 @@ def authenticate(request):
 @api_view(['POST'])
 def account_activation_credentials_verification(request):
     try:
-        full_name = request.data.get('full_name')
+        first_name = request.data.get('first_name')
+        last_name = request.data.get('last_name')
         email_address = request.data.get('email_address')
 
         # if there's a missing credential return an error
-        if not full_name:
+        if not first_name:
             return Response(
-                {"error": "Could not process your request, the provided account activation credentials are incomplete. Please provide your full name and try again."}, 
+                {"error": "Could not process your request, the provided account activation credentials are incomplete. Please provide your first name and try again."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # if there's a missing credential return an error
+        if not last_name:
+            return Response(
+                {"error": "Could not process your request, the provided account activation credentials are incomplete. Please provide your last name and try again."}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -82,24 +90,13 @@ def account_activation_credentials_verification(request):
         validate_email(email_address)
         print('email address validated')
 
-        print('validating full name')
-        # validate provided names
-        valid_full_name = authentication_utilities.validate_names(full_name)
-        if valid_full_name:
-            return valid_full_name
-        print('full name validated')
-
 
         print('requesting user')
         # try to validate the credentials by getting a user with the provided credentials 
         requesting_user = BaseAccount.objects.get(email_address=email_address)
         print('user requested')
 
-        print('full name spilt and striped')
-        # check if the provided name and surname are correct
-        name, surname = full_name.strip().split(' ', 1)
-
-        if not (requesting_user.name.casefold() == name.casefold() and requesting_user.surname.casefold() == surname.casefold()) or not (requesting_user.name.casefold() == surname.casefold() and requesting_user.surname.casefold() == name.casefold()):
+        if not (requesting_user.name.casefold() == first_name.casefold() and requesting_user.surname.casefold() == last_name.casefold()):
             return Response(
                 {"error": "Could not process your request, the account activation credentials you provided are invalid. Please check your full name and email address and try again."}, 
                 status=status.HTTP_400_BAD_REQUEST
