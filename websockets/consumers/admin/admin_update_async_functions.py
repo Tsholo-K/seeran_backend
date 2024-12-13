@@ -534,7 +534,7 @@ def update_classroom_teacher(account, role, details):
             else:
                 classroom.update_teacher(teacher=details['teacher'])
                 
-            response = f'The teacher for classroom with identifier: {details['classroom']} in grade: {classroom.grade.grade} has been sucessfully updated. The new teacher (if provided) will assigned the classroom and will be in charge of it to the extent of their permissions.'
+            response = f"The teacher for classroom with identifier: {details['classroom']} in grade: {classroom.grade.grade} has been sucessfully updated. The new teacher (if provided) will assigned the classroom and will be in charge of it to the extent of their permissions."
             audits_utilities.log_audit(actor=requesting_account, action='UPDATE', target_model='CLASSROOM', target_object_id=str(classroom.classroom_id) if classroom else 'N/A', outcome='UPDATED', server_response=response, school=requesting_account.school,)
 
         return {"message": response}
