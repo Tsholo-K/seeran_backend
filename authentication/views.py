@@ -234,16 +234,17 @@ def account_activation_otp_verification(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        account_activation_otp = request.data.get('account_activation_otp')
+        if not account_activation_otp:
+            return Response(
+                {"error": "Could not process your request, your request is missing important authorization credentials needed to process this request. Please provide your account activation One Time Passcode then try again."}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         # if everything above checks out verify the provided otp against the stored otp
         if authentication_utilities.verify_user_otp(account_otp=account_activation_otp, stored_hashed_otp_and_salt=stored_hashed_account_activation_otp_and_salt):
             # provided otp is verified successfully
             if authentication_utilities.verify_user_otp(account_otp=authorization_otp, stored_hashed_otp_and_salt=stored_hashed_account_activation_authorization_otp_and_salt):
-                account_activation_otp = request.data.get('account_activation_otp')
-                if not account_activation_otp:
-                    return Response(
-                        {"error": "Could not process your request, your request is missing important authorization credentials needed to process this request. Please provide your account activation One Time Passcode then try again."}, 
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
 
                 activate_account_authorization_otp, hashed_activate_account_authorization_otp, activate_account_salt = authentication_utilities.generate_otp()
 
