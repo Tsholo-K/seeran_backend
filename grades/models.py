@@ -120,8 +120,7 @@ class Grade(models.Model):
             if self.grade:
                 try:
                     # Extracting the grade keys from the choices and assigning order based on position.
-                    grade_keys = [choice[0] for choice in self.SCHOOL_GRADES_CHOICES]
-                    self.grade_order = grade_keys.index(self.grade)
+                    self.grade_order = [choice[0] for choice in self.SCHOOL_GRADES_CHOICES].index(self.grade)
                 except ValueError:
                     raise ValidationError(_('Could not process your request, the provided grade level is invalid. Please choose a grade from the available options and try again.'))
 

@@ -25,6 +25,7 @@ from account_access_tokens.models import AccountAccessToken
 # utility functions 
 from authentication import utils as authentication_utilities
 from account_access_tokens.utils import manage_user_sessions
+from account_browsers.utils import generate_and_store_device_details
 
 # custom decorators
 from .decorators import token_required
@@ -360,25 +361,63 @@ def activate_account(request):
 
         if authentication_utilities.verify_user_otp(account_otp=authorization_otp, stored_hashed_otp_and_salt=stored_activate_account_hashed_otp_and_salt):
             password = request.data.get('password')
-
             if not password:
                 return Response(
                     {"error": "Could not process your request, your request is missing important credentials. Make sure to privide your password then try again."}, 
                     status=status.HTTP_400_BAD_REQUEST
                 ) 
 
+            public_key = request.data.get('publicKey')
+
+            seeran_key_encrypted_private_key = request.data.get('seerankeyEncryptedPrivateKey')
+            seeran_key_encrypted_private_key_salt = request.data.get('seerankeyEncryptedPrivateKeySalt')
+            seeran_key_encryption_iv = request.data.get('seeranKeyEncryptioniv')
+
+            recovery_encrypted_private_key = request.data.get('recoveryEncryptedPrivateKey')
+            recovery_encrypted_private_key_salt = request.data.get('recoveryEncryptedPrivateKeySalt')
+            recovery_encryption_iv = request.data.get('recoveryEncryptioniv')
+
+            # Validate required fields
+            if not all([
+                public_key,
+                seeran_key_encrypted_private_key, seeran_key_encrypted_private_key_salt, seeran_key_encryption_iv,
+                recovery_encrypted_private_key, recovery_encrypted_private_key_salt, recovery_encryption_iv,
+            ]):
+                return Response(
+                    {"error": "Could not process your request, request is missing required data to process account activation."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             # activate users account
             with transaction.atomic():
-                account = BaseAccount.objects.activate(email_address=email_address, password=password)
+                account = BaseAccount.objects.get(email_address=email_address)
 
                 # Access control based on user role and school compliance
                 compliant = authentication_utilities.accounts_access_control(account)
                 if compliant:
                     return compliant
+                
+                BaseAccount.objects.activate_account(email_address=email_address, password=password)
+
+                # Save the cryptographic fields
+                account.public_key = public_key
+
+                account.seeran_key_encrypted_private_key = seeran_key_encrypted_private_key
+                account.seeran_key_encrypted_private_key_salt = seeran_key_encrypted_private_key_salt
+                account.seeran_key_encryption_iv = seeran_key_encryption_iv
+
+                account.recovery_encrypted_private_key = recovery_encrypted_private_key
+                account.recovery_encrypted_private_key_salt = recovery_encrypted_private_key_salt
+                account.recovery_encryption_iv = recovery_encryption_iv
+
+                account.save()
 
                 # generate an access and refresh token for the user 
                 token = authentication_utilities.generate_token(account=account)
-                AccountAccessToken.objects.create(account=account, access_token_string=token['access'])
+                access_token = AccountAccessToken.objects.create(account=account, access_token_string=token['access'])
+
+                # Now update the account browsers with the current device info
+                browser_id = generate_and_store_device_details(request, account, access_token)  # This tracks device info as per your updated model
 
             cache.delete(email_address + 'activate_account_authorization_otp_hash_and_salt')
 
@@ -396,6 +435,12 @@ def activate_account(request):
                 response, 
                 'access_token', 
                 token['access'], 
+                max_age=86400
+            )
+            authentication_utilities.set_cookie(
+                response, 
+                'browser_id', 
+                browser_id, 
                 max_age=86400
             )
             authentication_utilities.set_cookie(
@@ -433,7 +478,6 @@ def activate_account(request):
             {"error": str(e)}, 
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-
 
 # login
 

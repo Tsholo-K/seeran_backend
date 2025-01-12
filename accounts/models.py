@@ -3,8 +3,8 @@ import uuid
 import re
 
 # django imports
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models, transaction, IntegrityError
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -51,7 +51,7 @@ class BaseAccountManager(BaseUserManager):
         
         return user
 
-    def activate(self, email_address, password):
+    def activate_account(self, email_address, password):
         """
         Activate a user account by setting a password and marking it as activated.
         
@@ -71,7 +71,6 @@ class BaseAccountManager(BaseUserManager):
             account.activated = True  # Mark as activated
 
             account.save()
-            return account
         
         except BaseAccount.DoesNotExist:
             raise ValueError(_('The account with the provided email does not exist. Please check the email and try again.'))
@@ -105,8 +104,13 @@ class BaseAccount(AbstractBaseUser, PermissionsMixin):
         save: Saves the user instance with validation.
     """
 
+    name = models.CharField(_('name'), max_length=64)
+    surname = models.CharField(_('surname'), max_length=64)
+
+    email_address = models.EmailField(_('email address'), blank=True, null=True)
+
     ROLE_CHOICES = [
-        ('FOUNDER', 'Founder'),
+        ('FOUNDER', 'Founder'), 
         ('PRINCIPAL', 'Principal'),
         ('ADMIN', 'Admin'),
         ('TEACHER', 'Teacher'),
@@ -114,11 +118,6 @@ class BaseAccount(AbstractBaseUser, PermissionsMixin):
         ('PARENT', 'Parent'),
     ]
     
-    name = models.CharField(_('name'), max_length=64)
-    surname = models.CharField(_('surname'), max_length=64)
-
-    email_address = models.EmailField(_('email address'), blank=True, null=True)
-
     role = models.CharField(choices=ROLE_CHOICES, max_length=16)
 
     profile_picture = models.ImageField(blank=True, null=True)
@@ -137,6 +136,41 @@ class BaseAccount(AbstractBaseUser, PermissionsMixin):
 
     timestamp = models.DateTimeField(auto_now_add=True)
     account_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+
+    # Encryption-related fields
+    public_key = models.BinaryField(_('Accounts public key'), blank=True, null=True)  # Public key
+
+    seeran_key_encrypted_private_key = models.BinaryField(
+        _('Encrypted private key with Seeran Key'),
+        blank=True,
+        null=True
+    )  # Encrypted private key
+    seeran_key_encrypted_private_key_salt = models.BinaryField(
+        _('Salt for Seeran Key encrypted private key'),
+        blank=True,
+        null=True
+    )  # Salt for derivation
+    seeran_key_encryption_iv = models.BinaryField(
+        _('IV for Seeran Key encrypted private key'),
+        blank=True,
+        null=True
+    )  # IV for Seeran Key encryption
+
+    recovery_encrypted_private_key = models.BinaryField(
+        _('Encrypted private key with Recovery Key'),
+        blank=True,
+        null=True
+    )  # Encrypted private key (backup)
+    recovery_encrypted_private_key_salt = models.BinaryField(
+        _('Salt for Recovery Key encrypted private key'),
+        blank=True,
+        null=True
+    )  # Salt for Recovery Key derivation
+    recovery_encryption_iv = models.BinaryField(
+        _('IV for Recovery Key encrypted private key'),
+        blank=True,
+        null=True
+    )  # IV for Recovery Key encryption
 
     USERNAME_FIELD = 'email_address'  # Specifies the field to be used for authentication
 
@@ -453,6 +487,7 @@ class Parent(BaseAccount):
 
         # If validation passes, add the child
         self.children.add(child)
+
 
 """
     Here's a list of some name and surname combinations for dummy data:
