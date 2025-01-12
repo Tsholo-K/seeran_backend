@@ -189,6 +189,7 @@ INSTALLED_APPS = [
 
     'accounts',
     'account_access_tokens',
+    'account_browsers',
     'email_address_bans',
     'account_permissions',
     'permission_groups',
