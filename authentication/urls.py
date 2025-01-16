@@ -17,9 +17,9 @@ urlpatterns = [
     path('authenticate/', views.authenticate, name='verify incoming request'),
     
     # password reset
-    path('password-reset-email-verification/', views.password_reset_email_verification, name='verifies users email before password reset'),
-    path('password-reset-otp-verification/', views.password_reset_otp_verification, name='verifies users otp during password reset'),
-    path('reset-password/', views.reset_password, name='resets users password'),
+    path('credentials-reset-email-verification/', views.credentials_reset_email_verification, name='verifies users email before credentials reset'),
+    path('credentials-reset-otp-verification/', views.credentials_reset_otp_verification, name='verifies users otp during credentials reset'),
+    path('reset-credentials/', views.reset_credentials, name='resets users credentials'),
 
     # logout
     path('logout/', views.log_out, name='logout endpoint'),

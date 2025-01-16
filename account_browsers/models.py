@@ -78,6 +78,14 @@ class AccountBrowsers(models.Model):
         help_text="Tracks whether the user was prompted to register this browser for WebAuthn but dismissed the prompt."
     )
 
+    # static key 
+    static_key = models.BinaryField(
+        _('Browser Static Key'),
+        blank=True,
+        null=True,
+        help_text="The Static key associated with this browser/device."
+    )
+
     # WebAuthn Credentials
     registered = models.BooleanField(
         _('Is browser registered for WebAuthn'),

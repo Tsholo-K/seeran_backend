@@ -1,10 +1,7 @@
 from user_agents import parse  # Using the `user_agents` package to parse the user-agent string
 
-from django.utils.timezone import now
-from .models import AccountBrowsers
 
-
-def generate_and_store_device_details(request, account, access_token):
+def generate_device_details(request):
     # Extract the user-agent string from the request headers
     user_agent = request.META.get('HTTP_USER_AGENT', '')
     
@@ -42,18 +39,4 @@ def generate_and_store_device_details(request, account, access_token):
         browser_info['browser'] = user_agent_data.browser.family
         browser_info['browser_version'] = user_agent_data.browser.version_string
 
-    # Create or update the device information in AccountBrowsers model
-    browser = AccountBrowsers.objects.create(
-        account=account,
-        access_token=access_token,
-        device_type=browser_info['device_type'],
-        os=browser_info['os'],
-        os_version=browser_info['os_version'],
-        browser=browser_info['browser'],
-        browser_version=browser_info['browser_version'],
-        language=browser_info['language'],
-        time_zone=browser_info['time_zone'],
-        created_at=now(),
-    )
-
-    return browser.browser_id
+    return browser_info

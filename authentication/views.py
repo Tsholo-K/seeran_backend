@@ -12,6 +12,7 @@ from rest_framework.decorators import api_view
 
 # django
 from django.db import transaction
+from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.contrib.auth import authenticate as authenticate_user, password_validation
 from django.contrib.auth.password_validation import validate_password
@@ -21,11 +22,12 @@ from django.core.validators import validate_email
 # models
 from accounts.models import BaseAccount
 from account_access_tokens.models import AccountAccessToken
+from account_browsers.models import AccountBrowsers
 
 # utility functions 
 from authentication import utils as authentication_utilities
 from account_access_tokens.utils import manage_user_sessions
-from account_browsers.utils import generate_and_store_device_details
+from account_browsers.utils import generate_device_details
 
 # custom decorators
 from .decorators import token_required
@@ -368,20 +370,28 @@ def activate_account(request):
                 ) 
 
             public_key = request.data.get('publicKey')
+            static_key = request.data.get('staticKey')
 
-            seeran_key_encrypted_private_key = request.data.get('seerankeyEncryptedPrivateKey')
-            seeran_key_encrypted_private_key_salt = request.data.get('seerankeyEncryptedPrivateKeySalt')
-            seeran_key_encryption_iv = request.data.get('seeranKeyEncryptioniv')
+            password_encrypted_private_key = request.data.get('passwordEncryptedPrivateKey')
+            password_encrypted_private_key_salt = request.data.get('passwordEncryptedPrivateKeySalt')
+            password_encryption_iv = request.data.get('passwordEncryptioniv')
 
-            recovery_encrypted_private_key = request.data.get('recoveryEncryptedPrivateKey')
-            recovery_encrypted_private_key_salt = request.data.get('recoveryEncryptedPrivateKeySalt')
-            recovery_encryption_iv = request.data.get('recoveryEncryptioniv')
+            recovery_Key_encrypted_private_key = request.data.get('recoveryKeyEncryptedPrivateKey')
+            recovery_key_encrypted_private_key_salt = request.data.get('recoveryKeyEncryptedPrivateKeySalt')
+            recovery_key_encryption_iv = request.data.get('recoveryKeyEncryptioniv')
 
             # Validate required fields
             if not all([
                 public_key,
-                seeran_key_encrypted_private_key, seeran_key_encrypted_private_key_salt, seeran_key_encryption_iv,
-                recovery_encrypted_private_key, recovery_encrypted_private_key_salt, recovery_encryption_iv,
+                static_key,
+
+                password_encrypted_private_key, 
+                password_encrypted_private_key_salt, 
+                password_encryption_iv,
+
+                recovery_Key_encrypted_private_key, 
+                recovery_key_encrypted_private_key_salt, 
+                recovery_key_encryption_iv,
             ]):
                 return Response(
                     {"error": "Could not process your request, request is missing required data to process account activation."},
@@ -402,13 +412,13 @@ def activate_account(request):
                 # Save the cryptographic fields
                 account.public_key = public_key
 
-                account.seeran_key_encrypted_private_key = seeran_key_encrypted_private_key
-                account.seeran_key_encrypted_private_key_salt = seeran_key_encrypted_private_key_salt
-                account.seeran_key_encryption_iv = seeran_key_encryption_iv
+                account.password_encrypted_private_key = password_encrypted_private_key
+                account.password_encrypted_private_key_salt = password_encrypted_private_key_salt
+                account.password_encryption_iv = password_encryption_iv
 
-                account.recovery_encrypted_private_key = recovery_encrypted_private_key
-                account.recovery_encrypted_private_key_salt = recovery_encrypted_private_key_salt
-                account.recovery_encryption_iv = recovery_encryption_iv
+                account.recovery_Key_encrypted_private_key = recovery_Key_encrypted_private_key
+                account.recovery_encrypted_private_key_salt = recovery_key_encrypted_private_key_salt
+                account.recovery_encryption_iv = recovery_key_encryption_iv
 
                 account.save()
 
@@ -417,7 +427,20 @@ def activate_account(request):
                 access_token = AccountAccessToken.objects.create(account=account, access_token_string=token['access'])
 
                 # Now update the account browsers with the current device info
-                browser_id = generate_and_store_device_details(request, account, access_token)  # This tracks device info as per your updated model
+                browser_info = generate_device_details(request)
+                browser = AccountBrowsers.objects.create(
+                    account=account,
+                    access_token=access_token,
+                    static_key=static_key,
+                    device_type=browser_info['device_type'],
+                    os=browser_info['os'],
+                    os_version=browser_info['os_version'],
+                    browser=browser_info['browser'],
+                    browser_version=browser_info['browser_version'],
+                    language=browser_info['language'],
+                    time_zone=browser_info['time_zone'],
+                    created_at=timezone.now(),
+                )
 
             cache.delete(email_address + 'activate_account_authorization_otp_hash_and_salt')
 
@@ -440,7 +463,7 @@ def activate_account(request):
             authentication_utilities.set_cookie(
                 response, 
                 'browser_id', 
-                browser_id, 
+                browser.browser_id, 
                 max_age=86400
             )
             authentication_utilities.set_cookie(
@@ -793,7 +816,7 @@ def multi_factor_authentication_login(request):
 # reset password
 
 @api_view(['POST'])
-def password_reset_email_verification(request):
+def credentials_reset_email_verification(request):
     try:
         # check for sent email
         email_address = request.data.get('email_address')
@@ -892,7 +915,7 @@ def password_reset_email_verification(request):
         )
 
 @api_view(['POST'])
-def password_reset_otp_verification(request):
+def credentials_reset_otp_verification(request):
     try:
         email_address = request.COOKIES.get('multi_factor_authentication_password_reset_account_email_address')
         password_reset_authorization_otp = request.COOKIES.get('multi_factor_authentication_password_reset_authorization_otp')
@@ -1029,7 +1052,7 @@ def password_reset_otp_verification(request):
         )
  
 @api_view(['POST'])
-def reset_password(request):
+def reset_credentials(request):
     try:
         # Get the new password and confirm password from the request data, and authorization otp from the cookies
         email_address = request.COOKIES.get('password_reset_email_address')

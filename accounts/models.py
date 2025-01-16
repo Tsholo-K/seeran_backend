@@ -140,23 +140,23 @@ class BaseAccount(AbstractBaseUser, PermissionsMixin):
     # Encryption-related fields
     public_key = models.BinaryField(_('Accounts public key'), blank=True, null=True)  # Public key
 
-    seeran_key_encrypted_private_key = models.BinaryField(
+    password_encrypted_private_key = models.BinaryField(
         _('Encrypted private key with Seeran Key'),
         blank=True,
         null=True
     )  # Encrypted private key
-    seeran_key_encrypted_private_key_salt = models.BinaryField(
-        _('Salt for Seeran Key encrypted private key'),
+    password_encrypted_private_key_salt = models.BinaryField(
+        _('Salt for password encrypted private key'),
         blank=True,
         null=True
     )  # Salt for derivation
-    seeran_key_encryption_iv = models.BinaryField(
+    password_encryption_iv = models.BinaryField(
         _('IV for Seeran Key encrypted private key'),
         blank=True,
         null=True
     )  # IV for Seeran Key encryption
 
-    recovery_encrypted_private_key = models.BinaryField(
+    recovery_Key_encrypted_private_key = models.BinaryField(
         _('Encrypted private key with Recovery Key'),
         blank=True,
         null=True
