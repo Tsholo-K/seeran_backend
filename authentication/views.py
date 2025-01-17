@@ -24,6 +24,9 @@ from accounts.models import BaseAccount
 from account_access_tokens.models import AccountAccessToken
 from account_browsers.models import AccountBrowsers
 
+# serializers
+from accounts.serializers import general_serializers
+
 # utility functions 
 from authentication import utils as authentication_utilities
 from account_access_tokens.utils import manage_user_sessions
@@ -88,29 +91,29 @@ def account_activation_credentials_verification(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        print('validating email address')
+        # print('validating email address')
         # validate email format
         validate_email(email_address)
-        print('email address validated')
+        # print('email address validated')
 
 
-        print('requesting user')
+        # print('requesting user')
         # try to validate the credentials by getting a user with the provided credentials 
         requesting_user = BaseAccount.objects.get(email_address=email_address)
-        print('user requested')
+        # print('user requested')
 
         if not (requesting_user.name.casefold() == first_name.casefold() and requesting_user.surname.casefold() == last_name.casefold()):
             return Response(
-                {"error": "Could not process your request, the account activation credentials you provided are invalid. Please check your full name and email address and try again."}, 
+                {"error": "Could not process your request, the account activation credentials you provided are invalid. Please check your first name, last name and email address and try again."}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        print('checking user compliant')
+        # print('checking user compliant')
         # Access control based on user role and school compliance
         compliant = authentication_utilities.accounts_access_control(requesting_user)
         if compliant:
             return compliant
-        print('check complete')
+        # print('check complete')
 
         # if there is a user with the provided credentials check if their account has already been activated 
         if requesting_user.activated:
@@ -136,11 +139,12 @@ def account_activation_credentials_verification(request):
 
             return response
     
-        print('genrating otp')
+        # print('genrating otp')
         # create an otp for the user
         account_activation_otp, hashed_account_activation_otp, account_activation_salt = authentication_utilities.generate_otp()
-        print('otp genrated')
-        print('sending otp email')
+        # print('otp genrated')
+
+        # print('sending otp email')
         email_response = authentication_utilities.send_otp_email(
             requesting_user, 
             account_activation_otp, 
@@ -148,7 +152,7 @@ def account_activation_credentials_verification(request):
         )
 
         if email_response['status'] == 'success':
-            print('email sent')
+            # print('email sent')
             cache.set( # Cache OTP for 5 mins
                 email_address + 'multi_factor_authentication_account_activation_otp_hash_and_salt', 
                 (hashed_account_activation_otp, account_activation_salt), 
@@ -233,7 +237,7 @@ def account_activation_otp_verification(request):
         if not (stored_hashed_account_activation_authorization_otp_and_salt or stored_hashed_account_activation_otp_and_salt):
             # if there's no authorization otp in cache( wasn't provided in the first place, or expired since it also has a 5 minute lifespan )
             return Response(
-                {"denied": "Could not process your request, your accounts multi-factor authentication login OTP has expired. To generate a new one you will have to re-authenticate from the login page."}, 
+                {"denied": "Could not process your request, your accounts multi-factor authentication login One Time Passcode has expired. To generate a new one you will have to re-authenticate from the login page."}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -245,13 +249,23 @@ def account_activation_otp_verification(request):
             )
 
         # if everything above checks out verify the provided otp against the stored otp
-        if authentication_utilities.verify_user_otp(account_otp=account_activation_otp, stored_hashed_otp_and_salt=stored_hashed_account_activation_otp_and_salt):
+        if authentication_utilities.verify_user_otp(
+            account_otp=account_activation_otp, 
+            stored_hashed_otp_and_salt=stored_hashed_account_activation_otp_and_salt
+        ):
             # provided otp is verified successfully
-            if authentication_utilities.verify_user_otp(account_otp=authorization_otp, stored_hashed_otp_and_salt=stored_hashed_account_activation_authorization_otp_and_salt):
+            if authentication_utilities.verify_user_otp(
+                account_otp=authorization_otp, 
+                stored_hashed_otp_and_salt=stored_hashed_account_activation_authorization_otp_and_salt
+            ):
 
                 activate_account_authorization_otp, hashed_activate_account_authorization_otp, activate_account_salt = authentication_utilities.generate_otp()
 
-                cache.set(email_address + 'activate_account_authorization_otp_hash_and_salt', (hashed_activate_account_authorization_otp, activate_account_salt), timeout=300)  # 300 seconds = 5 mins
+                cache.set( # 300 seconds = 5 mins
+                    email_address + 'activate_account_authorization_otp_hash_and_salt', 
+                    (hashed_activate_account_authorization_otp, activate_account_salt), 
+                    timeout=900
+                ) 
                 
                 response = Response(
                     {"message": "Your account activation One Time Passcode has been successfully verified, you can create a new password for your account on the next page to fully activate it."}, 
@@ -262,17 +276,20 @@ def account_activation_otp_verification(request):
                     response, 
                     'activate_account_authorization_otp', 
                     activate_account_authorization_otp, 
+                    max_age=900
                 )
                 authentication_utilities.set_cookie(
                     response, 
                     'activate_account_email_address', 
                     email_address, 
+                    max_age=900
                 )
                 authentication_utilities.set_cookie(
                     response, 
                     'request_authorized_for_account_activation', 
                     True, 
                     httponly=False, 
+                    max_age=900
                 )
 
                 response.delete_cookie('multi_factor_authentication_account_activation_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
@@ -305,7 +322,7 @@ def account_activation_otp_verification(request):
             cache.set(email_address + 'account_activation_otp_failed_attempts', attempts, timeout=300)  # Update attempts with expiration
 
             return Response(
-                {"error": f"Could not process your request, the provided account activation OTP is incorrect. You have {attempts} {'attempts' if attempts > 1 else 'attempt'} remaining."}, 
+                {"error": f"Could not process your request, the provided account activation One Time Passcode is incorrect. You have {attempts} {'attempts' if attempts > 1 else 'attempt'} remaining."}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -314,7 +331,7 @@ def account_activation_otp_verification(request):
         cache.delete(email_address + 'account_activation_otp_failed_attempts')
 
         response = Response(
-            {"denied": "Could not process your request, you have exceeded the maximum number of OTP verification attempts. Generated account activation OTP for your account has been discarded."}, 
+            {"denied": "Could not process your request, you have exceeded the maximum number of One Time Passcode verification attempts. Generated account activation One Time Passcode for your account has been discarded."}, 
             status=status.HTTP_403_FORBIDDEN
         )
         
@@ -335,6 +352,7 @@ def account_activation_otp_verification(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+
 @api_view(['POST'])
 def activate_account(request):
     try:
@@ -352,7 +370,7 @@ def activate_account(request):
 
         if not stored_activate_account_hashed_otp_and_salt:
             response = Response(
-                {"denied": "Could not process your request, there is no account activation authorization OTP for your account on record. Your request can therefore not be authorized, returning you back to the account activation page shortly."}, 
+                {"denied": "Could not process your request, there is no account activation authorization One Time Passcode for your account on record. Your request can therefore not be authorized, returning you back to the account activation page shortly."}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
             
@@ -444,8 +462,13 @@ def activate_account(request):
 
             cache.delete(email_address + 'activate_account_authorization_otp_hash_and_salt')
 
+            account_details = general_serializers.BasicAccountDetailsSerializer(account)
+
             response = Response(
-                {"message": "Congratulations! You have successully activated your account. Welcome to seeran grades.", "role": account.role}, 
+                {
+                    "message": "Congratulations! You have successully activated your account. Welcome to seeran grades.", 
+                    "account": account_details
+                }, 
                 status=status.HTTP_200_OK
             )
 
@@ -464,7 +487,7 @@ def activate_account(request):
                 response, 
                 'browser_id', 
                 browser.browser_id, 
-                max_age=86400
+                max_age= 60 * 60 * 24 * 30 # the browser will be identified for 30 days as long as the user keeps using the browser
             )
             authentication_utilities.set_cookie(
                 response, 
@@ -577,7 +600,7 @@ def login(request):
             email_response = authentication_utilities.send_otp_email(
                 requesting_user, 
                 multi_factor_authentication_login_otp, 
-                reason="Your account has multi-factor authentication toggled on, this OTP was generated in response to your login request."
+                reason="Your account has multi-factor authentication toggled on, this One Time Passcode was generated in response to your login request."
             )
 
             if email_response['status'] == 'success':
@@ -588,7 +611,7 @@ def login(request):
                 ) 
 
                 response = Response(
-                    {"multifactor_authentication": "You have successufully authenticated using your email address and password, a new login OTP has been sent to your email address. Please check your inbox for the email."}, 
+                    {"multifactor_authentication": "You have successufully authenticated using your email address and password, a new login One Time Passcode has been sent to your email address. Please check your inbox for the email."}, 
                     status=status.HTTP_200_OK
                 )
                 
@@ -692,7 +715,7 @@ def multi_factor_authentication_login(request):
         if not (hashed_authorization_otp_and_salt or stored_hashed_otp_and_salt):
             # if there's no authorization otp in cache( wasn't provided in the first place, or expired since it also has a 5 minute lifespan )
             return Response(
-                {"denied": "Could not process your request, your accounts multi-factor authentication login OTP has expired. To generate a new one you will have to re-authenticate from the login page."}, 
+                {"denied": "Could not process your request, your accounts multi-factor authentication login One Time Passcode has expired. To generate a new one you will have to re-authenticate from the login page."}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
     
@@ -775,7 +798,7 @@ def multi_factor_authentication_login(request):
         
         if attempts <= 0:
             response = Response(
-                {"denied": "Could not process your request, you have exceeded the maximum OTP verification attempts. Returning you to the login page shortly."}, 
+                {"denied": "Could not process your request, you have exceeded the maximum One Time Passcode verification attempts. Returning you to the login page shortly."}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -794,7 +817,7 @@ def multi_factor_authentication_login(request):
         cache.set(email_address + 'multi_factor_authentication_login_failed_otp_attempts', attempts, timeout=300)  # Update attempts with expiration
 
         return Response(
-            {"error": f"Could not process your request, incorrect OTP.. {attempts} remaining"}, 
+            {"error": f"Could not process your request, incorrect One Time Passcode.. {attempts} remaining"}, 
             status=status.HTTP_400_BAD_REQUEST
         )
     
@@ -847,7 +870,7 @@ def credentials_reset_email_verification(request):
         # check if the email is banned 
         if requesting_user.email_banned:
             return Response(
-                { "error" : "Could not process your request, failed to send OTP email, your email address has been banned. You can contact your school administrators for assistance or to have it updated."}, 
+                { "error" : "Could not process your request, failed to send One Time Passcode email, your email address has been banned. You can contact your school administrators for assistance or to have it updated."}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -857,7 +880,7 @@ def credentials_reset_email_verification(request):
         email_response = authentication_utilities.send_otp_email(
             requesting_user, 
             password_reset_otp, 
-            reason="We recieved a password reset request, looks like you're ready for a fresh start, we've got you covered! Use the OTP below to securely reset your password."
+            reason="We recieved a password reset request, looks like you're ready for a fresh start, we've got you covered! Use the One Time Passcode below to securely reset your password."
         )
 
         if email_response['status'] == 'success':
@@ -954,7 +977,7 @@ def credentials_reset_otp_verification(request):
 
                 if not password_reset_otp:
                     return Response(
-                        {"error": "Could not process your request, the provided information is invalid. Email address and OTP are required."}, 
+                        {"error": "Could not process your request, the provided information is invalid. Email address and One Time Passcode are required."}, 
                         status=status.HTTP_400_BAD_REQUEST
                     )
 
@@ -995,7 +1018,7 @@ def credentials_reset_otp_verification(request):
 
             # if the authorization otp does'nt match the one stored for the user return an error 
             response = Response(
-                {"denied": "Could not process your request, incorrect authorization OTP. Action forrbiden."}, 
+                {"denied": "Could not process your request, incorrect authorization One Time Passcode. Action forrbiden."}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -1018,7 +1041,7 @@ def credentials_reset_otp_verification(request):
             cache.delete(email_address + 'multi_factor_authentication_password_reset_failed_otp_attempts')
 
             response = Response(
-                {"denied": "Could not process your request, you have exceeded the maximum number of OTP verification attempts."}, 
+                {"denied": "Could not process your request, you have exceeded the maximum number of One Time Passcode verification attempts."}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -1033,7 +1056,7 @@ def credentials_reset_otp_verification(request):
         cache.set(email_address + 'multi_factor_authentication_password_reset_failed_otp_attempts', attempts, timeout=300)  # Update attempts with expiration
 
         return Response(
-            {"error": f"Could not process your request, he provided password reset OTP is incorrect. You have {attempts} {'attempts' if attempts > 1 else 'attempt'} remaining."}, 
+            {"error": f"Could not process your request, he provided password reset One Time Passcode is incorrect. You have {attempts} {'attempts' if attempts > 1 else 'attempt'} remaining."}, 
             status=status.HTTP_400_BAD_REQUEST
         )
     
@@ -1113,7 +1136,7 @@ def reset_credentials(request):
             return response
         
         response = Response(
-            {"denied": "Could not process your request, the provided password reset authorization OTP is invalid. Process forrbiden."}, 
+            {"denied": "Could not process your request, the provided password reset authorization One Time Passcode is invalid. Process forrbiden."}, 
             status=status.HTTP_403_FORBIDDEN
         )
     
