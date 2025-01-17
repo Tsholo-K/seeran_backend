@@ -264,7 +264,7 @@ def account_activation_otp_verification(request):
                 cache.set( # 300 seconds = 5 mins
                     email_address + 'activate_account_authorization_otp_hash_and_salt', 
                     (hashed_activate_account_authorization_otp, activate_account_salt), 
-                    timeout=900
+                    timeout= 60 * 60 * 24
                 ) 
                 
                 response = Response(
@@ -276,20 +276,20 @@ def account_activation_otp_verification(request):
                     response, 
                     'activate_account_authorization_otp', 
                     activate_account_authorization_otp, 
-                    max_age=900
+                    max_age= 60 * 60 * 24
                 )
                 authentication_utilities.set_cookie(
                     response, 
                     'activate_account_email_address', 
                     email_address, 
-                    max_age=900
+                    max_age= 60 * 60 * 24
                 )
                 authentication_utilities.set_cookie(
                     response, 
                     'request_authorized_for_account_activation', 
                     True, 
                     httponly=False, 
-                    max_age=900
+                    max_age= 60 * 60 * 24
                 )
 
                 response.delete_cookie('multi_factor_authentication_account_activation_email_address', domain=settings.SESSION_COOKIE_DOMAIN)
